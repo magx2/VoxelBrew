@@ -65,11 +65,13 @@ class WorkbenchUiTest {
                         stage.setAlwaysOnTop(true);
                     workbench = new Workbench(stage, plugins);
                     var screen = Screen.getPrimary().getVisualBounds();
+                    // Match the hosted Windows runner so clipped inspector fields require
+                    // scrolling.
                     stage.setScene(
                             new Scene(
                                     workbench,
-                                    Math.min(1400, screen.getWidth() - 60),
-                                    Math.min(900, screen.getHeight() - 80)));
+                                    Math.min(964, screen.getWidth() - 60),
+                                    Math.min(648, screen.getHeight() - 80)));
                     stage.show();
                     // JavaFX 21's Windows Robot converts coordinates using the nearest monitor
                     // center. Keep the fixture away from edges shared with a different DPI screen.
@@ -143,6 +145,7 @@ class WorkbenchUiTest {
                 && System.nanoTime() < deadline) Thread.sleep(40);
         var window = fx(() -> node("#" + id).getScene().getWindow());
         focus(window);
+        reveal(id);
         fx(
                 () -> {
                     window.getScene().getRoot().applyCss();
@@ -170,6 +173,41 @@ class WorkbenchUiTest {
                     return null;
                 });
         Thread.sleep(180);
+    }
+
+    private void reveal(String id) throws Exception {
+        for (int attempt = 0; attempt < 20; attempt++) {
+            int direction =
+                    fx(
+                            () -> {
+                                var target = node("#" + id);
+                                target.getScene().getRoot().applyCss();
+                                target.getScene().getRoot().layout();
+                                var bounds = target.localToScreen(target.getBoundsInLocal());
+                                for (var parent = target.getParent();
+                                        parent != null;
+                                        parent = parent.getParent()) {
+                                    if (!(parent instanceof ScrollPane scroll)) continue;
+                                    var viewport = scroll.lookup(".viewport");
+                                    var visible =
+                                            viewport.localToScreen(viewport.getBoundsInLocal());
+                                    if (bounds.getMinY() >= visible.getMinY()
+                                            && bounds.getMaxY() <= visible.getMaxY()) continue;
+                                    robot.mouseMove(visible.getCenterX(), visible.getCenterY());
+                                    return bounds.getCenterY() < visible.getCenterY() ? -3 : 3;
+                                }
+                                return 0;
+                            });
+            if (direction == 0) return;
+            Thread.sleep(100);
+            fx(
+                    () -> {
+                        robot.mouseWheel(direction);
+                        return null;
+                    });
+            Thread.sleep(150);
+        }
+        fail("Could not scroll control into view: " + id);
     }
 
     private void focus(Window window) throws Exception {

@@ -14,14 +14,20 @@ if [[ ! -x "$app/Contents/MacOS/PrusaSlicer" ]]; then
     mkdir -p "$mount"
     hdiutil attach -nobrowse -readonly -mountpoint "$mount" "$archive"
     trap 'hdiutil detach "$mount"' EXIT
-    # This upstream release contains an installer package. Extract it locally;
-    # do not install drivers or modify /Applications.
-    expanded="$tools/slicer-expanded"
-    if [[ ! -d "$expanded" ]]; then
-        packages=("$mount"/*.pkg)
-        pkgutil --expand-full "${packages[0]}" "$expanded"
+    # Prefer an app bundle on the mounted image. Some upstream layouts put it
+    # inside a package/subdirectory; extract only when necessary, never install drivers.
+    source_app=$(find "$mount" -type d -name PrusaSlicer.app -prune -print -quit)
+    if [[ -z "$source_app" ]]; then
+        package=$(find "$mount" -name '*.pkg' -print -quit)
+        if [[ -z "$package" ]]; then
+            echo 'No PrusaSlicer.app or installer package found on the pinned image:' >&2
+            find "$mount" -maxdepth 3 -print >&2
+            exit 1
+        fi
+        expanded="$tools/slicer-expanded"
+        if [[ ! -d "$expanded" ]]; then pkgutil --expand-full "$package" "$expanded"; fi
+        source_app=$(find "$expanded" -type d -name PrusaSlicer.app -prune -print -quit)
     fi
-    source_app=$(find "$expanded" -type d -name PrusaSlicer.app -print -quit)
     test -n "$source_app"
     ditto "$source_app" "$app"
 fi

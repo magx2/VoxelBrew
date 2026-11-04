@@ -2,6 +2,12 @@
 #include <BRepAlgoAPI_Cut.hxx>
 #include <BRepBndLib.hxx>
 #include <BRepBuilderAPI_MakeFace.hxx>
+#include <BRepBuilderAPI_Copy.hxx>
+#include <BRepMesh_IncrementalMesh.hxx>
+#include <BRep_Tool.hxx>
+#include <Poly_Triangulation.hxx>
+#include <TopoDS.hxx>
+#include <TopLoc_Location.hxx>
 #include <BRepBuilderAPI_MakePolygon.hxx>
 #include <BRepCheck_Analyzer.hxx>
 #include <BRepClass3d_SolidClassifier.hxx>
@@ -25,6 +31,8 @@
 #include <stdexcept>
 #include <string>
 #include <unordered_map>
+#include <vector>
+#include <algorithm>
 
 namespace {
 std::mutex registryMutex;
@@ -145,6 +153,55 @@ JNIEXPORT jdouble JNICALL Java_dev_voxelbrew_engine_geometry_NativeKernel_volume
         GProp_GProps properties;
         BRepGProp::VolumeProperties(*lookup(id), properties, true, false, false);
         return properties.Mass();
+    });
+}
+
+JNIEXPORT jobject JNICALL Java_dev_voxelbrew_engine_geometry_NativeKernel_tessellate(
+    JNIEnv* env, jclass, jlong id, jdouble chord, jdouble angle) {
+    return guarded<jobject>(env, "tessellation", nullptr, [&]() -> jobject {
+        requirePositive(chord); requirePositive(angle);
+        if (angle > 3.14159265358979323846) throw std::invalid_argument("angular tolerance exceeds pi");
+        // Meshing attaches mutable triangulations to faces. Never mesh registry-owned topology.
+        BRepBuilderAPI_Copy copy(*lookup(id), true, false);
+        TopoDS_Shape shape = copy.Shape();
+        BRepMesh_IncrementalMesh mesher(shape, chord, false, angle, false);
+        if (!mesher.IsDone() || mesher.GetStatusFlags() != 0) throw std::runtime_error("meshing failed");
+        std::vector<jdouble> vertices;
+        std::vector<jint> indices, faces;
+        jint faceIndex = 0;
+        for (TopExp_Explorer it(shape, TopAbs_FACE); it.More(); it.Next(), ++faceIndex) {
+            const auto face = TopoDS::Face(it.Current());
+            TopLoc_Location location;
+            const auto mesh = BRep_Tool::Triangulation(face, location);
+            if (mesh.IsNull()) throw std::runtime_error("face has no triangulation");
+            if (vertices.size() / 3 + mesh->NbNodes() > 4000000 || faces.size() + mesh->NbTriangles() > 2000000)
+                throw std::runtime_error("mesh exceeds safety limit; increase tessellation tolerance");
+            const auto base = static_cast<jint>(vertices.size() / 3);
+            for (int n = 1; n <= mesh->NbNodes(); ++n) {
+                const gp_Pnt point = mesh->Node(n).Transformed(location.Transformation());
+                vertices.insert(vertices.end(), {point.X(), point.Y(), point.Z()});
+            }
+            for (int n = 1; n <= mesh->NbTriangles(); ++n) {
+                int a, b, c;
+                mesh->Triangle(n).Get(a, b, c);
+                if (face.Orientation() == TopAbs_REVERSED) std::swap(b, c);
+                indices.insert(indices.end(), {base + a - 1, base + b - 1, base + c - 1});
+                faces.push_back(faceIndex);
+            }
+        }
+        auto points = env->NewDoubleArray(static_cast<jsize>(vertices.size()));
+        if (!points) return nullptr;
+        auto triangles = env->NewIntArray(static_cast<jsize>(indices.size()));
+        if (!triangles) return nullptr;
+        auto faceIds = env->NewIntArray(static_cast<jsize>(faces.size()));
+        if (!faceIds) return nullptr;
+        env->SetDoubleArrayRegion(points, 0, static_cast<jsize>(vertices.size()), vertices.data());
+        env->SetIntArrayRegion(triangles, 0, static_cast<jsize>(indices.size()), indices.data());
+        env->SetIntArrayRegion(faceIds, 0, static_cast<jsize>(faces.size()), faces.data());
+        auto type = env->FindClass("dev/voxelbrew/engine/mesh/MeshData");
+        if (!type || env->ExceptionCheck()) return nullptr;
+        auto constructor = env->GetMethodID(type, "<init>", "([D[I[I)V");
+        return constructor ? env->NewObject(type, constructor, points, triangles, faceIds) : nullptr;
     });
 }
 

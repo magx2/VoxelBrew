@@ -14,6 +14,22 @@ import static org.junit.jupiter.api.Assertions.*;
 /** Every command runs in a new JVM, proving that edits come from the saved definitions. */
 class WorkflowTest {
     @TempDir Path directory;
+    @Test void publicExportCommandsAndOverwriteGuard() throws Exception {
+        Path file=directory.resolve("export input.jcad"), stl=directory.resolve("plate.stl"), threeMf=directory.resolve("plate.3mf");
+        run(0,"new",file.toString());
+        run(0,"rectangle",file.toString(),"--id","plate","--width","60","--height","40");
+        run(0,"extrude",file.toString(),"--id","thickness","--sketch","plate","--distance","8");
+        assertTrue(run(0,"exporters","--plugin-dir",directory.toString()).contains("3mf"));
+        run(0,"export",file.toString(),"--format","stl","--output",stl.toString());
+        byte[] bytes=Files.readAllBytes(stl);
+        assertTrue(run(1,"export",file.toString(),"--format","stl","--output",stl.toString()).contains("overwrite"));
+        assertArrayEquals(bytes,Files.readAllBytes(stl));
+        run(0,"export",file.toString(),"--format","3mf","--output",threeMf.toString());
+        try(var zip=new java.util.zip.ZipFile(threeMf.toFile())) { assertNotNull(zip.getEntry("3D/3dmodel.model")); }
+        run(0,"cursor",file.toString(),"--position","1");
+        assertTrue(run(1,"export",file.toString(),"--format","stl","--output",stl.toString(),"--overwrite").contains("timeline"));
+        assertArrayEquals(bytes,Files.readAllBytes(stl));
+    }
     @Test void referenceWorkflowAcrossFreshProcesses() throws Exception {
         Path file = directory.resolve("reference part.jcad");
         run(0, "new", file.toString());

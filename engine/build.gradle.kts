@@ -1,5 +1,6 @@
 plugins {
     `java-library`
+    `maven-publish`
     id("com.google.protobuf") version "0.9.5"
 }
 dependencies { implementation("com.google.protobuf:protobuf-java:4.30.2") }
@@ -41,7 +42,7 @@ val configureOcct by tasks.registering(Exec::class) {
         "-DINSTALL_DIR=${occtInstall.absolutePath}", "-DINSTALL_DIR_LAYOUT=Unix", "-DINSTALL_DIR_BIN=bin", "-DINSTALL_DIR_LIB=lib", "-DINSTALL_DIR_CMAKE=lib/cmake/opencascade",
         "-DBUILD_MODULE_FoundationClasses=OFF", "-DBUILD_MODULE_ModelingData=OFF", "-DBUILD_MODULE_ModelingAlgorithms=OFF",
         "-DBUILD_MODULE_Visualization=OFF", "-DBUILD_MODULE_ApplicationFramework=OFF", "-DBUILD_MODULE_DataExchange=OFF", "-DBUILD_MODULE_Draw=OFF", "-DBUILD_MODULE_DETools=OFF",
-        "-DBUILD_ADDITIONAL_TOOLKITS=TKBool;TKPrim", "-DBUILD_DOC_Overview=OFF", "-DUSE_TBB=OFF", "-DUSE_FREETYPE=OFF", "-DUSE_FREEIMAGE=OFF"
+        "-DBUILD_ADDITIONAL_TOOLKITS=TKBool;TKPrim;TKMesh", "-DBUILD_DOC_Overview=OFF", "-DUSE_TBB=OFF", "-DUSE_FREETYPE=OFF", "-DUSE_FREEIMAGE=OFF"
     ))
 }
 val buildOcct by tasks.registering(Exec::class) {
@@ -86,4 +87,19 @@ tasks.register<Test>("nativeIntegrationTest") {
     testClassesDirs = sourceSets.test.get().output.classesDirs
     classpath = sourceSets.test.get().runtimeClasspath
     filter { includeTestsMatching("*NativeKernelTest") }
+}
+
+publishing {
+    publications { create<MavenPublication>("engine") { from(components["java"]) } }
+    repositories { maven { name = "fixture"; url = uri(layout.buildDirectory.dir("repository")) } }
+}
+
+val buildExporterFixture by tasks.registering(GradleBuild::class) {
+    dependsOn("publishEnginePublicationToFixtureRepository")
+    dir = rootProject.file("fixtures/exporter-plugin")
+    tasks = listOf("jar")
+}
+tasks.named<Test>("test") {
+    dependsOn(buildExporterFixture)
+    systemProperty("voxelbrew.test.plugin", rootProject.file("fixtures/exporter-plugin/build/libs/fixture-exporter-1.0.jar").absolutePath)
 }

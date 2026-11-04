@@ -13,7 +13,7 @@ final class NativeKernel {
                 Path runtime = Path.of(directory).toAbsolutePath();
                 if (System.getProperty("os.name").startsWith("Windows")) {
                     for (String library : new String[] {"TKernel", "TKMath", "TKG2d", "TKG3d", "TKGeomBase",
-                            "TKBRep", "TKGeomAlgo", "TKTopAlgo", "TKPrim", "TKShHealing", "TKBO", "TKBool"}) {
+                            "TKBRep", "TKGeomAlgo", "TKTopAlgo", "TKPrim", "TKShHealing", "TKBO", "TKBool", "TKMesh"}) {
                         System.load(runtime.resolve(library + ".dll").toString());
                     }
                 }
@@ -37,4 +37,5 @@ final class NativeKernel {
     static native boolean contains(long body, double x, double y, double z);
     static native void release(long body);
     static native int liveHandles();
+    static native dev.voxelbrew.engine.mesh.MeshData tessellate(long body, double chord, double angleRadians);
 }

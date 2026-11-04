@@ -1,0 +1,12 @@
+3mf	Portable 3MF Core	API=1	options=[]
+failing	Failed writer	API=1	options=[]
+probe	External mesh report	API=1	options=[ExportOption[key=label, label=Report label, type=STRING, defaultValue=default, choices=[]]]
+stl	Binary STL (millimeters)	API=1	options=[]
+Duplicate exporter ID: probe
+Incompatible exporter future: API 999
+Provider load failed: java.util.ServiceConfigurationError: dev.voxelbrew.engine.export.ModelExporter: Provider consumer.DoesNotExist not found
+Duplicate exporter ID: probe
+Incompatible exporter future: API 999
+Provider load failed: java.util.ServiceConfigurationError: dev.voxelbrew.engine.export.ModelExporter: Provider consumer.DoesNotExist not found
+Exported probe to D:\repos\VoxelBrew\build\m2-demo\reference.txt
+Exported 3mf to D:\repos\VoxelBrew\build\m2-demo\reference.3mf

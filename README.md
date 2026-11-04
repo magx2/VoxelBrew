@@ -3,12 +3,13 @@
 Desktop parametric CAD for mechanical parts and FDM preparation. Project domain:
 **voxelbrew.dev**, Java/Gradle namespace: **dev.voxelbrew**.
 
-**M0 and M1** provide a real Java → JNI → Open CASCADE Technology (OCCT) kernel
+**M0 through M2** provide a real Java → JNI → Open CASCADE Technology (OCCT) kernel
 and an editable headless CAD workflow. `engine` owns modeling, history and
 versioned Protobuf `.jcad` persistence; `cli` exposes the same engine operations;
-`gui` is reserved for the later JavaFX milestone. There are exactly these three
-first-party subprojects. The desktop UI, mesh export and printing are later
-increments. The complete backlog is in [the implementation plan](docs/implementation-plan.md).
+`gui` is reserved for the later JavaFX milestone. M2 adds tessellation, binary STL,
+portable 3MF and external exporter plugins. There are exactly these three
+first-party subprojects. The desktop UI and printing are later increments.
+The complete backlog is in [the implementation plan](docs/implementation-plan.md).
 
 ## Prerequisites and locked dependencies
 
@@ -137,6 +138,14 @@ slicers, and physical printer checks remain unqualified until their own gates.
 Project agents cover the CAD engine, CLI, JavaFX desktop, and Windows/Ubuntu
 validation. See [agent roles and usage](docs/codex-agents.md) and
 [contributor instructions](AGENTS.md) for task ownership and milestone checks.
+
+## Export and plugins
+
+After `:cli:installDist`, run `cli exporters` and
+`cli export fixtures/reference-8mm.jcad --format 3mf --output plate.3mf`
+using the installed launcher above. See [the export API and commands](docs/export-workflow.md)
+and [M2 acceptance evidence](docs/acceptance/M2.md). Exporters require a complete,
+successfully rebuilt document; the output is published only after success.
 
 ## Licenses
 

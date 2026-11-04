@@ -39,6 +39,12 @@ public final class Solid implements AutoCloseable {
 
     public synchronized double volume() { requireOpen(); return NativeKernel.volume(token); }
 
+    /** Detached mesh; face IDs are local to this tessellation, never persistent feature references. */
+    public synchronized dev.voxelbrew.engine.mesh.MeshData tessellate(dev.voxelbrew.engine.mesh.MeshOptions options) {
+        requireOpen();
+        return NativeKernel.tessellate(token, options.chordToleranceMm(), Math.toRadians(options.angularToleranceDegrees()));
+    }
+
     public synchronized Bounds bounds() {
         requireOpen();
         double[] b = NativeKernel.bounds(token);

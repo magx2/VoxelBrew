@@ -3,6 +3,9 @@ package dev.voxelbrew.cli;
 import dev.voxelbrew.engine.geometry.Solid;
 import dev.voxelbrew.engine.model.*;
 import dev.voxelbrew.engine.persistence.DocumentStore;
+import dev.voxelbrew.engine.export.*;
+import dev.voxelbrew.engine.mesh.MeshOptions;
+import java.util.Map;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Locale;
@@ -28,9 +31,47 @@ public final class VoxelBrew implements Runnable {
         System.exit(commandLine().execute(args));
     }
     public static CommandLine commandLine() {
-        return new CommandLine(new VoxelBrew()).setExecutionExceptionHandler((failure, command, parsed) -> {
+        return new CommandLine(new VoxelBrew()).addSubcommand("exporters", new Exporters()).addSubcommand("export", new Export())
+                .setExecutionExceptionHandler((failure, command, parsed) -> {
             command.getErr().println("ERROR: " + failure.getMessage()); return 1;
         });
+    }
+    @Command(name="exporters", mixinStandardHelpOptions=true, description="List built-in and external exporters")
+    static final class Exporters implements Callable<Integer> {
+        @Option(names="--plugin-dir") Path pluginDirectory=ExporterRegistry.defaultDirectory();
+        @Spec CommandSpec spec;
+        @Override public Integer call() throws Exception {
+            try(var registry=new ExporterRegistry(pluginDirectory)) {
+                for(var descriptor:registry.descriptors()) {
+                    spec.commandLine().getOut().println(descriptor.id()+"\t"+descriptor.name()+"\tAPI="+descriptor.apiVersion()+"\toptions="+descriptor.options());
+                }
+                registry.diagnostics().forEach(spec.commandLine().getErr()::println);
+            }
+            return 0;
+        }
+    }
+    @Command(name="export", mixinStandardHelpOptions=true, description="Export a complete document using a registered provider")
+    static final class Export implements Callable<Integer> {
+        @Parameters(index="0") Path file;
+        @Option(names="--format",required=true) String format;
+        @Option(names="--output",required=true) Path output;
+        @Option(names="--body") String body;
+        @Option(names="--plugin-dir") Path pluginDirectory=ExporterRegistry.defaultDirectory();
+        @Option(names="--chord-tolerance",defaultValue="0.02",description="Absolute chordal tolerance (mm)") double chord;
+        @Option(names="--angular-tolerance",defaultValue="5",description="Angular tolerance (degrees)") double angle;
+        @Option(names="--option",description="Provider option KEY=VALUE; repeatable") Map<String,String> options=new java.util.LinkedHashMap<>();
+        @Option(names="--overwrite") boolean overwrite;
+        @Spec CommandSpec spec;
+        @Override public Integer call() throws Exception {
+            try(var evaluation=Evaluator.evaluate(DocumentStore.load(file)); var registry=new ExporterRegistry(pluginDirectory)) {
+                registry.diagnostics().forEach(spec.commandLine().getErr()::println);
+                ModelView view=ModelViews.from(evaluation);
+                if(body!=null) view=ModelViews.select(view,body);
+                ExportService.export(registry,format,view,new MeshOptions(chord,angle),options,output,overwrite);
+                spec.commandLine().getOut().println("Exported "+format+" to "+output.toAbsolutePath());
+            }
+            return 0;
+        }
     }
     private static void configureInstalledRuntime() {
         if (System.getProperty("voxelbrew.native.path") != null) { return; }

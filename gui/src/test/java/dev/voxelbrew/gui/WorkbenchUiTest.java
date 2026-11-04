@@ -271,7 +271,8 @@ class WorkbenchUiTest {
         for (char c : value.toCharArray()) {
             fx(
                     () -> {
-                        boolean shift = Character.isUpperCase(c) || c == ':' || c == '_';
+                        boolean shift =
+                                Character.isUpperCase(c) || c == ':' || c == '_' || c == '~';
                         KeyCode code;
                         if (Character.isLetter(c))
                             code = KeyCode.valueOf(Character.toString(Character.toUpperCase(c)));
@@ -284,6 +285,7 @@ class WorkbenchUiTest {
                                         case '/' -> KeyCode.SLASH;
                                         case '\\' -> KeyCode.BACK_SLASH;
                                         case ':' -> KeyCode.SEMICOLON;
+                                        case '`', '~' -> KeyCode.BACK_QUOTE;
                                         case ' ' -> KeyCode.SPACE;
                                         default ->
                                                 throw new IllegalArgumentException(
@@ -741,7 +743,7 @@ class WorkbenchUiTest {
         click("new");
         click("unsaved-cancel");
         assertEquals(original, document());
-        Path file = directory.resolve("Save As design.jcad");
+        Path file = directory.resolve("Save As ~ design.jcad");
         shortcut(KeyCode.S, true);
         text("file-path", file.toString());
         click("file-confirm");

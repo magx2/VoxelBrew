@@ -26,6 +26,7 @@ jobs:
         if: always()
         with:
           name: unit-tests
+          retention-days: 3
           path: |
             **/build/reports/
             **/build/test-results/test/

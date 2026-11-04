@@ -99,6 +99,7 @@ jobs:
         if: always()
         with:
           name: ${{ inputs.artifact-name }}
+          retention-days: 3
           path: |
             **/build/reports/
             **/build/test-results/
@@ -110,6 +111,7 @@ jobs:
         if: inputs.archive && success()
         with:
           name: app-images-${{ inputs.os }}
+          retention-days: 3
           path: |
             cli/build/distributions/VoxelBrewCLI-*.zip
             gui/build/distributions/VoxelBrew-*.zip

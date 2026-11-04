@@ -11,6 +11,7 @@ message Document {
   Units units = 3;
   repeated Feature features = 4;
   uint32 cursor = 5;
+  PrintSetup print_setup = 16;
   reserved 6 to 15;
 }
 enum Units {
@@ -60,12 +61,65 @@ message ThroughCut {
   BodyRef body = 2;
   reserved 3 to 7;
 }
+message SplitBody {
+  BodyRef body = 1;
+  double normal_x = 2;
+  double normal_y = 3;
+  double normal_z = 4;
+  double offset = 5;
+}
+message PrintProcess {
+  double layer_height = 1;
+  uint32 walls = 2;
+  double infill_percent = 3;
+  bool automatic_supports = 4;
+  bool supports_on_bed_only = 5;
+  double support_threshold = 6;
+  double support_contact_gap = 7;
+  uint32 interface_layers = 8;
+  double brim_width = 9;
+  uint32 raft_layers = 10;
+}
+message PrintInstance {
+  string id = 1;
+  string body_id = 2;
+  repeated double transform = 3;
+}
+message SupportVolume {
+  string id = 1;
+  string instance_id = 2;
+  enum Role {
+    ROLE_UNSPECIFIED = 0;
+    BLOCKER = 1;
+    ENFORCER = 2;
+    SOLID_SUPPORT = 3;
+  }
+  Role role = 3;
+  double x = 4;
+  double y = 5;
+  double z = 6;
+  double width = 7;
+  double depth = 8;
+  double height = 9;
+}
+message PrintSetup {
+  string id = 1;
+  uint32 version = 2;
+  string backend_id = 3;
+  string printer_id = 4;
+  string material_id = 5;
+  PrintProcess process = 6;
+  repeated PrintInstance instances = 7;
+  repeated SupportVolume supports = 8;
+  reserved 9 to 15;
+}
 message Feature {
   string id = 1;
   oneof definition {
     Sketch sketch = 2;
     Extrude extrude = 3;
     ThroughCut through_cut = 4;
+    SplitBody split_body = 16;
   }
   reserved 5 to 15;
 }

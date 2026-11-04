@@ -80,4 +80,35 @@ public final class ModelViews {
             }
         };
     }
+
+    public static ModelView selectInstance(ModelView source, String instanceId) {
+        var instance =
+                source.instances().stream()
+                        .filter(i -> i.id().equals(instanceId))
+                        .findFirst()
+                        .orElseThrow(
+                                () ->
+                                        new IllegalArgumentException(
+                                                "Unknown instance " + instanceId));
+        return new ModelView() {
+            @Override
+            public List<Body> bodies() {
+                return source.bodies().stream()
+                        .filter(b -> b.id().equals(instance.bodyId()))
+                        .toList();
+            }
+
+            @Override
+            public List<Instance> instances() {
+                return List.of(instance);
+            }
+
+            @Override
+            public MeshData tessellate(String id, MeshOptions options) {
+                if (!id.equals(instance.bodyId()))
+                    throw new IllegalArgumentException("Body is not selected: " + id);
+                return source.tessellate(id, options);
+            }
+        };
+    }
 }

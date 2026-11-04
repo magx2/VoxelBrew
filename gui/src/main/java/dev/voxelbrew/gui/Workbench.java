@@ -37,6 +37,7 @@ public final class Workbench extends BorderPane implements AutoCloseable {
     private final DocumentController controller = new DocumentController(Platform::runLater);
     private final ExporterRegistry registry;
     private final Viewport viewport = new Viewport();
+    private final PrintingPane printing;
     private final TreeView<Entry> tree = new TreeView<>();
     private final VBox inspector = new VBox(12), form = new VBox(9);
     private final VBox featureDiagnostics = new VBox(6);
@@ -71,6 +72,7 @@ public final class Workbench extends BorderPane implements AutoCloseable {
     private final Button circle = button("○  Circle", "circle", () -> beginSketch(true));
     private final Button extrude = button("↑  Extrude", "extrude", this::beginExtrusion);
     private final Button cut = button("Through cut", "cut", this::beginCut);
+    private final Button splitBody = button("Split body", "split-body", this::beginSplit);
     private final ProgressIndicator progress = new ProgressIndicator();
     private final Appearance appearance = new Appearance();
     private final ExecutorService preferencesWorker =
@@ -93,6 +95,7 @@ public final class Workbench extends BorderPane implements AutoCloseable {
     public Workbench(Stage stage, Path pluginDirectory) throws IOException {
         this.stage = stage;
         this.registry = new ExporterRegistry(pluginDirectory);
+        printing = new PrintingPane(controller, pluginDirectory, registry, stage);
         appearanceChoice = appearance.load();
         setId("workbench");
         featureDiagnostics.setId("feature-diagnostics");
@@ -158,6 +161,7 @@ public final class Workbench extends BorderPane implements AutoCloseable {
                         views,
                         button("Fit", "fit", () -> viewport.fit(meshes())),
                         new Region(),
+                        splitBody,
                         new Label("Appearance"),
                         themes);
         viewbar.getStyleClass().add("view-strip");
@@ -203,7 +207,23 @@ public final class Workbench extends BorderPane implements AutoCloseable {
         center.getStyleClass().add("viewport-panel");
         var split = new SplitPane(left, center, inspector);
         split.setDividerPositions(0.18, 0.78);
-        setCenter(split);
+        var designTab = new Tab("Design", split);
+        designTab.setId("workspace-design");
+        designTab.setClosable(false);
+        var printTab = new Tab("Print", printing);
+        printTab.setId("workspace-print");
+        printTab.setClosable(false);
+        var workspaces = new TabPane(designTab, printTab);
+        workspaces.setId("workspaces");
+        workspaces
+                .getSelectionModel()
+                .selectedItemProperty()
+                .addListener(
+                        (o, a, b) -> {
+                            cancelTool();
+                            printing.documentChanged();
+                        });
+        setCenter(workspaces);
         cursor.setId("history-cursor");
         cursor.setMin(0);
         cursor.setBlockIncrement(1);
@@ -409,6 +429,8 @@ public final class Workbench extends BorderPane implements AutoCloseable {
             undo.setDisable(!snapshot.canUndo() || controller.ioBusy());
             redo.setDisable(!snapshot.canRedo() || controller.ioBusy());
             export.setDisable(!controller.canExport());
+            splitBody.setDisable(!controller.canExport() || controller.build().bodies().isEmpty());
+            printing.documentChanged();
             boolean atEnd = document.cursor() == document.features().size() && !controller.ioBusy();
             rectangle.setDisable(!atEnd);
             circle.setDisable(!atEnd);
@@ -469,7 +491,9 @@ public final class Workbench extends BorderPane implements AutoCloseable {
     private static String shortName(Feature feature) {
         return feature instanceof Feature.Sketch s
                 ? (s.profile() instanceof Feature.Circle ? "Circle" : "Rectangle")
-                : feature instanceof Feature.Extrude ? "Extrude" : "Through cut";
+                : feature instanceof Feature.Extrude
+                        ? "Extrude"
+                        : feature instanceof Feature.SplitBody ? "Split" : "Through cut";
     }
 
     private void rebuildTree(CadDocument document) {
@@ -549,6 +573,7 @@ public final class Workbench extends BorderPane implements AutoCloseable {
                 .findFirst()
                 .ifPresent(b -> selectedFeature = b.output().featureId());
         viewport.select(id);
+        printing.selectedFace(id, face);
         inspect();
         if (face >= 0)
             selectionLabel.setText(
@@ -596,6 +621,10 @@ public final class Workbench extends BorderPane implements AutoCloseable {
             referenceEditor(feature, e.profile(), null);
         } else if (feature instanceof Feature.ThroughCut c)
             referenceEditor(feature, c.profile(), c.body());
+        else if (feature instanceof Feature.SplitBody s) {
+            dimension(feature, "offset", s.plane().offset());
+            referenceEditor(feature, null, s.body());
+        }
         form.getChildren().add(featureDiagnostics);
         updateFeatureDiagnostics();
     }
@@ -638,16 +667,25 @@ public final class Workbench extends BorderPane implements AutoCloseable {
         earlier.stream()
                 .filter(f -> f instanceof Feature.Sketch)
                 .forEach(f -> sketches.getItems().add(f.id()));
-        sketches.setValue(profile.sketchId());
-        form.getChildren().addAll(new Label("Input sketch"), sketches);
+        if (profile != null) {
+            sketches.setValue(profile.sketchId());
+            form.getChildren().addAll(new Label("Input sketch"), sketches);
+        }
         var bodies = new ComboBox<String>();
         bodies.setId("repair-body");
+        var output = new TextField(body == null ? "body" : body.outputName());
+        output.setId("repair-output");
         if (body != null) {
             earlier.stream()
                     .filter(f -> !(f instanceof Feature.Sketch))
                     .forEach(f -> bodies.getItems().add(f.id()));
             bodies.setValue(body.featureId());
-            form.getChildren().addAll(new Label("Input body feature"), bodies);
+            form.getChildren()
+                    .addAll(
+                            new Label("Input body feature"),
+                            bodies,
+                            new Label("Named output: body, negative or positive"),
+                            output);
         }
         form.getChildren()
                 .add(
@@ -655,6 +693,18 @@ public final class Workbench extends BorderPane implements AutoCloseable {
                                 "Repair inputs",
                                 "repair",
                                 () -> {
+                                    if (feature instanceof Feature.SplitBody split) {
+                                        controller.replaceFeature(
+                                                new Feature.SplitBody(
+                                                        split.id(),
+                                                        new Feature.BodyRef(
+                                                                Objects.requireNonNull(
+                                                                        bodies.getValue(),
+                                                                        "Choose an earlier body"),
+                                                                output.getText()),
+                                                        split.plane()));
+                                        return;
+                                    }
                                     var s =
                                             (Feature.Sketch)
                                                     earlier.stream()
@@ -683,7 +733,7 @@ public final class Workbench extends BorderPane implements AutoCloseable {
                                                                     Objects.requireNonNull(
                                                                             bodies.getValue(),
                                                                             "Choose an earlier body"),
-                                                                    "body")));
+                                                                    output.getText())));
                                 }));
     }
 
@@ -930,6 +980,76 @@ public final class Workbench extends BorderPane implements AutoCloseable {
                         });
     }
 
+    private void beginSplit() {
+        cancelTool();
+        var dialog = new Dialog<Void>();
+        dialog.setTitle("Split body");
+        var body = new ComboBox<DocumentController.Body>();
+        body.setId("split-input");
+        body.getItems().setAll(controller.build().bodies());
+        body.setConverter(
+                new javafx.util.StringConverter<>() {
+                    public String toString(DocumentController.Body value) {
+                        return value == null ? "" : value.id();
+                    }
+
+                    public DocumentController.Body fromString(String value) {
+                        throw new UnsupportedOperationException();
+                    }
+                });
+        body.setValue(
+                body.getItems().stream()
+                        .filter(b -> b.id().equals(selectedBody))
+                        .findFirst()
+                        .orElse(body.getItems().getFirst()));
+        var axis = new ComboBox<String>();
+        axis.setId("split-axis");
+        axis.getItems().setAll("X", "Y", "Z");
+        axis.setValue("X");
+        var offset = new TextField("30");
+        offset.setId("split-offset");
+        var error = new Label();
+        error.setWrapText(true);
+        error.setId("split-error");
+        dialog.getDialogPane()
+                .setContent(
+                        new VBox(
+                                8,
+                                new Label("Input body"),
+                                body,
+                                new Label("Plane normal"),
+                                axis,
+                                new Label("Offset (mm)"),
+                                offset,
+                                error));
+        var commit = new ButtonType("Split", ButtonBar.ButtonData.OK_DONE);
+        dialog.getDialogPane().getButtonTypes().addAll(commit, ButtonType.CANCEL);
+        var button = dialog.getDialogPane().lookupButton(commit);
+        button.setId("split-confirm");
+        button.addEventFilter(
+                javafx.event.ActionEvent.ACTION,
+                event -> {
+                    try {
+                        String id = "split-" + UUID.randomUUID();
+                        controller.add(
+                                new Feature.SplitBody(
+                                        id,
+                                        Objects.requireNonNull(body.getValue(), "Choose a body")
+                                                .output(),
+                                        new Feature.SplitPlane(
+                                                axis.getValue().equals("X") ? 1 : 0,
+                                                axis.getValue().equals("Y") ? 1 : 0,
+                                                axis.getValue().equals("Z") ? 1 : 0,
+                                                number(offset, "offset"))));
+                        selectedFeature = id;
+                    } catch (RuntimeException failure) {
+                        error.setText(failure.getMessage());
+                        event.consume();
+                    }
+                });
+        Dialogs.show(dialog, stage);
+    }
+
     private void cancelTool() {
         tool = Tool.NONE;
         viewport.stopDrawing();
@@ -1028,12 +1148,14 @@ public final class Workbench extends BorderPane implements AutoCloseable {
         getStyleClass().removeAll("light", "dark");
         getStyleClass().add(dark ? "dark" : "light");
         viewport.setDark(dark);
+        printing.setDark(dark);
     }
 
     @Override
     public void close() {
         if (closed) return;
         closed = true;
+        printing.close();
         controller.close();
         preferencesWorker.shutdown();
         try {

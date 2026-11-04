@@ -141,6 +141,12 @@ public final class DocumentController implements AutoCloseable {
         schedule(session.document(), false);
     }
 
+    public void printSetup(dev.voxelbrew.engine.printing.PrintSetup setup) {
+        session.setPrintSetup(setup);
+        preview = null;
+        schedule(session.document(), false);
+    }
+
     public void cursor(int position) {
         preview = null;
         session.setCursor(position);
@@ -249,6 +255,24 @@ public final class DocumentController implements AutoCloseable {
             Map<String, String> values,
             Path destination,
             boolean overwrite) {
+        return export(
+                registry,
+                format,
+                ExportSelection.design(body),
+                options,
+                values,
+                destination,
+                overwrite);
+    }
+
+    public CompletableFuture<Void> export(
+            ExporterRegistry registry,
+            String format,
+            ExportSelection selection,
+            MeshOptions options,
+            Map<String, String> values,
+            Path destination,
+            boolean overwrite) {
         if (!canExport())
             throw new IllegalStateException(
                     "Export requires the current complete, successfully rebuilt document");
@@ -259,8 +283,7 @@ public final class DocumentController implements AutoCloseable {
         io.execute(
                 () -> {
                     try (var evaluation = Evaluator.evaluate(captured)) {
-                        ModelView view = ModelViews.from(evaluation);
-                        if (body != null) view = ModelViews.select(view, body);
+                        ModelView view = selection.view(captured, evaluation, options);
                         ExportService.export(
                                 registry, format, view, options, values, destination, overwrite);
                         finishIo(result, null);

@@ -87,6 +87,7 @@ spotless {
             "scripts/*.ps1",
             "engine/native/CMakeLists.txt",
             "*/src/main/resources/META-INF/services/*",
+            "engine/src/main/resources/**/*.ini",
             "fixtures/exporter-plugin/src/main/resources/META-INF/services/*",
         )
         trimTrailingWhitespace()
@@ -122,6 +123,22 @@ subprojects {
     }
     tasks.withType<Test>().configureEach {
         useJUnitPlatform()
+        systemProperty(
+            "voxelbrew.slicer",
+            providers
+                .gradleProperty("slicerExecutable")
+                .orElse(providers.environmentVariable("VOXELBREW_SLICER"))
+                .orElse(
+                    if (formatterWindows)
+                        rootProject
+                            .file(
+                                ".tools/PrusaSlicer-2.7.2/PrusaSlicer-2.7.2+win64-202402291307/prusa-slicer-console.exe"
+                            )
+                            .absolutePath
+                    else "prusa-slicer"
+                )
+                .get(),
+        )
         testLogging {
             events("passed", "skipped", "failed")
             showStandardStreams = true

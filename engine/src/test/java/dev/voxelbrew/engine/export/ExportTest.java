@@ -204,7 +204,7 @@ class ExportTest {
         try (var registry = new ExporterRegistry(plugins);
                 var evaluation = Evaluator.evaluate(reference())) {
             assertEquals(
-                    List.of("3mf", "failing", "probe", "stl"),
+                    List.of("3mf", "failing", "probe", "prusa-project", "stl"),
                     registry.descriptors().stream().map(ExporterDescriptor::id).toList());
             assertTrue(registry.diagnostics().stream().anyMatch(s -> s.contains("Duplicate")));
             assertTrue(registry.diagnostics().stream().anyMatch(s -> s.contains("Incompatible")));

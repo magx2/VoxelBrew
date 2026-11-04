@@ -80,6 +80,33 @@ public final class Evaluator {
                                         solid);
                         outputs.put(body.output(), body);
                         active.put(body.id(), body);
+                    } else if (feature instanceof Feature.SplitBody split) {
+                        Evaluation.Body input = outputs.get(split.body());
+                        if (input == null)
+                            throw new ModelException(
+                                    split.id(), "missing body output " + split.body());
+                        if (active.get(input.id()) != input)
+                            throw new ModelException(
+                                    split.id(),
+                                    "body input has been superseded by a later feature");
+                        var p = split.plane();
+                        var parts =
+                                input.solid()
+                                        .split(p.normalX(), p.normalY(), p.normalZ(), p.offset());
+                        owned.add(parts.negative());
+                        owned.add(parts.positive());
+                        active.remove(input.id());
+                        for (var side : List.of("negative", "positive")) {
+                            var body =
+                                    new Evaluation.Body(
+                                            split.id() + "." + side,
+                                            new Feature.BodyRef(split.id(), side),
+                                            side.equals("negative")
+                                                    ? parts.negative()
+                                                    : parts.positive());
+                            outputs.put(body.output(), body);
+                            active.put(body.id(), body);
+                        }
                     } else if (feature instanceof Feature.ThroughCut cut) {
                         Feature.Sketch sketch = profile(cut.id(), cut.profile(), sketches);
                         if (!(sketch.profile() instanceof Feature.Circle circle)) {
@@ -90,6 +117,9 @@ public final class Evaluator {
                         if (input == null) {
                             throw new ModelException(cut.id(), "missing body output " + cut.body());
                         }
+                        if (active.get(input.id()) != input)
+                            throw new ModelException(
+                                    cut.id(), "body input has been superseded by a later feature");
                         // M1 through-all is the complete Z extent normal to any XY-parallel plane.
                         Solid solid =
                                 input.solid()
@@ -141,6 +171,7 @@ public final class Evaluator {
         if (feature instanceof Feature.ThroughCut c) {
             return List.of(c.profile().sketchId(), c.body().featureId());
         }
+        if (feature instanceof Feature.SplitBody split) return List.of(split.body().featureId());
         return List.of();
     }
 

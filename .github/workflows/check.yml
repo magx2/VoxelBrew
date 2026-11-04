@@ -33,6 +33,13 @@ jobs:
         if: runner.os == 'Windows'
         shell: pwsh
         run: ./scripts/bootstrap-native.ps1
+      - name: Install pinned slicer (Ubuntu)
+        if: runner.os == 'Linux'
+        run: bash scripts/bootstrap-slicer.sh
+      - name: Install pinned slicer (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: ./scripts/bootstrap-slicer.ps1
       - name: Full check (Ubuntu)
         if: runner.os == 'Linux'
         run: |
@@ -51,3 +58,4 @@ jobs:
             **/build/reports/
             **/build/test-results/
             gui/build/ui-artifacts/
+            engine/build/printing-artifacts/

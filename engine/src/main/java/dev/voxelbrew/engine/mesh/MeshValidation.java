@@ -13,6 +13,21 @@ public final class MeshValidation {
 
     private record Edge(int low, int high) {}
 
+    public record Report(
+            int vertices,
+            int triangles,
+            long boundaryEdges,
+            long nonManifoldEdges,
+            long inconsistentEdges,
+            long degenerateTriangles) {
+        public boolean closed() {
+            return boundaryEdges == 0
+                    && nonManifoldEdges == 0
+                    && inconsistentEdges == 0
+                    && degenerateTriangles == 0;
+        }
+    }
+
     /** Share face-boundary vertices for indexed formats such as 3MF. Face mappings are retained. */
     public static MeshData weld(MeshData mesh) {
         Map<Point, Integer> unique = new HashMap<>();
@@ -44,6 +59,13 @@ public final class MeshValidation {
     }
 
     public static void requireClosed(MeshData mesh) {
+        var report = inspect(mesh);
+        if (!report.closed())
+            throw new IllegalArgumentException(
+                    "Mesh is not closed and consistently oriented: " + report);
+    }
+
+    public static Report inspect(MeshData mesh) {
         Map<Point, Integer> points = new HashMap<>();
         int[] welded = new int[mesh.vertexCount()];
         for (int v = 0; v < welded.length; v++) {
@@ -55,23 +77,30 @@ public final class MeshValidation {
             welded[v] = points.computeIfAbsent(p, ignored -> points.size());
         }
         Map<Edge, int[]> edges = new HashMap<>();
+        long degenerate = 0;
         for (int t = 0; t < mesh.triangleCount(); t++) {
             int a = welded[mesh.vertexIndex(t, 0)],
                     b = welded[mesh.vertexIndex(t, 1)],
                     c = welded[mesh.vertexIndex(t, 2)];
-            if (a == b || b == c || c == a)
-                throw new IllegalArgumentException("Degenerate mesh triangle " + t);
             double[] normal = normal(mesh, t);
-            if (Math.hypot(Math.hypot(normal[0], normal[1]), normal[2]) < 1e-15)
-                throw new IllegalArgumentException("Zero-area mesh triangle " + t);
+            if (a == b
+                    || b == c
+                    || c == a
+                    || Math.hypot(Math.hypot(normal[0], normal[1]), normal[2]) < 1e-15) {
+                degenerate++;
+                continue;
+            }
             edge(edges, a, b);
             edge(edges, b, c);
             edge(edges, c, a);
         }
-        long invalid = edges.values().stream().filter(v -> v[0] != 2 || v[1] != 0).count();
-        if (invalid != 0)
-            throw new IllegalArgumentException(
-                    "Mesh is not closed and consistently oriented: " + invalid + " invalid edges");
+        return new Report(
+                points.size(),
+                mesh.triangleCount(),
+                edges.values().stream().filter(v -> v[0] == 1).count(),
+                edges.values().stream().filter(v -> v[0] > 2).count(),
+                edges.values().stream().filter(v -> v[0] == 2 && v[1] != 0).count(),
+                degenerate);
     }
 
     private static long quantize(double value) {

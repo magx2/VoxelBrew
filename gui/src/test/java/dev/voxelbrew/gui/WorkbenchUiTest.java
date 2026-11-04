@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 import dev.voxelbrew.engine.model.*;
 import dev.voxelbrew.engine.persistence.DocumentStore;
+import dev.voxelbrew.engine.printing.*;
 import java.nio.file.*;
 import java.util.*;
 import java.util.concurrent.*;
@@ -343,44 +344,12 @@ class WorkbenchUiTest {
 
     private void choice(String id, int index) throws Exception {
         click(id);
-        fx(
-                () -> {
-                    var rows = new ArrayList<Node>();
-                    for (var window : Window.getWindows())
-                        if (window.isShowing() && window.getScene() != null && window != stage)
-                            rows.addAll(window.getScene().getRoot().lookupAll(".list-cell"));
-                    Node row =
-                            rows.stream()
-                                    .filter(
-                                            n ->
-                                                    n instanceof ListCell<?> cell
-                                                            && !cell.isEmpty()
-                                                            && cell.getIndex() == index)
-                                    .findFirst()
-                                    .orElseThrow(
-                                            () ->
-                                                    new AssertionError(
-                                                            "Missing popup row "
-                                                                    + id
-                                                                    + "/"
-                                                                    + index));
-                    var bounds = row.localToScreen(row.getBoundsInLocal());
-                    robot.mouseMove(bounds.getCenterX(), bounds.getCenterY());
-                    return null;
-                });
-        Thread.sleep(80);
-        fx(
-                () -> {
-                    robot.mousePress(MouseButton.PRIMARY);
-                    return null;
-                });
-        Thread.sleep(60);
-        fx(
-                () -> {
-                    robot.mouseRelease(MouseButton.PRIMARY);
-                    return null;
-                });
-        Thread.sleep(150);
+        assertTrue(fx(() -> ((ComboBox<?>) node("#" + id)).isShowing()), "Popup opened: " + id);
+        // Popup windows can select a different DPI monitor than their owner in Windows Robot.
+        // Exercise the actual opened popup through native keys, without setting selection in code.
+        key(KeyCode.HOME);
+        for (int row = 0; row < index; row++) key(KeyCode.DOWN);
+        key(KeyCode.ENTER);
         assertEquals(
                 index,
                 fx(() -> ((ComboBox<?>) node("#" + id)).getSelectionModel().getSelectedIndex()),
@@ -819,6 +788,122 @@ class WorkbenchUiTest {
                                 ((Feature.Sketch) DocumentStore.load(file).features().getFirst())
                                         .profile())
                         .height());
+    }
+
+    @Test
+    void printingSplitPlacementPetgAndActualPreviewMatchCli() throws Exception {
+        rectangle(0);
+        click("extrude");
+        ready();
+        text("extrude-distance", "8");
+        key(KeyCode.ENTER);
+        ready();
+        click("circle");
+        text("sketch-x", "10");
+        text("sketch-y", "10");
+        text("sketch-diameter", "4");
+        click("finish-sketch");
+        ready();
+        click("cut");
+        click("cut-confirm");
+        ready();
+        click("split-body");
+        text("split-offset", "30");
+        click("split-confirm");
+        ready();
+        assertEquals(2, fx(() -> workbench.controller().build().bodies().size()));
+        assertEquals(19099.469035085127, volume(), .01);
+        click("undo");
+        ready();
+        assertEquals(1, fx(() -> workbench.controller().build().bodies().size()));
+        choice("appearance", 2);
+        click("workspace-print");
+        click("print-add");
+        ready();
+        text("print-x", "80");
+        text("print-y", "30");
+        text("print-rotate-z", "90");
+        click("print-place");
+        ready();
+        click("print-duplicate");
+        ready();
+        assertEquals(2, document().printSetup().instances().size());
+        click("print-remove");
+        ready();
+        assertEquals(1, document().printSetup().instances().size());
+        click("print-tab-process");
+        choice("print-material", 1);
+        click("print-apply-process");
+        ready();
+        assertEquals("PETG", document().printSetup().materialId());
+        Path file = directory.resolve("GUI print setup.jcad");
+        save(file);
+        click("open");
+        text("file-path", file.toString());
+        click("file-confirm");
+        ready();
+        assertEquals(DocumentStore.load(file), document());
+        click("print-tab-job");
+        Path job = directory.resolve("GUI printer job.gcode");
+        text("print-output", job.toString());
+        long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(20);
+        while (fx(() -> node("#print-slice").isDisabled()) && System.nanoTime() < deadline)
+            Thread.sleep(25);
+        click("print-slice");
+        deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(45);
+        while (fx(() -> ((PrintingPane) node("#printing-workspace")).jobs().running())
+                && System.nanoTime() < deadline) Thread.sleep(25);
+        assertEquals(
+                PrintController.State.SUCCEEDED,
+                fx(() -> ((PrintingPane) node("#printing-workspace")).jobs().state()),
+                fx(() -> ((Label) node("#print-status")).getText()));
+        var actual = GcodeJob.read(job);
+        assertEquals(40, actual.modelLayers().size());
+        assertEquals("PETG", actual.report().get("material"));
+        click("print-layer");
+        key(KeyCode.END);
+        click("print-role-travel");
+        click("print-role-perimeter");
+        Path evidence = Path.of(System.getProperty("voxelbrew.ui.artifacts"));
+        fx(
+                () -> {
+                    Screenshot.save(stage.getScene(), evidence.resolve("printing-dark.png"));
+                    return null;
+                });
+        click("workspace-design");
+        choice("appearance", 1);
+        click("workspace-print");
+        fx(
+                () -> {
+                    Screenshot.save(stage.getScene(), evidence.resolve("printing-light.png"));
+                    return null;
+                });
+        Path cliJob = directory.resolve("CLI printer job.gcode");
+        assertTrue(cli("validate", file.toString()).contains("VALID"));
+        cli(
+                "slice",
+                file.toString(),
+                "--output",
+                cliJob.toString(),
+                "--slicer",
+                PrusaSlicerBackend.defaultExecutable().toString());
+        assertEquals(actual.segments(), GcodeJob.read(cliJob).segments());
+        Files.copy(
+                file,
+                evidence.resolve("GUI print setup.jcad"),
+                StandardCopyOption.REPLACE_EXISTING);
+        Files.copy(
+                job,
+                evidence.resolve("GUI printer job.gcode"),
+                StandardCopyOption.REPLACE_EXISTING);
+        click("print-tab-process");
+        text("print-layer-height", "0.3");
+        click("print-apply-process");
+        ready();
+        assertEquals(
+                PrintController.State.OUTDATED,
+                fx(() -> ((PrintingPane) node("#printing-workspace")).jobs().state()));
+        assertNull(fx(() -> ((PrintingPane) node("#printing-workspace")).jobs().result()));
     }
 
     private String cli(String... arguments) throws Exception {

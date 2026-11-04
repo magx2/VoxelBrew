@@ -9,19 +9,25 @@ import java.util.List;
 public final class ModelSession {
     private final String id;
     private List<Feature> features;
+    private dev.voxelbrew.engine.printing.PrintSetup printSetup;
     private int cursor;
     private long revision;
-    private final Deque<List<Feature>> undo = new ArrayDeque<>();
-    private final Deque<List<Feature>> redo = new ArrayDeque<>();
+
+    private record State(
+            List<Feature> features, dev.voxelbrew.engine.printing.PrintSetup printSetup) {}
+
+    private final Deque<State> undo = new ArrayDeque<>();
+    private final Deque<State> redo = new ArrayDeque<>();
 
     public ModelSession(CadDocument document) {
         id = document.id();
         features = document.features();
+        printSetup = document.printSetup();
         cursor = document.cursor();
     }
 
     public synchronized CadDocument document() {
-        return new CadDocument(id, features, cursor);
+        return new CadDocument(id, features, cursor, printSetup);
     }
 
     public synchronized long revision() {
@@ -84,6 +90,13 @@ public final class ModelSession {
         Feature replacement;
         if (feature instanceof Feature.Extrude e && field.equals("distance")) {
             replacement = new Feature.Extrude(e.id(), e.profile(), value);
+        } else if (feature instanceof Feature.SplitBody s && field.equals("offset")) {
+            var p = s.plane();
+            replacement =
+                    new Feature.SplitBody(
+                            s.id(),
+                            s.body(),
+                            new Feature.SplitPlane(p.normalX(), p.normalY(), p.normalZ(), value));
         } else if (feature instanceof Feature.Sketch s) {
             Feature.Profile profile = s.profile();
             Feature.Plane plane = s.plane();
@@ -130,8 +143,10 @@ public final class ModelSession {
             return false;
         }
         boolean followEnd = cursor == features.size();
-        redo.push(features);
-        features = undo.pop();
+        redo.push(new State(features, printSetup));
+        var previous = undo.pop();
+        features = previous.features();
+        printSetup = previous.printSetup();
         cursor = followEnd ? features.size() : Math.min(cursor, features.size());
         revision++;
         return true;
@@ -142,8 +157,10 @@ public final class ModelSession {
             return false;
         }
         boolean followEnd = cursor == features.size();
-        undo.push(features);
-        features = redo.pop();
+        undo.push(new State(features, printSetup));
+        var next = redo.pop();
+        features = next.features();
+        printSetup = next.printSetup();
         cursor = followEnd ? features.size() : Math.min(cursor, features.size());
         revision++;
         return true;
@@ -163,14 +180,23 @@ public final class ModelSession {
     }
 
     private void commit(List<Feature> next) {
+        commit(next, printSetup);
+    }
+
+    public synchronized void setPrintSetup(dev.voxelbrew.engine.printing.PrintSetup setup) {
+        commit(features, setup);
+    }
+
+    private void commit(List<Feature> next, dev.voxelbrew.engine.printing.PrintSetup setup) {
         List<Feature> validated =
-                new CadDocument(id, next, Math.min(cursor, next.size())).features();
-        if (validated.equals(features)) {
+                new CadDocument(id, next, Math.min(cursor, next.size()), setup).features();
+        if (validated.equals(features) && setup.equals(printSetup)) {
             return;
         }
-        undo.push(features);
+        undo.push(new State(features, printSetup));
         redo.clear();
         features = validated;
+        printSetup = setup;
         revision++;
     }
 }

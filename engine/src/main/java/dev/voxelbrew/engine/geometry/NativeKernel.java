@@ -55,6 +55,8 @@ final class NativeKernel {
 
     static native long cutThroughCircle(long body, double x, double y, double diameter);
 
+    static native long[] split(long body, double nx, double ny, double nz, double offset);
+
     static native double volume(long body);
 
     static native double[] bounds(long body);

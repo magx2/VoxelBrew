@@ -22,7 +22,7 @@ import picocli.CommandLine.Spec;
         name = "voxelbrew",
         description = "VoxelBrew parametric CAD; all dimensions are millimeters.",
         mixinStandardHelpOptions = true,
-        version = "VoxelBrew 0.1.0 / jcad schema 1",
+        version = "VoxelBrew 0.1.0 / jcad schema 2",
         subcommands = {
             VoxelBrew.Create.class,
             VoxelBrew.Rectangle.class,
@@ -50,14 +50,17 @@ public final class VoxelBrew implements Runnable {
     }
 
     public static CommandLine commandLine() {
-        return new CommandLine(new VoxelBrew())
-                .addSubcommand("exporters", new Exporters())
-                .addSubcommand("export", new Export())
-                .setExecutionExceptionHandler(
-                        (failure, command, parsed) -> {
-                            command.getErr().println("ERROR: " + failure.getMessage());
-                            return 1;
-                        });
+        var cliCommand =
+                new CommandLine(new VoxelBrew())
+                        .addSubcommand("exporters", new Exporters())
+                        .addSubcommand("export", new Export())
+                        .setExecutionExceptionHandler(
+                                (failure, command, parsed) -> {
+                                    command.getErr().println("ERROR: " + failure.getMessage());
+                                    return 1;
+                                });
+        PrintingCommands.register(cliCommand);
+        return cliCommand;
     }
 
     @Command(
@@ -108,6 +111,24 @@ public final class VoxelBrew implements Runnable {
         @Option(names = "--body")
         String body;
 
+        @Option(
+                names = "--instance",
+                description = "Selected build instance ID; requires BUILD_PLATE space")
+        String instance;
+
+        @Option(
+                names = "--space",
+                defaultValue = "DESIGN",
+                description = "DESIGN or BUILD_PLATE; all coordinates are millimeters")
+        ExportSelection.Space space;
+
+        @Option(
+                names = "--selection",
+                defaultValue = "MODEL",
+                description =
+                        "MODEL (default), SUPPORTS or ALL; support solids require BUILD_PLATE")
+        dev.voxelbrew.engine.printing.ManufacturingModel.Selection contents;
+
         @Option(names = "--plugin-dir")
         Path pluginDirectory = ExporterRegistry.defaultDirectory();
 
@@ -133,11 +154,13 @@ public final class VoxelBrew implements Runnable {
 
         @Override
         public Integer call() throws Exception {
-            try (var evaluation = Evaluator.evaluate(DocumentStore.load(file));
+            var document = DocumentStore.load(file);
+            try (var evaluation = Evaluator.evaluate(document);
                     var registry = new ExporterRegistry(pluginDirectory)) {
                 registry.diagnostics().forEach(spec.commandLine().getErr()::println);
-                ModelView view = ModelViews.from(evaluation);
-                if (body != null) view = ModelViews.select(view, body);
+                ModelView view =
+                        new ExportSelection(space, contents, body, instance)
+                                .view(document, evaluation, new MeshOptions(chord, angle));
                 ExportService.export(
                         registry,
                         format,
@@ -349,12 +372,18 @@ public final class VoxelBrew implements Runnable {
                 description = "Earlier feature providing the body output")
         String body;
 
+        @Option(
+                names = "--body-output",
+                defaultValue = "body",
+                description = "Named body output, including negative/positive split halves")
+        String output;
+
         @Override
         public Integer call() throws Exception {
             var session = session();
             session.add(
                     new Feature.ThroughCut(
-                            id, profileRef(session, sketch), new Feature.BodyRef(body, "body")));
+                            id, profileRef(session, sketch), new Feature.BodyRef(body, output)));
             return save(session);
         }
     }
@@ -418,6 +447,9 @@ public final class VoxelBrew implements Runnable {
         @Option(names = "--body-feature")
         String body;
 
+        @Option(names = "--body-output", description = "Named output: body, negative or positive")
+        String bodyOutput;
+
         @Override
         public Integer call() throws Exception {
             var session = session();
@@ -431,12 +463,23 @@ public final class VoxelBrew implements Runnable {
                 session.replace(
                         new Feature.Extrude(e.id(), profileRef(session, sketch), e.distance()));
             } else if (original instanceof Feature.ThroughCut c
-                    && (sketch != null || body != null)) {
+                    && (sketch != null || body != null || bodyOutput != null)) {
                 session.replace(
                         new Feature.ThroughCut(
                                 c.id(),
                                 sketch == null ? c.profile() : profileRef(session, sketch),
-                                body == null ? c.body() : new Feature.BodyRef(body, "body")));
+                                new Feature.BodyRef(
+                                        body == null ? c.body().featureId() : body,
+                                        bodyOutput == null ? c.body().outputName() : bodyOutput)));
+            } else if (original instanceof Feature.SplitBody s
+                    && (body != null || bodyOutput != null)) {
+                session.replace(
+                        new Feature.SplitBody(
+                                s.id(),
+                                new Feature.BodyRef(
+                                        body == null ? s.body().featureId() : body,
+                                        bodyOutput == null ? s.body().outputName() : bodyOutput),
+                                s.plane()));
             } else {
                 throw new ModelException(
                         feature, "specify a supported --sketch or --body-feature repair");

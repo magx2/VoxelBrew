@@ -5,8 +5,17 @@ import java.util.List;
 import java.util.UUID;
 
 /** Immutable millimeter document. The cursor counts evaluated features. */
-public record CadDocument(String id, List<Feature> features, int cursor) {
+public record CadDocument(
+        String id,
+        List<Feature> features,
+        int cursor,
+        dev.voxelbrew.engine.printing.PrintSetup printSetup) {
+    public CadDocument(String id, List<Feature> features, int cursor) {
+        this(id, features, cursor, dev.voxelbrew.engine.printing.PrintSetup.empty());
+    }
+
     public CadDocument {
+        java.util.Objects.requireNonNull(printSetup);
         identifier(id, "document ID");
         features = List.copyOf(features);
         var ids = new HashSet<String>();

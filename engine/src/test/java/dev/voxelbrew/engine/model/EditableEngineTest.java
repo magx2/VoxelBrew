@@ -230,7 +230,7 @@ class EditableEngineTest {
                     DocumentProto.Document.parseFrom(Arrays.copyOfRange(bytes, 44, bytes.length))
                             .toBuilder();
             if (newerVersion) {
-                message.setSchemaVersion(2);
+                message.setSchemaVersion(DocumentStore.SCHEMA_VERSION + 1);
             } else {
                 message.setUnknownFields(
                         com.google.protobuf.UnknownFieldSet.newBuilder()

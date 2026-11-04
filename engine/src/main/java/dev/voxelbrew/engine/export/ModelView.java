@@ -9,10 +9,20 @@ import java.util.Objects;
  * Read-only exporter input. Valid for the synchronous export call; returned meshes are detached.
  */
 public interface ModelView {
-    record Body(String id, String name) {
+    enum Role {
+        MODEL,
+        SOLID_SUPPORT
+    }
+
+    record Body(String id, String name, Role role) {
+        public Body(String id, String name) {
+            this(id, name, Role.MODEL);
+        }
+
         public Body {
             Objects.requireNonNull(id);
             Objects.requireNonNull(name);
+            Objects.requireNonNull(role);
         }
     }
 

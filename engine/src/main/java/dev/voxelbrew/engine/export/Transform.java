@@ -31,6 +31,86 @@ public final class Transform {
         return new Transform(1, 0, 0, x, 0, 1, 0, y, 0, 0, 1, z);
     }
 
+    public double[] matrix() {
+        return m.clone();
+    }
+
+    /** Apply this placement after the supplied placement. */
+    public Transform compose(Transform before) {
+        double[] b = before.m, out = new double[12];
+        for (int r = 0; r < 3; r++) {
+            for (int c = 0; c < 3; c++)
+                for (int k = 0; k < 3; k++) out[4 * r + c] += m[4 * r + k] * b[4 * k + c];
+            out[4 * r + 3] = m[4 * r + 3];
+            for (int k = 0; k < 3; k++) out[4 * r + 3] += m[4 * r + k] * b[4 * k + 3];
+        }
+        return new Transform(out);
+    }
+
+    public static Transform rotation(double xDegrees, double yDegrees, double zDegrees) {
+        double x = Math.toRadians(xDegrees),
+                y = Math.toRadians(yDegrees),
+                z = Math.toRadians(zDegrees);
+        var rx =
+                new Transform(
+                        1,
+                        0,
+                        0,
+                        0,
+                        0,
+                        Math.cos(x),
+                        -Math.sin(x),
+                        0,
+                        0,
+                        Math.sin(x),
+                        Math.cos(x),
+                        0);
+        var ry =
+                new Transform(
+                        Math.cos(y),
+                        0,
+                        Math.sin(y),
+                        0,
+                        0,
+                        1,
+                        0,
+                        0,
+                        -Math.sin(y),
+                        0,
+                        Math.cos(y),
+                        0);
+        var rz =
+                new Transform(
+                        Math.cos(z),
+                        -Math.sin(z),
+                        0,
+                        0,
+                        Math.sin(z),
+                        Math.cos(z),
+                        0,
+                        0,
+                        0,
+                        0,
+                        1,
+                        0);
+        return rz.compose(ry).compose(rx);
+    }
+
+    @Override
+    public boolean equals(Object other) {
+        return other instanceof Transform t && Arrays.equals(m, t.m);
+    }
+
+    @Override
+    public int hashCode() {
+        return Arrays.hashCode(m);
+    }
+
+    @Override
+    public String toString() {
+        return Arrays.toString(m);
+    }
+
     public double[] apply(double x, double y, double z) {
         return new double[] {
             m[0] * x + m[1] * y + m[2] * z + m[3],

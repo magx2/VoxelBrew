@@ -33,6 +33,14 @@ final class FeatureValidation {
                 throw new ModelException(
                         feature.id(), "distance must have magnitude >= 0.000001 mm");
             }
+        } else if (feature instanceof Feature.SplitBody split) {
+            var p = split.plane();
+            finite(feature.id(), "normalX", p.normalX());
+            finite(feature.id(), "normalY", p.normalY());
+            finite(feature.id(), "normalZ", p.normalZ());
+            finite(feature.id(), "offset", p.offset());
+            if (Math.abs(Math.hypot(Math.hypot(p.normalX(), p.normalY()), p.normalZ()) - 1) > 1e-9)
+                throw new ModelException(feature.id(), "split plane normal must have unit length");
         }
     }
 

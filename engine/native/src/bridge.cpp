@@ -1,5 +1,6 @@
 #include <jni.h>
 #include <BRepAlgoAPI_Cut.hxx>
+#include <BRepAlgoAPI_Splitter.hxx>
 #include <BRepBndLib.hxx>
 #include <BRepBuilderAPI_MakeFace.hxx>
 #include <BRepBuilderAPI_Copy.hxx>
@@ -24,6 +25,7 @@
 #include <gp_Ax2.hxx>
 #include <gp_Dir.hxx>
 #include <gp_Pnt.hxx>
+#include <gp_Pln.hxx>
 #include <gp_Vec.hxx>
 #include <cmath>
 #include <memory>
@@ -176,6 +178,64 @@ JNIEXPORT jlong JNICALL Java_dev_voxelbrew_engine_geometry_NativeKernel_circlePr
         cylinder.Build();
         if (!cylinder.IsDone()) throw std::runtime_error("cylinder construction failed");
         return own(cylinder.Shape());
+    });
+}
+
+JNIEXPORT jlongArray JNICALL Java_dev_voxelbrew_engine_geometry_NativeKernel_split(
+    JNIEnv* env, jclass, jlong id, jdouble nx, jdouble ny, jdouble nz, jdouble offset) {
+    return guarded<jlongArray>(env, "split body", nullptr, [&]() -> jlongArray {
+        requireFinite(nx);
+        requireFinite(ny);
+        requireFinite(nz);
+        requireFinite(offset);
+        if (std::abs(std::hypot(std::hypot(nx, ny), nz) - 1) > 1e-9)
+            throw std::invalid_argument("split plane normal must have unit length");
+        const auto source = lookup(id);
+        TopTools_ListOfShape arguments, tools;
+        arguments.Append(*source);
+        tools.Append(BRepBuilderAPI_MakeFace(
+                         gp_Pln(gp_Pnt(nx * offset, ny * offset, nz * offset), gp_Dir(nx, ny, nz)))
+                         .Face());
+        BRepAlgoAPI_Splitter splitter;
+        splitter.SetArguments(arguments);
+        splitter.SetTools(tools);
+        splitter.SetNonDestructive(true);
+        splitter.Build();
+        if (!splitter.IsDone() || splitter.HasErrors())
+            throw std::runtime_error("plane split failed");
+        std::vector<TopoDS_Shape> parts;
+        for (TopExp_Explorer it(splitter.Shape(), TopAbs_SOLID); it.More(); it.Next())
+            parts.push_back(it.Current());
+        if (parts.size() != 2)
+            throw std::runtime_error(parts.size() < 2 ? "plane does not intersect the body"
+                                                      : "plane produces more than two solids");
+        auto side = [&](const TopoDS_Shape& shape) {
+            GProp_GProps props;
+            BRepGProp::VolumeProperties(shape, props);
+            const auto c = props.CentreOfMass();
+            return nx * c.X() + ny * c.Y() + nz * c.Z() - offset;
+        };
+        if (side(parts[0]) > side(parts[1])) std::swap(parts[0], parts[1]);
+        if (!(side(parts[0]) < -1e-7 && side(parts[1]) > 1e-7))
+            throw std::runtime_error("plane does not separate two nonempty sides");
+        auto result = env->NewLongArray(2);
+        if (!result) return nullptr;
+        jlong handles[2] = {0, 0};
+        try {
+            handles[0] = own(parts[0]);
+            handles[1] = own(parts[1]);
+            env->SetLongArrayRegion(result, 0, 2, handles);
+            if (!env->ExceptionCheck()) return result;
+        } catch (...) {
+            std::lock_guard<std::mutex> lock(registryMutex);
+            registry.erase(handles[0]);
+            registry.erase(handles[1]);
+            throw;
+        }
+        std::lock_guard<std::mutex> lock(registryMutex);
+        registry.erase(handles[0]);
+        registry.erase(handles[1]);
+        return nullptr;
     });
 }
 

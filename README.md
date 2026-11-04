@@ -9,7 +9,9 @@ versioned Protobuf `.jcad` persistence; `cli` exposes the same engine operations
 `gui` provides the JavaFX CAD workbench. M2 adds tessellation, binary STL,
 portable 3MF and external exporter plugins; M3 adds interactive sketching,
 extrusion, picking, editable history and export. There are exactly these three
-first-party subprojects. Printing remains a later increment.
+first-party subprojects. M4 adds editable splitting, build placement, persisted
+PLA/PETG process settings, supports and real PrusaSlicer jobs. See the
+[printing workflow](docs/printing-workflow.md) and [qualification record](docs/acceptance/M4.md).
 The complete backlog is in [the implementation plan](docs/implementation-plan.md).
 
 ## Prerequisites and locked dependencies
@@ -150,9 +152,10 @@ and HTML are generated under `engine/build/test-results` and
 CI configuration is not itself proof of a successful hosted run.
 
 See also [M2 export evidence](docs/acceptance/M2.md) and
-[M3 desktop evidence](docs/acceptance/M3.md). Subsequent milestones cover
-split bodies/slicing/supports, packaging and persistent feature plugins.
-macOS, installers, external slicers and physical printer checks remain
+[M3 desktop evidence](docs/acceptance/M3.md) and the
+[M4 manufacturing qualification](docs/acceptance/M4.md). Subsequent milestones cover
+packaging and persistent feature plugins.
+macOS, installers and physical printer checks remain
 unqualified until their own gates.
 
 ## Desktop CAD workbench

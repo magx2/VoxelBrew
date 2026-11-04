@@ -1,9 +1,12 @@
 package dev.voxelbrew.engine.persistence;
 
 import com.google.protobuf.Message;
+import dev.voxelbrew.engine.export.ModelView;
+import dev.voxelbrew.engine.export.Transform;
 import dev.voxelbrew.engine.model.CadDocument;
 import dev.voxelbrew.engine.model.Feature;
 import dev.voxelbrew.engine.persistence.proto.DocumentProto;
+import dev.voxelbrew.engine.printing.*;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
@@ -20,7 +23,7 @@ import java.util.List;
  * Versioned protobuf persistence with a complete-file integrity envelope and atomic publication.
  */
 public final class DocumentStore {
-    public static final int SCHEMA_VERSION = 1;
+    public static final int SCHEMA_VERSION = 2;
     private static final byte[] MAGIC = {'J', 'C', 'A', 'D', 13, 10, 26, 10};
     private static final int HEADER = 44;
     private static final int MAX_PAYLOAD = 16 * 1024 * 1024;
@@ -53,7 +56,7 @@ public final class DocumentStore {
         }
         try {
             DocumentProto.Document message = DocumentProto.Document.parseFrom(payload);
-            if (message.getSchemaVersion() != SCHEMA_VERSION) {
+            if (message.getSchemaVersion() < 1 || message.getSchemaVersion() > SCHEMA_VERSION) {
                 throw new DocumentFormatException(
                         "Unsupported .jcad schema "
                                 + message.getSchemaVersion()
@@ -72,7 +75,10 @@ public final class DocumentStore {
             return new CadDocument(
                     message.getDocumentId(),
                     message.getFeaturesList().stream().map(DocumentStore::fromProto).toList(),
-                    message.getCursor());
+                    message.getCursor(),
+                    message.hasPrintSetup()
+                            ? fromProto(message.getPrintSetup())
+                            : PrintSetup.empty());
         } catch (DocumentFormatException failure) {
             throw failure;
         } catch (IOException | IllegalArgumentException failure) {
@@ -93,14 +99,7 @@ public final class DocumentStore {
             load(target); // Protect newer schemas, unknown data and damaged originals from
             // destructive replacement.
         }
-        var message =
-                DocumentProto.Document.newBuilder()
-                        .setSchemaVersion(SCHEMA_VERSION)
-                        .setDocumentId(document.id())
-                        .setUnits(DocumentProto.Units.MILLIMETERS)
-                        .setCursor(document.cursor());
-        document.features().forEach(feature -> message.addFeatures(toProto(feature)));
-        byte[] payload = message.build().toByteArray();
+        byte[] payload = toProto(document).toByteArray();
         if (payload.length > MAX_PAYLOAD) {
             throw new IOException("Document exceeds 16 MiB limit");
         }
@@ -182,10 +181,142 @@ public final class DocumentStore {
                             new Feature.BodyRef(
                                     feature.getThroughCut().getBody().getFeatureId(),
                                     feature.getThroughCut().getBody().getOutputName()));
+            case SPLIT_BODY -> {
+                var s = feature.getSplitBody();
+                yield new Feature.SplitBody(
+                        id,
+                        new Feature.BodyRef(
+                                s.getBody().getFeatureId(), s.getBody().getOutputName()),
+                        new Feature.SplitPlane(
+                                s.getNormalX(), s.getNormalY(), s.getNormalZ(), s.getOffset()));
+            }
             case DEFINITION_NOT_SET ->
                     throw new IllegalArgumentException(
                             "Feature '" + id + "': missing or unsupported feature definition");
         };
+    }
+
+    /** Includes geometry definitions and print setup; derived output is never part of identity. */
+    public static String fingerprint(CadDocument document) {
+        return java.util.HexFormat.of().formatHex(sha256(toProto(document).toByteArray()));
+    }
+
+    private static DocumentProto.Document toProto(CadDocument document) {
+        var message =
+                DocumentProto.Document.newBuilder()
+                        .setSchemaVersion(SCHEMA_VERSION)
+                        .setDocumentId(document.id())
+                        .setUnits(DocumentProto.Units.MILLIMETERS)
+                        .setCursor(document.cursor())
+                        .setPrintSetup(toProto(document.printSetup()));
+        document.features().forEach(feature -> message.addFeatures(toProto(feature)));
+        return message.build();
+    }
+
+    private static PrintSetup fromProto(DocumentProto.PrintSetup setup) {
+        var p = setup.getProcess();
+        var process =
+                new ProcessSettings(
+                        p.getLayerHeight(),
+                        p.getWalls(),
+                        p.getInfillPercent(),
+                        p.getAutomaticSupports(),
+                        p.getSupportsOnBedOnly(),
+                        p.getSupportThreshold(),
+                        p.getSupportContactGap(),
+                        p.getInterfaceLayers(),
+                        p.getBrimWidth(),
+                        p.getRaftLayers());
+        return new PrintSetup(
+                setup.getId(),
+                setup.getVersion(),
+                setup.getBackendId(),
+                setup.getPrinterId(),
+                setup.getMaterialId(),
+                process,
+                setup.getInstancesList().stream()
+                        .map(
+                                i ->
+                                        new ModelView.Instance(
+                                                i.getId(),
+                                                i.getBodyId(),
+                                                new Transform(
+                                                        i.getTransformList().stream()
+                                                                .mapToDouble(Double::doubleValue)
+                                                                .toArray())))
+                        .toList(),
+                setup.getSupportsList().stream()
+                        .map(
+                                s ->
+                                        new SupportVolume(
+                                                s.getId(),
+                                                s.getInstanceId(),
+                                                switch (s.getRole()) {
+                                                    case BLOCKER -> SupportVolume.Role.BLOCKER;
+                                                    case ENFORCER -> SupportVolume.Role.ENFORCER;
+                                                    case SOLID_SUPPORT ->
+                                                            SupportVolume.Role.SOLID_SUPPORT;
+                                                    default ->
+                                                            throw new IllegalArgumentException(
+                                                                    "Unsupported support role "
+                                                                            + s.getRole());
+                                                },
+                                                s.getX(),
+                                                s.getY(),
+                                                s.getZ(),
+                                                s.getWidth(),
+                                                s.getDepth(),
+                                                s.getHeight()))
+                        .toList());
+    }
+
+    private static DocumentProto.PrintSetup toProto(PrintSetup setup) {
+        var p = setup.process();
+        var out =
+                DocumentProto.PrintSetup.newBuilder()
+                        .setId(setup.id())
+                        .setVersion(setup.version())
+                        .setBackendId(setup.backendId())
+                        .setPrinterId(setup.printerId())
+                        .setMaterialId(setup.materialId())
+                        .setProcess(
+                                DocumentProto.PrintProcess.newBuilder()
+                                        .setLayerHeight(p.layerHeight())
+                                        .setWalls(p.walls())
+                                        .setInfillPercent(p.infillPercent())
+                                        .setAutomaticSupports(p.automaticSupports())
+                                        .setSupportsOnBedOnly(p.supportsOnBedOnly())
+                                        .setSupportThreshold(p.supportThreshold())
+                                        .setSupportContactGap(p.supportContactGap())
+                                        .setInterfaceLayers(p.interfaceLayers())
+                                        .setBrimWidth(p.brimWidth())
+                                        .setRaftLayers(p.raftLayers()));
+        for (var i : setup.instances())
+            out.addInstances(
+                    DocumentProto.PrintInstance.newBuilder()
+                            .setId(i.id())
+                            .setBodyId(i.bodyId())
+                            .addAllTransform(
+                                    Arrays.stream(i.transform().matrix()).boxed().toList()));
+        for (var s : setup.supports())
+            out.addSupports(
+                    DocumentProto.SupportVolume.newBuilder()
+                            .setId(s.id())
+                            .setInstanceId(s.instanceId())
+                            .setRole(
+                                    switch (s.role()) {
+                                        case BLOCKER -> DocumentProto.SupportVolume.Role.BLOCKER;
+                                        case ENFORCER -> DocumentProto.SupportVolume.Role.ENFORCER;
+                                        case SOLID_SUPPORT ->
+                                                DocumentProto.SupportVolume.Role.SOLID_SUPPORT;
+                                    })
+                            .setX(s.x())
+                            .setY(s.y())
+                            .setZ(s.z())
+                            .setWidth(s.width())
+                            .setDepth(s.depth())
+                            .setHeight(s.height()));
+        return out.build();
     }
 
     private static DocumentProto.Feature toProto(Feature feature) {
@@ -228,6 +359,19 @@ public final class DocumentStore {
                                     DocumentProto.BodyRef.newBuilder()
                                             .setFeatureId(c.body().featureId())
                                             .setOutputName(c.body().outputName())));
+        } else if (feature instanceof Feature.SplitBody s) {
+            out.setSplitBody(
+                    DocumentProto.SplitBody.newBuilder()
+                            .setBody(
+                                    DocumentProto.BodyRef.newBuilder()
+                                            .setFeatureId(s.body().featureId())
+                                            .setOutputName(s.body().outputName()))
+                            .setNormalX(s.plane().normalX())
+                            .setNormalY(s.plane().normalY())
+                            .setNormalZ(s.plane().normalZ())
+                            .setOffset(s.plane().offset()));
+        } else {
+            throw new IllegalArgumentException("Unsupported feature " + feature.id());
         }
         return out.build();
     }

@@ -173,6 +173,108 @@ class WorkflowTest {
         assertEquals(2, DocumentStore.load(file).features().size());
     }
 
+    @Test
+    void splitPlacementSupportAndSlicingAcrossFreshProcesses() throws Exception {
+        String file = directory.resolve("manufacturing fixture.jcad").toString();
+        run(0, "new", file);
+        run(0, "rectangle", file, "--id", "plate", "--width", "60", "--height", "40");
+        run(0, "extrude", file, "--id", "thickness", "--sketch", "plate", "--distance", "8");
+        run(
+                0,
+                "circle",
+                file,
+                "--id",
+                "hole",
+                "--center-x",
+                "10",
+                "--center-y",
+                "10",
+                "--diameter",
+                "4");
+        run(0, "cut", file, "--id", "cut", "--sketch", "hole", "--body-feature", "thickness");
+        run(0, "split", file, "--id", "halves", "--body-feature", "cut", "--offset", "30");
+        assertTrue(run(0, "inspect", file).contains("halves.negative"));
+        run(
+                0,
+                "export",
+                file,
+                "--format",
+                "stl",
+                "--body",
+                "halves.negative",
+                "--output",
+                directory.resolve("left.stl").toString());
+        run(
+                0,
+                "export",
+                file,
+                "--format",
+                "stl",
+                "--body",
+                "halves.positive",
+                "--output",
+                directory.resolve("right.stl").toString());
+        run(
+                0,
+                "place",
+                file,
+                "--instance",
+                "left",
+                "--body",
+                "halves.negative",
+                "--x",
+                "20",
+                "--y",
+                "30");
+        run(
+                0,
+                "place",
+                file,
+                "--instance",
+                "right",
+                "--body",
+                "halves.positive",
+                "--x",
+                "30",
+                "--y",
+                "30");
+        run(
+                0,
+                "support",
+                file,
+                "--id",
+                "blocker",
+                "--instance",
+                "left",
+                "--role",
+                "BLOCKER",
+                "--width",
+                "5",
+                "--depth",
+                "5",
+                "--height",
+                "8");
+        run(0, "print-settings", file, "--material", "PETG");
+        assertTrue(run(0, "print-setup", file).contains("PETG"));
+        assertTrue(run(0, "validate", file).contains("VALID"));
+        String output = directory.resolve("CLI real job.gcode").toString();
+        String slicer =
+                dev.voxelbrew.engine.printing.PrusaSlicerBackend.defaultExecutable().toString();
+        assertTrue(
+                run(0, "slice", file, "--output", output, "--slicer", slicer)
+                        .contains("model_layers=40"));
+        assertTrue(run(0, "inspect-job", output).contains("material=PETG"));
+        byte[] original = Files.readAllBytes(Path.of(output));
+        assertTrue(
+                run(1, "slice", file, "--output", output, "--slicer", slicer)
+                        .contains("overwrite"));
+        assertArrayEquals(original, Files.readAllBytes(Path.of(output)));
+        run(0, "remove-instance", file, "--instance", "left");
+        assertTrue(run(1, "validate", file).contains("MISSING_INSTANCE"));
+        run(0, "remove-support", file, "--id", "blocker");
+        run(0, "validate", file);
+    }
+
     private String run(int expected, String... args) throws Exception {
         var command = new ArrayList<String>();
         command.add(Path.of(System.getProperty("java.home"), "bin", "java").toString());

@@ -51,7 +51,9 @@ public final class ThreeMfExporter implements ModelExporter {
                 ids.put(body.id(), id);
                 xml.writeStartElement("object");
                 xml.writeAttribute("id", Integer.toString(id));
-                xml.writeAttribute("type", "model");
+                xml.writeAttribute(
+                        "type",
+                        body.role() == ModelView.Role.SOLID_SUPPORT ? "solidsupport" : "model");
                 xml.writeAttribute("name", body.name());
                 xml.writeStartElement("mesh");
                 xml.writeStartElement("vertices");

@@ -1,7 +1,8 @@
 package dev.voxelbrew.engine.model;
 
 /** Persistent definitions only: no UI objects, protobuf messages or native handles. */
-public sealed interface Feature permits Feature.Sketch, Feature.Extrude, Feature.ThroughCut {
+public sealed interface Feature
+        permits Feature.Sketch, Feature.Extrude, Feature.ThroughCut, Feature.SplitBody {
     String id();
 
     record Plane(String id, double offsetZ) {}
@@ -21,4 +22,9 @@ public sealed interface Feature permits Feature.Sketch, Feature.Extrude, Feature
     record Extrude(String id, ProfileRef profile, double distance) implements Feature {}
 
     record ThroughCut(String id, ProfileRef profile, BodyRef body) implements Feature {}
+
+    /** Plane equation normal dot position = offset, with a unit normal and mm offset. */
+    record SplitPlane(double normalX, double normalY, double normalZ, double offset) {}
+
+    record SplitBody(String id, BodyRef body, SplitPlane plane) implements Feature {}
 }

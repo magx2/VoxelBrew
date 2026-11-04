@@ -2,6 +2,7 @@ package dev.voxelbrew.gui;
 
 import dev.voxelbrew.engine.export.*;
 import dev.voxelbrew.engine.mesh.MeshOptions;
+import dev.voxelbrew.engine.printing.ManufacturingModel;
 import java.nio.file.Path;
 import java.util.*;
 import javafx.event.ActionEvent;
@@ -37,6 +38,37 @@ final class ExportDialog {
         body.getItems().add("All bodies");
         controller.build().bodies().forEach(b -> body.getItems().add(b.id()));
         body.setValue(body.getItems().size() == 2 ? body.getItems().get(1) : "All bodies");
+        var space = new ComboBox<ExportSelection.Space>();
+        space.setId("export-space");
+        space.getItems().setAll(ExportSelection.Space.values());
+        space.setValue(ExportSelection.Space.DESIGN);
+        var contents = new ComboBox<ManufacturingModel.Selection>();
+        contents.setId("export-contents");
+        contents.getItems().setAll(ManufacturingModel.Selection.values());
+        contents.setValue(ManufacturingModel.Selection.MODEL);
+        var instance = new ComboBox<String>();
+        instance.setId("export-instance");
+        instance.getItems().add("All instances");
+        controller
+                .snapshot()
+                .document()
+                .printSetup()
+                .instances()
+                .forEach(i -> instance.getItems().add(i.id()));
+        instance.setValue("All instances");
+        instance.setDisable(true);
+        contents.setDisable(true);
+        space.setOnAction(
+                e -> {
+                    boolean design = space.getValue() == ExportSelection.Space.DESIGN;
+                    instance.setDisable(design);
+                    contents.setDisable(design);
+                    body.setDisable(!design);
+                    if (design) {
+                        instance.setValue("All instances");
+                        contents.setValue(ManufacturingModel.Selection.MODEL);
+                    }
+                });
         var path = new TextField();
         path.setId("export-path");
         path.setPrefColumnCount(40);
@@ -102,6 +134,12 @@ final class ExportDialog {
                         format,
                         new Label("Body"),
                         body,
+                        new Label("Coordinate space (millimeters)"),
+                        space,
+                        new Label("Build instance"),
+                        instance,
+                        new Label("Contents (model-only by default)"),
+                        contents,
                         new Label("Destination"),
                         new HBox(8, path, browse),
                         new Label("Chordal tolerance (mm)"),
@@ -141,7 +179,8 @@ final class ExportDialog {
                         }
                         if (path.getText().isBlank())
                             throw new IllegalArgumentException("Choose a destination");
-                        if (!descriptor.multipleInstances()
+                        if (space.getValue() == ExportSelection.Space.DESIGN
+                                && !descriptor.multipleInstances()
                                 && body.getValue().equals("All bodies")
                                 && controller.build().bodies().size() > 1)
                             throw new IllegalArgumentException("Choose one body for this exporter");
@@ -149,9 +188,21 @@ final class ExportDialog {
                                 .export(
                                         registry,
                                         descriptor.id(),
-                                        body.getValue().equals("All bodies")
-                                                ? null
-                                                : body.getValue(),
+                                        new ExportSelection(
+                                                space.getValue(),
+                                                contents.getValue(),
+                                                space.getValue() == ExportSelection.Space.DESIGN
+                                                                && !body.getValue()
+                                                                        .equals("All bodies")
+                                                        ? body.getValue()
+                                                        : null,
+                                                space.getValue()
+                                                                        == ExportSelection.Space
+                                                                                .BUILD_PLATE
+                                                                && !instance.getValue()
+                                                                        .equals("All instances")
+                                                        ? instance.getValue()
+                                                        : null),
                                         new MeshOptions(
                                                 Double.parseDouble(chord.getText()),
                                                 Double.parseDouble(angle.getText())),

@@ -63,6 +63,27 @@ public final class Solid implements AutoCloseable {
         return NativeKernel.volume(token);
     }
 
+    public record Split(Solid negative, Solid positive) implements AutoCloseable {
+        @Override
+        public void close() {
+            negative.close();
+            positive.close();
+        }
+    }
+
+    /** Splits into independently owned solids on the negative and positive sides of a plane. */
+    public synchronized Split split(double nx, double ny, double nz, double offset) {
+        requireOpen();
+        finite("normalX", nx);
+        finite("normalY", ny);
+        finite("normalZ", nz);
+        finite("offset", offset);
+        if (Math.abs(Math.hypot(Math.hypot(nx, ny), nz) - 1) > 1e-9)
+            throw new IllegalArgumentException("split plane normal must have unit length");
+        long[] result = NativeKernel.split(token, nx, ny, nz, offset);
+        return new Split(new Solid(result[0]), new Solid(result[1]));
+    }
+
     /**
      * Detached mesh; face IDs are local to this tessellation, never persistent feature references.
      */

@@ -43,8 +43,8 @@ bridge limits a mesh to four million vertices/two million triangles and diagnose
 overflow; increase tolerances to reduce density. Mesh preflight rejects open,
 degenerate or inconsistently oriented solids after welding on a 1e-7 mm grid.
 3MF also shares welded vertex indices. Read-only views can carry rigid placements;
-the document/CLI currently supplies identity placements. Print setup editing and
-persistence remain M4 work.
+M4 adds persisted build placements and explicit design/build-space selection.
+See [printing and support exchange](printing-workflow.md).
 
 3MF is a portable Core geometry package, not a vendor slicer project. Slicer
 settings, supports, G-code and bundled-JVM installers are outside M2.

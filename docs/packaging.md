@@ -21,6 +21,9 @@ The tested-platform status is in [M5 evidence](acceptance/M5.md). macOS arm64
 dependency selection exists but is not qualified. Other Linux distributions,
 Unix variants and architectures require separate qualification. These are app
 images, without installer integration or signing/notarization.
+JDK 21's Mac bundler requires a positive first version component, so macOS app
+metadata uses bundle build number `1.0.0`. The product and archive version remains
+`0.1.0-SNAPSHOT`; this does not designate a stable 1.0 product release.
 
 Examples after extracting the appropriate archive:
 

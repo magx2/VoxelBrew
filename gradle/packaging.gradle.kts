@@ -55,7 +55,9 @@ val appImage by
                 "--name",
                 applicationName,
                 "--app-version",
-                "0.1.0",
+                // JDK 21's Mac bundler requires a positive first component. This is
+                // the bundle build number; the product and archive remain 0.1.0-SNAPSHOT.
+                if (packageMac) "1.0.0" else "0.1.0",
                 "--vendor",
                 "voxelbrew.dev",
                 "--input",

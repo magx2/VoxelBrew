@@ -27,7 +27,8 @@ jobs:
         shell: bash
         run: ./gradlew spotlessCheck
       - name: Cache pinned OCCT compilation
-        uses: actions/cache@v4
+        id: occt-cache
+        uses: actions/cache/restore@v4
         with:
           path: |
             .tools/OCCT-7_9_0
@@ -72,6 +73,15 @@ jobs:
       - name: Archive app images
         shell: bash
         run: ./gradlew :cli:packageZip :gui:packageZip ${{ runner.os == 'Windows' && '''-PvsGenerator=Visual Studio 17 2022''' || '' }}
+      - name: Retain successful OCCT compilation after later failures
+        if: ${{ always() && !cancelled() && steps.occt-cache.outputs.cache-hit != 'true' && hashFiles('engine/build/native/bridge/CMakeCache.txt') != '' }}
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            .tools/OCCT-7_9_0
+            engine/build/native/occt
+            engine/build/native/occt-install
+          key: ${{ steps.occt-cache.outputs.cache-primary-key }}
       - uses: actions/upload-artifact@v4
         if: always()
         with:

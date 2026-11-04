@@ -60,9 +60,10 @@ tasks.withType<Test>().configureEach {
         "java.util.prefs.userRoot",
         layout.buildDirectory.dir("test-preferences").get().asFile.absolutePath,
     )
-    if (javafxPlatform == "linux") {
+    if (javafxPlatform != "win") {
         systemProperty("prism.order", "es2")
         systemProperty("prism.forceGPU", "true")
+        systemProperty("prism.verbose", "true")
     }
     maxParallelForks = 1
 }

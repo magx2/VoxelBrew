@@ -37,8 +37,8 @@ env["_JAVA_OPTIONS"] = '-Djava.util.prefs.userRoot="' + str(workspace / "prefere
 if kind == "cli":
     env.pop("DISPLAY", None)
     env.pop("WAYLAND_DISPLAY", None)
-if sys.platform == "linux" and kind == "gui":
-    env["_JAVA_OPTIONS"] += " -Dprism.order=es2 -Dprism.forceGPU=true"
+if sys.platform in ("linux", "darwin") and kind == "gui":
+    env["_JAVA_OPTIONS"] += " -Dprism.order=es2 -Dprism.forceGPU=true -Dprism.verbose=true"
 transcript = []
 
 

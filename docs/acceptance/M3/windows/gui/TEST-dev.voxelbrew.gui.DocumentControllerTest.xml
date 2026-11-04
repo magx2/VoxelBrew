@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="dev.voxelbrew.gui.DocumentControllerTest" tests="6" skipped="0" failures="0" errors="0" timestamp="2026-11-04T15:33:54.041Z" hostname="LEGION" time="0.626">
+  <properties/>
+  <testcase name="previewsCancelWithoutTransactionsAndCommitAsOneUndoStep()" classname="dev.voxelbrew.gui.DocumentControllerTest" time="0.198"/>
+  <testcase name="savesReopenWithStableIdsAndFailedOpenPreservesCurrentDocument()" classname="dev.voxelbrew.gui.DocumentControllerTest" time="0.258"/>
+  <testcase name="viewportBasisPreservesMillimetersAndOrientation()" classname="dev.voxelbrew.gui.DocumentControllerTest" time="0.033"/>
+  <testcase name="staleRebuildsCannotReplaceANewDocumentAndQueueCoalesces()" classname="dev.voxelbrew.gui.DocumentControllerTest" time="0.027"/>
+  <testcase name="brokenDefinitionsClearGeometryAndRemainRepairable()" classname="dev.voxelbrew.gui.DocumentControllerTest" time="0.061"/>
+  <testcase name="editsDuringSaveRemainDirtyAndDoNotChangeTheCapturedFile()" classname="dev.voxelbrew.gui.DocumentControllerTest" time="0.047"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

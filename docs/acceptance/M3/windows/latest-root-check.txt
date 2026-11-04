@@ -1,0 +1,98 @@
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/9.1.0/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build
+
+> Configure project :engine
+Declaring dependencies using multi-string notation has been deprecated. This will fail with an error in Gradle 10. Please use single-string notation instead: "com.google.protobuf:protoc:4.30.2:windows-x86_64@exe". Consult the upgrading guide for further information: https://docs.gradle.org/9.1.0/userguide/upgrading_version_9.html#dependency_multi_string_notation
+
+> Task :engine:protobufDummy UP-TO-DATE
+> Task :engine:extractIncludeProto UP-TO-DATE
+> Task :engine:extractProto UP-TO-DATE
+> Task :engine:generateProto UP-TO-DATE
+> Task :engine:compileJava UP-TO-DATE
+> Task :cli:compileJava UP-TO-DATE
+> Task :cli:processResources NO-SOURCE
+> Task :cli:classes UP-TO-DATE
+> Task :cli:jar UP-TO-DATE
+> Task :cli:compileTestJava UP-TO-DATE
+> Task :cli:processTestResources NO-SOURCE
+> Task :cli:testClasses UP-TO-DATE
+> Task :engine:configureOcct UP-TO-DATE
+> Task :engine:buildOcct UP-TO-DATE
+> Task :engine:configureNative UP-TO-DATE
+> Task :engine:buildNative UP-TO-DATE
+> Task :engine:processResources UP-TO-DATE
+> Task :engine:classes UP-TO-DATE
+> Task :engine:jar UP-TO-DATE
+> Task :cli:test UP-TO-DATE
+> Task :cli:check UP-TO-DATE
+> Task :engine:generateMetadataFileForEnginePublication
+> Task :engine:generatePomFileForEnginePublication
+> Task :engine:publishEnginePublicationToFixtureRepository
+> Task :exporter-plugin:compileJava UP-TO-DATE
+> Task :exporter-plugin:processResources UP-TO-DATE
+> Task :exporter-plugin:classes UP-TO-DATE
+> Task :exporter-plugin:jar UP-TO-DATE
+> Task :engine:buildExporterFixture
+> Task :engine:extractIncludeTestProto UP-TO-DATE
+> Task :engine:extractTestProto UP-TO-DATE
+> Task :engine:generateTestProto NO-SOURCE
+> Task :engine:compileTestJava UP-TO-DATE
+> Task :engine:processTestResources NO-SOURCE
+> Task :engine:testClasses UP-TO-DATE
+> Task :engine:test UP-TO-DATE
+> Task :engine:check UP-TO-DATE
+> Task :gui:compileJava
+> Task :gui:processResources
+> Task :gui:classes
+> Task :gui:jar
+> Task :cli:startScripts UP-TO-DATE
+> Task :cli:installDist UP-TO-DATE
+> Task :gui:compileTestJava UP-TO-DATE
+> Task :gui:processTestResources NO-SOURCE
+> Task :gui:testClasses UP-TO-DATE
+
+> Task :gui:test
+
+WorkbenchUiTest STANDARD_ERROR
+    lis 04, 2026 4:24:25 PM com.sun.javafx.application.PlatformImpl startup
+    WARNING: Unsupported JavaFX configuration: classes were loaded from 'unnamed module @36916eb0'
+
+WorkbenchUiTest > signedExtrusionDragAndEscapeHaveExactUndoSemantics() PASSED
+
+WorkbenchUiTest > fileShortcutsAndUnsavedSaveDiscardCancelProtectDocuments() PASSED
+
+WorkbenchUiTest > fullReferenceWorkflowWithIndependentCliAndExternalExporter() FAILED
+    org.opentest4j.AssertionFailedError at WorkbenchUiTest.java:54
+
+WorkbenchUiTest > invalidDimensionsAndBrokenInputRepairStayEditable() FAILED
+    java.lang.AssertionError at WorkbenchUiTest.java:47
+
+DocumentControllerTest > previewsCancelWithoutTransactionsAndCommitAsOneUndoStep() PASSED
+
+DocumentControllerTest > savesReopenWithStableIdsAndFailedOpenPreservesCurrentDocument() PASSED
+
+DocumentControllerTest > viewportBasisPreservesMillimetersAndOrientation() PASSED
+
+DocumentControllerTest > staleRebuildsCannotReplaceANewDocumentAndQueueCoalesces() PASSED
+
+DocumentControllerTest > brokenDefinitionsClearGeometryAndRemainRepairable() PASSED
+
+DocumentControllerTest > editsDuringSaveRemainDirtyAndDoNotChangeTheCapturedFile() PASSED
+
+10 tests completed, 2 failed
+
+> Task :gui:test FAILED
+
+[Incubating] Problems report is available at: file:///D:/repos/VoxelBrew/build/reports/problems/problems-report.html
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':gui:test'.
+> There were failing tests. See the report at: file:///D:/repos/VoxelBrew/gui/build/reports/tests/test/index.html
+
+* Try:
+> Run with --scan to generate a Build Scan (Powered by Develocity).
+
+BUILD FAILED in 1m 17s
+29 actionable tasks: 8 executed, 21 up-to-date

@@ -1,0 +1,63 @@
+Picked up JAVA_TOOL_OPTIONS: -Dprism.verbose=true -Dprism.order=es2 -Dprism.forceGPU=true
+
+> Configure project :engine
+Declaring dependencies using multi-string notation has been deprecated. This will fail with an error in Gradle 10. Please use single-string notation instead: "com.google.protobuf:protoc:4.30.2:linux-x86_64@exe". Consult the upgrading guide for further information: https://docs.gradle.org/9.1.0/userguide/upgrading_version_9.html#dependency_multi_string_notation
+
+> Task :engine:configureOcct UP-TO-DATE
+> Task :engine:buildOcct UP-TO-DATE
+> Task :engine:configureNative UP-TO-DATE
+> Task :engine:buildNative UP-TO-DATE
+> Task :engine:protobufDummy UP-TO-DATE
+> Task :engine:extractIncludeProto UP-TO-DATE
+> Task :engine:extractProto UP-TO-DATE
+> Task :engine:generateProto UP-TO-DATE
+> Task :engine:compileJava UP-TO-DATE
+> Task :engine:processResources UP-TO-DATE
+> Task :engine:classes UP-TO-DATE
+> Task :engine:jar UP-TO-DATE
+> Task :gui:compileJava UP-TO-DATE
+> Task :gui:processResources NO-SOURCE
+> Task :gui:classes UP-TO-DATE
+
+> Task :gui:run
+Picked up JAVA_TOOL_OPTIONS: -Dprism.verbose=true -Dprism.order=es2 -Dprism.forceGPU=true
+Nov 04, 2026 2:42:18 PM com.sun.javafx.application.PlatformImpl startup
+WARNING: Unsupported JavaFX configuration: classes were loaded from 'unnamed module @5e426811'
+Prism pipeline init order: es2
+Using Double Precision Marlin Rasterizer
+Using dirty region optimizations
+Not using texture mask for primitives
+Not forcing power of 2 sizes for textures
+Using hardware CLAMP_TO_ZERO mode
+Opting in for HiDPI pixel scaling
+Prism pipeline name = com.sun.prism.es2.ES2Pipeline
+Loading ES2 native library ... prism_es2
+	succeeded.
+GLFactory using com.sun.prism.es2.X11GLFactory
+(X) Got class = class com.sun.prism.es2.ES2Pipeline
+Initialized prism pipeline: com.sun.prism.es2.ES2Pipeline
+Maximum supported texture size: 16384
+Maximum texture size clamped to 4096
+Non power of two texture support = true
+Maximum number of vertex attributes = 16
+Maximum number of uniform vertex components = 16384
+Maximum number of uniform fragment components = 16384
+Maximum number of varying components = 128
+Maximum number of texture units usable in a vertex shader = 32
+Maximum number of texture units usable in a fragment shader = 32
+Graphics Vendor: Mesa
+       Renderer: llvmpipe (LLVM 20.1.2, 256 bits)
+        Version: 4.5 (Compatibility Profile) Mesa 25.2.8-0ubuntu0.24.04.2
+ vsync: true vpipe: true
+ES2ResourceFactory: Prism - createStockShader: FillPgram_Color.frag
+ES2ResourceFactory: Prism - createStockShader: Solid_TextureRGB.frag
+ES2ResourceFactory: Prism - createStockShader: Solid_TextureFirstPassLCD.frag
+ES2ResourceFactory: Prism - createStockShader: Solid_TextureSecondPassLCD.frag
+GUI_SMOKE_PASS JavaFX 3D rendered native reference part
+QuantumRenderer: shutdown
+
+[Incubating] Problems report is available at: file:///tmp/voxelbrew-m0/build/reports/problems/problems-report.html
+
+BUILD SUCCESSFUL in 5s
+12 actionable tasks: 1 executed, 11 up-to-date
+Consider enabling configuration cache to speed up this build: https://docs.gradle.org/9.1.0/userguide/configuration_cache_enabling.html

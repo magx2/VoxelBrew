@@ -1,0 +1,64 @@
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/9.1.0/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build
+
+> Configure project :engine
+Declaring dependencies using multi-string notation has been deprecated. This will fail with an error in Gradle 10. Please use single-string notation instead: "com.google.protobuf:protoc:4.30.2:windows-x86_64@exe". Consult the upgrading guide for further information: https://docs.gradle.org/9.1.0/userguide/upgrading_version_9.html#dependency_multi_string_notation
+
+> Task :engine:protobufDummy UP-TO-DATE
+> Task :engine:extractIncludeProto UP-TO-DATE
+> Task :engine:extractProto UP-TO-DATE
+> Task :engine:generateProto UP-TO-DATE
+> Task :engine:compileJava UP-TO-DATE
+> Task :cli:compileJava UP-TO-DATE
+> Task :cli:processResources NO-SOURCE
+> Task :cli:classes UP-TO-DATE
+> Task :cli:jar UP-TO-DATE
+> Task :engine:processResources UP-TO-DATE
+> Task :engine:classes UP-TO-DATE
+> Task :engine:jar UP-TO-DATE
+> Task :cli:startScripts UP-TO-DATE
+> Task :engine:configureOcct UP-TO-DATE
+> Task :engine:buildOcct UP-TO-DATE
+> Task :engine:configureNative UP-TO-DATE
+> Task :engine:buildNative UP-TO-DATE
+> Task :cli:installDist UP-TO-DATE
+> Task :engine:generateMetadataFileForEnginePublication
+> Task :engine:generatePomFileForEnginePublication
+> Task :engine:publishEnginePublicationToFixtureRepository
+> Task :exporter-plugin:compileJava UP-TO-DATE
+> Task :exporter-plugin:processResources UP-TO-DATE
+> Task :exporter-plugin:classes UP-TO-DATE
+> Task :exporter-plugin:jar UP-TO-DATE
+> Task :engine:buildExporterFixture
+> Task :gui:compileJava UP-TO-DATE
+> Task :gui:processResources UP-TO-DATE
+> Task :gui:classes UP-TO-DATE
+> Task :gui:compileTestJava
+> Task :gui:processTestResources NO-SOURCE
+> Task :gui:testClasses
+
+> Task :gui:test FAILED
+
+WorkbenchUiTest STANDARD_ERROR
+    lis 04, 2026 4:27:46 PM com.sun.javafx.application.PlatformImpl startup
+    WARNING: Unsupported JavaFX configuration: classes were loaded from 'unnamed module @d9345cd'
+
+WorkbenchUiTest > initializationError FAILED
+    java.util.concurrent.ExecutionException at WorkbenchUiTest.java:42
+        Caused by: org.opentest4j.AssertionFailedError at WorkbenchUiTest.java:31
+
+1 test completed, 1 failed
+
+[Incubating] Problems report is available at: file:///D:/repos/VoxelBrew/build/reports/problems/problems-report.html
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':gui:test'.
+> There were failing tests. See the report at: file:///D:/repos/VoxelBrew/gui/build/reports/tests/test/index.html
+
+* Try:
+> Run with --scan to generate a Build Scan (Powered by Develocity).
+
+BUILD FAILED in 14s
+22 actionable tasks: 6 executed, 16 up-to-date

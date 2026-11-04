@@ -3,12 +3,13 @@
 Desktop parametric CAD for mechanical parts and FDM preparation. Project domain:
 **voxelbrew.dev**, Java/Gradle namespace: **dev.voxelbrew**.
 
-**M0 through M2** provide a real Java → JNI → Open CASCADE Technology (OCCT) kernel
+**M0 through M3** provide a real Java → JNI → Open CASCADE Technology (OCCT) kernel
 and an editable headless CAD workflow. `engine` owns modeling, history and
 versioned Protobuf `.jcad` persistence; `cli` exposes the same engine operations;
-`gui` is reserved for the later JavaFX milestone. M2 adds tessellation, binary STL,
-portable 3MF and external exporter plugins. There are exactly these three
-first-party subprojects. The desktop UI and printing are later increments.
+`gui` provides the JavaFX CAD workbench. M2 adds tessellation, binary STL,
+portable 3MF and external exporter plugins; M3 adds interactive sketching,
+extrusion, picking, editable history and export. There are exactly these three
+first-party subprojects. Printing remains a later increment.
 The complete backlog is in [the implementation plan](docs/implementation-plan.md).
 
 ## Prerequisites and locked dependencies
@@ -128,10 +129,44 @@ and HTML are generated under `engine/build/test-results` and
 `engine/build/reports/tests`. CI exercises native builds on Ubuntu and Windows;
 CI configuration is not itself proof of a successful hosted run.
 
-The subsequent milestones cover mesh export/plugins, JavaFX interaction,
-split bodies/slicing/supports, packaging, then persistent
-feature plugins. macOS, packaged applications, renderer/picking, external
-slicers, and physical printer checks remain unqualified until their own gates.
+See also [M2 export evidence](docs/acceptance/M2.md) and
+[M3 desktop evidence](docs/acceptance/M3.md). Subsequent milestones cover
+split bodies/slicing/supports, packaging and persistent feature plugins.
+macOS, installers, external slicers and physical printer checks remain
+unqualified until their own gates.
+
+## Desktop CAD workbench
+
+Use Java 21 and the matching native bootstrap above. JavaFX **21.0.13** is
+resolved for the build platform automatically.
+
+```powershell
+.\gradlew.bat :gui:run
+.\gradlew.bat :gui:installDist
+.\gui\build\install\gui\bin\gui.bat --open fixtures\reference-8mm.jcad
+```
+
+```bash
+./gradlew :gui:run
+./gradlew :gui:installDist
+gui/build/install/gui/bin/gui --open fixtures/reference-8mm.jcad
+```
+
+Ubuntu needs GTK 3 and a 3D-capable display (WSLg locally). Linux CI runs the
+actual Robot interaction tests using Xvfb/Mesa:
+
+```bash
+sudo apt-get install xvfb xauth libgtk-3-0t64 libgl1-mesa-dri
+xvfb-run -a -s '-screen 0 1600x1000x24' env LIBGL_ALWAYS_SOFTWARE=1 ./gradlew check
+```
+
+The installed development distribution includes JavaFX and matching OCCT
+libraries and requires Java 21. It is platform specific, without an installer
+or bundled JVM. Both launchers accept `--plugin-dir`. See the
+[desktop workflow and shortcuts](docs/gui-workflow.md) for the reference demo,
+graphics diagnostics and interaction test commands. GUI Robot tests temporarily
+bring their own windows to the foreground; avoid interacting with the desktop
+during those checks.
 
 ## Codex agents
 

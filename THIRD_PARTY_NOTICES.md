@@ -22,6 +22,11 @@
   https://github.com/google/protobuf-gradle-plugin/tree/v0.9.5.
 * **picocli 4.7.7**, Apache-2.0, https://github.com/remkop/picocli/tree/v4.7.7.
   CLI dependency only.
+* **OpenJFX 21.0.13**, Copyright Oracle and contributors, GPL-2.0 with the
+  Classpath exception. Only base, graphics and controls are included in the GUI.
+  Source: https://github.com/openjdk/jfx21u (tag `21.0.13+1`).
+  Upstream license and licensing clarification are retained in
+  `third_party/javafx/` and copied into the development GUI distribution.
 * **Microsoft Windows SDK C++ 10.0.22621.1** NuGet packages, Microsoft's SDK
   license as included in the archives. Build prerequisite only, downloaded
   unchanged from https://www.nuget.org/packages/Microsoft.Windows.SDK.CPP/10.0.22621.1

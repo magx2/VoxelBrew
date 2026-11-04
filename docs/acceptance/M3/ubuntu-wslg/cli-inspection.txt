@@ -1,0 +1,4 @@
+document=ea1d1d67-0e84-4e99-bce3-7621a73f26dd kernel=7.9.0 units=mm cursor=4
+body=extrude-a90294d1-33c9-4b94-a0eb-a0d0581f5e55.body output=cut-acea0f92-7f96-44f3-bcd4-3a15c954b261/body volume=19099.469035085127 bounds=0.000000000,0.000000000,0.000000000,60.000000000,40.000000000,8.000000000
+contains=false
+bodyCount=1

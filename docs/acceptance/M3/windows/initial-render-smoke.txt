@@ -1,0 +1,32 @@
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/9.1.0/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build
+
+> Configure project :engine
+Declaring dependencies using multi-string notation has been deprecated. This will fail with an error in Gradle 10. Please use single-string notation instead: "com.google.protobuf:protoc:4.30.2:windows-x86_64@exe". Consult the upgrading guide for further information: https://docs.gradle.org/9.1.0/userguide/upgrading_version_9.html#dependency_multi_string_notation
+
+> Task :engine:configureOcct UP-TO-DATE
+> Task :engine:buildOcct UP-TO-DATE
+> Task :engine:configureNative UP-TO-DATE
+> Task :engine:buildNative UP-TO-DATE
+> Task :engine:protobufDummy UP-TO-DATE
+> Task :engine:extractIncludeProto UP-TO-DATE
+> Task :engine:extractProto UP-TO-DATE
+> Task :engine:generateProto UP-TO-DATE
+> Task :engine:compileJava UP-TO-DATE
+> Task :engine:processResources UP-TO-DATE
+> Task :engine:classes UP-TO-DATE
+> Task :engine:jar UP-TO-DATE
+> Task :gui:compileJava
+> Task :gui:processResources NO-SOURCE
+> Task :gui:classes
+
+> Task :gui:run
+lis 04, 2026 2:40:30 PM com.sun.javafx.application.PlatformImpl startup
+WARNING: Unsupported JavaFX configuration: classes were loaded from 'unnamed module @22609c1a'
+GUI_SMOKE_PASS JavaFX 3D rendered native reference part
+
+[Incubating] Problems report is available at: file:///D:/repos/VoxelBrew/build/reports/problems/problems-report.html
+
+BUILD SUCCESSFUL in 40s
+12 actionable tasks: 2 executed, 10 up-to-date
+Consider enabling configuration cache to speed up this build: https://docs.gradle.org/9.1.0/userguide/configuration_cache_enabling.html

@@ -1,0 +1,108 @@
+# Desktop workflow (M3)
+
+VoxelBrew uses Java 21, JavaFX 21.0.13 controls/CSS and a depth-tested 3D
+SubScene. The engine and CLI remain headless. Build prerequisites and native
+bootstrap commands are in the root README. Run `gradlew.bat :gui:run` on
+Windows or `./gradlew :gui:run` on Ubuntu. Gradle arguments can include
+`--args="--open fixtures/reference-8mm.jcad --plugin-dir path/to/plugins"`.
+
+`:gui:installDist` creates `gui/build/install/gui`. Its `bin/gui.bat` or
+`bin/gui` launcher requires Java 21 and locates the adjacent native libraries.
+Only use a distribution built for the destination OS and architecture.
+
+## Reference-part demo
+
+1. Choose **Rectangle**. Click (0,0) and (60,40) in the top viewport, or set
+   X=0, Y=0, Width=60, Height=40, Plane offset Z=0. Choose **Finish sketch**.
+2. With that profile selected, choose **Extrude**. Enter 5 and press Enter.
+3. Choose **Circle**. Click the center and a radius point, or set center
+   (10,10), diameter 4, offset 0. Finish the sketch. Choose **Through cut**,
+   select the plate body and confirm.
+4. Save as a `.jcad` file. Open it again. Select the extrusion in the tree or
+   timeline, change distance from 5 to 8 and press Enter or Apply.
+5. Move the timeline slider to 3: the cut is rolled back and volume is 19200
+   mm³. Return to 4. Undo restores 5 mm thickness; Redo restores 8 mm.
+6. Save and choose **Export**. Select 3MF, choose a destination and export.
+   A default export uses chordal tolerance 0.02 mm and angular tolerance 5°.
+7. In the installed CLI, run `cli inspect design.jcad --point 10,10,4`.
+   Expected bounds are (0,0,0)–(60,40,8), volume 19099.469035085127 mm³,
+   and `contains=false`. Exact tolerances remain 0.001 mm and 0.01 mm³.
+
+Every finished sketch or extrusion creates one operation. Signed extrusion
+distances work on XY and parallel offset planes. Drag the gold handle to preview
+an extrusion; releasing commits once. Escape discards the preview and creates
+no feature or undo entry. Invalid numeric input remains editable and identifies
+the affected field. Generated faces are selectable only within the current
+evaluated revision; sketches continue to use stable XY-parallel plane references.
+
+## Navigation, editing and files
+
+| Input | Action |
+|---|---|
+| Left click | Select a sketch profile, body or rendered face |
+| Middle drag | Orbit |
+| Shift + middle drag | Pan |
+| Mouse wheel | Zoom |
+| View selector / Fit | Isometric, Top, Front, Right / frame the model |
+| Ctrl+N / Ctrl+O | New / Open |
+| Ctrl+S / Ctrl+Shift+S | Save / Save As |
+| Ctrl+Z / Ctrl+Y or Ctrl+Shift+Z | Undo / Redo |
+| Enter in a dimension | Apply or commit the entered value |
+| Escape | Cancel the active drawing or extrusion tool |
+
+The tree, viewport, inspector and timeline share selection. The timeline cursor
+is independent of undo/redo. Return to the end before adding features. Broken
+inputs remain in the file and show diagnostics; select a valid earlier sketch
+or body in the inspector and use **Repair inputs**. A failed rebuild clears
+actionable solid geometry. Export is disabled during rebuild, failed evaluation,
+rollback, IO or a transient extrusion preview.
+
+One document lives in each window. A dot in its title means unsaved changes.
+New, Open and Close offer Save/Discard/Cancel. Workbench dialogs are modal
+overlays inside the document window, keeping keyboard focus stable under WSLg.
+File dialogs accept an editable path and offer native browsing. Saving and exporting use engine-owned atomic
+publication. Existing export files require the explicit replacement checkbox.
+Camera and selection are transient and are not saved into `.jcad`.
+
+## Appearance and exporters
+
+System/Light/Dark is a local user preference, stored through Java Preferences,
+outside the document. System appearance is checked on launch and window focus.
+Windows uses AppsUseLightTheme; Linux uses GNOME color-scheme/GTK preferences.
+WSL falls back to the Windows preference when Linux has no explicit choice.
+Unavailable detection falls back to light. Dialogs use the workbench palette.
+
+Built-in and trusted external exporters use the same descriptors and typed
+option editors. Put provider JARs into `~/.voxelbrew/plugins` or pass
+`--plugin-dir`. These JARs execute trusted code; there is no plugin sandbox.
+Duplicate IDs, incompatible API versions and provider-load failures are
+diagnosed independently. See `export-workflow.md` for the SPI consumer fixture.
+
+## Threading and graphics diagnostics
+
+Committed edits occur on the JavaFX thread. A serial background worker coalesces
+pending immutable document snapshots. Results carry document identity,
+generation, revision and preview sequence; obsolete results are discarded.
+The worker closes each evaluation after copying detached mesh data. JavaFX
+never receives native handles. File reads, saves and exports also run off the
+JavaFX thread. Rebuild progress and failures are visible in the status strip.
+
+Startup requires JavaFX SCENE3D and reports a graphics diagnostic if unavailable.
+On Windows, verify an interactive desktop and a functioning Direct3D driver.
+On Ubuntu, install GTK/Mesa and run under WSLg or Xvfb. WSL automatically enables
+the ES2 pipeline and permits Mesa software 3D. For non-WSL Mesa, use
+`JAVA_OPTS='-Dprism.order=es2 -Dprism.forceGPU=true'` with the installed launcher.
+This enables real Mesa rasterization; JavaFX's 2D software pipeline does not
+qualify as a 3D renderer.
+
+`:gui:run --args="--smoke-test"` renders the real reference part, writes
+`gui/build/gui-smoke.png`, prints `GUI_SMOKE_PASS`, and exits. It does not exercise
+editing. `:gui:test` also runs actual JavaFX Robot drawing, picking, camera,
+file and history interactions. These tests use foreground windows and preserve
+the original appearance preference. Screenshots and GUI-created reference
+artifacts are written under `gui/build/ui-artifacts`; XML/HTML reports live in
+the standard Gradle test-results/reports directories. Run Windows and WSLg
+interaction suites sequentially because they share the physical desktop.
+
+Manufacturing placement, slicing, supports, installers, macOS qualification and
+persistent generated-face naming remain later milestones.

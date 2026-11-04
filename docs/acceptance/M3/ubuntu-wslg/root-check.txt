@@ -1,0 +1,61 @@
+
+> Configure project :engine
+Declaring dependencies using multi-string notation has been deprecated. This will fail with an error in Gradle 10. Please use single-string notation instead: "com.google.protobuf:protoc:4.30.2:linux-x86_64@exe". Consult the upgrading guide for further information: https://docs.gradle.org/9.1.0/userguide/upgrading_version_9.html#dependency_multi_string_notation
+
+> Task :engine:protobufDummy UP-TO-DATE
+> Task :engine:extractIncludeProto UP-TO-DATE
+> Task :engine:extractProto UP-TO-DATE
+> Task :engine:generateProto UP-TO-DATE
+> Task :engine:compileJava UP-TO-DATE
+> Task :cli:compileJava UP-TO-DATE
+> Task :cli:processResources NO-SOURCE
+> Task :cli:classes UP-TO-DATE
+> Task :cli:jar UP-TO-DATE
+> Task :cli:compileTestJava UP-TO-DATE
+> Task :cli:processTestResources NO-SOURCE
+> Task :cli:testClasses UP-TO-DATE
+> Task :engine:configureOcct UP-TO-DATE
+> Task :engine:buildOcct UP-TO-DATE
+> Task :engine:configureNative UP-TO-DATE
+> Task :engine:buildNative UP-TO-DATE
+> Task :engine:processResources UP-TO-DATE
+> Task :engine:classes UP-TO-DATE
+> Task :engine:jar UP-TO-DATE
+> Task :cli:test UP-TO-DATE
+> Task :cli:check UP-TO-DATE
+> Task :engine:generateMetadataFileForEnginePublication
+> Task :engine:generatePomFileForEnginePublication
+> Task :engine:publishEnginePublicationToFixtureRepository
+> Task :exporter-plugin:compileJava UP-TO-DATE
+> Task :exporter-plugin:processResources UP-TO-DATE
+> Task :exporter-plugin:classes UP-TO-DATE
+> Task :exporter-plugin:jar UP-TO-DATE
+> Task :engine:buildExporterFixture
+> Task :engine:extractIncludeTestProto UP-TO-DATE
+> Task :engine:extractTestProto UP-TO-DATE
+> Task :engine:generateTestProto NO-SOURCE
+> Task :engine:compileTestJava UP-TO-DATE
+> Task :engine:processTestResources NO-SOURCE
+> Task :engine:testClasses UP-TO-DATE
+> Task :engine:test UP-TO-DATE
+> Task :engine:check UP-TO-DATE
+> Task :gui:compileJava UP-TO-DATE
+> Task :gui:processResources UP-TO-DATE
+> Task :gui:classes UP-TO-DATE
+> Task :gui:jar
+> Task :cli:startScripts UP-TO-DATE
+> Task :cli:installDist UP-TO-DATE
+> Task :gui:compileTestJava UP-TO-DATE
+> Task :gui:processTestResources NO-SOURCE
+> Task :gui:testClasses UP-TO-DATE
+> Task :gui:test UP-TO-DATE
+> Task :gui:check UP-TO-DATE
+> Task :check UP-TO-DATE
+> Task :gui:startScripts
+> Task :gui:installDist
+
+[Incubating] Problems report is available at: file:///tmp/voxelbrew-m0/build/reports/problems/problems-report.html
+
+BUILD SUCCESSFUL in 1s
+31 actionable tasks: 7 executed, 24 up-to-date
+Consider enabling configuration cache to speed up this build: https://docs.gradle.org/9.1.0/userguide/configuration_cache_enabling.html

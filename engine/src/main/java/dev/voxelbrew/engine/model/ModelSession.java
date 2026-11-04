@@ -19,6 +19,10 @@ public final class ModelSession {
     }
     public synchronized CadDocument document() { return new CadDocument(id, features, cursor); }
     public synchronized long revision() { return revision; }
+    public record Snapshot(CadDocument document, long revision, boolean canUndo, boolean canRedo) { }
+    public synchronized Snapshot snapshot() { return new Snapshot(document(),revision,!undo.isEmpty(),!redo.isEmpty()); }
+    public synchronized boolean canUndo() { return !undo.isEmpty(); }
+    public synchronized boolean canRedo() { return !redo.isEmpty(); }
     public synchronized void add(Feature feature) {
         if (cursor != features.size()) { throw new ModelException(feature.id(), "return the timeline cursor to the end before adding a feature"); }
         FeatureValidation.validate(feature);

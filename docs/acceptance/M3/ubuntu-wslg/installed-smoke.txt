@@ -1,0 +1,41 @@
+Nov 04, 2026 4:23:30 PM com.sun.javafx.application.PlatformImpl startup
+WARNING: Unsupported JavaFX configuration: classes were loaded from 'unnamed module @6424766'
+Prism pipeline init order: es2
+Using Double Precision Marlin Rasterizer
+Using dirty region optimizations
+Not using texture mask for primitives
+Not forcing power of 2 sizes for textures
+Using hardware CLAMP_TO_ZERO mode
+Opting in for HiDPI pixel scaling
+Prism pipeline name = com.sun.prism.es2.ES2Pipeline
+Loading ES2 native library ... prism_es2
+	succeeded.
+GLFactory using com.sun.prism.es2.X11GLFactory
+(X) Got class = class com.sun.prism.es2.ES2Pipeline
+Initialized prism pipeline: com.sun.prism.es2.ES2Pipeline
+Maximum supported texture size: 16384
+Maximum texture size clamped to 4096
+Non power of two texture support = true
+Maximum number of vertex attributes = 16
+Maximum number of uniform vertex components = 16384
+Maximum number of uniform fragment components = 16384
+Maximum number of varying components = 128
+Maximum number of texture units usable in a vertex shader = 32
+Maximum number of texture units usable in a fragment shader = 32
+Graphics Vendor: Mesa
+       Renderer: llvmpipe (LLVM 20.1.2, 256 bits)
+        Version: 4.5 (Compatibility Profile) Mesa 25.2.8-0ubuntu0.24.04.2
+ vsync: true vpipe: true
+ES2ResourceFactory: Prism - createStockShader: FillPgram_Color.frag
+ES2ResourceFactory: Prism - createStockShader: Solid_TextureFirstPassLCD.frag
+ES2ResourceFactory: Prism - createStockShader: Solid_TextureSecondPassLCD.frag
+ES2ResourceFactory: Prism - createStockShader: Solid_TextureRGB.frag
+ES2ResourceFactory: Prism - createStockShader: FillRoundRect_Color.frag
+ES2ResourceFactory: Prism - createStockShader: FillRoundRect_LinearGradient_PAD.frag
+new alphas with length = 4096
+ES2ResourceFactory: Prism - createStockShader: Texture_Color.frag
+ES2ResourceFactory: Prism - createStockShader: Texture_LinearGradient_PAD.frag
+ES2ResourceFactory: Prism - createStockShader: DrawRoundRect_Color.frag
+PPSRenderer: scenario.effect - createShader: LinearConvolveShadow_12
+GUI_SMOKE_PASS JavaFX 3D rendered native reference part
+QuantumRenderer: shutdown

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="dev.voxelbrew.engine.export.ExportTest" tests="5" skipped="0" failures="0" errors="0" timestamp="2026-11-04T14:58:48.270Z" hostname="LEGION" time="0.654">
+  <properties/>
+  <testcase name="stlIsIndependentlyReadAndPlacementAppliedExactlyOnce()" classname="dev.voxelbrew.engine.export.ExportTest" time="0.205"/>
+  <testcase name="invalidMeshesOptionsAndIncompleteDocumentsAreRejected()" classname="dev.voxelbrew.engine.export.ExportTest" time="0.031"/>
+  <testcase name="independentConsumerLoadsAndFailuresPreserveDestination()" classname="dev.voxelbrew.engine.export.ExportTest" time="0.12"/>
+  <testcase name="tessellationIsDetachedClosedAndDoesNotModifySource()" classname="dev.voxelbrew.engine.export.ExportTest" time="0.109"/>
+  <testcase name="threeMfPackageHasSharedResourcesUnitsAndIndependentInstanceTransforms()" classname="dev.voxelbrew.engine.export.ExportTest" time="0.186"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

@@ -132,6 +132,12 @@ split bodies/slicing/supports, packaging, then persistent
 feature plugins. macOS, packaged applications, renderer/picking, external
 slicers, and physical printer checks remain unqualified until their own gates.
 
+## Codex agents
+
+Project agents cover the CAD engine, CLI, JavaFX desktop, and Windows/Ubuntu
+validation. See [agent roles and usage](docs/codex-agents.md) and
+[contributor instructions](AGENTS.md) for task ownership and milestone checks.
+
 ## Licenses
 
 VoxelBrew retains the repository's **AGPL-3.0** license. OCCT is dynamically linked

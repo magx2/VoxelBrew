@@ -35,6 +35,47 @@ class DocumentControllerTest {
     }
 
     @Test
+    void customFeaturesRebuildOffThreadAndMissingPluginsNeverExposeStaleGeometry()
+            throws Exception {
+        Path plugins = Files.createDirectory(directory.resolve("custom plugins"));
+        Path jar = plugins.resolve("provider.jar");
+        Files.copy(Path.of(System.getProperty("voxelbrew.test.plugin")), jar);
+        Feature.Custom custom;
+        try (var registry = new dev.voxelbrew.engine.feature.FeatureRegistry(plugins)) {
+            custom = registry.create("spacer", "example.spacer", "spacer", java.util.Map.of());
+        }
+        try (var controller = new DocumentController(callbacks::add, plugins)) {
+            controller.add(custom);
+            await(() -> !controller.rebuilding());
+            assertTrue(controller.canExport());
+            assertEquals(Math.PI * 96 * 8, controller.build().bodies().getFirst().volume(), 0.01);
+            controller.edit("spacer", "height", 12);
+            await(() -> !controller.rebuilding());
+            assertEquals(Math.PI * 96 * 12, controller.build().bodies().getFirst().volume(), 0.01);
+            var before = controller.snapshot();
+            Files.delete(jar);
+            controller.rebuild();
+            assertFalse(controller.canExport());
+            await(() -> !controller.rebuilding());
+            assertFalse(controller.build().valid());
+            assertTrue(controller.build().bodies().isEmpty());
+            assertEquals(before, controller.snapshot());
+            Path file = directory.resolve("missing plugin.jcad");
+            controller.save(file, false);
+            await(() -> !controller.ioBusy());
+            assertEquals(before.document(), DocumentStore.load(file));
+            Files.copy(Path.of(System.getProperty("voxelbrew.test.plugin")), jar);
+            controller.rebuild();
+            await(() -> !controller.rebuilding());
+            assertTrue(controller.canExport());
+            assertEquals(before, controller.snapshot());
+            controller.undo();
+            await(() -> !controller.rebuilding());
+            assertEquals(Math.PI * 96 * 8, controller.build().bodies().getFirst().volume(), 0.01);
+        }
+    }
+
+    @Test
     void previewsCancelWithoutTransactionsAndCommitAsOneUndoStep() throws Exception {
         try (var controller = new DocumentController(callbacks::add)) {
             var sketch = sketch("plate", 12);

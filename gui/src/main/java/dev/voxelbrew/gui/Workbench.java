@@ -1,6 +1,7 @@
 package dev.voxelbrew.gui;
 
 import dev.voxelbrew.engine.export.*;
+import dev.voxelbrew.engine.feature.FeatureRegistry;
 import dev.voxelbrew.engine.mesh.MeshData;
 import dev.voxelbrew.engine.model.*;
 import java.io.IOException;
@@ -34,7 +35,8 @@ public final class Workbench extends BorderPane implements AutoCloseable {
     }
 
     private final Stage stage;
-    private final DocumentController controller = new DocumentController(Platform::runLater);
+    private final DocumentController controller;
+    private final Path pluginDirectory;
     private final ExporterRegistry registry;
     private final Viewport viewport = new Viewport();
     private final PrintingPane printing;
@@ -56,7 +58,7 @@ public final class Workbench extends BorderPane implements AutoCloseable {
                             "undo",
                             () -> {
                                 cancelTool();
-                                controller.undo();
+                                controller().undo();
                             }),
             redo =
                     button(
@@ -64,10 +66,11 @@ public final class Workbench extends BorderPane implements AutoCloseable {
                             "redo",
                             () -> {
                                 cancelTool();
-                                controller.redo();
+                                controller().redo();
                             });
     private final Button export =
-            button("Export…", "export", () -> ExportDialog.show(stage(), controller, registry()));
+            button("Export…", "export", () -> ExportDialog.show(stage(), controller(), registry()));
+    private final Button customFeature = button("Features…", "custom-feature", this::customFeature);
     private final Button rectangle = button("▭  Rectangle", "rectangle", () -> beginSketch(false));
     private final Button circle = button("○  Circle", "circle", () -> beginSketch(true));
     private final Button extrude = button("↑  Extrude", "extrude", this::beginExtrusion);
@@ -94,6 +97,8 @@ public final class Workbench extends BorderPane implements AutoCloseable {
 
     public Workbench(Stage stage, Path pluginDirectory) throws IOException {
         this.stage = stage;
+        this.pluginDirectory = pluginDirectory;
+        this.controller = new DocumentController(Platform::runLater, pluginDirectory);
         this.registry = new ExporterRegistry(pluginDirectory);
         printing = new PrintingPane(controller, pluginDirectory, registry, stage);
         appearanceChoice = appearance.load();
@@ -181,7 +186,7 @@ public final class Workbench extends BorderPane implements AutoCloseable {
                             if (entry.body()) selectBody(entry.id(), -1);
                             else selectFeature(entry.id());
                         });
-        var left = new VBox(10, heading("MODEL"), tree);
+        var left = new VBox(10, heading("MODEL"), customFeature, tree);
         left.getStyleClass().add("side-panel");
         left.setPrefWidth(220);
         left.setMinWidth(185);
@@ -432,6 +437,7 @@ public final class Workbench extends BorderPane implements AutoCloseable {
             splitBody.setDisable(!controller.canExport() || controller.build().bodies().isEmpty());
             printing.documentChanged();
             boolean atEnd = document.cursor() == document.features().size() && !controller.ioBusy();
+            customFeature.setDisable(!atEnd || tool != Tool.NONE || controller.rebuilding());
             rectangle.setDisable(!atEnd);
             circle.setDisable(!atEnd);
             extrude.setDisable(!atEnd || !(selected() instanceof Feature.Sketch));
@@ -489,6 +495,7 @@ public final class Workbench extends BorderPane implements AutoCloseable {
     }
 
     private static String shortName(Feature feature) {
+        if (feature instanceof Feature.Custom custom) return "Custom · " + custom.type();
         return feature instanceof Feature.Sketch s
                 ? (s.profile() instanceof Feature.Circle ? "Circle" : "Rectangle")
                 : feature instanceof Feature.Extrude
@@ -624,6 +631,51 @@ public final class Workbench extends BorderPane implements AutoCloseable {
         else if (feature instanceof Feature.SplitBody s) {
             dimension(feature, "offset", s.plane().offset());
             referenceEditor(feature, null, s.body());
+        } else if (feature instanceof Feature.Custom custom) {
+            var metadata =
+                    new Label(
+                            custom.providerId()
+                                    + "/"
+                                    + custom.type()
+                                    + " · payload v"
+                                    + custom.payloadVersion());
+            metadata.setWrapText(true);
+            form.getChildren().add(metadata);
+            try (var features = new FeatureRegistry(pluginDirectory)) {
+                var values = features.parameters(custom);
+                for (var parameter : features.descriptor(custom).parameters()) {
+                    var input =
+                            field(
+                                    "dimension-" + parameter.key(),
+                                    parameter.label() + " (" + parameter.unit() + ")",
+                                    values.get(parameter.key()));
+                    var apply =
+                            button(
+                                    "Apply",
+                                    "apply-" + parameter.key(),
+                                    () ->
+                                            controller.edit(
+                                                    custom.id(),
+                                                    parameter.key(),
+                                                    number(input, parameter.key())));
+                    input.setOnAction(e -> apply.fire());
+                    form.getChildren().add(apply);
+                }
+            } catch (IOException | RuntimeException failure) {
+                var message = new Label(failure.getMessage());
+                message.setWrapText(true);
+                message.getStyleClass().add("error");
+                form.getChildren().add(message);
+            }
+            form.getChildren()
+                    .add(
+                            button(
+                                    "Reload plugin and rebuild",
+                                    "custom-rebuild",
+                                    () -> {
+                                        inspect();
+                                        controller.rebuild();
+                                    }));
         }
         form.getChildren().add(featureDiagnostics);
         updateFeatureDiagnostics();
@@ -654,6 +706,23 @@ public final class Workbench extends BorderPane implements AutoCloseable {
                         () -> controller.edit(feature.id(), name, number(field, name)));
         field.setOnAction(e -> apply.fire());
         form.getChildren().add(apply);
+    }
+
+    private void customFeature() {
+        cancelTool();
+        try {
+            FeatureDialog.show(stage, pluginDirectory)
+                    .ifPresent(
+                            feature -> {
+                                controller.add(feature);
+                                selectedFeature = feature.id();
+                                selectedBody = feature.id() + ".body";
+                                fitNext = true;
+                                inspect();
+                            });
+        } catch (IOException failure) {
+            error.setText(failure.getMessage());
+        }
     }
 
     private void referenceEditor(

@@ -23,7 +23,7 @@ import java.util.List;
  * Versioned protobuf persistence with a complete-file integrity envelope and atomic publication.
  */
 public final class DocumentStore {
-    public static final int SCHEMA_VERSION = 2;
+    public static final int SCHEMA_VERSION = 3;
     private static final byte[] MAGIC = {'J', 'C', 'A', 'D', 13, 10, 26, 10};
     private static final int HEADER = 44;
     private static final int MAX_PAYLOAD = 16 * 1024 * 1024;
@@ -189,6 +189,15 @@ public final class DocumentStore {
                                 s.getBody().getFeatureId(), s.getBody().getOutputName()),
                         new Feature.SplitPlane(
                                 s.getNormalX(), s.getNormalY(), s.getNormalZ(), s.getOffset()));
+            }
+            case CUSTOM -> {
+                var custom = feature.getCustom();
+                yield new Feature.Custom(
+                        id,
+                        custom.getProviderId(),
+                        custom.getType(),
+                        custom.getPayloadVersion(),
+                        custom.getPayload().toByteArray());
             }
             case DEFINITION_NOT_SET ->
                     throw new IllegalArgumentException(
@@ -371,7 +380,15 @@ public final class DocumentStore {
                             .setNormalZ(s.plane().normalZ())
                             .setOffset(s.plane().offset()));
         } else {
-            throw new IllegalArgumentException("Unsupported feature " + feature.id());
+            if (feature instanceof Feature.Custom custom) {
+                out.setCustom(
+                        DocumentProto.CustomFeature.newBuilder()
+                                .setProviderId(custom.providerId())
+                                .setType(custom.type())
+                                .setPayloadVersion(custom.payloadVersion())
+                                .setPayload(
+                                        com.google.protobuf.ByteString.copyFrom(custom.payload())));
+            } else throw new IllegalArgumentException("Unsupported feature " + feature.id());
         }
         return out.build();
     }

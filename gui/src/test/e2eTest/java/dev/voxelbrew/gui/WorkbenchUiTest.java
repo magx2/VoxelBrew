@@ -600,6 +600,97 @@ class WorkbenchUiTest {
         Files.writeString(artifacts.resolve("cli-inspection.txt"), inspection);
     }
 
+    @Test
+    void customSpacerCreationEditingAndMissingPluginRecoveryUseRealControls() throws Exception {
+        click("custom-feature");
+        choice("custom-type", 1); // Sorted descriptors: failed fixture, then the spacer.
+        text("custom-innerDiameter", "30");
+        click("custom-add");
+        assertTrue(document().features().isEmpty());
+        assertTrue(fx(() -> ((Label) node("#custom-error")).getText().contains("innerDiameter")));
+        assertTrue(fx(() -> node("#custom-innerDiameter").getStyleClass().contains("invalid")));
+        click("custom-cancel");
+        assertFalse(fx(() -> workbench.controller().snapshot().canUndo()));
+        click("custom-feature");
+        choice("custom-type", 1);
+        text("custom-height", "5");
+        click("custom-add");
+        ready();
+        assertEquals(1, document().features().size());
+        assertEquals(Math.PI * 96 * 5, volume(), 0.01);
+        assertTrue(fx(() -> ((Button) node("#history-0")).getText().contains("spacer")));
+        text("dimension-height", "8");
+        key(KeyCode.ENTER);
+        ready();
+        assertEquals(Math.PI * 96 * 8, volume(), 0.01);
+        click("undo");
+        ready();
+        assertEquals(Math.PI * 96 * 5, volume(), 0.01);
+        click("redo");
+        ready();
+        Path file = directory.resolve("GUI spacer.jcad");
+        save(file);
+        var before = DocumentStore.load(file);
+        Path plugins = directory.resolve("plugins with spaces"),
+                jar = plugins.resolve("provider.jar");
+        fx(
+                () -> {
+                    workbench.close();
+                    return null;
+                });
+        Files.delete(jar);
+        fx(
+                () -> {
+                    workbench = new Workbench(stage, plugins);
+                    stage.setScene(new Scene(workbench, 964, 648));
+                    stage.toFront();
+                    stage.requestFocus();
+                    return null;
+                });
+        Thread.sleep(1200);
+        click("open");
+        text("file-path", file.toString());
+        click("file-confirm");
+        ready();
+        assertFalse(fx(() -> workbench.controller().build().valid()));
+        assertEquals(0, volume(), 0);
+        assertTrue(fx(() -> node("#export").isDisabled()));
+        click("save");
+        ready();
+        assertEquals(before, DocumentStore.load(file));
+        Files.copy(Path.of(System.getProperty("voxelbrew.test.plugin")), jar);
+        click("history-0");
+        click("custom-rebuild");
+        ready();
+        assertTrue(fx(() -> workbench.controller().canExport()));
+        assertEquals(Math.PI * 96 * 8, volume(), 0.01);
+        assertEquals(before, document());
+        Path exported = directory.resolve("GUI spacer.3mf");
+        click("export");
+        text("export-path", exported.toString());
+        click("export-confirm");
+        ready();
+        assertTrue(Files.size(exported) > 500);
+        assertTrue(
+                cli(
+                                "inspect",
+                                file.toString(),
+                                "--point",
+                                "0,0,4",
+                                "--plugin-dir",
+                                plugins.toString())
+                        .contains("contains=false"));
+        fx(
+                () -> {
+                    Screenshot.save(
+                            stage.getScene(),
+                            Path.of(
+                                    System.getProperty("voxelbrew.ui.artifacts"),
+                                    "custom-spacer.png"));
+                    return null;
+                });
+    }
+
     private void navigate(boolean pan) throws Exception {
         fx(
                 () -> {

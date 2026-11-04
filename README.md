@@ -15,6 +15,8 @@ PLA/PETG process settings, supports and real PrusaSlicer jobs. See the
 The complete backlog is in [the implementation plan](docs/implementation-plan.md).
 M5 adds bundled-JVM app images and packaged CLI/GUI checks. See
 [packaging and platform qualification](docs/packaging.md).
+M6 adds persistent custom feature providers, with a consumer-built spacer plugin
+and shared CLI/GUI parameter editing. See [feature plugins](docs/feature-plugins.md).
 
 ## Prerequisites and locked dependencies
 
@@ -165,7 +167,8 @@ CI configuration is not itself proof of a successful hosted run.
 See also [M2 export evidence](docs/acceptance/M2.md) and
 [M3 desktop evidence](docs/acceptance/M3.md) and the
 [M4 manufacturing qualification](docs/acceptance/M4.md). Subsequent milestones cover
-persistent feature plugins. Packaged platform results are tracked in
+general sketch constraints and persistent generated-face references. Feature plugin
+qualification is tracked in [M6 evidence](docs/acceptance/M6.md). Packaged platform results are tracked in
 [M5 acceptance](docs/acceptance/M5.md); physical printer checks remain unqualified.
 
 ## Desktop CAD workbench

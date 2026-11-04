@@ -68,7 +68,25 @@ public final class ModelSession {
     }
 
     public synchronized void editDimension(String featureId, String field, double value) {
+        editDimension(
+                featureId,
+                field,
+                value,
+                dev.voxelbrew.engine.feature.FeatureRegistry.defaultDirectory());
+    }
+
+    public synchronized void editDimension(
+            String featureId, String field, double value, java.nio.file.Path pluginDirectory) {
         Feature feature = features.get(index(featureId));
+        if (feature instanceof Feature.Custom custom) {
+            try (var registry = new dev.voxelbrew.engine.feature.FeatureRegistry(pluginDirectory)) {
+                replace(registry.edit(custom, java.util.Map.of(field, value)));
+            } catch (java.io.IOException failure) {
+                throw new ModelException(
+                        featureId, "Cannot load feature plugins: " + failure.getMessage());
+            }
+            return;
+        }
         if (feature instanceof Feature.Sketch selected && field.equals("offsetZ")) {
             var next = new ArrayList<>(features);
             for (int i = 0; i < next.size(); i++) {
@@ -168,6 +186,10 @@ public final class ModelSession {
 
     public Evaluation evaluate() {
         return Evaluator.evaluate(document());
+    }
+
+    public Evaluation evaluate(java.nio.file.Path pluginDirectory) {
+        return Evaluator.evaluate(document(), pluginDirectory);
     }
 
     private int index(String featureId) {

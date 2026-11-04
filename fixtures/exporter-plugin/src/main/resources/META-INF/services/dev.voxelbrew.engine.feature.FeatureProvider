@@ -1,0 +1,5 @@
+consumer.SpacerProvider
+consumer.SpacerProvider$Duplicate
+consumer.SpacerProvider$Incompatible
+consumer.MissingFeatureProvider
+consumer.SpacerProvider$Failing

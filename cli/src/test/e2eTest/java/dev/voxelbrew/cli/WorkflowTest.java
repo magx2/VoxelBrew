@@ -17,6 +17,126 @@ class WorkflowTest {
     @TempDir Path directory;
 
     @Test
+    void customProviderSurvivesFreshProcessesMissingPluginAndPrinting() throws Exception {
+        Path plugins = Files.createDirectory(directory.resolve("feature plugins"));
+        Path jar = plugins.resolve("provider.jar"),
+                hidden = directory.resolve("removed provider.jar");
+        Files.copy(Path.of(System.getProperty("voxelbrew.test.plugin")), jar);
+        String file = directory.resolve("custom spacer.jcad").toString();
+        String plugin = plugins.toString();
+        assertTrue(run(0, "feature-types", "--plugin-dir", plugin).contains("outerDiameter"));
+        run(0, "new", file);
+        run(
+                0,
+                "custom",
+                file,
+                "--id",
+                "spacer",
+                "--provider",
+                "example.spacer",
+                "--type",
+                "spacer",
+                "--parameter",
+                "height=5",
+                "--plugin-dir",
+                plugin);
+        run(
+                0,
+                "edit",
+                file,
+                "--feature",
+                "spacer",
+                "--field",
+                "height",
+                "--value",
+                "8",
+                "--plugin-dir",
+                plugin);
+        var before = DocumentStore.load(Path.of(file));
+        byte[] bytes = Files.readAllBytes(Path.of(file));
+        assertTrue(
+                run(
+                                1,
+                                "edit",
+                                file,
+                                "--feature",
+                                "spacer",
+                                "--field",
+                                "innerDiameter",
+                                "--value",
+                                "30",
+                                "--plugin-dir",
+                                plugin)
+                        .contains("innerDiameter"));
+        assertArrayEquals(bytes, Files.readAllBytes(Path.of(file)));
+        assertTrue(
+                run(0, "inspect", file, "--point", "0,0,4", "--plugin-dir", plugin)
+                        .contains("contains=false"));
+        Path stl = directory.resolve("spacer.stl");
+        run(
+                0,
+                "export",
+                file,
+                "--format",
+                "stl",
+                "--output",
+                stl.toString(),
+                "--plugin-dir",
+                plugin);
+        byte[] mesh = Files.readAllBytes(stl);
+        assertTrue(mesh.length > 84);
+        Files.move(jar, hidden);
+        assertTrue(
+                run(1, "history", file, "--plugin-dir", plugin)
+                        .contains("Missing feature provider"));
+        run(1, "cursor", file, "--position", "1", "--plugin-dir", plugin);
+        assertEquals(before, DocumentStore.load(Path.of(file)));
+        run(
+                1,
+                "export",
+                file,
+                "--format",
+                "stl",
+                "--output",
+                stl.toString(),
+                "--overwrite",
+                "--plugin-dir",
+                plugin);
+        assertArrayEquals(mesh, Files.readAllBytes(stl));
+        Files.move(hidden, jar);
+        assertTrue(run(0, "inspect", file, "--plugin-dir", plugin).contains("spacer.body"));
+        run(
+                0,
+                "place",
+                file,
+                "--instance",
+                "placed",
+                "--body",
+                "spacer.body",
+                "--x",
+                "30",
+                "--y",
+                "30",
+                "--plugin-dir",
+                plugin);
+        run(0, "validate", file, "--plugin-dir", plugin);
+        String job = directory.resolve("spacer.gcode").toString();
+        assertTrue(
+                run(
+                                0,
+                                "slice",
+                                file,
+                                "--output",
+                                job,
+                                "--slicer",
+                                dev.voxelbrew.engine.printing.PrusaSlicerBackend.defaultExecutable()
+                                        .toString(),
+                                "--plugin-dir",
+                                plugin)
+                        .contains("model_layers=40"));
+    }
+
+    @Test
     void publicExportCommandsAndOverwriteGuard() throws Exception {
         Path file = directory.resolve("export input.jcad"),
                 stl = directory.resolve("plate.stl"),

@@ -26,6 +26,7 @@ public final class PrintController implements AutoCloseable {
                     Thread.ofPlatform().daemon().name("voxelbrew-slicer").factory());
     private final Consumer<Runnable> dispatch;
     private final Supplier<CadDocument> current;
+    private final Path pluginDirectory;
     private State state = State.IDLE;
     private Cancellation cancellation;
     private String revision = "", message = "Ready to slice";
@@ -36,8 +37,14 @@ public final class PrintController implements AutoCloseable {
     private boolean closed, running;
 
     public PrintController(Consumer<Runnable> dispatch, Supplier<CadDocument> current) {
+        this(dispatch, current, dev.voxelbrew.engine.feature.FeatureRegistry.defaultDirectory());
+    }
+
+    public PrintController(
+            Consumer<Runnable> dispatch, Supplier<CadDocument> current, Path pluginDirectory) {
         this.dispatch = dispatch;
         this.current = current;
+        this.pluginDirectory = pluginDirectory;
     }
 
     public State state() {
@@ -66,10 +73,20 @@ public final class PrintController implements AutoCloseable {
 
     public void documentChanged(CadDocument document) {
         if (revision.isEmpty() || revision.equals(DocumentStore.fingerprint(document))) return;
+        outdated("Model or print settings changed. Slice again to update the job.");
+    }
+
+    /** A provider reload can change evaluated geometry without changing persistent bytes. */
+    public void invalidateGeometry() {
+        if (revision.isEmpty() || state == State.OUTDATED) return;
+        outdated("Geometry is being rebuilt. Slice again to update the job.");
+    }
+
+    private void outdated(String reason) {
         if (cancellation != null) cancellation.cancel();
         result = null;
         state = State.OUTDATED;
-        message = "Model or print settings changed. Slice again to update the job.";
+        message = reason;
         changed.run();
     }
 
@@ -95,7 +112,9 @@ public final class PrintController implements AutoCloseable {
         worker.execute(
                 () -> {
                     try {
-                        var model = ManufacturingModel.evaluate(document, MeshOptions.DEFAULT);
+                        var model =
+                                ManufacturingModel.evaluate(
+                                        document, MeshOptions.DEFAULT, pluginDirectory);
                         token.check();
                         var completed =
                                 SliceService.slice(
@@ -127,8 +146,9 @@ public final class PrintController implements AutoCloseable {
                                         return;
                                     }
                                     running = false;
-                                    if (!revision.equals(
-                                            DocumentStore.fingerprint(current.get()))) {
+                                    if (state == State.OUTDATED
+                                            || !revision.equals(
+                                                    DocumentStore.fingerprint(current.get()))) {
                                         state = State.OUTDATED;
                                         message =
                                                 "Job is outdated; slice the current revision again.";

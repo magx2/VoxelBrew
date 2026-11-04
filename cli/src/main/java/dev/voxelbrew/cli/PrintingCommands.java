@@ -188,7 +188,9 @@ final class PrintingCommands {
             var session = session();
             var setup = session.document().printSetup();
             var selected = instance(setup, id);
-            var model = ManufacturingModel.evaluate(session.document(), MeshOptions.DEFAULT);
+            var model =
+                    ManufacturingModel.evaluate(
+                            session.document(), MeshOptions.DEFAULT, pluginDirectory);
             var transform =
                     MeshGeometry.layOnFace(
                             model.tessellate(selected.bodyId(), MeshOptions.DEFAULT),
@@ -406,7 +408,8 @@ final class PrintingCommands {
         public Integer call() throws Exception {
             var result =
                     PrintValidation.validate(
-                            ManufacturingModel.evaluate(session().document(), MeshOptions.DEFAULT));
+                            ManufacturingModel.evaluate(
+                                    session().document(), MeshOptions.DEFAULT, pluginDirectory));
             result.meshes()
                     .forEach(
                             (id, report) -> spec.commandLine().getOut().println(id + " " + report));
@@ -449,9 +452,6 @@ final class PrintingCommands {
         @Option(names = "--slicer", description = "Path to the pinned slicer executable")
         Path executable = PrusaSlicerBackend.defaultExecutable();
 
-        @Option(names = "--plugin-dir")
-        Path plugins = ExporterRegistry.defaultDirectory();
-
         @Option(names = "--overwrite")
         boolean overwrite;
 
@@ -471,8 +471,10 @@ final class PrintingCommands {
                             },
                             "voxelbrew-slice-cancel");
             Runtime.getRuntime().addShutdownHook(shutdown);
-            try (var registry = new SlicerRegistry(plugins)) {
-                var model = ManufacturingModel.evaluate(session().document(), MeshOptions.DEFAULT);
+            try (var registry = new SlicerRegistry(pluginDirectory)) {
+                var model =
+                        ManufacturingModel.evaluate(
+                                session().document(), MeshOptions.DEFAULT, pluginDirectory);
                 registry.diagnostics().forEach(spec.commandLine().getErr()::println);
                 var result =
                         SliceService.slice(

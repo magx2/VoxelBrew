@@ -65,7 +65,9 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
             Window owner)
             throws IOException {
         this.document = document;
-        jobs = new PrintController(Platform::runLater, () -> document.snapshot().document());
+        jobs =
+                new PrintController(
+                        Platform::runLater, () -> document.snapshot().document(), pluginDirectory);
         slicers = new SlicerRegistry(pluginDirectory);
         setId("printing-workspace");
         setPadding(new Insets(8));
@@ -565,6 +567,7 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
         if (closed) return;
         var snapshot = document.snapshot().document();
         jobs.documentChanged(snapshot);
+        if (document.rebuilding()) jobs.invalidateGeometry();
         updating = true;
         try {
             if (lastBuild != document.build()) {

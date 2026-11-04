@@ -262,6 +262,39 @@ class EditableEngineTest {
     }
 
     @Test
+    void schemaOneAndTwoDocumentsRemainReadableAndEditable() throws Exception {
+        var original = reference().document();
+        for (int version : new int[] {1, 2}) {
+            Path file = directory.resolve("legacy-" + version + ".jcad");
+            DocumentStore.save(original, file, false);
+            byte[] bytes = Files.readAllBytes(file);
+            var message =
+                    DocumentProto.Document.parseFrom(Arrays.copyOfRange(bytes, 44, bytes.length))
+                            .toBuilder()
+                            .setSchemaVersion(version);
+            if (version == 1) message.clearPrintSetup();
+            byte[] payload = message.build().toByteArray();
+            Files.write(
+                    file,
+                    ByteBuffer.allocate(44 + payload.length)
+                            .put(bytes, 0, 8)
+                            .putInt(payload.length)
+                            .put(MessageDigest.getInstance("SHA-256").digest(payload))
+                            .put(payload)
+                            .array());
+            var reopened = new ModelSession(DocumentStore.load(file));
+            assertEquals(original, reopened.document());
+            reopened.editDimension("thickness", "distance", 8);
+            DocumentStore.save(reopened.document(), file, true);
+            assertEquals(reopened.document(), DocumentStore.load(file));
+            try (var evaluation = reopened.evaluate()) {
+                assertEquals(
+                        19099.469035085127, evaluation.bodies().getFirst().solid().volume(), 0.01);
+            }
+        }
+    }
+
+    @Test
     void concurrentCreateNeverOverwritesAnotherDocument() throws Exception {
         Path file = directory.resolve("race.jcad");
         var first = CadDocument.empty();

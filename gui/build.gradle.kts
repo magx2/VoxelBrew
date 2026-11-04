@@ -79,3 +79,13 @@ tasks.named<Sync>("installDist") {
     dependsOn(":engine:buildNative")
     from(project(":engine").layout.buildDirectory.dir("native/runtime")) { into("native") }
 }
+
+tasks.named<Test>("integrationTest") {
+    dependsOn(":engine:buildExporterFixture")
+    systemProperty(
+        "voxelbrew.test.plugin",
+        rootProject
+            .file("fixtures/exporter-plugin/build/libs/fixture-exporter-1.0.jar")
+            .absolutePath,
+    )
+}

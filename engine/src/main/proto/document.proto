@@ -113,6 +113,13 @@ message PrintSetup {
   repeated SupportVolume supports = 8;
   reserved 9 to 15;
 }
+message CustomFeature {
+  string provider_id = 1;
+  string type = 2;
+  uint32 payload_version = 3;
+  bytes payload = 4;
+  reserved 5 to 15;
+}
 message Feature {
   string id = 1;
   oneof definition {
@@ -120,6 +127,7 @@ message Feature {
     Extrude extrude = 3;
     ThroughCut through_cut = 4;
     SplitBody split_body = 16;
+    CustomFeature custom = 17;
   }
   reserved 5 to 15;
 }

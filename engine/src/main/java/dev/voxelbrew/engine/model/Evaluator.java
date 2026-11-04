@@ -2,17 +2,50 @@ package dev.voxelbrew.engine.model;
 
 import static dev.voxelbrew.engine.model.Evaluation.State.*;
 
+import dev.voxelbrew.engine.feature.FeatureRegistry;
 import dev.voxelbrew.engine.geometry.Solid;
+import java.io.IOException;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
 
 /** Deterministic full replay. Only earlier, named outputs can be referenced. */
 public final class Evaluator {
     private Evaluator() {}
 
     public static Evaluation evaluate(CadDocument document) {
+        return evaluate(document, FeatureRegistry.defaultDirectory());
+    }
+
+    /** The registry lives only on the evaluating thread; results contain engine-owned solids. */
+    public static Evaluation evaluate(CadDocument document, Path pluginDirectory) {
+        if (document.features().stream().noneMatch(Feature.Custom.class::isInstance))
+            return replay(
+                    document,
+                    custom -> {
+                        throw new AssertionError("No custom features");
+                    });
+        Evaluation result = null;
+        try (var registry = new FeatureRegistry(pluginDirectory)) {
+            result = replay(document, registry::evaluate);
+            return result;
+        } catch (IOException failure) {
+            if (result != null) result.close();
+            return replay(
+                    document,
+                    custom -> {
+                        throw new ModelException(
+                                custom.id(),
+                                "Cannot load feature plugins: " + failure.getMessage());
+                    });
+        }
+    }
+
+    private static Evaluation replay(
+            CadDocument document, Function<Feature.Custom, Solid> customEvaluator) {
         var diagnostics = new ArrayList<Evaluation.Diagnostic>();
         var owned = new ArrayList<Solid>();
         Map<String, Feature.Sketch> sketches = new LinkedHashMap<>();
@@ -49,6 +82,16 @@ public final class Evaluator {
                         }
                         planes.put(s.plane().id(), s.plane());
                         sketches.put(s.id(), s);
+                    } else if (feature instanceof Feature.Custom custom) {
+                        Solid solid = customEvaluator.apply(custom);
+                        owned.add(solid);
+                        var body =
+                                new Evaluation.Body(
+                                        custom.id() + ".body",
+                                        new Feature.BodyRef(custom.id(), "body"),
+                                        solid);
+                        outputs.put(body.output(), body);
+                        active.put(body.id(), body);
                     } else if (feature instanceof Feature.Extrude e) {
                         Feature.Sketch sketch = profile(e.id(), e.profile(), sketches);
                         Solid solid;

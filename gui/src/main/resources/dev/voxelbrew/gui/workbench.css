@@ -87,6 +87,10 @@
 .error {
   -fx-text-fill: #d65c46;
 }
+.text-field.invalid {
+  -fx-border-color: #d65c46;
+  -fx-border-radius: 4;
+}
 .timeline {
   -fx-padding: 12 16 8;
   -fx-background-color: -fx-control-inner-background;

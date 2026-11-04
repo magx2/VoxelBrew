@@ -87,6 +87,18 @@ else:
     run("export", document, "--format", "probe", "--plugin-dir", plugins,
         "--option", "label=packaged", "--output", report)
     assert report.read_text().startswith("packaged bodies=1 triangles=")
+    assert "example.spacer/spacer" in run("feature-types", "--plugin-dir", plugins)
+    spacer = workspace / "custom spacer.jcad"
+    run("new", spacer)
+    run("custom", spacer, "--id", "spacer", "--provider", "example.spacer", "--type", "spacer",
+        "--parameter", "height=5", "--plugin-dir", plugins)
+    run("edit", spacer, "--feature", "spacer", "--field", "height", "--value", 8, "--plugin-dir", plugins)
+    inspection = run("inspect", spacer, "--point", "0,0,4", "--plugin-dir", plugins)
+    assert "volume=2412.743" in inspection and "contains=false" in inspection, inspection
+    run("export", spacer, "--format", "3mf", "--output", workspace / "spacer.3mf", "--plugin-dir", plugins)
+    with zipfile.ZipFile(workspace / "spacer.3mf") as archive:
+        model = ET.fromstring(archive.read("3D/3dmodel.model"))
+        assert model.find(".//{*}object").attrib["name"] == "spacer.body"
 (artifacts / "result.json").write_text(json.dumps({"result": "PASS", "platform": platform.platform(),
     "architecture": platform.machine(), "image": str(image), "artifacts": str(workspace),
     "java_on_path": False, "headless": kind == "cli"}, indent=2), encoding="utf-8")

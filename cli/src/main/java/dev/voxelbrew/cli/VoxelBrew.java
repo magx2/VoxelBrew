@@ -22,7 +22,7 @@ import picocli.CommandLine.Spec;
         name = "voxelbrew",
         description = "VoxelBrew parametric CAD; all dimensions are millimeters.",
         mixinStandardHelpOptions = true,
-        version = "VoxelBrew 0.1.0 / jcad schema 2",
+        version = "VoxelBrew 0.1.0 / jcad schema 3",
         subcommands = {
             VoxelBrew.Create.class,
             VoxelBrew.Rectangle.class,
@@ -60,6 +60,7 @@ public final class VoxelBrew implements Runnable {
                                     return 1;
                                 });
         PrintingCommands.register(cliCommand);
+        FeatureCommands.register(cliCommand);
         return cliCommand;
     }
 
@@ -155,7 +156,7 @@ public final class VoxelBrew implements Runnable {
         @Override
         public Integer call() throws Exception {
             var document = DocumentStore.load(file);
-            try (var evaluation = Evaluator.evaluate(document);
+            try (var evaluation = Evaluator.evaluate(document, pluginDirectory);
                     var registry = new ExporterRegistry(pluginDirectory)) {
                 registry.diagnostics().forEach(spec.commandLine().getErr()::println);
                 ModelView view =
@@ -204,6 +205,9 @@ public final class VoxelBrew implements Runnable {
         @Parameters(index = "0", description = "Editable .jcad file")
         Path file;
 
+        @Option(names = "--plugin-dir", description = "Trusted feature and service JAR directory")
+        Path pluginDirectory = ExporterRegistry.defaultDirectory();
+
         @Spec CommandSpec spec;
 
         ModelSession session() throws java.io.IOException {
@@ -212,7 +216,7 @@ public final class VoxelBrew implements Runnable {
 
         int save(ModelSession session) throws java.io.IOException {
             DocumentStore.save(session.document(), file, true);
-            try (Evaluation evaluation = session.evaluate()) {
+            try (Evaluation evaluation = session.evaluate(pluginDirectory)) {
                 if (!evaluation.valid()) {
                     evaluation.diagnostics().stream()
                             .filter(
@@ -410,7 +414,7 @@ public final class VoxelBrew implements Runnable {
         @Override
         public Integer call() throws Exception {
             var session = session();
-            session.editDimension(feature, field, value);
+            session.editDimension(feature, field, value, pluginDirectory);
             return save(session);
         }
     }
@@ -505,7 +509,7 @@ public final class VoxelBrew implements Runnable {
                             session.document().id(),
                             session.document().cursor(),
                             session.document().features().size());
-            try (var evaluation = session.evaluate()) {
+            try (var evaluation = session.evaluate(pluginDirectory)) {
                 for (int i = 0; i < session.document().features().size(); i++) {
                     var diagnostic = evaluation.diagnostics().get(i);
                     spec.commandLine()
@@ -540,7 +544,7 @@ public final class VoxelBrew implements Runnable {
                 throw new IllegalArgumentException("--point requires x,y,z");
             }
             var session = session();
-            try (var evaluation = session.evaluate()) {
+            try (var evaluation = session.evaluate(pluginDirectory)) {
                 spec.commandLine()
                         .getOut()
                         .printf(

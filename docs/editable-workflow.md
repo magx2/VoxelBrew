@@ -79,7 +79,7 @@ cli inspect broken.jcad
 
 ## .jcad schema and safe writes
 
-`engine/src/main/proto/document.proto` is schema version 2 (version 1 remains readable). The binary envelope
+`engine/src/main/proto/document.proto` is schema version 3 (versions 1 and 2 remain readable). The binary envelope
 contains eight magic bytes (`JCAD`, CR, LF, 0x1A, LF), a big-endian 32-bit payload
 length, a SHA-256 digest and the Protobuf message. The 16 MiB payload limit, exact
 length check and digest distinguish truncated/corrupt documents from an empty
@@ -88,10 +88,12 @@ never be reused. Units must explicitly be `MILLIMETERS`.
 
 A newer schema or any unsupported Protobuf field is rejected as read-only. M1
 does not interpret or rewrite unknown data; the original bytes remain intact.
-Version 2 adds editable splitting and versioned print setups. Persistent custom
-feature payloads remain M6 work. See [printing](printing-workflow.md).
-This behavior is deliberately conservative and does not claim M6 plugin payload
-round-trip support.
+Version 2 adds editable splitting and versioned print setups. Version 3 adds
+provider ID, feature type, payload version and opaque custom-feature bytes.
+Missing plugins and unsupported provider payload versions prevent evaluation but
+preserve the complete definition on save. The provider owns the byte encoding;
+the document reader never interprets it. See [printing](printing-workflow.md) and
+[feature plugins](feature-plugins.md).
 
 Saving serializes to a sibling temporary file, flushes its contents and validates
 the resulting message before publication. Replacing an existing supported file

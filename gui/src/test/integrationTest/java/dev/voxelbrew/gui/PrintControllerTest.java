@@ -135,4 +135,38 @@ class PrintControllerTest {
             assertTrue(future.isCompletedExceptionally());
         }
     }
+
+    @Test
+    void rebuildingUnchangedDefinitionsInvalidatesCompletedAndRunningJobs() throws Exception {
+        var session = document();
+        var unchanged = session.document();
+        Path output = directory.resolve("reload.gcode");
+        try (var controller = new PrintController(callbacks::add, session::document)) {
+            var completed =
+                    controller.start(
+                            unchanged,
+                            new PrusaSlicerBackend(),
+                            PrusaSlicerBackend.defaultExecutable(),
+                            output,
+                            false);
+            await(() -> !controller.running());
+            assertEquals(PrintController.State.SUCCEEDED, controller.state());
+            assertNotNull(completed.join());
+            byte[] published = Files.readAllBytes(output);
+            controller.invalidateGeometry();
+            assertEquals(PrintController.State.OUTDATED, controller.state());
+            assertNull(controller.result());
+            assertEquals(unchanged, session.document());
+            var held = new HeldBackend();
+            var future = controller.start(unchanged, held, Path.of("unused"), output, true);
+            assertTrue(held.entered.await(5, TimeUnit.SECONDS));
+            controller.invalidateGeometry();
+            held.release.countDown();
+            await(() -> !controller.running());
+            assertEquals(PrintController.State.OUTDATED, controller.state());
+            assertNull(controller.result());
+            assertTrue(future.isCompletedExceptionally());
+            assertArrayEquals(published, Files.readAllBytes(output));
+        }
+    }
 }

@@ -33,7 +33,13 @@ public final class ManufacturingModel implements ModelView {
     }
 
     public static ManufacturingModel evaluate(CadDocument document, MeshOptions options) {
-        try (var evaluation = Evaluator.evaluate(document)) {
+        return evaluate(
+                document, options, dev.voxelbrew.engine.feature.FeatureRegistry.defaultDirectory());
+    }
+
+    public static ManufacturingModel evaluate(
+            CadDocument document, MeshOptions options, java.nio.file.Path pluginDirectory) {
+        try (var evaluation = Evaluator.evaluate(document, pluginDirectory)) {
             return from(document, evaluation, options);
         }
     }

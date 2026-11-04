@@ -32,6 +32,7 @@ public final class DocumentController implements AutoCloseable {
                     Thread.ofPlatform().daemon().name("voxelbrew-file-io").factory());
     private final Consumer<Runnable> dispatch;
     private final Function<CadDocument, Build> evaluator;
+    private final Path pluginDirectory;
     private final Object queueLock = new Object();
     private Request pending;
     private boolean running;
@@ -48,12 +49,24 @@ public final class DocumentController implements AutoCloseable {
     private Runnable changed = () -> {};
 
     public DocumentController(Consumer<Runnable> dispatch) {
-        this(dispatch, DocumentController::evaluate);
+        this(dispatch, dev.voxelbrew.engine.feature.FeatureRegistry.defaultDirectory());
+    }
+
+    public DocumentController(Consumer<Runnable> dispatch, Path pluginDirectory) {
+        this(dispatch, document -> evaluate(document, pluginDirectory), pluginDirectory);
     }
 
     DocumentController(Consumer<Runnable> dispatch, Function<CadDocument, Build> evaluator) {
+        this(dispatch, evaluator, dev.voxelbrew.engine.feature.FeatureRegistry.defaultDirectory());
+    }
+
+    private DocumentController(
+            Consumer<Runnable> dispatch,
+            Function<CadDocument, Build> evaluator,
+            Path pluginDirectory) {
         this.dispatch = dispatch;
         this.evaluator = evaluator;
+        this.pluginDirectory = pluginDirectory;
     }
 
     public void onChanged(Runnable listener) {
@@ -130,13 +143,18 @@ public final class DocumentController implements AutoCloseable {
     }
 
     public void edit(String id, String field, double value) {
-        session.editDimension(id, field, value);
+        session.editDimension(id, field, value, pluginDirectory);
         preview = null;
         schedule(session.document(), false);
     }
 
     public void replaceFeature(Feature feature) {
         session.replace(feature);
+        preview = null;
+        schedule(session.document(), false);
+    }
+
+    public void rebuild() {
         preview = null;
         schedule(session.document(), false);
     }
@@ -282,7 +300,7 @@ public final class DocumentController implements AutoCloseable {
         var result = new CompletableFuture<Void>();
         io.execute(
                 () -> {
-                    try (var evaluation = Evaluator.evaluate(captured)) {
+                    try (var evaluation = Evaluator.evaluate(captured, pluginDirectory)) {
                         ModelView view = selection.view(captured, evaluation, options);
                         ExportService.export(
                                 registry, format, view, options, values, destination, overwrite);
@@ -371,7 +389,11 @@ public final class DocumentController implements AutoCloseable {
     }
 
     static Build evaluate(CadDocument document) {
-        try (var evaluation = Evaluator.evaluate(document)) {
+        return evaluate(document, dev.voxelbrew.engine.feature.FeatureRegistry.defaultDirectory());
+    }
+
+    static Build evaluate(CadDocument document, Path pluginDirectory) {
+        try (var evaluation = Evaluator.evaluate(document, pluginDirectory)) {
             if (!evaluation.valid()) return new Build(List.of(), evaluation.diagnostics(), false);
             var bodies =
                     evaluation.bodies().stream()

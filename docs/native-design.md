@@ -33,19 +33,19 @@ The complete commands are visible with Gradle `--info`.
 
 ## Ownership / failure invariants
 
-* Only `NativeKernel`, a package-private implementation detail, exchanges tokens.
-* Each successfully published `Solid` corresponds to one registry entry.
-* Every creator validates the B-rep and counts exactly one solid before inserting
+- Only `NativeKernel`, a package-private implementation detail, exchanges tokens.
+- Each successfully published `Solid` corresponds to one registry entry.
+- Every creator validates the B-rep and counts exactly one solid before inserting
   it in the registry. A failed creator inserts nothing.
-* Native algorithms operate on retained `shared_ptr<const TopoDS_Shape>` values.
+- Native algorithms operate on retained `shared_ptr<const TopoDS_Shape>` values.
   Cut is explicitly non-destructive and the input is not transferred or closed.
-* An operation's Java monitor prevents its owner from closing mid-call. A
+- An operation's Java monitor prevents its owner from closing mid-call. A
   separate registry mutex protects different concurrently used owners.
-* `close()` erases one entry and is idempotent. Callers must close all returned
+- `close()` erases one entry and is idempotent. Callers must close all returned
   solids; there is no finalizer or promise that GC releases native memory.
-* Native failures become `GeometryException` with the operation name. Invalid
+- Native failures become `GeometryException` with the operation name. Invalid
   public dimensions fail before allocating, and JNI repeats numeric validation.
-* A missing runtime gives a load diagnostic with OS/architecture and rebuild
+- A missing runtime gives a load diagnostic with OS/architecture and rebuild
   instructions; tests do not swallow that diagnostic or skip the gate.
 
 ## Deliberate M0 boundaries

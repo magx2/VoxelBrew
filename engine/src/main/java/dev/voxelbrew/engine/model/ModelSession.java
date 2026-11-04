@@ -15,35 +15,65 @@ public final class ModelSession {
     private final Deque<List<Feature>> redo = new ArrayDeque<>();
 
     public ModelSession(CadDocument document) {
-        id = document.id(); features = document.features(); cursor = document.cursor();
+        id = document.id();
+        features = document.features();
+        cursor = document.cursor();
     }
-    public synchronized CadDocument document() { return new CadDocument(id, features, cursor); }
-    public synchronized long revision() { return revision; }
-    public record Snapshot(CadDocument document, long revision, boolean canUndo, boolean canRedo) { }
-    public synchronized Snapshot snapshot() { return new Snapshot(document(),revision,!undo.isEmpty(),!redo.isEmpty()); }
-    public synchronized boolean canUndo() { return !undo.isEmpty(); }
-    public synchronized boolean canRedo() { return !redo.isEmpty(); }
+
+    public synchronized CadDocument document() {
+        return new CadDocument(id, features, cursor);
+    }
+
+    public synchronized long revision() {
+        return revision;
+    }
+
+    public record Snapshot(CadDocument document, long revision, boolean canUndo, boolean canRedo) {}
+
+    public synchronized Snapshot snapshot() {
+        return new Snapshot(document(), revision, !undo.isEmpty(), !redo.isEmpty());
+    }
+
+    public synchronized boolean canUndo() {
+        return !undo.isEmpty();
+    }
+
+    public synchronized boolean canRedo() {
+        return !redo.isEmpty();
+    }
+
     public synchronized void add(Feature feature) {
-        if (cursor != features.size()) { throw new ModelException(feature.id(), "return the timeline cursor to the end before adding a feature"); }
+        if (cursor != features.size()) {
+            throw new ModelException(
+                    feature.id(), "return the timeline cursor to the end before adding a feature");
+        }
         FeatureValidation.validate(feature);
         var next = new ArrayList<>(features);
         next.add(feature);
         commit(next);
         cursor = features.size();
     }
+
     public synchronized void replace(Feature feature) {
         FeatureValidation.validate(feature);
         var next = new ArrayList<>(features);
         next.set(index(feature.id()), feature);
         commit(next);
     }
+
     public synchronized void editDimension(String featureId, String field, double value) {
         Feature feature = features.get(index(featureId));
         if (feature instanceof Feature.Sketch selected && field.equals("offsetZ")) {
             var next = new ArrayList<>(features);
             for (int i = 0; i < next.size(); i++) {
-                if (next.get(i) instanceof Feature.Sketch sketch && sketch.plane().id().equals(selected.plane().id())) {
-                    var changed = new Feature.Sketch(sketch.id(), sketch.profileId(), new Feature.Plane(sketch.plane().id(), value), sketch.profile());
+                if (next.get(i) instanceof Feature.Sketch sketch
+                        && sketch.plane().id().equals(selected.plane().id())) {
+                    var changed =
+                            new Feature.Sketch(
+                                    sketch.id(),
+                                    sketch.profileId(),
+                                    new Feature.Plane(sketch.plane().id(), value),
+                                    sketch.profile());
                     FeatureValidation.validate(changed);
                     next.set(i, changed);
                 }
@@ -58,47 +88,89 @@ public final class ModelSession {
             Feature.Profile profile = s.profile();
             Feature.Plane plane = s.plane();
             if (profile instanceof Feature.Rectangle r) {
-                profile = switch (field) {
-                    case "x" -> new Feature.Rectangle(value, r.y(), r.width(), r.height());
-                    case "y" -> new Feature.Rectangle(r.x(), value, r.width(), r.height());
-                    case "width" -> new Feature.Rectangle(r.x(), r.y(), value, r.height());
-                    case "height" -> new Feature.Rectangle(r.x(), r.y(), r.width(), value);
-                    default -> throw new ModelException(featureId, "unknown rectangle dimension '" + field + "'");
-                };
+                profile =
+                        switch (field) {
+                            case "x" -> new Feature.Rectangle(value, r.y(), r.width(), r.height());
+                            case "y" -> new Feature.Rectangle(r.x(), value, r.width(), r.height());
+                            case "width" -> new Feature.Rectangle(r.x(), r.y(), value, r.height());
+                            case "height" -> new Feature.Rectangle(r.x(), r.y(), r.width(), value);
+                            default ->
+                                    throw new ModelException(
+                                            featureId,
+                                            "unknown rectangle dimension '" + field + "'");
+                        };
             } else if (profile instanceof Feature.Circle c) {
-                profile = switch (field) {
-                    case "centerX" -> new Feature.Circle(value, c.centerY(), c.diameter());
-                    case "centerY" -> new Feature.Circle(c.centerX(), value, c.diameter());
-                    case "diameter" -> new Feature.Circle(c.centerX(), c.centerY(), value);
-                    default -> throw new ModelException(featureId, "unknown circle dimension '" + field + "'");
-                };
-            } else { throw new ModelException(featureId, "unsupported profile"); }
+                profile =
+                        switch (field) {
+                            case "centerX" -> new Feature.Circle(value, c.centerY(), c.diameter());
+                            case "centerY" -> new Feature.Circle(c.centerX(), value, c.diameter());
+                            case "diameter" -> new Feature.Circle(c.centerX(), c.centerY(), value);
+                            default ->
+                                    throw new ModelException(
+                                            featureId, "unknown circle dimension '" + field + "'");
+                        };
+            } else {
+                throw new ModelException(featureId, "unsupported profile");
+            }
             replacement = new Feature.Sketch(s.id(), s.profileId(), plane, profile);
-        } else { throw new ModelException(featureId, "unknown dimension '" + field + "'"); }
+        } else {
+            throw new ModelException(featureId, "unknown dimension '" + field + "'");
+        }
         replace(replacement);
     }
+
     public synchronized void setCursor(int newCursor) {
         new CadDocument(id, features, newCursor);
-        cursor = newCursor; revision++;
+        cursor = newCursor;
+        revision++;
     }
+
     public synchronized boolean undo() {
-        if (undo.isEmpty()) { return false; }
+        if (undo.isEmpty()) {
+            return false;
+        }
         boolean followEnd = cursor == features.size();
-        redo.push(features); features = undo.pop(); cursor = followEnd ? features.size() : Math.min(cursor, features.size()); revision++; return true;
+        redo.push(features);
+        features = undo.pop();
+        cursor = followEnd ? features.size() : Math.min(cursor, features.size());
+        revision++;
+        return true;
     }
+
     public synchronized boolean redo() {
-        if (redo.isEmpty()) { return false; }
+        if (redo.isEmpty()) {
+            return false;
+        }
         boolean followEnd = cursor == features.size();
-        undo.push(features); features = redo.pop(); cursor = followEnd ? features.size() : Math.min(cursor, features.size()); revision++; return true;
+        undo.push(features);
+        features = redo.pop();
+        cursor = followEnd ? features.size() : Math.min(cursor, features.size());
+        revision++;
+        return true;
     }
-    public Evaluation evaluate() { return Evaluator.evaluate(document()); }
+
+    public Evaluation evaluate() {
+        return Evaluator.evaluate(document());
+    }
+
     private int index(String featureId) {
-        for (int i = 0; i < features.size(); i++) { if (features.get(i).id().equals(featureId)) { return i; } }
+        for (int i = 0; i < features.size(); i++) {
+            if (features.get(i).id().equals(featureId)) {
+                return i;
+            }
+        }
         throw new ModelException(featureId, "feature does not exist");
     }
+
     private void commit(List<Feature> next) {
-        List<Feature> validated = new CadDocument(id, next, Math.min(cursor, next.size())).features();
-        if (validated.equals(features)) { return; }
-        undo.push(features); redo.clear(); features = validated; revision++;
+        List<Feature> validated =
+                new CadDocument(id, next, Math.min(cursor, next.size())).features();
+        if (validated.equals(features)) {
+            return;
+        }
+        undo.push(features);
+        redo.clear();
+        features = validated;
+        revision++;
     }
 }

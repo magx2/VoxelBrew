@@ -1,6 +1,6 @@
 # Third-party notices
 
-* **Open CASCADE Technology 7.9.0**, Copyright Open CASCADE SAS and contributors.
+- **Open CASCADE Technology 7.9.0**, Copyright Open CASCADE SAS and contributors.
   LGPL-2.1 with the Open CASCADE exception. Upstream source:
   https://github.com/Open-Cascade-SAS/OCCT/tree/V7_9_0
   The unmodified source is checksum-pinned and builds shared libraries.
@@ -10,24 +10,24 @@
   Copies also ship in `third_party/occt/` in this source repository.
   Redistribution must include those notices, corresponding source or the
   required offer, and allow replacement of the shared kernel libraries.
-* **Gradle 9.1.0** wrapper, Apache-2.0, https://github.com/gradle/gradle.
+- **Gradle 9.1.0** wrapper, Apache-2.0, https://github.com/gradle/gradle.
   Gradle distribution contains its LICENSE and NOTICE; its license is copied
   beside the wrapper in `gradle/wrapper/LICENSE`.
-* **CMake 3.31.6**, BSD-3-Clause, https://github.com/Kitware/CMake/tree/v3.31.6.
+- **CMake 3.31.6**, BSD-3-Clause, https://github.com/Kitware/CMake/tree/v3.31.6.
   Its downloaded distribution retains the upstream notices.
-* **JUnit 5.12.1**, EPL-2.0, test dependency only, https://junit.org/junit5/.
-* **Protocol Buffers 4.30.2**, BSD-3-Clause, https://github.com/protocolbuffers/protobuf/tree/v30.2.
+- **JUnit 5.12.1**, EPL-2.0, test dependency only, https://junit.org/junit5/.
+- **Protocol Buffers 4.30.2**, BSD-3-Clause, https://github.com/protocolbuffers/protobuf/tree/v30.2.
   Generated document messages are engine implementation details.
-* **Protobuf Gradle plugin 0.9.5**, BSD-3-Clause, build dependency only,
+- **Protobuf Gradle plugin 0.9.5**, BSD-3-Clause, build dependency only,
   https://github.com/google/protobuf-gradle-plugin/tree/v0.9.5.
-* **picocli 4.7.7**, Apache-2.0, https://github.com/remkop/picocli/tree/v4.7.7.
+- **picocli 4.7.7**, Apache-2.0, https://github.com/remkop/picocli/tree/v4.7.7.
   CLI dependency only.
-* **OpenJFX 21.0.13**, Copyright Oracle and contributors, GPL-2.0 with the
+- **OpenJFX 21.0.13**, Copyright Oracle and contributors, GPL-2.0 with the
   Classpath exception. Only base, graphics and controls are included in the GUI.
   Source: https://github.com/openjdk/jfx21u (tag `21.0.13+1`).
   Upstream license and licensing clarification are retained in
   `third_party/javafx/` and copied into the development GUI distribution.
-* **Microsoft Windows SDK C++ 10.0.22621.1** NuGet packages, Microsoft's SDK
+- **Microsoft Windows SDK C++ 10.0.22621.1** NuGet packages, Microsoft's SDK
   license as included in the archives. Build prerequisite only, downloaded
   unchanged from https://www.nuget.org/packages/Microsoft.Windows.SDK.CPP/10.0.22621.1
   and https://www.nuget.org/packages/Microsoft.Windows.SDK.CPP.x64/10.0.22621.1.

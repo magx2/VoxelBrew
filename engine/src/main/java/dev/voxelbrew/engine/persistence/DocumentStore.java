@@ -16,68 +16,132 @@ import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
 import java.util.List;
 
-/** Versioned protobuf persistence with a complete-file integrity envelope and atomic publication. */
+/**
+ * Versioned protobuf persistence with a complete-file integrity envelope and atomic publication.
+ */
 public final class DocumentStore {
     public static final int SCHEMA_VERSION = 1;
     private static final byte[] MAGIC = {'J', 'C', 'A', 'D', 13, 10, 26, 10};
     private static final int HEADER = 44;
     private static final int MAX_PAYLOAD = 16 * 1024 * 1024;
-    private DocumentStore() { }
+
+    private DocumentStore() {}
 
     public static CadDocument load(Path path) throws IOException {
         long size = Files.size(path);
-        if (size < HEADER || size > MAX_PAYLOAD + HEADER) { throw new DocumentFormatException("Invalid or truncated .jcad file: expected a complete header and <=16 MiB payload"); }
+        if (size < HEADER || size > MAX_PAYLOAD + HEADER) {
+            throw new DocumentFormatException(
+                    "Invalid or truncated .jcad file: expected a complete header and <=16 MiB payload");
+        }
         byte[] bytes = Files.readAllBytes(path);
-        if (!Arrays.equals(MAGIC, Arrays.copyOf(bytes, MAGIC.length))) { throw new DocumentFormatException("Not a VoxelBrew .jcad file (magic mismatch)"); }
+        if (!Arrays.equals(MAGIC, Arrays.copyOf(bytes, MAGIC.length))) {
+            throw new DocumentFormatException("Not a VoxelBrew .jcad file (magic mismatch)");
+        }
         ByteBuffer buffer = ByteBuffer.wrap(bytes);
         buffer.position(8);
         int length = buffer.getInt();
-        if (length < 1 || length > MAX_PAYLOAD || length != bytes.length - HEADER) { throw new DocumentFormatException("Truncated or damaged .jcad payload: length does not match the header"); }
-        byte[] expectedHash = new byte[32]; buffer.get(expectedHash);
-        byte[] payload = new byte[length]; buffer.get(payload);
-        if (!MessageDigest.isEqual(expectedHash, sha256(payload))) { throw new DocumentFormatException("Damaged .jcad file: payload checksum mismatch"); }
+        if (length < 1 || length > MAX_PAYLOAD || length != bytes.length - HEADER) {
+            throw new DocumentFormatException(
+                    "Truncated or damaged .jcad payload: length does not match the header");
+        }
+        byte[] expectedHash = new byte[32];
+        buffer.get(expectedHash);
+        byte[] payload = new byte[length];
+        buffer.get(payload);
+        if (!MessageDigest.isEqual(expectedHash, sha256(payload))) {
+            throw new DocumentFormatException("Damaged .jcad file: payload checksum mismatch");
+        }
         try {
             DocumentProto.Document message = DocumentProto.Document.parseFrom(payload);
             if (message.getSchemaVersion() != SCHEMA_VERSION) {
-                throw new DocumentFormatException("Unsupported .jcad schema " + message.getSchemaVersion() + "; supported version is " + SCHEMA_VERSION + ". File is read-only; no write performed.");
+                throw new DocumentFormatException(
+                        "Unsupported .jcad schema "
+                                + message.getSchemaVersion()
+                                + "; supported version is "
+                                + SCHEMA_VERSION
+                                + ". File is read-only; no write performed.");
             }
-            if (unknownFields(message)) { throw new DocumentFormatException("Document contains unsupported fields; file is read-only to prevent data loss"); }
-            if (message.getUnits() != DocumentProto.Units.MILLIMETERS) { throw new DocumentFormatException("Unsupported document units; expected MILLIMETERS"); }
-            return new CadDocument(message.getDocumentId(), message.getFeaturesList().stream().map(DocumentStore::fromProto).toList(), message.getCursor());
-        } catch (DocumentFormatException failure) { throw failure; }
-        catch (IOException | IllegalArgumentException failure) { throw new DocumentFormatException("Invalid .jcad feature definitions: " + failure.getMessage(), failure); }
+            if (unknownFields(message)) {
+                throw new DocumentFormatException(
+                        "Document contains unsupported fields; file is read-only to prevent data loss");
+            }
+            if (message.getUnits() != DocumentProto.Units.MILLIMETERS) {
+                throw new DocumentFormatException(
+                        "Unsupported document units; expected MILLIMETERS");
+            }
+            return new CadDocument(
+                    message.getDocumentId(),
+                    message.getFeaturesList().stream().map(DocumentStore::fromProto).toList(),
+                    message.getCursor());
+        } catch (DocumentFormatException failure) {
+            throw failure;
+        } catch (IOException | IllegalArgumentException failure) {
+            throw new DocumentFormatException(
+                    "Invalid .jcad feature definitions: " + failure.getMessage(), failure);
+        }
     }
 
-    /** Existing destinations require explicit overwrite; unsupported files are never overwritten. */
+    /**
+     * Existing destinations require explicit overwrite; unsupported files are never overwritten.
+     */
     public static void save(CadDocument document, Path path, boolean overwrite) throws IOException {
         Path target = path.toAbsolutePath().normalize();
         if (Files.exists(target)) {
-            if (!overwrite) { throw new IOException("Destination exists; use explicit overwrite: " + target); }
-            load(target); // Protect newer schemas, unknown data and damaged originals from destructive replacement.
+            if (!overwrite) {
+                throw new IOException("Destination exists; use explicit overwrite: " + target);
+            }
+            load(target); // Protect newer schemas, unknown data and damaged originals from
+            // destructive replacement.
         }
-        var message = DocumentProto.Document.newBuilder().setSchemaVersion(SCHEMA_VERSION)
-                .setDocumentId(document.id()).setUnits(DocumentProto.Units.MILLIMETERS).setCursor(document.cursor());
+        var message =
+                DocumentProto.Document.newBuilder()
+                        .setSchemaVersion(SCHEMA_VERSION)
+                        .setDocumentId(document.id())
+                        .setUnits(DocumentProto.Units.MILLIMETERS)
+                        .setCursor(document.cursor());
         document.features().forEach(feature -> message.addFeatures(toProto(feature)));
         byte[] payload = message.build().toByteArray();
-        if (payload.length > MAX_PAYLOAD) { throw new IOException("Document exceeds 16 MiB limit"); }
-        ByteBuffer bytes = ByteBuffer.allocate(HEADER + payload.length).put(MAGIC).putInt(payload.length).put(sha256(payload)).put(payload);
+        if (payload.length > MAX_PAYLOAD) {
+            throw new IOException("Document exceeds 16 MiB limit");
+        }
+        ByteBuffer bytes =
+                ByteBuffer.allocate(HEADER + payload.length)
+                        .put(MAGIC)
+                        .putInt(payload.length)
+                        .put(sha256(payload))
+                        .put(payload);
         bytes.flip();
-        Path temporary = Files.createTempFile(target.getParent(), "." + target.getFileName() + "-", ".tmp");
+        Path temporary =
+                Files.createTempFile(target.getParent(), "." + target.getFileName() + "-", ".tmp");
         try {
-            try (FileChannel channel = FileChannel.open(temporary, StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING)) {
-                while (bytes.hasRemaining()) { channel.write(bytes); }
+            try (FileChannel channel =
+                    FileChannel.open(
+                            temporary,
+                            StandardOpenOption.WRITE,
+                            StandardOpenOption.TRUNCATE_EXISTING)) {
+                while (bytes.hasRemaining()) {
+                    channel.write(bytes);
+                }
                 channel.force(true);
             }
-            // Validate serialized definitions before publishing. Invalid references remain repairable.
+            // Validate serialized definitions before publishing. Invalid references remain
+            // repairable.
             load(temporary);
             if (overwrite) {
                 // Fail safely if this filesystem cannot atomically replace a sibling file.
-                Files.move(temporary, target, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
+                Files.move(
+                        temporary,
+                        target,
+                        StandardCopyOption.ATOMIC_MOVE,
+                        StandardCopyOption.REPLACE_EXISTING);
             } else {
-                // Atomic create-if-absent: unlike ATOMIC_MOVE, a concurrent destination cannot be replaced.
+                // Atomic create-if-absent: unlike ATOMIC_MOVE, a concurrent destination cannot be
+                // replaced.
                 Files.createLink(target, temporary);
             }
-        } finally { Files.deleteIfExists(temporary); }
+        } finally {
+            Files.deleteIfExists(temporary);
+        }
     }
 
     private static Feature fromProto(DocumentProto.Feature feature) {
@@ -85,56 +149,124 @@ public final class DocumentStore {
         return switch (feature.getDefinitionCase()) {
             case SKETCH -> {
                 var sketch = feature.getSketch();
-                var plane = new Feature.Plane(sketch.getPlane().getId(), sketch.getPlane().getOffsetZ());
-                Feature.Profile profile = switch (sketch.getProfileCase()) {
-                    case RECTANGLE -> { var r = sketch.getRectangle(); yield new Feature.Rectangle(r.getX(), r.getY(), r.getWidth(), r.getHeight()); }
-                    case CIRCLE -> { var c = sketch.getCircle(); yield new Feature.Circle(c.getCenterX(), c.getCenterY(), c.getDiameter()); }
-                    case PROFILE_NOT_SET -> throw new IllegalArgumentException("Feature '" + id + "': missing sketch profile");
-                };
+                var plane =
+                        new Feature.Plane(
+                                sketch.getPlane().getId(), sketch.getPlane().getOffsetZ());
+                Feature.Profile profile =
+                        switch (sketch.getProfileCase()) {
+                            case RECTANGLE -> {
+                                var r = sketch.getRectangle();
+                                yield new Feature.Rectangle(
+                                        r.getX(), r.getY(), r.getWidth(), r.getHeight());
+                            }
+                            case CIRCLE -> {
+                                var c = sketch.getCircle();
+                                yield new Feature.Circle(
+                                        c.getCenterX(), c.getCenterY(), c.getDiameter());
+                            }
+                            case PROFILE_NOT_SET ->
+                                    throw new IllegalArgumentException(
+                                            "Feature '" + id + "': missing sketch profile");
+                        };
                 yield new Feature.Sketch(id, sketch.getProfileId(), plane, profile);
             }
-            case EXTRUDE -> new Feature.Extrude(id, profileRef(feature.getExtrude().getProfile()), feature.getExtrude().getDistance());
-            case THROUGH_CUT -> new Feature.ThroughCut(id, profileRef(feature.getThroughCut().getProfile()),
-                    new Feature.BodyRef(feature.getThroughCut().getBody().getFeatureId(), feature.getThroughCut().getBody().getOutputName()));
-            case DEFINITION_NOT_SET -> throw new IllegalArgumentException("Feature '" + id + "': missing or unsupported feature definition");
+            case EXTRUDE ->
+                    new Feature.Extrude(
+                            id,
+                            profileRef(feature.getExtrude().getProfile()),
+                            feature.getExtrude().getDistance());
+            case THROUGH_CUT ->
+                    new Feature.ThroughCut(
+                            id,
+                            profileRef(feature.getThroughCut().getProfile()),
+                            new Feature.BodyRef(
+                                    feature.getThroughCut().getBody().getFeatureId(),
+                                    feature.getThroughCut().getBody().getOutputName()));
+            case DEFINITION_NOT_SET ->
+                    throw new IllegalArgumentException(
+                            "Feature '" + id + "': missing or unsupported feature definition");
         };
     }
 
     private static DocumentProto.Feature toProto(Feature feature) {
         var out = DocumentProto.Feature.newBuilder().setId(feature.id());
         if (feature instanceof Feature.Sketch s) {
-            var sketch = DocumentProto.Sketch.newBuilder().setProfileId(s.profileId())
-                    .setPlane(DocumentProto.Plane.newBuilder().setId(s.plane().id()).setOffsetZ(s.plane().offsetZ()));
+            var sketch =
+                    DocumentProto.Sketch.newBuilder()
+                            .setProfileId(s.profileId())
+                            .setPlane(
+                                    DocumentProto.Plane.newBuilder()
+                                            .setId(s.plane().id())
+                                            .setOffsetZ(s.plane().offsetZ()));
             if (s.profile() instanceof Feature.Rectangle r) {
-                sketch.setRectangle(DocumentProto.Rectangle.newBuilder().setX(r.x()).setY(r.y()).setWidth(r.width()).setHeight(r.height()));
+                sketch.setRectangle(
+                        DocumentProto.Rectangle.newBuilder()
+                                .setX(r.x())
+                                .setY(r.y())
+                                .setWidth(r.width())
+                                .setHeight(r.height()));
             } else if (s.profile() instanceof Feature.Circle c) {
-                sketch.setCircle(DocumentProto.Circle.newBuilder().setCenterX(c.centerX()).setCenterY(c.centerY()).setDiameter(c.diameter()));
-            } else { throw new IllegalArgumentException("Feature '" + s.id() + "': unsupported profile"); }
+                sketch.setCircle(
+                        DocumentProto.Circle.newBuilder()
+                                .setCenterX(c.centerX())
+                                .setCenterY(c.centerY())
+                                .setDiameter(c.diameter()));
+            } else {
+                throw new IllegalArgumentException("Feature '" + s.id() + "': unsupported profile");
+            }
             out.setSketch(sketch);
         } else if (feature instanceof Feature.Extrude e) {
-            out.setExtrude(DocumentProto.Extrude.newBuilder().setProfile(profileRef(e.profile())).setDistance(e.distance()));
+            out.setExtrude(
+                    DocumentProto.Extrude.newBuilder()
+                            .setProfile(profileRef(e.profile()))
+                            .setDistance(e.distance()));
         } else if (feature instanceof Feature.ThroughCut c) {
-            out.setThroughCut(DocumentProto.ThroughCut.newBuilder().setProfile(profileRef(c.profile()))
-                    .setBody(DocumentProto.BodyRef.newBuilder().setFeatureId(c.body().featureId()).setOutputName(c.body().outputName())));
+            out.setThroughCut(
+                    DocumentProto.ThroughCut.newBuilder()
+                            .setProfile(profileRef(c.profile()))
+                            .setBody(
+                                    DocumentProto.BodyRef.newBuilder()
+                                            .setFeatureId(c.body().featureId())
+                                            .setOutputName(c.body().outputName())));
         }
         return out.build();
     }
-    private static Feature.ProfileRef profileRef(DocumentProto.ProfileRef ref) { return new Feature.ProfileRef(ref.getSketchId(), ref.getProfileId()); }
-    private static DocumentProto.ProfileRef profileRef(Feature.ProfileRef ref) {
-        return DocumentProto.ProfileRef.newBuilder().setSketchId(ref.sketchId()).setProfileId(ref.profileId()).build();
+
+    private static Feature.ProfileRef profileRef(DocumentProto.ProfileRef ref) {
+        return new Feature.ProfileRef(ref.getSketchId(), ref.getProfileId());
     }
+
+    private static DocumentProto.ProfileRef profileRef(Feature.ProfileRef ref) {
+        return DocumentProto.ProfileRef.newBuilder()
+                .setSketchId(ref.sketchId())
+                .setProfileId(ref.profileId())
+                .build();
+    }
+
     private static boolean unknownFields(Message message) {
-        if (!message.getUnknownFields().asMap().isEmpty()) { return true; }
+        if (!message.getUnknownFields().asMap().isEmpty()) {
+            return true;
+        }
         for (Object value : message.getAllFields().values()) {
-            if (value instanceof Message child && unknownFields(child)) { return true; }
+            if (value instanceof Message child && unknownFields(child)) {
+                return true;
+            }
             if (value instanceof List<?> values) {
-                for (Object item : values) { if (item instanceof Message child && unknownFields(child)) { return true; } }
+                for (Object item : values) {
+                    if (item instanceof Message child && unknownFields(child)) {
+                        return true;
+                    }
+                }
             }
         }
         return false;
     }
+
     private static byte[] sha256(byte[] input) {
-        try { return MessageDigest.getInstance("SHA-256").digest(input); }
-        catch (NoSuchAlgorithmException impossible) { throw new AssertionError(impossible); }
+        try {
+            return MessageDigest.getInstance("SHA-256").digest(input);
+        } catch (NoSuchAlgorithmException impossible) {
+            throw new AssertionError(impossible);
+        }
     }
 }

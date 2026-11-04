@@ -12,30 +12,59 @@ final class NativeKernel {
             } else {
                 Path runtime = Path.of(directory).toAbsolutePath();
                 if (System.getProperty("os.name").startsWith("Windows")) {
-                    for (String library : new String[] {"TKernel", "TKMath", "TKG2d", "TKG3d", "TKGeomBase",
-                            "TKBRep", "TKGeomAlgo", "TKTopAlgo", "TKPrim", "TKShHealing", "TKBO", "TKBool", "TKMesh"}) {
+                    for (String library :
+                            new String[] {
+                                "TKernel",
+                                "TKMath",
+                                "TKG2d",
+                                "TKG3d",
+                                "TKGeomBase",
+                                "TKBRep",
+                                "TKGeomAlgo",
+                                "TKTopAlgo",
+                                "TKPrim",
+                                "TKShHealing",
+                                "TKBO",
+                                "TKBool",
+                                "TKMesh"
+                            }) {
                         System.load(runtime.resolve(library + ".dll").toString());
                     }
                 }
                 System.load(runtime.resolve(System.mapLibraryName("voxelbrew_native")).toString());
             }
         } catch (UnsatisfiedLinkError failure) {
-            throw new UnsatisfiedLinkError("VoxelBrew native kernel could not load for "
-                    + System.getProperty("os.name") + "/" + System.getProperty("os.arch")
-                    + ". Run the native bootstrap and :engine:buildNative; set -Dvoxelbrew.native.path to its runtime directory. "
-                    + failure.getMessage());
+            throw new UnsatisfiedLinkError(
+                    "VoxelBrew native kernel could not load for "
+                            + System.getProperty("os.name")
+                            + "/"
+                            + System.getProperty("os.arch")
+                            + ". Run the native bootstrap and :engine:buildNative; set -Dvoxelbrew.native.path to its runtime directory. "
+                            + failure.getMessage());
         }
     }
 
-    private NativeKernel() { }
+    private NativeKernel() {}
+
     static native String version();
-    static native long rectanglePrism(double x, double y, double z, double width, double height, double distance);
+
+    static native long rectanglePrism(
+            double x, double y, double z, double width, double height, double distance);
+
     static native long circlePrism(double x, double y, double z, double diameter, double distance);
+
     static native long cutThroughCircle(long body, double x, double y, double diameter);
+
     static native double volume(long body);
+
     static native double[] bounds(long body);
+
     static native boolean contains(long body, double x, double y, double z);
+
     static native void release(long body);
+
     static native int liveHandles();
-    static native dev.voxelbrew.engine.mesh.MeshData tessellate(long body, double chord, double angleRadians);
+
+    static native dev.voxelbrew.engine.mesh.MeshData tessellate(
+            long body, double chord, double angleRadians);
 }

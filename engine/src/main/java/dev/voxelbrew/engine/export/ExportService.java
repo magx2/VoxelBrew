@@ -15,38 +15,79 @@ import java.util.Map;
 import java.util.ServiceConfigurationError;
 
 public final class ExportService {
-    private ExportService() { }
-    public static void export(ExporterRegistry registry, String format, ModelView view, MeshOptions meshOptions,
-                              Map<String, String> supplied, Path destination, boolean overwrite) throws IOException {
+    private ExportService() {}
+
+    public static void export(
+            ExporterRegistry registry,
+            String format,
+            ModelView view,
+            MeshOptions meshOptions,
+            Map<String, String> supplied,
+            Path destination,
+            boolean overwrite)
+            throws IOException {
         var entry = registry.require(format);
         var descriptor = entry.descriptor();
         if (view.instances().isEmpty()) throw new IllegalArgumentException("Nothing to export");
-        if (!descriptor.multipleInstances() && view.instances().size() != 1) throw new IllegalArgumentException("Exporter " + format + " requires one selected body/instance");
+        if (!descriptor.multipleInstances() && view.instances().size() != 1)
+            throw new IllegalArgumentException(
+                    "Exporter " + format + " requires one selected body/instance");
         var options = new LinkedHashMap<String, String>();
         for (var option : descriptor.options()) options.put(option.key(), option.defaultValue());
         for (var option : supplied.entrySet()) {
-            var spec = descriptor.options().stream().filter(o -> o.key().equals(option.getKey())).findFirst()
-                    .orElseThrow(() -> new IllegalArgumentException("Unknown option '" + option.getKey() + "' for " + format));
-            spec.validate(option.getValue()); options.put(option.getKey(), option.getValue());
+            var spec =
+                    descriptor.options().stream()
+                            .filter(o -> o.key().equals(option.getKey()))
+                            .findFirst()
+                            .orElseThrow(
+                                    () ->
+                                            new IllegalArgumentException(
+                                                    "Unknown option '"
+                                                            + option.getKey()
+                                                            + "' for "
+                                                            + format));
+            spec.validate(option.getValue());
+            options.put(option.getKey(), option.getValue());
         }
         Path target = destination.toAbsolutePath();
-        if (Files.exists(target) && !overwrite) throw new IOException("Destination exists; explicit overwrite required: " + target);
+        if (Files.exists(target) && !overwrite)
+            throw new IOException("Destination exists; explicit overwrite required: " + target);
         Path temporary = Files.createTempFile(target.getParent(), ".voxelbrew-export-", ".tmp");
         try {
             try (var channel = FileChannel.open(temporary, StandardOpenOption.WRITE);
-                 var stream = Channels.newOutputStream(channel)) {
+                    var stream = Channels.newOutputStream(channel)) {
                 // A provider cannot close the host-owned channel before the durability flush.
-                OutputStream borrowed = new FilterOutputStream(stream) {
-                    @Override public void close() throws IOException { flush(); }
-                    @Override public void write(byte[] b, int off, int len) throws IOException { out.write(b, off, len); }
-                };
+                OutputStream borrowed =
+                        new FilterOutputStream(stream) {
+                            @Override
+                            public void close() throws IOException {
+                                flush();
+                            }
+
+                            @Override
+                            public void write(byte[] b, int off, int len) throws IOException {
+                                out.write(b, off, len);
+                            }
+                        };
                 entry.provider().write(view, meshOptions, Map.copyOf(options), borrowed);
-                borrowed.flush(); channel.force(true);
+                borrowed.flush();
+                channel.force(true);
             }
-            if (overwrite) Files.move(temporary, target, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
+            if (overwrite)
+                Files.move(
+                        temporary,
+                        target,
+                        StandardCopyOption.ATOMIC_MOVE,
+                        StandardCopyOption.REPLACE_EXISTING);
             else Files.createLink(target, temporary);
-        } catch (IOException | RuntimeException | LinkageError | ServiceConfigurationError failure) {
-            throw new IOException("Exporter '" + format + "' failed: " + failure.getMessage(), failure);
-        } finally { Files.deleteIfExists(temporary); }
+        } catch (IOException
+                | RuntimeException
+                | LinkageError
+                | ServiceConfigurationError failure) {
+            throw new IOException(
+                    "Exporter '" + format + "' failed: " + failure.getMessage(), failure);
+        } finally {
+            Files.deleteIfExists(temporary);
+        }
     }
 }

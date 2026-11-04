@@ -13,22 +13,59 @@ message Document {
   uint32 cursor = 5;
   reserved 6 to 15;
 }
-enum Units { UNITS_UNSPECIFIED = 0; MILLIMETERS = 1; }
-message Plane { string id = 1; double offset_z = 2; reserved 3 to 7; }
-message ProfileRef { string sketch_id = 1; string profile_id = 2; }
-message BodyRef { string feature_id = 1; string output_name = 2; }
-message Rectangle { double x = 1; double y = 2; double width = 3; double height = 4; }
-message Circle { double center_x = 1; double center_y = 2; double diameter = 3; }
+enum Units {
+  UNITS_UNSPECIFIED = 0;
+  MILLIMETERS = 1;
+}
+message Plane {
+  string id = 1;
+  double offset_z = 2;
+  reserved 3 to 7;
+}
+message ProfileRef {
+  string sketch_id = 1;
+  string profile_id = 2;
+}
+message BodyRef {
+  string feature_id = 1;
+  string output_name = 2;
+}
+message Rectangle {
+  double x = 1;
+  double y = 2;
+  double width = 3;
+  double height = 4;
+}
+message Circle {
+  double center_x = 1;
+  double center_y = 2;
+  double diameter = 3;
+}
 message Sketch {
   string profile_id = 1;
   Plane plane = 2;
-  oneof profile { Rectangle rectangle = 3; Circle circle = 4; }
+  oneof profile {
+    Rectangle rectangle = 3;
+    Circle circle = 4;
+  }
   reserved 5 to 15;
 }
-message Extrude { ProfileRef profile = 1; double distance = 2; reserved 3 to 7; }
-message ThroughCut { ProfileRef profile = 1; BodyRef body = 2; reserved 3 to 7; }
+message Extrude {
+  ProfileRef profile = 1;
+  double distance = 2;
+  reserved 3 to 7;
+}
+message ThroughCut {
+  ProfileRef profile = 1;
+  BodyRef body = 2;
+  reserved 3 to 7;
+}
 message Feature {
   string id = 1;
-  oneof definition { Sketch sketch = 2; Extrude extrude = 3; ThroughCut through_cut = 4; }
+  oneof definition {
+    Sketch sketch = 2;
+    Extrude extrude = 3;
+    ThroughCut through_cut = 4;
+  }
   reserved 5 to 15;
 }

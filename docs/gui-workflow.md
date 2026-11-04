@@ -37,18 +37,18 @@ evaluated revision; sketches continue to use stable XY-parallel plane references
 
 ## Navigation, editing and files
 
-| Input | Action |
-|---|---|
-| Left click | Select a sketch profile, body or rendered face |
-| Middle drag | Orbit |
-| Shift + middle drag | Pan |
-| Mouse wheel | Zoom |
-| View selector / Fit | Isometric, Top, Front, Right / frame the model |
-| Ctrl+N / Ctrl+O | New / Open |
-| Ctrl+S / Ctrl+Shift+S | Save / Save As |
-| Ctrl+Z / Ctrl+Y or Ctrl+Shift+Z | Undo / Redo |
-| Enter in a dimension | Apply or commit the entered value |
-| Escape | Cancel the active drawing or extrusion tool |
+| Input                           | Action                                         |
+| ------------------------------- | ---------------------------------------------- |
+| Left click                      | Select a sketch profile, body or rendered face |
+| Middle drag                     | Orbit                                          |
+| Shift + middle drag             | Pan                                            |
+| Mouse wheel                     | Zoom                                           |
+| View selector / Fit             | Isometric, Top, Front, Right / frame the model |
+| Ctrl+N / Ctrl+O                 | New / Open                                     |
+| Ctrl+S / Ctrl+Shift+S           | Save / Save As                                 |
+| Ctrl+Z / Ctrl+Y or Ctrl+Shift+Z | Undo / Redo                                    |
+| Enter in a dimension            | Apply or commit the entered value              |
+| Escape                          | Cancel the active drawing or extrusion tool    |
 
 The tree, viewport, inspector and timeline share selection. The timeline cursor
 is independent of undo/redo. Return to the end before adding features. Broken

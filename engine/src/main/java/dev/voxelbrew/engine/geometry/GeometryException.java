@@ -4,5 +4,7 @@ package dev.voxelbrew.engine.geometry;
 public final class GeometryException extends RuntimeException {
     private static final long serialVersionUID = 1L;
 
-    public GeometryException(String message) { super(message); }
+    public GeometryException(String message) {
+        super(message);
+    }
 }

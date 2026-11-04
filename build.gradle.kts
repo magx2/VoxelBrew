@@ -1,4 +1,103 @@
-plugins { base }
+import com.diffplug.spotless.LineEnding
+
+plugins {
+    base
+    id("com.diffplug.spotless") version "8.11.0"
+}
+
+// Root-owned targets include the independent consumer build without making it a subproject.
+val sourceProjects = listOf("engine", "cli", "gui", "fixtures/exporter-plugin")
+val formatterWindows = System.getProperty("os.name").startsWith("Windows")
+val formatterEnvironment = layout.projectDirectory.dir(".tools/formatters")
+val formatterBin = formatterEnvironment.dir(if (formatterWindows) "Scripts" else "bin")
+val formatterPython = formatterBin.file(if (formatterWindows) "python.exe" else "python")
+val clangFormatExecutable =
+    formatterBin.file(if (formatterWindows) "clang-format.exe" else "clang-format")
+val clangFormatVersion = "18.1.8"
+val clangStyle = "{BasedOnStyle: Google, IndentWidth: 4, ColumnLimit: 100, SortIncludes: Never}"
+val createFormatterEnvironment by
+    tasks.registering(Exec::class) {
+        outputs.file(formatterPython)
+        commandLine(
+            if (formatterWindows) "python" else "python3",
+            "-m",
+            "venv",
+            formatterEnvironment.asFile,
+        )
+    }
+val installClangFormat by
+    tasks.registering(Exec::class) {
+        dependsOn(createFormatterEnvironment)
+        inputs.property("version", clangFormatVersion)
+        outputs.file(clangFormatExecutable)
+        commandLine(
+            formatterPython.asFile,
+            "-m",
+            "pip",
+            "install",
+            "--disable-pip-version-check",
+            "--only-binary=:all:",
+            "clang-format==$clangFormatVersion",
+        )
+    }
+
+spotless {
+    encoding("UTF-8")
+    lineEndings = LineEnding.UNIX
+    java {
+        target(sourceProjects.map { "$it/src/*/java/**/*.java" })
+        googleJavaFormat("1.28.0").aosp()
+        trimTrailingWhitespace()
+        endWithNewline()
+    }
+    kotlinGradle {
+        target(listOf("*.gradle.kts") + sourceProjects.map { "$it/*.gradle.kts" })
+        ktfmt("0.59").kotlinlangStyle()
+        trimTrailingWhitespace()
+        endWithNewline()
+    }
+    cpp {
+        target("engine/native/src/**/*.cpp", "engine/native/src/**/*.h")
+        clangFormat(clangFormatVersion)
+            .pathToExe(clangFormatExecutable.asFile.absolutePath)
+            .style(clangStyle)
+        trimTrailingWhitespace()
+        endWithNewline()
+    }
+    protobuf {
+        target("engine/src/main/proto/*.proto")
+        clangFormat(clangFormatVersion)
+            .pathToExe(clangFormatExecutable.asFile.absolutePath)
+            .style("Google")
+        trimTrailingWhitespace()
+        endWithNewline()
+    }
+    format("webAndDocs") {
+        target("*.md", "*/AGENTS.md", "docs/*.md", ".github/**/*.yml", "gui/src/**/*.css")
+        prettier("3.6.2").config(mapOf("printWidth" to 100, "proseWrap" to "preserve"))
+        endWithNewline()
+    }
+    format("text") {
+        target(
+            ".gitattributes",
+            ".gitignore",
+            "*.properties",
+            "scripts/*.properties",
+            "scripts/*.sh",
+            "scripts/*.ps1",
+            "engine/native/CMakeLists.txt",
+            "*/src/main/resources/META-INF/services/*",
+            "fixtures/exporter-plugin/src/main/resources/META-INF/services/*",
+        )
+        trimTrailingWhitespace()
+        leadingTabsToSpaces(4)
+        endWithNewline()
+    }
+}
+
+tasks
+    .matching { it.name in setOf("spotlessCpp", "spotlessProtobuf") }
+    .configureEach { dependsOn(installClangFormat) }
 
 allprojects {
     group = "dev.voxelbrew"
@@ -23,11 +122,15 @@ subprojects {
     }
     tasks.withType<Test>().configureEach {
         useJUnitPlatform()
-        testLogging { events("passed", "skipped", "failed"); showStandardStreams = true }
+        testLogging {
+            events("passed", "skipped", "failed")
+            showStandardStreams = true
+        }
     }
 }
 
 tasks.named("check") { dependsOn(subprojects.map { "${it.path}:check" }) }
+
 tasks.wrapper {
     gradleVersion = "9.1.0"
     distributionType = Wrapper.DistributionType.BIN

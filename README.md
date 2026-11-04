@@ -14,13 +14,13 @@ The complete backlog is in [the implementation plan](docs/implementation-plan.md
 
 ## Prerequisites and locked dependencies
 
-* JDK **21**, with `JAVA_HOME` set to a full JDK (including JNI headers).
-* Gradle **9.1.0**, through the committed, SHA-256-verified wrapper.
-* CMake **3.31.6** and OCCT **7.9.0**, downloaded and checksum-verified by the bootstrap.
-* Windows x86-64: Visual Studio 2019 C++ tools **14.29.30133**, v142. The bootstrap
+- JDK **21**, with `JAVA_HOME` set to a full JDK (including JNI headers).
+- Gradle **9.1.0**, through the committed, SHA-256-verified wrapper.
+- CMake **3.31.6** and OCCT **7.9.0**, downloaded and checksum-verified by the bootstrap.
+- Windows x86-64: Visual Studio 2019 C++ tools **14.29.30133**, v142. The bootstrap
   supplies Windows SDK **10.0.22621.0** from Microsoft NuGet **10.0.22621.1** locally.
   With VS 2022 and the same v142 tools, pass `-PvsGenerator="Visual Studio 17 2022"`.
-* Ubuntu 24.04 x86-64: **gcc-13, g++-13, make, curl, tar**, and JDK 21.
+- Ubuntu 24.04 x86-64: **gcc-13, g++-13, make, curl, tar**, and JDK 21.
   Install with `sudo apt-get install openjdk-21-jdk gcc-13 g++-13 make curl` if absent.
 
 All native archive hashes and compiler versions are in
@@ -29,6 +29,26 @@ Bootstrapping writes only to the ignored `.tools` directory; it does not modify
 Visual Studio or the system SDK. The first kernel build takes several minutes.
 Native compilation defaults to four workers; use `-PnativeJobs=8` if appropriate.
 Gradle and Maven dependency downloads require network access on the first run.
+
+## Formatting
+
+[Spotless](https://github.com/diffplug/spotless/tree/main/plugin-gradle) runs from
+the root build and is included in `check` and CI. Format the whole project with
+`./gradlew spotlessApply`, or verify it with `./gradlew spotlessCheck` (Windows:
+`.\gradlew.bat spotlessApply` / `.\gradlew.bat spotlessCheck`). Formatting does
+not require the native bootstrap or a display.
+
+The pinned formatters cover Java (including the independent exporter fixture),
+Gradle Kotlin scripts, native C++, Protobuf, CSS, Markdown and workflow YAML. Other owned
+text files and scripts receive consistent whitespace and
+LF line endings. Java uses Google Java Format's four-space AOSP style; Kotlin
+uses ktfmt's Kotlin style. Prettier requires Node.js 18 or later with npm on
+`PATH`; CI supplies Node.js 24. Python 3 with `venv` is also required (`python`
+on Windows, `python3` on Ubuntu; install `python3-venv` on Ubuntu if absent).
+Gradle downloads the pinned clang-format into a project-local `.tools/formatters`
+virtual environment and resolves the other formatters on first use. Generated output,
+Gradle wrapper files, acceptance artifacts, third-party
+licenses and local agent configuration are excluded.
 
 ## Windows: build, integration test, demo
 

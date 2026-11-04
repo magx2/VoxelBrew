@@ -16,6 +16,12 @@
 * **CMake 3.31.6**, BSD-3-Clause, https://github.com/Kitware/CMake/tree/v3.31.6.
   Its downloaded distribution retains the upstream notices.
 * **JUnit 5.12.1**, EPL-2.0, test dependency only, https://junit.org/junit5/.
+* **Protocol Buffers 4.30.2**, BSD-3-Clause, https://github.com/protocolbuffers/protobuf/tree/v30.2.
+  Generated document messages are engine implementation details.
+* **Protobuf Gradle plugin 0.9.5**, BSD-3-Clause, build dependency only,
+  https://github.com/google/protobuf-gradle-plugin/tree/v0.9.5.
+* **picocli 4.7.7**, Apache-2.0, https://github.com/remkop/picocli/tree/v4.7.7.
+  CLI dependency only.
 * **Microsoft Windows SDK C++ 10.0.22621.1** NuGet packages, Microsoft's SDK
   license as included in the archives. Build prerequisite only, downloaded
   unchanged from https://www.nuget.org/packages/Microsoft.Windows.SDK.CPP/10.0.22621.1

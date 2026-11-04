@@ -1,0 +1,17 @@
+document=37dd4d93-5f50-4dad-a5f0-e83347326271 kernel=7.9.0 units=mm cursor=4
+body=thickness.body output=cut/body volume=11937.168146928205 bounds=0.000000000,0.000000000,0.000000000,60.000000000,40.000000000,5.000000000
+contains=false
+bodyCount=1
+document=37dd4d93-5f50-4dad-a5f0-e83347326271 kernel=7.9.0 units=mm cursor=4
+body=thickness.body output=cut/body volume=19099.469035085127 bounds=0.000000000,0.000000000,0.000000000,60.000000000,40.000000000,8.000000000
+contains=false
+bodyCount=1
+document=37dd4d93-5f50-4dad-a5f0-e83347326271 kernel=7.9.0 units=mm cursor=3
+body=thickness.body output=thickness/body volume=19200.000000000000 bounds=0.000000000,0.000000000,0.000000000,60.000000000,40.000000000,8.000000000
+bodyCount=1
+document=37dd4d93-5f50-4dad-a5f0-e83347326271 units=mm cursor=4 features=4
+1 OK Sketch[id=plate, profileId=plate.profile, plane=Plane[id=origin-xy, offsetZ=0.0], profile=Rectangle[x=0.0, y=0.0, width=60.0, height=40.0]] rebuilt
+2 OK Extrude[id=thickness, profile=ProfileRef[sketchId=plate, profileId=plate.profile], distance=8.0] rebuilt
+3 OK Sketch[id=hole, profileId=hole.profile, plane=Plane[id=origin-xy, offsetZ=0.0], profile=Circle[centerX=10.0, centerY=10.0, diameter=4.0]] rebuilt
+4 OK ThroughCut[id=cut, profile=ProfileRef[sketchId=hole, profileId=hole.profile], body=BodyRef[featureId=thickness, outputName=body]] rebuilt
+Saved editable reference part: D:\repos\VoxelBrew\build\demo\m1-windows.jcad

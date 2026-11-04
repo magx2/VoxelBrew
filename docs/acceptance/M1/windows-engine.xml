@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="dev.voxelbrew.engine.model.EditableEngineTest" tests="11" skipped="0" failures="0" errors="0" timestamp="2026-11-04T13:04:31.159Z" hostname="LEGION" time="0.732">
+  <properties/>
+  <testcase name="concurrentCreateNeverOverwritesAnotherDocument()" classname="dev.voxelbrew.engine.model.EditableEngineTest" time="0.164"/>
+  <testcase name="forwardReferencesAndWrongNamedOutputsFailAtTheirFeature()" classname="dev.voxelbrew.engine.model.EditableEngineTest" time="0.064"/>
+  <testcase name="offsetPlanesAndSignedCircularExtrusionsRoundTrip()" classname="dev.voxelbrew.engine.model.EditableEngineTest" time="0.061"/>
+  <testcase name="failedGeometryKeepsDefinitionsAndCannotExposeStaleSolid()" classname="dev.voxelbrew.engine.model.EditableEngineTest" time="0.078"/>
+  <testcase name="reopenEditAndRollbackPreserveStableIdsAndThroughHole()" classname="dev.voxelbrew.engine.model.EditableEngineTest" time="0.112"/>
+  <testcase name="sharedOffsetPlaneEditsAreOneTransactionAndOriginIsFixed()" classname="dev.voxelbrew.engine.model.EditableEngineTest" time="0.005"/>
+  <testcase name="missingReferenceReopensAsFailedAndBlockedAndCanBeRepaired()" classname="dev.voxelbrew.engine.model.EditableEngineTest" time="0.048"/>
+  <testcase name="newerSchemasAndUnknownFieldsCannotBeDestructivelyWritten()" classname="dev.voxelbrew.engine.model.EditableEngineTest" time="0.022"/>
+  <testcase name="rollbackIsIndependentOfUndoRedoAndRejectedEditsAreNotTransactions()" classname="dev.voxelbrew.engine.model.EditableEngineTest" time="0.118"/>
+  <testcase name="undoRedoFeatureCreationKeepsCursorAtEnd()" classname="dev.voxelbrew.engine.model.EditableEngineTest" time="0.04"/>
+  <testcase name="truncatedAndCorruptFilesHaveUsefulErrorsAndPreserveOriginalOnFailedSave()" classname="dev.voxelbrew.engine.model.EditableEngineTest" time="0.014"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

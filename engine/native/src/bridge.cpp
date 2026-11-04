@@ -128,6 +128,18 @@ JNIEXPORT jlong JNICALL Java_dev_voxelbrew_engine_geometry_NativeKernel_cutThrou
     });
 }
 
+JNIEXPORT jlong JNICALL Java_dev_voxelbrew_engine_geometry_NativeKernel_circlePrism(
+    JNIEnv* env, jclass, jdouble x, jdouble y, jdouble z, jdouble diameter, jdouble distance) {
+    return guarded<jlong>(env, "circle extrusion", 0, [&] {
+        requireFinite(x); requireFinite(y); requireFinite(z); requireFinite(z + distance);
+        requirePositive(diameter); requirePositive(std::abs(distance));
+        BRepPrimAPI_MakeCylinder cylinder(gp_Ax2(gp_Pnt(x, y, z), gp_Dir(0, 0, distance > 0 ? 1 : -1)), diameter / 2, std::abs(distance));
+        cylinder.Build();
+        if (!cylinder.IsDone()) throw std::runtime_error("cylinder construction failed");
+        return own(cylinder.Shape());
+    });
+}
+
 JNIEXPORT jdouble JNICALL Java_dev_voxelbrew_engine_geometry_NativeKernel_volume(JNIEnv* env, jclass, jlong id) {
     return guarded<jdouble>(env, "volume", 0, [&] {
         GProp_GProps properties;

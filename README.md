@@ -3,11 +3,12 @@
 Desktop parametric CAD for mechanical parts and FDM preparation. Project domain:
 **voxelbrew.dev**, Java/Gradle namespace: **dev.voxelbrew**.
 
-The first increment, **M0**, proves a real Java → JNI → Open CASCADE Technology
-(OCCT) geometry path. `engine` owns the kernel; `cli` runs the headless reference
-demo; `gui` is reserved for the later JavaFX milestone. There are exactly these
-three first-party subprojects. No persistence, GUI, export or slicing is claimed
-by M0. The complete backlog is in [the implementation plan](docs/implementation-plan.md).
+**M0 and M1** provide a real Java → JNI → Open CASCADE Technology (OCCT) kernel
+and an editable headless CAD workflow. `engine` owns modeling, history and
+versioned Protobuf `.jcad` persistence; `cli` exposes the same engine operations;
+`gui` is reserved for the later JavaFX milestone. There are exactly these three
+first-party subprojects. The desktop UI, mesh export and printing are later
+increments. The complete backlog is in [the implementation plan](docs/implementation-plan.md).
 
 ## Prerequisites and locked dependencies
 
@@ -63,6 +64,27 @@ exclusions and includes the same tests through `engine:test`.
 
 ## Reference part and numerical contract
 
+To create, save, reopen, edit and roll back the reference part through public CLI
+commands, build the local CLI distribution and run the script (choose a new file
+path each time; the script deliberately refuses to overwrite an existing file):
+
+```powershell
+.\gradlew.bat :cli:installDist
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts\reference-part.ps1 -Destination build\demo\my-part.jcad
+.\cli\build\install\cli\bin\cli.bat inspect build\demo\my-part.jcad --point 10,10,4
+```
+
+```bash
+./gradlew :cli:installDist
+bash scripts/reference-part.sh build/demo/my-part.jcad
+cli/build/install/cli/bin/cli inspect build/demo/my-part.jcad --point 10,10,4
+```
+
+This development distribution includes the matching native libraries and requires
+an installed Java 21 runtime. It is not an M5 installer or bundled-JVM release.
+See [the editable workflow](docs/editable-workflow.md) for all commands, history
+semantics, failure recovery and the persistence contract.
+
 The native experiment builds a dimensioned 60 × 40 mm rectangular wire at (0, 0)
 on XY, creates a planar face, extrudes it along Z, and subtracts an analytic
 cylinder of diameter 4 mm at (10, 10). It tests both 5 mm and 8 mm thickness.
@@ -98,14 +120,15 @@ installation, display server or GPU is required for the headless tests.
 
 ## Evidence and remaining gates
 
-See [M0 acceptance evidence](docs/acceptance/M0.md) for actual commands, toolchain
+See [M0 acceptance evidence](docs/acceptance/M0.md) and
+[M1 acceptance evidence](docs/acceptance/M1.md) for actual commands, toolchain
 versions, observed values, failures investigated and platform results. Test XML
 and HTML are generated under `engine/build/test-results` and
 `engine/build/reports/tests`. CI exercises native builds on Ubuntu and Windows;
 CI configuration is not itself proof of a successful hosted run.
 
-The subsequent milestones cover editable documents/CLI, mesh export/plugins,
-JavaFX interaction, split bodies/slicing/supports, packaging, then persistent
+The subsequent milestones cover mesh export/plugins, JavaFX interaction,
+split bodies/slicing/supports, packaging, then persistent
 feature plugins. macOS, packaged applications, renderer/picking, external
 slicers, and physical printer checks remain unqualified until their own gates.
 

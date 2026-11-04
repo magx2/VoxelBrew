@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="dev.voxelbrew.cli.WorkflowTest" tests="2" skipped="0" failures="0" errors="0" timestamp="2026-11-04T13:03:40.869Z" hostname="Legion" time="9.366">
+  <properties/>
+  <testcase name="referenceWorkflowAcrossFreshProcesses()" classname="dev.voxelbrew.cli.WorkflowTest" time="6.689"/>
+  <testcase name="referenceRepairIsAvailableThroughPublicCommands()" classname="dev.voxelbrew.cli.WorkflowTest" time="2.675"/>
+  <system-out><![CDATA[document=9a3c2b40-79c3-4cd3-b1df-7dc4f49fab9f kernel=7.9.0 units=mm cursor=4
+body=thickness.body output=cut/body volume=19099.469035085127 bounds=0.000000000,0.000000000,0.000000000,60.000000000,40.000000000,8.000000000
+contains=false
+bodyCount=1
+
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

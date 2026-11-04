@@ -3,4 +3,5 @@
 gradlew text eol=lf
 *.bat text eol=crlf
 *.jar binary
+*.jcad binary
 third_party/** -whitespace

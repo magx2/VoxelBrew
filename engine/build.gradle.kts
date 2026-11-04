@@ -1,4 +1,9 @@
-plugins { `java-library` }
+plugins {
+    `java-library`
+    id("com.google.protobuf") version "0.9.5"
+}
+dependencies { implementation("com.google.protobuf:protobuf-java:4.30.2") }
+protobuf { protoc { artifact = "com.google.protobuf:protoc:4.30.2" } }
 
 val windows = System.getProperty("os.name").startsWith("Windows")
 val host = if (windows) "windows-x86_64" else if (System.getProperty("os.name").startsWith("Mac")) "macos-universal" else "linux-x86_64"

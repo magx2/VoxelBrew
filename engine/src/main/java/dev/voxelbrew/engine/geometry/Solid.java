@@ -15,6 +15,13 @@ public final class Solid implements AutoCloseable {
 
     public static String kernelVersion() { return NativeKernel.version(); }
 
+    public static Solid circlePrism(double x, double y, double z, double diameter, double distance) {
+        finite("centerX", x); finite("centerY", y); finite("offsetZ", z); positive("diameter", diameter);
+        finite("distance", distance);
+        if (Math.abs(distance) < 1e-6) { throw new IllegalArgumentException("distance must have magnitude >= 0.000001 mm"); }
+        return new Solid(NativeKernel.circlePrism(x, y, z, diameter, distance));
+    }
+
     /** Extrudes an XY rectangle from z by a signed distance, in mm. */
     public static Solid rectanglePrism(double x, double y, double z, double width, double height, double distance) {
         finite("x", x); finite("y", y); finite("z", z);

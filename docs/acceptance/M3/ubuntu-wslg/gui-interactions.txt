@@ -1,53 +1,4 @@
-
-> Configure project :engine
-Declaring dependencies using multi-string notation has been deprecated. This will fail with an error in Gradle 10. Please use single-string notation instead: "com.google.protobuf:protoc:4.30.2:linux-x86_64@exe". Consult the upgrading guide for further information: https://docs.gradle.org/9.1.0/userguide/upgrading_version_9.html#dependency_multi_string_notation
-
-> Task :engine:protobufDummy UP-TO-DATE
-> Task :engine:extractIncludeProto UP-TO-DATE
-> Task :engine:extractProto UP-TO-DATE
-> Task :engine:generateProto UP-TO-DATE
-> Task :engine:compileJava UP-TO-DATE
-> Task :cli:compileJava UP-TO-DATE
-> Task :cli:processResources NO-SOURCE
-> Task :cli:classes UP-TO-DATE
-> Task :cli:jar UP-TO-DATE
-> Task :engine:processResources UP-TO-DATE
-> Task :engine:classes UP-TO-DATE
-> Task :engine:jar UP-TO-DATE
-> Task :cli:startScripts UP-TO-DATE
-> Task :engine:configureOcct UP-TO-DATE
-> Task :engine:buildOcct UP-TO-DATE
-> Task :engine:configureNative UP-TO-DATE
-> Task :engine:buildNative UP-TO-DATE
-> Task :cli:installDist UP-TO-DATE
-> Task :engine:generateMetadataFileForEnginePublication
-> Task :engine:generatePomFileForEnginePublication
-> Task :engine:publishEnginePublicationToFixtureRepository
-> Task :exporter-plugin:compileJava UP-TO-DATE
-> Task :exporter-plugin:processResources UP-TO-DATE
-> Task :exporter-plugin:classes UP-TO-DATE
-> Task :exporter-plugin:jar UP-TO-DATE
-> Task :engine:buildExporterFixture
-> Task :gui:compileJava
-> Task :gui:processResources
-> Task :gui:classes
-> Task :gui:compileTestJava UP-TO-DATE
-> Task :gui:processTestResources NO-SOURCE
-> Task :gui:testClasses UP-TO-DATE
-
 > Task :gui:test
-
-WorkbenchUiTest STANDARD_ERROR
-    Nov 04, 2026 4:21:35 PM com.sun.javafx.application.PlatformImpl startup
-    WARNING: Unsupported JavaFX configuration: classes were loaded from 'unnamed module @793be5ca'
-
-WorkbenchUiTest > signedExtrusionDragAndEscapeHaveExactUndoSemantics() PASSED
-
-WorkbenchUiTest > fileShortcutsAndUnsavedSaveDiscardCancelProtectDocuments() PASSED
-
-WorkbenchUiTest > fullReferenceWorkflowWithIndependentCliAndExternalExporter() PASSED
-
-WorkbenchUiTest > invalidDimensionsAndBrokenInputRepairStayEditable() PASSED
 
 DocumentControllerTest > previewsCancelWithoutTransactionsAndCommitAsOneUndoStep() PASSED
 
@@ -61,8 +12,16 @@ DocumentControllerTest > brokenDefinitionsClearGeometryAndRemainRepairable() PAS
 
 DocumentControllerTest > editsDuringSaveRemainDirtyAndDoNotChangeTheCapturedFile() PASSED
 
-[Incubating] Problems report is available at: file:///tmp/voxelbrew-m0/build/reports/problems/problems-report.html
+WorkbenchUiTest STANDARD_ERROR
+    Nov 04, 2026 7:08:55 PM com.sun.javafx.application.PlatformImpl startup
+    WARNING: Unsupported JavaFX configuration: classes were loaded from 'unnamed module @34f5090e'
 
-BUILD SUCCESSFUL in 1m 25s
-22 actionable tasks: 7 executed, 15 up-to-date
-Consider enabling configuration cache to speed up this build: https://docs.gradle.org/9.1.0/userguide/configuration_cache_enabling.html
+WorkbenchUiTest > signedExtrusionDragAndEscapeHaveExactUndoSemantics() PASSED
+
+WorkbenchUiTest > fileShortcutsAndUnsavedSaveDiscardCancelProtectDocuments() PASSED
+
+WorkbenchUiTest > fullReferenceWorkflowWithIndependentCliAndExternalExporter() PASSED
+
+WorkbenchUiTest > invalidDimensionsAndBrokenInputRepairStayEditable() PASSED
+
+> Task :gui:check

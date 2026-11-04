@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="dev.voxelbrew.cli.WorkflowTest" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-11-04T14:59:11.606Z" hostname="Legion" time="11.204">
+<testsuite name="dev.voxelbrew.cli.WorkflowTest" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-11-04T15:47:13.328Z" hostname="Legion" time="19.522">
   <properties/>
-  <testcase name="referenceWorkflowAcrossFreshProcesses()" classname="dev.voxelbrew.cli.WorkflowTest" time="4.454"/>
-  <testcase name="publicExportCommandsAndOverwriteGuard()" classname="dev.voxelbrew.cli.WorkflowTest" time="4.017"/>
-  <testcase name="referenceRepairIsAvailableThroughPublicCommands()" classname="dev.voxelbrew.cli.WorkflowTest" time="2.731"/>
-  <system-out><![CDATA[document=0cf32ea8-85af-4e90-98c2-2cfbcba5b553 kernel=7.9.0 units=mm cursor=4
+  <testcase name="referenceWorkflowAcrossFreshProcesses()" classname="dev.voxelbrew.cli.WorkflowTest" time="8.499"/>
+  <testcase name="publicExportCommandsAndOverwriteGuard()" classname="dev.voxelbrew.cli.WorkflowTest" time="7.003"/>
+  <testcase name="referenceRepairIsAvailableThroughPublicCommands()" classname="dev.voxelbrew.cli.WorkflowTest" time="4.018"/>
+  <system-out><![CDATA[document=84d7e45b-7cb4-4942-ba94-f8b673332278 kernel=7.9.0 units=mm cursor=4
 body=thickness.body output=cut/body volume=19099.469035085127 bounds=0.000000000,0.000000000,0.000000000,60.000000000,40.000000000,8.000000000
 contains=false
 bodyCount=1

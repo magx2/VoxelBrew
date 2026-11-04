@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="dev.voxelbrew.engine.export.ExportTest" tests="5" skipped="0" failures="0" errors="0" timestamp="2026-11-04T14:59:24.603Z" hostname="Legion" time="0.431">
+<testsuite name="dev.voxelbrew.engine.export.ExportTest" tests="5" skipped="0" failures="0" errors="0" timestamp="2026-11-04T15:47:35.943Z" hostname="Legion" time="0.554">
   <properties/>
-  <testcase name="stlIsIndependentlyReadAndPlacementAppliedExactlyOnce()" classname="dev.voxelbrew.engine.export.ExportTest" time="0.138"/>
-  <testcase name="invalidMeshesOptionsAndIncompleteDocumentsAreRejected()" classname="dev.voxelbrew.engine.export.ExportTest" time="0.016"/>
-  <testcase name="independentConsumerLoadsAndFailuresPreserveDestination()" classname="dev.voxelbrew.engine.export.ExportTest" time="0.045"/>
-  <testcase name="tessellationIsDetachedClosedAndDoesNotModifySource()" classname="dev.voxelbrew.engine.export.ExportTest" time="0.049"/>
-  <testcase name="threeMfPackageHasSharedResourcesUnitsAndIndependentInstanceTransforms()" classname="dev.voxelbrew.engine.export.ExportTest" time="0.179"/>
+  <testcase name="stlIsIndependentlyReadAndPlacementAppliedExactlyOnce()" classname="dev.voxelbrew.engine.export.ExportTest" time="0.231"/>
+  <testcase name="invalidMeshesOptionsAndIncompleteDocumentsAreRejected()" classname="dev.voxelbrew.engine.export.ExportTest" time="0.032"/>
+  <testcase name="independentConsumerLoadsAndFailuresPreserveDestination()" classname="dev.voxelbrew.engine.export.ExportTest" time="0.047"/>
+  <testcase name="tessellationIsDetachedClosedAndDoesNotModifySource()" classname="dev.voxelbrew.engine.export.ExportTest" time="0.04"/>
+  <testcase name="threeMfPackageHasSharedResourcesUnitsAndIndependentInstanceTransforms()" classname="dev.voxelbrew.engine.export.ExportTest" time="0.199"/>
   <system-out><![CDATA[]]></system-out>
   <system-err><![CDATA[]]></system-err>
 </testsuite>

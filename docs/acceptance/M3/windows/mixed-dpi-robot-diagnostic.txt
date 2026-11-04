@@ -1,0 +1,115 @@
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/9.1.0/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build
+
+> Configure project :engine
+Declaring dependencies using multi-string notation has been deprecated. This will fail with an error in Gradle 10. Please use single-string notation instead: "com.google.protobuf:protoc:4.30.2:windows-x86_64@exe". Consult the upgrading guide for further information: https://docs.gradle.org/9.1.0/userguide/upgrading_version_9.html#dependency_multi_string_notation
+
+> Task :engine:protobufDummy UP-TO-DATE
+> Task :engine:extractIncludeProto UP-TO-DATE
+> Task :engine:extractProto UP-TO-DATE
+> Task :engine:generateProto UP-TO-DATE
+> Task :engine:compileJava UP-TO-DATE
+> Task :cli:compileJava UP-TO-DATE
+> Task :cli:processResources NO-SOURCE
+> Task :cli:classes UP-TO-DATE
+> Task :cli:jar UP-TO-DATE
+> Task :engine:processResources UP-TO-DATE
+> Task :engine:classes UP-TO-DATE
+> Task :engine:jar UP-TO-DATE
+> Task :cli:startScripts UP-TO-DATE
+> Task :engine:configureOcct UP-TO-DATE
+> Task :engine:buildOcct UP-TO-DATE
+> Task :engine:configureNative UP-TO-DATE
+> Task :engine:buildNative UP-TO-DATE
+> Task :cli:installDist UP-TO-DATE
+> Task :engine:generateMetadataFileForEnginePublication
+> Task :engine:generatePomFileForEnginePublication
+> Task :engine:publishEnginePublicationToFixtureRepository
+> Task :exporter-plugin:compileJava UP-TO-DATE
+> Task :exporter-plugin:processResources UP-TO-DATE
+> Task :exporter-plugin:classes UP-TO-DATE
+> Task :exporter-plugin:jar UP-TO-DATE
+> Task :engine:buildExporterFixture
+> Task :gui:compileJava UP-TO-DATE
+> Task :gui:processResources UP-TO-DATE
+> Task :gui:classes UP-TO-DATE
+> Task :gui:compileTestJava
+> Task :gui:processTestResources NO-SOURCE
+> Task :gui:testClasses
+
+> Task :gui:test
+
+WorkbenchUiTest STANDARD_ERROR
+    lis 04, 2026 7:02:11 PM com.sun.javafx.application.PlatformImpl startup
+    WARNING: Unsupported JavaFX configuration: classes were loaded from 'unnamed module @4c1909a3'
+
+WorkbenchUiTest > signedExtrusionDragAndEscapeHaveExactUndoSemantics() STANDARD_OUT
+    CLICK rectangle focused=true bounds=BoundingBox [minX:422.00000015894574, minY:109.99999999999999, minZ:0.0, width:88.0, height:31.000000000000014, depth:0.0, maxX:510.00000015894574, maxY:141.0, maxZ:0.0] scale=1.5
+    POINTER 466.4244079589844,125.66667175292969
+    PRESS 466.0,125.33333333333333 /LabeledText#null/Button#rectangle/HBox#null/ToolBar#null/VBox#null/Workbench#workbench
+    RELEASE 466.0,125.33333333333333 /LabeledText#null/Button#rectangle/HBox#null/ToolBar#null/VBox#null/Workbench#workbench
+    PRESS 535.3333333333334,616.0 /SubScene#null/Viewport#viewport/BorderPane#null/Content#null/SplitPane#null/Workbench#workbench
+    RELEASE 535.3333333333334,616.0 /SubScene#null/Viewport#viewport/BorderPane#null/Content#null/SplitPane#null/Workbench#workbench
+    PRESS 864.0,396.0 /SubScene#null/Viewport#viewport/BorderPane#null/Content#null/SplitPane#null/Workbench#workbench
+    RELEASE 864.0,396.0 /SubScene#null/Viewport#viewport/BorderPane#null/Content#null/SplitPane#null/Workbench#workbench
+    CLICK sketch-x focused=true bounds=BoundingBox [minX:1134.0000001589456, minY:250.66666666666669, minZ:0.0, width:280.6666564941406, height:23.333333969116154, depth:0.0, maxX:1414.6666566530862, maxY:274.00000063578284, maxZ:0.0] scale=1.5
+    POINTER 1274.5821533203125,262.3333435058594
+    PRESS 1274.0,262.0 /Pane#null/TextField#sketch-x/VBox#null/#null/#null/ScrollPane#null/VBox#null/Content#null/SplitPane#null/Workbench#workbench
+    RELEASE 1274.0,262.0 /Pane#null/TextField#sketch-x/VBox#null/#null/#null/ScrollPane#null/VBox#null/Content#null/SplitPane#null/Workbench#workbench
+    CLICK sketch-y focused=true bounds=BoundingBox [minX:1134.0000001589456, minY:308.0, minZ:0.0, width:280.6666564941406, height:23.33333396911621, depth:0.0, maxX:1414.6666566530862, maxY:331.3333339691162, maxZ:0.0] scale=1.5
+    POINTER 1274.5821533203125,319.66668701171875
+    PRESS 1274.0,319.3333333333333 /Pane#null/TextField#sketch-y/VBox#null/#null/#null/ScrollPane#null/VBox#null/Content#null/SplitPane#null/Workbench#workbench
+    RELEASE 1274.0,319.3333333333333 /Pane#null/TextField#sketch-y/VBox#null/#null/#null/ScrollPane#null/VBox#null/Content#null/SplitPane#null/Workbench#workbench
+    CLICK sketch-width focused=true bounds=BoundingBox [minX:1134.0000001589456, minY:365.33333333333337, minZ:0.0, width:280.6666564941406, height:23.33333396911621, depth:0.0, maxX:1414.6666566530862, maxY:388.6666673024496, maxZ:0.0] scale=1.5
+    POINTER 1274.5821533203125,377.66668701171875
+    PRESS 1274.0,377.3333333333333 /Pane#null/TextField#sketch-width/VBox#null/#null/#null/ScrollPane#null/VBox#null/Content#null/SplitPane#null/Workbench#workbench
+    RELEASE 1274.0,377.3333333333333 /Pane#null/TextField#sketch-width/VBox#null/#null/#null/ScrollPane#null/VBox#null/Content#null/SplitPane#null/Workbench#workbench
+    CLICK sketch-height focused=true bounds=BoundingBox [minX:1134.0000001589456, minY:422.6666666666667, minZ:0.0, width:280.6666564941406, height:23.33333396911621, depth:0.0, maxX:1414.6666566530862, maxY:446.0000006357829, maxZ:0.0] scale=1.5
+    POINTER 1274.5821533203125,434.33331298828125
+    PRESS 1274.0,434.0 /Pane#null/TextField#sketch-height/VBox#null/#null/#null/ScrollPane#null/VBox#null/Content#null/SplitPane#null/Workbench#workbench
+    RELEASE 1274.0,434.0 /Pane#null/TextField#sketch-height/VBox#null/#null/#null/ScrollPane#null/VBox#null/Content#null/SplitPane#null/Workbench#workbench
+    CLICK sketch-offset focused=true bounds=BoundingBox [minX:1134.0000001589456, minY:480.0, minZ:0.0, width:280.6666564941406, height:23.33333396911621, depth:0.0, maxX:1414.6666566530862, maxY:503.3333339691162, maxZ:0.0] scale=1.5
+    POINTER 1274.5821533203125,491.66668701171875
+    PRESS 1274.0,491.3333333333333 /Pane#null/TextField#sketch-offset/VBox#null/#null/#null/ScrollPane#null/VBox#null/Content#null/SplitPane#null/Workbench#workbench
+    RELEASE 1274.0,491.3333333333333 /Pane#null/TextField#sketch-offset/VBox#null/#null/#null/ScrollPane#null/VBox#null/Content#null/SplitPane#null/Workbench#workbench
+    CLICK finish-sketch focused=true bounds=BoundingBox [minX:1132.6666668256123, minY:772.0, minZ:0.0, width:95.33333587646484, height:31.0, depth:0.0, maxX:1228.0000027020772, maxY:803.0, maxZ:0.0] scale=1.5
+    POINTER 1180.5638427734375,787.6666870117188
+    PRESS 1180.0,787.3333333333334 /LabeledText#null/Button#finish-sketch/HBox#null/VBox#null/Content#null/SplitPane#null/Workbench#workbench
+    RELEASE 1180.0,787.3333333333334 /LabeledText#null/Button#finish-sketch/HBox#null/VBox#null/Content#null/SplitPane#null/Workbench#workbench
+    CLICK extrude focused=true bounds=BoundingBox [minX:590.0000001589457, minY:109.99999999999999, minZ:0.0, width:75.33333587646484, height:31.000000000000014, depth:0.0, maxX:665.3333360354105, maxY:141.0, maxZ:0.0] scale=1.5
+    POINTER 627.7892456054688,125.66667175292969
+    PRESS 627.3333333333334,125.33333333333333 /LabeledText#null/Button#extrude/HBox#null/ToolBar#null/VBox#null/Workbench#workbench
+    RELEASE 627.3333333333334,125.33333333333333 /LabeledText#null/Button#extrude/HBox#null/ToolBar#null/VBox#null/Workbench#workbench
+    CLICK extrude-distance focused=true bounds=BoundingBox [minX:1132.6000001827874, minY:249.26666669050857, minZ:0.0, width:283.4666748046875, height:26.133333206176786, depth:0.0, maxX:1416.066674987475, maxY:275.39999989668536, maxZ:0.0] scale=1.5
+    POINTER 1274.5821533203125,262.3333435058594
+    PRESS 1274.0,262.0 /Pane#null/TextField#extrude-distance/VBox#null/#null/#null/ScrollPane#null/VBox#null/Content#null/SplitPane#null/Workbench#workbench
+    RELEASE 1274.0,262.0 /Pane#null/TextField#extrude-distance/VBox#null/#null/#null/ScrollPane#null/VBox#null/Content#null/SplitPane#null/Workbench#workbench
+    CLICK undo focused=true bounds=BoundingBox [minX:297.33333349227905, minY:109.99999999999999, minZ:0.0, width:52.0, height:31.000000000000014, depth:0.0, maxX:349.33333349227905, maxY:141.0, maxZ:0.0] scale=1.5
+    POINTER 323.7298889160156,125.66667175292969
+    PRESS 323.3333333333333,125.33333333333333 /LabeledText#null/Button#undo/HBox#null/ToolBar#null/VBox#null/Workbench#workbench
+    RELEASE 323.3333333333333,125.33333333333333 /LabeledText#null/Button#undo/HBox#null/ToolBar#null/VBox#null/Workbench#workbench
+    CLICK history-0 focused=true bounds=BoundingBox [minX:44.66666682561239, minY:854.6666666666666, minZ:0.0, width:89.33333587646482, height:32.33333206176758, depth:0.0, maxX:134.0000027020772, maxY:886.9999987284342, maxZ:0.0] scale=1.5
+    POINTER 89.5,870.5
+    PRESS 59.333333333333336,909.3333333333334 /Slider#history-cursor/VBox#null/VBox#null/Workbench#workbench
+    RELEASE 59.333333333333336,909.3333333333334 /Slider#history-cursor/VBox#null/VBox#null/Workbench#workbench
+
+WorkbenchUiTest > signedExtrusionDragAndEscapeHaveExactUndoSemantics() FAILED
+    org.opentest4j.AssertionFailedError at WorkbenchUiTest.java:151
+
+
+1 test completed, 1 failed
+> Task :gui:test FAILED
+
+[Incubating] Problems report is available at: file:///D:/repos/VoxelBrew/build/reports/problems/problems-report.html
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':gui:test'.
+> There were failing tests. See the report at: file:///D:/repos/VoxelBrew/gui/build/reports/tests/test/index.html
+
+* Try:
+> Run with --scan to generate a Build Scan (Powered by Develocity).
+
+BUILD FAILED in 25s
+22 actionable tasks: 6 executed, 16 up-to-date

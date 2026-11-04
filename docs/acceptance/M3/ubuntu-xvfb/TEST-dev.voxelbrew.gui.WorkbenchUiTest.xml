@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="dev.voxelbrew.gui.WorkbenchUiTest" tests="4" skipped="0" failures="0" errors="0" timestamp="2026-11-04T15:24:14.160Z" hostname="Legion" time="83.715">
+<testsuite name="dev.voxelbrew.gui.WorkbenchUiTest" tests="4" skipped="0" failures="0" errors="0" timestamp="2026-11-04T18:06:32.537Z" hostname="Legion" time="81.794">
   <properties/>
-  <testcase name="signedExtrusionDragAndEscapeHaveExactUndoSemantics()" classname="dev.voxelbrew.gui.WorkbenchUiTest" time="14.894"/>
-  <testcase name="fileShortcutsAndUnsavedSaveDiscardCancelProtectDocuments()" classname="dev.voxelbrew.gui.WorkbenchUiTest" time="16.02"/>
-  <testcase name="fullReferenceWorkflowWithIndependentCliAndExternalExporter()" classname="dev.voxelbrew.gui.WorkbenchUiTest" time="37.015"/>
-  <testcase name="invalidDimensionsAndBrokenInputRepairStayEditable()" classname="dev.voxelbrew.gui.WorkbenchUiTest" time="15.786"/>
+  <testcase name="signedExtrusionDragAndEscapeHaveExactUndoSemantics()" classname="dev.voxelbrew.gui.WorkbenchUiTest" time="11.962"/>
+  <testcase name="fileShortcutsAndUnsavedSaveDiscardCancelProtectDocuments()" classname="dev.voxelbrew.gui.WorkbenchUiTest" time="18.877"/>
+  <testcase name="fullReferenceWorkflowWithIndependentCliAndExternalExporter()" classname="dev.voxelbrew.gui.WorkbenchUiTest" time="35.036"/>
+  <testcase name="invalidDimensionsAndBrokenInputRepairStayEditable()" classname="dev.voxelbrew.gui.WorkbenchUiTest" time="15.919"/>
   <system-out><![CDATA[]]></system-out>
-  <system-err><![CDATA[Nov 04, 2026 4:24:13 PM com.sun.javafx.application.PlatformImpl startup
+  <system-err><![CDATA[Nov 04, 2026 7:06:32 PM com.sun.javafx.application.PlatformImpl startup
 WARNING: Unsupported JavaFX configuration: classes were loaded from 'unnamed module @34f5090e'
 ]]></system-err>
 </testsuite>

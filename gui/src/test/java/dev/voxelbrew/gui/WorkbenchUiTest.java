@@ -70,9 +70,11 @@ class WorkbenchUiTest {
                                     workbench,
                                     Math.min(1400, screen.getWidth() - 60),
                                     Math.min(900, screen.getHeight() - 80)));
-                    stage.setX(screen.getMinX() + 20);
-                    stage.setY(screen.getMinY() + 20);
                     stage.show();
+                    // JavaFX 21's Windows Robot converts coordinates using the nearest monitor
+                    // center. Keep the fixture away from edges shared with a different DPI screen.
+                    stage.setX(screen.getMinX() + (screen.getWidth() - stage.getWidth()) / 2);
+                    stage.setY(screen.getMinY() + (screen.getHeight() - stage.getHeight()) / 2);
                     stage.toFront();
                     stage.requestFocus();
                     return null;

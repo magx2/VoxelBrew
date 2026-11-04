@@ -4,6 +4,21 @@ Daemon will be stopped at the end of the build
 > Configure project :engine
 Declaring dependencies using multi-string notation has been deprecated. This will fail with an error in Gradle 10. Please use single-string notation instead: "com.google.protobuf:protoc:4.30.2:windows-x86_64@exe". Consult the upgrading guide for further information: https://docs.gradle.org/9.1.0/userguide/upgrading_version_9.html#dependency_multi_string_notation
 
+> Task :createFormatterEnvironment UP-TO-DATE
+> Task :installClangFormat UP-TO-DATE
+> Task :spotlessCpp UP-TO-DATE
+> Task :spotlessCppCheck UP-TO-DATE
+> Task :spotlessJava UP-TO-DATE
+> Task :spotlessJavaCheck UP-TO-DATE
+> Task :spotlessKotlinGradle UP-TO-DATE
+> Task :spotlessKotlinGradleCheck UP-TO-DATE
+> Task :spotlessProtobuf UP-TO-DATE
+> Task :spotlessProtobufCheck UP-TO-DATE
+> Task :spotlessText UP-TO-DATE
+> Task :spotlessTextCheck UP-TO-DATE
+> Task :spotlessWebAndDocs UP-TO-DATE
+> Task :spotlessWebAndDocsCheck UP-TO-DATE
+> Task :spotlessCheck UP-TO-DATE
 > Task :engine:protobufDummy UP-TO-DATE
 > Task :engine:extractIncludeProto UP-TO-DATE
 > Task :engine:extractProto UP-TO-DATE
@@ -41,24 +56,29 @@ Declaring dependencies using multi-string notation has been deprecated. This wil
 > Task :engine:testClasses UP-TO-DATE
 > Task :engine:test UP-TO-DATE
 > Task :engine:check UP-TO-DATE
-> Task :cli:startScripts UP-TO-DATE
-> Task :cli:installDist UP-TO-DATE
 > Task :gui:compileJava UP-TO-DATE
 > Task :gui:processResources UP-TO-DATE
 > Task :gui:classes UP-TO-DATE
+> Task :gui:jar UP-TO-DATE
+> Task :cli:startScripts UP-TO-DATE
+> Task :cli:installDist UP-TO-DATE
 > Task :gui:compileTestJava
 > Task :gui:processTestResources NO-SOURCE
 > Task :gui:testClasses
 
-> Task :gui:test FAILED
+> Task :gui:test
 
 WorkbenchUiTest STANDARD_ERROR
-    lis 04, 2026 4:33:53 PM com.sun.javafx.application.PlatformImpl startup
+    lis 04, 2026 7:06:14 PM com.sun.javafx.application.PlatformImpl startup
     WARNING: Unsupported JavaFX configuration: classes were loaded from 'unnamed module @36916eb0'
 
-WorkbenchUiTest > initializationError FAILED
-    java.util.concurrent.ExecutionException at WorkbenchUiTest.java:42
-        Caused by: org.opentest4j.AssertionFailedError at WorkbenchUiTest.java:31
+WorkbenchUiTest > signedExtrusionDragAndEscapeHaveExactUndoSemantics() PASSED
+
+WorkbenchUiTest > fileShortcutsAndUnsavedSaveDiscardCancelProtectDocuments() PASSED
+
+WorkbenchUiTest > fullReferenceWorkflowWithIndependentCliAndExternalExporter() PASSED
+
+WorkbenchUiTest > invalidDimensionsAndBrokenInputRepairStayEditable() PASSED
 
 DocumentControllerTest > previewsCancelWithoutTransactionsAndCommitAsOneUndoStep() PASSED
 
@@ -72,18 +92,13 @@ DocumentControllerTest > brokenDefinitionsClearGeometryAndRemainRepairable() PAS
 
 DocumentControllerTest > editsDuringSaveRemainDirtyAndDoNotChangeTheCapturedFile() PASSED
 
+> Task :gui:check
+> Task :check
+> Task :gui:startScripts UP-TO-DATE
+> Task :gui:installDist UP-TO-DATE
+
 [Incubating] Problems report is available at: file:///D:/repos/VoxelBrew/build/reports/problems/problems-report.html
 
-7 tests completed, 1 failed
-
-FAILURE: Build failed with an exception.
-
-* What went wrong:
-Execution failed for task ':gui:test'.
-> There were failing tests. See the report at: file:///D:/repos/VoxelBrew/gui/build/reports/tests/test/index.html
-
-* Try:
-> Run with --scan to generate a Build Scan (Powered by Develocity).
-
-BUILD FAILED in 14s
-28 actionable tasks: 6 executed, 22 up-to-date
+BUILD SUCCESSFUL in 1m 50s
+45 actionable tasks: 6 executed, 39 up-to-date
+Consider enabling configuration cache to speed up this build: https://docs.gradle.org/9.1.0/userguide/configuration_cache_enabling.html

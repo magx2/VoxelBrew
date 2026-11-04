@@ -1,0 +1,35 @@
+lis 04, 2026 7:08:14 PM com.sun.javafx.application.PlatformImpl startup
+WARNING: Unsupported JavaFX configuration: classes were loaded from 'unnamed module @44275852'
+Prism pipeline init order: d3d sw
+Using Double Precision Marlin Rasterizer
+Using dirty region optimizations
+Not using texture mask for primitives
+Not forcing power of 2 sizes for textures
+Using hardware CLAMP_TO_ZERO mode
+Opting in for HiDPI pixel scaling
+Prism pipeline name = com.sun.prism.d3d.D3DPipeline
+Loading D3D native library ...
+	succeeded.
+D3DPipelineManager: Created D3D9Ex device
+Direct3D initialization succeeded
+(X) Got class = class com.sun.prism.d3d.D3DPipeline
+Initialized prism pipeline: com.sun.prism.d3d.D3DPipeline
+Maximum supported texture size: 16384
+Maximum texture size clamped to 4096
+OS Information:
+	Windows version 10.0 build 26200
+D3D Driver Information:
+	NVIDIA GeForce RTX 3060 Laptop GPU
+	\\.\DISPLAY77
+	Driver nvldumdx.dll, version 32.0.15.9186
+	Pixel Shader version 3.0
+	Device : ven_10DE, dev_2560, subsys_3A8117AA
+	Max Multisamples supported: 4
+ vsync: true vpipe: true
+new alphas with length = 4096
+new alphas with length = 8192
+new alphas with length = 24576
+PPSRenderer: scenario.effect - createShader: LinearConvolveShadow_16
+PPSRenderer: scenario.effect - createShader: LinearConvolveShadow_12
+GUI_SMOKE_PASS JavaFX 3D rendered native reference part
+QuantumRenderer: shutdown

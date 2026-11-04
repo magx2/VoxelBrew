@@ -1,28 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="dev.voxelbrew.gui.WorkbenchUiTest" tests="1" skipped="0" failures="1" errors="0" timestamp="2026-11-04T15:33:54.031Z" hostname="LEGION" time="0.002">
+<testsuite name="dev.voxelbrew.gui.WorkbenchUiTest" tests="4" skipped="0" failures="0" errors="0" timestamp="2026-11-04T18:06:14.701Z" hostname="LEGION" time="95.053">
   <properties/>
-  <testcase name="initializationError" classname="dev.voxelbrew.gui.WorkbenchUiTest" time="0.002">
-    <failure message="java.util.concurrent.ExecutionException: org.opentest4j.AssertionFailedError: Real JavaFX 3D is required; use WSLg or Xvfb/Mesa ==&gt; expected: &lt;true&gt; but was: &lt;false&gt;" type="java.util.concurrent.ExecutionException">java.util.concurrent.ExecutionException: org.opentest4j.AssertionFailedError: Real JavaFX 3D is required; use WSLg or Xvfb/Mesa ==&gt; expected: &lt;true&gt; but was: &lt;false&gt;
-	at java.base/java.util.concurrent.FutureTask.report(FutureTask.java:122)
-	at java.base/java.util.concurrent.FutureTask.get(FutureTask.java:205)
-	at dev.voxelbrew.gui.WorkbenchUiTest.fx(WorkbenchUiTest.java:42)
-	at dev.voxelbrew.gui.WorkbenchUiTest.toolkit(WorkbenchUiTest.java:31)
-	at java.base/java.lang.reflect.Method.invoke(Method.java:580)
-	at java.base/java.util.ArrayList.forEach(ArrayList.java:1596)
-Caused by: org.opentest4j.AssertionFailedError: Real JavaFX 3D is required; use WSLg or Xvfb/Mesa ==&gt; expected: &lt;true&gt; but was: &lt;false&gt;
-	at app//dev.voxelbrew.gui.WorkbenchUiTest.lambda$toolkit$1(WorkbenchUiTest.java:31)
-	at java.base@21.0.6/java.util.concurrent.FutureTask.run(FutureTask.java:317)
-	at app//com.sun.javafx.application.PlatformImpl.lambda$runLater$10(PlatformImpl.java:456)
-	at java.base@21.0.6/java.security.AccessController.doPrivileged(AccessController.java:400)
-	at app//com.sun.javafx.application.PlatformImpl.lambda$runLater$11(PlatformImpl.java:455)
-	at app//com.sun.glass.ui.InvokeLaterDispatcher$Future.run(InvokeLaterDispatcher.java:95)
-	at app//com.sun.glass.ui.win.WinApplication._runLoop(Native Method)
-	at app//com.sun.glass.ui.win.WinApplication.lambda$runLoop$3(WinApplication.java:190)
-	at java.base@21.0.6/java.lang.Thread.run(Thread.java:1583)
-</failure>
-  </testcase>
+  <testcase name="signedExtrusionDragAndEscapeHaveExactUndoSemantics()" classname="dev.voxelbrew.gui.WorkbenchUiTest" time="14.422"/>
+  <testcase name="fileShortcutsAndUnsavedSaveDiscardCancelProtectDocuments()" classname="dev.voxelbrew.gui.WorkbenchUiTest" time="19.92"/>
+  <testcase name="fullReferenceWorkflowWithIndependentCliAndExternalExporter()" classname="dev.voxelbrew.gui.WorkbenchUiTest" time="42.927"/>
+  <testcase name="invalidDimensionsAndBrokenInputRepairStayEditable()" classname="dev.voxelbrew.gui.WorkbenchUiTest" time="17.782"/>
   <system-out><![CDATA[]]></system-out>
-  <system-err><![CDATA[lis 04, 2026 4:33:53 PM com.sun.javafx.application.PlatformImpl startup
+  <system-err><![CDATA[lis 04, 2026 7:06:14 PM com.sun.javafx.application.PlatformImpl startup
 WARNING: Unsupported JavaFX configuration: classes were loaded from 'unnamed module @36916eb0'
 ]]></system-err>
 </testsuite>

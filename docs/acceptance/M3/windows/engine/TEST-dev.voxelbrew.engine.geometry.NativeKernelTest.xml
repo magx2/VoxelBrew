@@ -1,13 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="dev.voxelbrew.engine.geometry.NativeKernelTest" tests="7" skipped="0" failures="0" errors="0" timestamp="2026-11-04T14:58:48.928Z" hostname="LEGION" time="0.72">
+<testsuite name="dev.voxelbrew.engine.geometry.NativeKernelTest" tests="7" skipped="0" failures="0" errors="0" timestamp="2026-11-04T15:47:22.534Z" hostname="LEGION" time="0.994">
   <properties/>
-  <testcase name="nativeFailuresBecomeJavaDiagnostics()" classname="dev.voxelbrew.engine.geometry.NativeKernelTest" time="0.028"/>
-  <testcase name="[1] 5.0" classname="dev.voxelbrew.engine.geometry.NativeKernelTest" time="0.064"/>
-  <testcase name="[2] 8.0" classname="dev.voxelbrew.engine.geometry.NativeKernelTest" time="0.048"/>
-  <testcase name="concurrentDocumentsReleaseIndependentNativeOwners()" classname="dev.voxelbrew.engine.geometry.NativeKernelTest" time="0.459"/>
-  <testcase name="offsetAndSignedExtrusion()" classname="dev.voxelbrew.engine.geometry.NativeKernelTest" time="0.02"/>
-  <testcase name="resultSurvivesSourceCloseAndCloseIsIdempotent()" classname="dev.voxelbrew.engine.geometry.NativeKernelTest" time="0.038"/>
-  <testcase name="invalidDimensionsAreRejectedBeforeAllocating()" classname="dev.voxelbrew.engine.geometry.NativeKernelTest" time="0.034"/>
+  <testcase name="nativeFailuresBecomeJavaDiagnostics()" classname="dev.voxelbrew.engine.geometry.NativeKernelTest" time="0.033"/>
+  <testcase name="[1] 5.0" classname="dev.voxelbrew.engine.geometry.NativeKernelTest" time="0.079"/>
+  <testcase name="[2] 8.0" classname="dev.voxelbrew.engine.geometry.NativeKernelTest" time="0.058"/>
+  <testcase name="concurrentDocumentsReleaseIndependentNativeOwners()" classname="dev.voxelbrew.engine.geometry.NativeKernelTest" time="0.678"/>
+  <testcase name="offsetAndSignedExtrusion()" classname="dev.voxelbrew.engine.geometry.NativeKernelTest" time="0.025"/>
+  <testcase name="resultSurvivesSourceCloseAndCloseIsIdempotent()" classname="dev.voxelbrew.engine.geometry.NativeKernelTest" time="0.045"/>
+  <testcase name="invalidDimensionsAreRejectedBeforeAllocating()" classname="dev.voxelbrew.engine.geometry.NativeKernelTest" time="0.042"/>
   <system-out><![CDATA[OCCT 7.9.0 thickness=5.0 mm volume=11937.168146928205 mm^3 expected=11937.168146928205 bounds=Bounds[minX=0.0, minY=0.0, minZ=0.0, maxX=60.0, maxY=40.0, maxZ=5.0]
 OCCT 7.9.0 thickness=8.0 mm volume=19099.469035085127 mm^3 expected=19099.469035085127 bounds=Bounds[minX=0.0, minY=0.0, minZ=0.0, maxX=60.0, maxY=40.0, maxZ=8.0]
 ]]></system-out>

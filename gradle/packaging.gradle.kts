@@ -83,7 +83,7 @@ val packageCheck by
         group = "verification"
         description = "Exercise the packaged launcher without JAVA_HOME or Java on PATH."
         dependsOn(appImage, ":engine:buildExporterFixture")
-        if (project.name == "gui") mustRunAfter("test")
+        if (project.name == "gui") mustRunAfter("e2eTest")
         commandLine(
             if (packageWindows) "python" else "python3",
             rootProject.file("scripts/check-package.py").absolutePath,
@@ -94,7 +94,7 @@ val packageCheck by
         )
     }
 
-tasks.named("check") { dependsOn(packageCheck) }
+tasks.named("platformCheck") { dependsOn(packageCheck) }
 
 tasks.register<Zip>("packageZip") {
     group = "distribution"

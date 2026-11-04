@@ -12,6 +12,6 @@
   still requires Java 21 and must not be described as a bundled-JVM installer.
 - Keep `scripts/reference-part.ps1` and `scripts/reference-part.sh` equivalent.
   Use a fresh destination for demos; preserve their overwrite protection.
-- Use `:cli:test` for focused feedback and the full root check for milestone gates.
+- Use `:cli:e2eTest` for fresh-process workflow checks and the full root check for milestone gates.
   Changes to launchers, native loading, or process invocation need Windows and
   Ubuntu checks. Use argument lists for external processes, not shell interpolation.

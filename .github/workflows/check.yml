@@ -1,15 +1,12 @@
-name: Native CAD check
+name: CAD check
 on: [push, pull_request]
 permissions:
   contents: read
 jobs:
-  check:
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-24.04, windows-2022, macos-15-intel]
-    runs-on: ${{ matrix.os }}
-    timeout-minutes: 75
+  unit:
+    name: Unit tests and formatting (Ubuntu)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
@@ -23,79 +20,53 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Formatting check
-        shell: bash
-        run: ./gradlew spotlessCheck
-      - name: Cache pinned OCCT compilation
-        id: occt-cache
-        uses: actions/cache/restore@v4
-        with:
-          path: |
-            .tools/OCCT-7_9_0
-            engine/build/native/occt
-            engine/build/native/occt-install
-          key: occt-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('scripts/native-versions.properties') }}
-      - name: Bootstrap Ubuntu
-        if: runner.os == 'Linux'
-        run: bash scripts/bootstrap-native.sh
-      - name: Bootstrap Windows
-        if: runner.os == 'Windows'
-        shell: pwsh
-        run: ./scripts/bootstrap-native.ps1
-      - name: Bootstrap macOS (Xcode 16.4)
-        if: runner.os == 'macOS'
-        run: |
-          sudo xcode-select -s /Applications/Xcode_16.4.app
-          clang --version
-          bash scripts/bootstrap-native.sh
-          bash scripts/bootstrap-slicer-macos.sh
-          echo "VOXELBREW_SLICER=$GITHUB_WORKSPACE/.tools/PrusaSlicer-2.7.2/PrusaSlicer.app/Contents/MacOS/PrusaSlicer" >> "$GITHUB_ENV"
-      - name: Install pinned slicer (Ubuntu)
-        if: runner.os == 'Linux'
-        run: bash scripts/bootstrap-slicer.sh
-      - name: Install pinned slicer (Windows)
-        if: runner.os == 'Windows'
-        shell: pwsh
-        run: ./scripts/bootstrap-slicer.ps1
-      - name: Full check (Ubuntu)
-        if: runner.os == 'Linux'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y xvfb xauth libgtk-3-0t64 libgl1-mesa-dri
-          xvfb-run -a -s '-screen 0 1600x1000x24' env LIBGL_ALWAYS_SOFTWARE=1 ./gradlew check
-      - name: Full check (Windows, v142 toolchain)
-        if: runner.os == 'Windows'
-        shell: pwsh
-        run: ./gradlew.bat check '-PvsGenerator=Visual Studio 17 2022'
-      - name: Full check (macOS)
-        if: runner.os == 'macOS'
-        run: ./gradlew check
-      - name: Archive app images
-        shell: bash
-        run: ./gradlew :cli:packageZip :gui:packageZip ${{ runner.os == 'Windows' && '''-PvsGenerator=Visual Studio 17 2022''' || '' }}
-      - name: Retain successful OCCT compilation after later failures
-        if: ${{ always() && !cancelled() && steps.occt-cache.outputs.cache-hit != 'true' && hashFiles('engine/build/native/bridge/CMakeCache.txt') != '' }}
-        uses: actions/cache/save@v4
-        with:
-          path: |
-            .tools/OCCT-7_9_0
-            engine/build/native/occt
-            engine/build/native/occt-install
-          key: ${{ steps.occt-cache.outputs.cache-primary-key }}
+      - name: Unit tests and formatting
+        run: ./gradlew spotlessCheck test
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: check-${{ matrix.os }}
+          name: unit-tests
           path: |
             **/build/reports/
-            **/build/test-results/
-            gui/build/ui-artifacts/
-            engine/build/printing-artifacts/
-            cli/build/package-artifacts/
-            gui/build/package-artifacts/
-      - uses: actions/upload-artifact@v4
-        with:
-          name: app-images-${{ matrix.os }}
-          path: |
-            cli/build/distributions/VoxelBrewCLI-*.zip
-            gui/build/distributions/VoxelBrew-*.zip
+            **/build/test-results/test/
+  integration:
+    name: Integration tests
+    uses: ./.github/workflows/native-check.yml
+    with:
+      os: ubuntu-24.04
+      suite: integrationTest
+      artifact-name: integration-ubuntu-24.04
+  platform:
+    name: Platform checks
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-24.04
+            suite: platformCheck
+          - os: windows-2022
+            suite: platformCheck
+          - os: macos-15-intel
+            suite: headlessPlatformCheck
+    uses: ./.github/workflows/native-check.yml
+    with:
+      os: ${{ matrix.os }}
+      suite: ${{ matrix.suite }}
+      artifact-name: platform-${{ matrix.os }}
+      archive: true
+  full-check:
+    name: Full check
+    if: always()
+    needs: [unit, integration, platform]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Require every suite and platform to pass
+        env:
+          UNIT_RESULT: ${{ needs.unit.result }}
+          INTEGRATION_RESULT: ${{ needs.integration.result }}
+          PLATFORM_RESULT: ${{ needs.platform.result }}
+        run: |
+          test "$UNIT_RESULT" = success
+          test "$INTEGRATION_RESULT" = success
+          test "$PLATFORM_RESULT" = success

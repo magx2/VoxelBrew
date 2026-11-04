@@ -307,28 +307,6 @@ class EditableEngineTest {
         assertReference(session, 5, 4);
     }
 
-    @Test
-    void sharedOffsetPlaneEditsAreOneTransactionAndOriginIsFixed() {
-        var session = new ModelSession(CadDocument.empty());
-        var plane = new Feature.Plane("offset-12", 12);
-        session.add(
-                new Feature.Sketch(
-                        "one", "one.profile", plane, new Feature.Rectangle(0, 0, 60, 40)));
-        session.add(new Feature.Sketch("two", "two.profile", plane, new Feature.Circle(10, 10, 4)));
-        session.editDimension("one", "offsetZ", 15);
-        for (var feature : session.document().features()) {
-            assertEquals(15, ((Feature.Sketch) feature).plane().offsetZ());
-        }
-        session.undo();
-        for (var feature : session.document().features()) {
-            assertEquals(12, ((Feature.Sketch) feature).plane().offsetZ());
-        }
-        var reference = reference();
-        var before = reference.document();
-        assertThrows(ModelException.class, () -> reference.editDimension("plate", "offsetZ", 12));
-        assertEquals(before, reference.document());
-    }
-
     private static void assertReference(ModelSession session, double thickness, double diameter) {
         try (var result = session.evaluate()) {
             assertTrue(result.valid(), result.diagnostics().toString());

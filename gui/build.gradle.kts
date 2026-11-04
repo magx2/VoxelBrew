@@ -37,11 +37,18 @@ tasks.named<JavaExec>("run") {
     )
 }
 
-tasks.withType<Test>().configureEach {
-    dependsOn(":engine:buildNative", ":engine:buildExporterFixture", ":cli:installDist")
-    val runtime = project(":engine").layout.buildDirectory.dir("native/runtime")
-    inputs.dir(runtime)
-    systemProperty("voxelbrew.native.path", runtime.get().asFile.absolutePath)
+tasks
+    .withType<Test>()
+    .matching { it.name != "test" }
+    .configureEach {
+        dependsOn(":engine:buildNative")
+        val runtime = project(":engine").layout.buildDirectory.dir("native/runtime")
+        inputs.dir(runtime)
+        systemProperty("voxelbrew.native.path", runtime.get().asFile.absolutePath)
+    }
+
+tasks.named<Test>("e2eTest") {
+    dependsOn(":engine:buildExporterFixture", ":cli:installDist")
     systemProperty(
         "voxelbrew.ui.artifacts",
         layout.buildDirectory.dir("ui-artifacts").get().asFile.absolutePath,

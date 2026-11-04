@@ -86,7 +86,16 @@ wsl -d Ubuntu --exec bash -lc 'cd ~/src/VoxelBrew && ./gradlew check'
 
 The dedicated native test **requires** OCCT; it never substitutes a mock or skips
 when the library is unavailable. `check` runs every subproject's checks without
-exclusions and includes the same tests through `engine:test`.
+exclusions and includes the same tests through `engine:integrationTest`.
+
+Tests are separated into `src/test/test`, `src/test/integrationTest` and
+`src/test/e2eTest` in each module. `test` runs unit tests without native tools;
+`integrationTest` runs real-kernel/service tests; `e2eTest` runs CLI and GUI
+workflows. CI runs unit/integration suites once on Ubuntu and `platformCheck`
+(end-to-end plus packaged apps) on Windows and Ubuntu. macOS runs
+`headlessPlatformCheck` for the CLI and builds both app images; its GUI
+qualification is deferred. The final CI gate requires every configured suite
+and platform. See [test commands and layout](docs/testing.md).
 
 ## Reference part and numerical contract
 

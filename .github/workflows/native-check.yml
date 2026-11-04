@@ -1,0 +1,115 @@
+name: Native test suite
+on:
+  workflow_call:
+    inputs:
+      os:
+        required: true
+        type: string
+      suite:
+        required: true
+        type: string
+      artifact-name:
+        required: true
+        type: string
+      archive:
+        default: false
+        type: boolean
+permissions:
+  contents: read
+jobs:
+  native:
+    name: ${{ inputs.suite }} (${{ inputs.os }})
+    runs-on: ${{ inputs.os }}
+    timeout-minutes: 75
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+      - uses: gradle/actions/setup-gradle@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Cache pinned OCCT compilation
+        id: occt-cache
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            .tools/OCCT-7_9_0
+            engine/build/native/occt
+            engine/build/native/occt-install
+          key: occt-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('scripts/native-versions.properties') }}
+      - name: Bootstrap Ubuntu
+        if: runner.os == 'Linux'
+        run: bash scripts/bootstrap-native.sh
+      - name: Bootstrap Windows
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: ./scripts/bootstrap-native.ps1
+      - name: Bootstrap macOS (Xcode 16.4)
+        if: runner.os == 'macOS'
+        run: |
+          sudo xcode-select -s /Applications/Xcode_16.4.app
+          clang --version
+          bash scripts/bootstrap-native.sh
+          bash scripts/bootstrap-slicer-macos.sh
+          echo "VOXELBREW_SLICER=$GITHUB_WORKSPACE/.tools/PrusaSlicer-2.7.2/PrusaSlicer.app/Contents/MacOS/PrusaSlicer" >> "$GITHUB_ENV"
+      - name: Install pinned slicer (Ubuntu)
+        if: runner.os == 'Linux'
+        run: bash scripts/bootstrap-slicer.sh
+      - name: Install pinned slicer (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: ./scripts/bootstrap-slicer.ps1
+      - name: Integration tests (headless Ubuntu)
+        if: inputs.suite == 'integrationTest'
+        run: ./gradlew integrationTest
+      - name: Platform checks (Ubuntu)
+        if: (inputs.suite == 'platformCheck' || inputs.suite == 'check') && runner.os == 'Linux'
+        env:
+          GRADLE_SUITE: ${{ inputs.suite }}
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y xvfb xauth libgtk-3-0t64 libgl1-mesa-dri
+          xvfb-run -a -s '-screen 0 1600x1000x24' env LIBGL_ALWAYS_SOFTWARE=1 ./gradlew "$GRADLE_SUITE"
+      - name: Platform checks (Windows, v142 toolchain)
+        if: (inputs.suite == 'platformCheck' || inputs.suite == 'check') && runner.os == 'Windows'
+        env:
+          GRADLE_SUITE: ${{ inputs.suite }}
+        shell: pwsh
+        run: ./gradlew.bat $env:GRADLE_SUITE '-PvsGenerator=Visual Studio 17 2022'
+      - name: Headless platform checks (macOS; GUI qualification deferred)
+        if: inputs.suite == 'headlessPlatformCheck' && runner.os == 'macOS'
+        run: ./gradlew headlessPlatformCheck
+      - name: Archive app images
+        if: inputs.archive
+        shell: bash
+        run: ./gradlew :cli:packageZip :gui:packageZip ${{ runner.os == 'Windows' && '''-PvsGenerator=Visual Studio 17 2022''' || '' }}
+      - name: Retain successful OCCT compilation after later failures
+        if: ${{ always() && !cancelled() && steps.occt-cache.outputs.cache-hit != 'true' && hashFiles('engine/build/native/bridge/CMakeCache.txt') != '' }}
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            .tools/OCCT-7_9_0
+            engine/build/native/occt
+            engine/build/native/occt-install
+          key: ${{ steps.occt-cache.outputs.cache-primary-key }}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ${{ inputs.artifact-name }}
+          path: |
+            **/build/reports/
+            **/build/test-results/
+            gui/build/ui-artifacts/
+            engine/build/printing-artifacts/
+            cli/build/package-artifacts/
+            gui/build/package-artifacts/
+      - uses: actions/upload-artifact@v4
+        if: inputs.archive && success()
+        with:
+          name: app-images-${{ inputs.os }}
+          path: |
+            cli/build/distributions/VoxelBrewCLI-*.zip
+            gui/build/distributions/VoxelBrew-*.zip

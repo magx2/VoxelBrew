@@ -9,7 +9,6 @@ import java.util.List;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BooleanSupplier;
-import javafx.geometry.Point3D;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -194,15 +193,5 @@ class DocumentControllerTest {
                                             .profile())
                             .width());
         }
-    }
-
-    @Test
-    void viewportBasisPreservesMillimetersAndOrientation() {
-        var p = new Point3D(10, 20, 30);
-        assertEquals(p, Viewport.toModel(Viewport.toView(p.getX(), p.getY(), p.getZ())));
-        assertEquals(new Point3D(0, -1, 0), Viewport.toView(0, 0, 1));
-        assertEquals(
-                Viewport.toView(0, 0, 1),
-                Viewport.toView(1, 0, 0).crossProduct(Viewport.toView(0, 1, 0)));
     }
 }

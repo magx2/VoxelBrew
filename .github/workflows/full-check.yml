@@ -1,0 +1,21 @@
+name: Full platform qualification
+on:
+  workflow_dispatch:
+    inputs:
+      os:
+        description: Platform for an explicit full root check
+        type: choice
+        default: windows-2022
+        options:
+          - windows-2022
+          - ubuntu-24.04
+permissions:
+  contents: read
+jobs:
+  full:
+    uses: ./.github/workflows/native-check.yml
+    with:
+      os: ${{ inputs.os }}
+      suite: check
+      artifact-name: full-${{ inputs.os }}
+      archive: true

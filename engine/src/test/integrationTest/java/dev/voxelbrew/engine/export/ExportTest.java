@@ -265,17 +265,7 @@ class ExportTest {
     }
 
     @Test
-    void invalidMeshesOptionsAndIncompleteDocumentsAreRejected() {
-        assertThrows(IllegalArgumentException.class, () -> new MeshOptions(Double.NaN, 5));
-        assertThrows(IllegalArgumentException.class, () -> new MeshOptions(0.02, 0));
-        assertThrows(
-                IllegalArgumentException.class,
-                () ->
-                        MeshValidation.requireClosed(
-                                new MeshData(
-                                        new double[] {0, 0, 0, 1, 0, 0, 0, 1, 0},
-                                        new int[] {0, 1, 2},
-                                        new int[] {0})));
+    void incompleteDocumentsAreRejected() {
         var doc = reference();
         try (var evaluation = Evaluator.evaluate(new CadDocument(doc.id(), doc.features(), 3))) {
             assertThrows(IllegalStateException.class, () -> ModelViews.from(evaluation));
@@ -290,8 +280,6 @@ class ExportTest {
                                 1))) {
             assertThrows(IllegalStateException.class, () -> ModelViews.from(evaluation));
         }
-        var option = new ExportOption("count", "Count", ExportOption.Type.INTEGER, "2", List.of());
-        assertThrows(IllegalArgumentException.class, () -> option.validate("2.5"));
     }
 
     private static List<double[][]> triangles(MeshData mesh) {

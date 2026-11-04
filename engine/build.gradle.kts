@@ -178,18 +178,21 @@ val buildNative by
         }
     }
 
-tasks.withType<Test>().configureEach {
-    dependsOn(buildNative)
-    // JNI is outside the Java classpath: a changed DLL/SO must invalidate test results.
-    inputs.dir(runtime)
-    systemProperty("voxelbrew.native.path", runtime.absolutePath)
-}
+tasks
+    .withType<Test>()
+    .matching { it.name != "test" }
+    .configureEach {
+        dependsOn(buildNative)
+        // JNI is outside the Java classpath: a changed DLL/SO must invalidate test results.
+        inputs.dir(runtime)
+        systemProperty("voxelbrew.native.path", runtime.absolutePath)
+    }
 
 tasks.register<Test>("nativeIntegrationTest") {
     description = "Runs real JNI/OCCT reference-part and ownership tests."
     group = "verification"
-    testClassesDirs = sourceSets.test.get().output.classesDirs
-    classpath = sourceSets.test.get().runtimeClasspath
+    testClassesDirs = sourceSets["integrationTest"].output.classesDirs
+    classpath = sourceSets["integrationTest"].runtimeClasspath
     filter { includeTestsMatching("*NativeKernelTest") }
 }
 
@@ -210,7 +213,7 @@ val buildExporterFixture by
         tasks = listOf("jar")
     }
 
-tasks.named<Test>("test") {
+tasks.named<Test>("integrationTest") {
     dependsOn(buildExporterFixture)
     systemProperty(
         "voxelbrew.test.plugin",

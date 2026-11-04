@@ -97,12 +97,14 @@ qualify as a 3D renderer.
 
 `:gui:run --args="--smoke-test"` renders the real reference part, writes
 `gui/build/gui-smoke.png`, prints `GUI_SMOKE_PASS`, and exits. It does not exercise
-editing. `:gui:test` also runs actual JavaFX Robot drawing, picking, camera,
+editing. `:gui:e2eTest` runs actual JavaFX Robot drawing, picking, camera,
 file and history interactions. These tests use foreground windows and preserve
 the original appearance preference. Screenshots and GUI-created reference
 artifacts are written under `gui/build/ui-artifacts`; XML/HTML reports live in
 the standard Gradle test-results/reports directories. Run Windows and WSLg
 interaction suites sequentially because they share the physical desktop.
+UI-neutral controller tests live in `:gui:integrationTest`. See
+[test suites](testing.md) for source roots and separate reports.
 
 Manufacturing placement, slicing, supports, installers, macOS qualification and
 persistent generated-face naming remain later milestones.

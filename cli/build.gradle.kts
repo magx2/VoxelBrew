@@ -17,13 +17,16 @@ tasks.named<JavaExec>("run") {
     )
 }
 
-tasks.withType<Test>().configureEach {
-    dependsOn(":engine:buildNative")
-    val runtime = project(":engine").layout.buildDirectory.dir("native/runtime")
-    inputs.dir(runtime)
-    systemProperty("voxelbrew.native.path", runtime.get().asFile.absolutePath)
-    systemProperty("voxelbrew.test.classpath", sourceSets.main.get().runtimeClasspath.asPath)
-}
+tasks
+    .withType<Test>()
+    .matching { it.name != "test" }
+    .configureEach {
+        dependsOn(":engine:buildNative")
+        val runtime = project(":engine").layout.buildDirectory.dir("native/runtime")
+        inputs.dir(runtime)
+        systemProperty("voxelbrew.native.path", runtime.get().asFile.absolutePath)
+        systemProperty("voxelbrew.test.classpath", sourceSets.main.get().runtimeClasspath.asPath)
+    }
 
 tasks.named<Sync>("installDist") {
     dependsOn(":engine:buildNative")

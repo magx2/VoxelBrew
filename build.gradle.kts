@@ -45,7 +45,7 @@ spotless {
     encoding("UTF-8")
     lineEndings = LineEnding.UNIX
     java {
-        target(sourceProjects.map { "$it/src/*/java/**/*.java" })
+        target(sourceProjects.map { "$it/src/**/java/**/*.java" })
         googleJavaFormat("1.28.0").aosp()
         trimTrailingWhitespace()
         endWithNewline()
@@ -125,6 +125,40 @@ subprojects {
         "testImplementation"("org.junit.jupiter:junit-jupiter")
         "testRuntimeOnly"("org.junit.platform:junit-platform-launcher")
     }
+    val sources = extensions.getByType<SourceSetContainer>()
+    sources.named("test") {
+        java.setSrcDirs(listOf("src/test/test/java"))
+        resources.setSrcDirs(listOf("src/test/test/resources"))
+    }
+    for (suite in listOf("integrationTest", "e2eTest")) {
+        val source =
+            sources.create(suite) {
+                java.setSrcDirs(listOf("src/test/$suite/java"))
+                resources.setSrcDirs(listOf("src/test/$suite/resources"))
+                compileClasspath += sources.getByName("main").output
+                runtimeClasspath += sources.getByName("main").output
+            }
+        configurations.named(source.implementationConfigurationName) {
+            extendsFrom(configurations.getByName("testImplementation"))
+        }
+        configurations.named(source.runtimeOnlyConfigurationName) {
+            extendsFrom(configurations.getByName("testRuntimeOnly"))
+        }
+        tasks.register<Test>(suite) {
+            group = "verification"
+            description = "Run the $suite suite."
+            testClassesDirs = source.output.classesDirs
+            classpath = source.runtimeClasspath
+            mustRunAfter("test")
+            if (suite == "e2eTest") mustRunAfter("integrationTest")
+        }
+    }
+    tasks.register("platformCheck") {
+        group = "verification"
+        description = "Run end-to-end and packaged-application checks for this platform."
+        dependsOn("e2eTest")
+    }
+    tasks.named("check") { dependsOn("integrationTest", "platformCheck") }
     tasks.withType<Test>().configureEach {
         useJUnitPlatform()
         systemProperty(
@@ -150,7 +184,21 @@ subprojects {
     }
 }
 
+for (suite in listOf("test", "integrationTest", "e2eTest", "platformCheck")) {
+    tasks.register(suite) {
+        group = "verification"
+        description = "Run $suite across all three modules."
+        dependsOn(subprojects.map { "${it.path}:$suite" })
+    }
+}
+
 tasks.named("check") { dependsOn(subprojects.map { "${it.path}:check" }) }
+
+tasks.register("headlessPlatformCheck") {
+    group = "verification"
+    description = "Run CLI end-to-end and packaged-CLI checks without qualifying GUI graphics."
+    dependsOn(":cli:platformCheck")
+}
 
 tasks.wrapper {
     gradleVersion = "9.1.0"

@@ -19,6 +19,7 @@
 - For export/plugins, follow the plan's versioned engine API, dedicated class
   loader, ServiceLoader registry, compatibility diagnostics, and independent
   consumer fixture. Keep tessellation tolerance an explicit option.
-- Use `:engine:test` and `:engine:nativeIntegrationTest` for focused feedback;
+- Use `:engine:test` for isolated unit tests, `:engine:integrationTest` for
+  real-kernel/service integration, and `:engine:nativeIntegrationTest` for the native subset;
   neither replaces the full root milestone check. Verify native changes on both
   Windows and Ubuntu using each platform's native libraries.

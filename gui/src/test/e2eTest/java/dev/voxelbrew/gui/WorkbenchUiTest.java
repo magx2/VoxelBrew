@@ -346,6 +346,11 @@ class WorkbenchUiTest {
 
     private void choice(String id, int index) throws Exception {
         click(id);
+        // The native popup can appear after a later pulse when switching workspace tabs.
+        // Wait for the observed popup; do not replay the click or set its selection in code.
+        long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(3);
+        while (!fx(() -> ((ComboBox<?>) node("#" + id)).isShowing())
+                && System.nanoTime() < deadline) Thread.sleep(25);
         assertTrue(fx(() -> ((ComboBox<?>) node("#" + id)).isShowing()), "Popup opened: " + id);
         // Popup windows can select a different DPI monitor than their owner in Windows Robot.
         // Exercise the actual opened popup through native keys, without setting selection in code.
@@ -929,5 +934,15 @@ class WorkbenchUiTest {
         String output = Files.readString(log);
         assertEquals(0, process.exitValue(), output);
         return output;
+    }
+
+    @Test
+    void viewportBasisPreservesMillimetersAndOrientation() {
+        var p = new Point3D(10, 20, 30);
+        assertEquals(p, Viewport.toModel(Viewport.toView(p.getX(), p.getY(), p.getZ())));
+        assertEquals(new Point3D(0, -1, 0), Viewport.toView(0, 0, 1));
+        assertEquals(
+                Viewport.toView(0, 0, 1),
+                Viewport.toView(1, 0, 0).crossProduct(Viewport.toView(0, 1, 0)));
     }
 }

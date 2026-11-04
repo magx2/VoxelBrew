@@ -1,8 +1,12 @@
 plugins { application }
 
+apply(from = rootProject.file("gradle/packaging.gradle.kts"))
+
 val javafxPlatform =
     if (System.getProperty("os.name").startsWith("Windows")) "win"
-    else if (System.getProperty("os.name").startsWith("Mac")) "mac" else "linux"
+    else if (System.getProperty("os.name").startsWith("Mac"))
+        if (System.getProperty("os.arch") == "aarch64") "mac-aarch64" else "mac"
+    else "linux"
 
 dependencies {
     implementation(project(":engine"))

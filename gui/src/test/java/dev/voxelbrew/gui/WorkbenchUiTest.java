@@ -249,11 +249,13 @@ class WorkbenchUiTest {
     }
 
     private void shortcut(KeyCode code, boolean shift) throws Exception {
+        KeyCode modifier =
+                System.getProperty("os.name").startsWith("Mac") ? KeyCode.META : KeyCode.CONTROL;
         focus(stage);
         assertTrue(fx(stage::isFocused), "Window focus before shortcut");
         fx(
                 () -> {
-                    robot.keyPress(KeyCode.CONTROL);
+                    robot.keyPress(modifier);
                     return null;
                 });
         Thread.sleep(60);
@@ -276,7 +278,7 @@ class WorkbenchUiTest {
         }
         fx(
                 () -> {
-                    robot.keyRelease(KeyCode.CONTROL);
+                    robot.keyRelease(modifier);
                     return null;
                 });
         Thread.sleep(250);

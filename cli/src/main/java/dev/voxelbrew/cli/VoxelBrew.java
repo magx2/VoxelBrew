@@ -189,7 +189,9 @@ public final class VoxelBrew implements Runnable {
                                     .getCodeSource()
                                     .getLocation()
                                     .toURI());
-            Path runtime = jar.getParent().getParent().resolve("native");
+            Path runtime = jar.getParent().resolve("native");
+            if (!Files.isDirectory(runtime))
+                runtime = jar.getParent().getParent().resolve("native");
             if (Files.isDirectory(runtime)) {
                 System.setProperty("voxelbrew.native.path", runtime.toString());
             }

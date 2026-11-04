@@ -9,12 +9,15 @@ dependencies { implementation("com.google.protobuf:protobuf-java:4.30.2") }
 protobuf { protoc { artifact = "com.google.protobuf:protoc:4.30.2" } }
 
 val windows = System.getProperty("os.name").startsWith("Windows")
+val mac = System.getProperty("os.name").startsWith("Mac")
 val host =
     if (windows) "windows-x86_64"
     else if (System.getProperty("os.name").startsWith("Mac")) "macos-universal" else "linux-x86_64"
 val cmake =
     rootProject
-        .file(".tools/cmake-3.31.6-$host/bin/cmake${if (windows) ".exe" else ""}")
+        .file(
+            ".tools/cmake-3.31.6-$host/${if (mac) "CMake.app/Contents/" else ""}bin/cmake${if (windows) ".exe" else ""}"
+        )
         .absolutePath
 val nativeRoot = layout.buildDirectory.dir("native").get().asFile
 val occtBuild = nativeRoot.resolve("occt")
@@ -29,6 +32,15 @@ val generator =
             "x64,version=10.0.22621.0",
             "-T",
             "v142,version=14.29.30133",
+        )
+    else if (mac)
+        listOf(
+            "-G",
+            "Unix Makefiles",
+            "-DCMAKE_CXX_COMPILER=clang++",
+            "-DCMAKE_C_COMPILER=clang",
+            "-DCMAKE_MACOSX_RPATH=ON",
+            "-DCMAKE_INSTALL_NAME_DIR=@rpath",
         )
     else listOf("-G", "Unix Makefiles", "-DCMAKE_CXX_COMPILER=g++-13", "-DCMAKE_C_COMPILER=gcc-13")
 val jobs = providers.gradleProperty("nativeJobs").orElse("4")
@@ -70,7 +82,7 @@ val configureOcct by
                     "-DCMAKE_BUILD_TYPE=Release",
                     "-DBUILD_CPP_STANDARD=C++17",
                     "-DBUILD_LIBRARY_TYPE=Shared",
-                    "-DCMAKE_INSTALL_RPATH=\$ORIGIN",
+                    "-DCMAKE_INSTALL_RPATH=${if (mac) "@loader_path" else "\$ORIGIN"}",
                     "-DCMAKE_EXPORT_NO_PACKAGE_REGISTRY=ON",
                     "-DINSTALL_DIR=${occtInstall.absolutePath}",
                     "-DINSTALL_DIR_LAYOUT=Unix",

@@ -3,14 +3,12 @@ package dev.voxelbrew.gui;
 import dev.voxelbrew.engine.export.ExporterRegistry;
 import dev.voxelbrew.engine.model.Feature;
 import java.nio.file.Path;
-import javafx.animation.PauseTransition;
 import javafx.application.Application;
 import javafx.application.ConditionalFeature;
 import javafx.application.Platform;
 import javafx.scene.Scene;
 import javafx.stage.Screen;
 import javafx.stage.Stage;
-import javafx.util.Duration;
 
 public final class WorkbenchApplication extends Application {
     private Workbench workbench;
@@ -22,15 +20,22 @@ public final class WorkbenchApplication extends Application {
                     "JavaFX 3D is unavailable. Check graphics drivers and WSLg/Mesa. For Mesa software rendering use JAVA_OPTS='-Dprism.order=es2 -Dprism.forceGPU=true'.");
         var args = getParameters().getRaw();
         Path plugins = ExporterRegistry.defaultDirectory(), open = null;
+        Path smokeOutput =
+                Path.of(System.getProperty("voxelbrew.smoke.output", "build/gui-smoke.png"));
         for (int i = 0; i < args.size(); i++) {
             if (args.get(i).equals("--plugin-dir") && i + 1 < args.size())
                 plugins = Path.of(args.get(++i));
             else if (args.get(i).equals("--open") && i + 1 < args.size())
                 open = Path.of(args.get(++i));
+            else if (args.get(i).equals("--smoke-output") && i + 1 < args.size())
+                smokeOutput = Path.of(args.get(++i));
             else if (!args.get(i).equals("--smoke-test"))
                 throw new IllegalArgumentException(
-                        "Usage: gui [--open design.jcad] [--plugin-dir directory] [--smoke-test]");
+                        "Usage: gui [--open design.jcad] [--plugin-dir directory] [--smoke-test] [--smoke-output screenshot.png]");
         }
+        if (open != null && args.contains("--smoke-test"))
+            throw new IllegalArgumentException(
+                    "--smoke-test creates an unsaved fixture; omit --open");
         workbench = new Workbench(stage, plugins);
         var screen = Screen.getPrimary().getVisualBounds();
         stage.setScene(
@@ -38,8 +43,8 @@ public final class WorkbenchApplication extends Application {
                         workbench,
                         Math.min(1400, screen.getWidth() - 60),
                         Math.min(900, screen.getHeight() - 80)));
-        stage.setMinWidth(1100);
-        stage.setMinHeight(700);
+        stage.setMinWidth(Math.min(1100, screen.getWidth() - 60));
+        stage.setMinHeight(Math.min(700, screen.getHeight() - 80));
         stage.show();
         if (open != null) workbench.controller().open(open).exceptionally(failure -> null);
         if (args.contains("--smoke-test")) {
@@ -64,30 +69,7 @@ public final class WorkbenchApplication extends Application {
                             "cut",
                             new Feature.ProfileRef("hole", "hole.profile"),
                             new Feature.BodyRef("thickness", "body")));
-            var pause = new PauseTransition(Duration.seconds(5));
-            pause.setOnFinished(
-                    e -> {
-                        try {
-                            if (controller.rebuilding() || !controller.canExport())
-                                throw new IllegalStateException(
-                                        "Smoke rebuild did not finish: " + controller.error());
-                            Screenshot.save(
-                                    stage.getScene(),
-                                    Path.of(
-                                            System.getProperty(
-                                                    "voxelbrew.smoke.output",
-                                                    "build/gui-smoke.png")));
-                            System.out.println(
-                                    "GUI_SMOKE_PASS JavaFX 3D rendered native reference part");
-                            workbench.close();
-                            stage.hide();
-                            Platform.exit();
-                        } catch (Exception failure) {
-                            failure.printStackTrace();
-                            System.exit(1);
-                        }
-                    });
-            pause.play();
+            PackageSmoke.verify(workbench, stage, smokeOutput);
         }
     }
 

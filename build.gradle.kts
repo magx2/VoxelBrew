@@ -51,7 +51,10 @@ spotless {
         endWithNewline()
     }
     kotlinGradle {
-        target(listOf("*.gradle.kts") + sourceProjects.map { "$it/*.gradle.kts" })
+        target(
+            listOf("*.gradle.kts", "gradle/*.gradle.kts") +
+                sourceProjects.map { "$it/*.gradle.kts" }
+        )
         ktfmt("0.59").kotlinlangStyle()
         trimTrailingWhitespace()
         endWithNewline()
@@ -85,6 +88,7 @@ spotless {
             "scripts/*.properties",
             "scripts/*.sh",
             "scripts/*.ps1",
+            "scripts/*.py",
             "engine/native/CMakeLists.txt",
             "*/src/main/resources/META-INF/services/*",
             "engine/src/main/resources/**/*.ini",

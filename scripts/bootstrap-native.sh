@@ -6,6 +6,7 @@ mkdir -p "$tool_root/downloads"
 pin() { sed -n "s/^$1=//p" "$repo_root/scripts/native-versions.properties" | tr -d '\r'; }
 case "$(uname -s)-$(uname -m)" in
   Linux-x86_64) platform=linux-x86_64; hash="$(pin cmake.linux.sha256)" ;;
+  Darwin-x86_64|Darwin-arm64) platform=macos-universal; hash="$(pin cmake.macos.sha256)" ;;
   *) echo 'Unqualified native platform. See README.md.' >&2; exit 1 ;;
 esac
 verify() {

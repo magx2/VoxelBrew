@@ -7,9 +7,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-24.04, windows-2022]
+        os: [ubuntu-24.04, windows-2022, macos-15-intel]
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 60
+    timeout-minutes: 75
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
@@ -26,6 +26,14 @@ jobs:
       - name: Formatting check
         shell: bash
         run: ./gradlew spotlessCheck
+      - name: Cache pinned OCCT compilation
+        uses: actions/cache@v4
+        with:
+          path: |
+            .tools/OCCT-7_9_0
+            engine/build/native/occt
+            engine/build/native/occt-install
+          key: occt-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('scripts/native-versions.properties') }}
       - name: Bootstrap Ubuntu
         if: runner.os == 'Linux'
         run: bash scripts/bootstrap-native.sh
@@ -33,6 +41,14 @@ jobs:
         if: runner.os == 'Windows'
         shell: pwsh
         run: ./scripts/bootstrap-native.ps1
+      - name: Bootstrap macOS (Xcode 16.4)
+        if: runner.os == 'macOS'
+        run: |
+          sudo xcode-select -s /Applications/Xcode_16.4.app
+          clang --version
+          bash scripts/bootstrap-native.sh
+          bash scripts/bootstrap-slicer-macos.sh
+          echo "VOXELBREW_SLICER=$GITHUB_WORKSPACE/.tools/PrusaSlicer-2.7.2/PrusaSlicer.app/Contents/MacOS/PrusaSlicer" >> "$GITHUB_ENV"
       - name: Install pinned slicer (Ubuntu)
         if: runner.os == 'Linux'
         run: bash scripts/bootstrap-slicer.sh
@@ -50,6 +66,12 @@ jobs:
         if: runner.os == 'Windows'
         shell: pwsh
         run: ./gradlew.bat check '-PvsGenerator=Visual Studio 17 2022'
+      - name: Full check (macOS)
+        if: runner.os == 'macOS'
+        run: ./gradlew check
+      - name: Archive app images
+        shell: bash
+        run: ./gradlew :cli:packageZip :gui:packageZip ${{ runner.os == 'Windows' && '''-PvsGenerator=Visual Studio 17 2022''' || '' }}
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -59,3 +81,11 @@ jobs:
             **/build/test-results/
             gui/build/ui-artifacts/
             engine/build/printing-artifacts/
+            cli/build/package-artifacts/
+            gui/build/package-artifacts/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: app-images-${{ matrix.os }}
+          path: |
+            cli/build/distributions/VoxelBrewCLI-*.zip
+            gui/build/distributions/VoxelBrew-*.zip

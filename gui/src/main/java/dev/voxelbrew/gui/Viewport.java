@@ -8,7 +8,11 @@ import java.util.Map;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.DoubleConsumer;
+import javafx.beans.property.ReadOnlyObjectProperty;
+import javafx.beans.property.ReadOnlyObjectWrapper;
+import javafx.geometry.Insets;
 import javafx.geometry.Point3D;
+import javafx.geometry.Pos;
 import javafx.scene.*;
 import javafx.scene.input.MouseButton;
 import javafx.scene.input.MouseEvent;
@@ -31,6 +35,10 @@ public final class Viewport extends StackPane {
     private final PerspectiveCamera camera = new PerspectiveCamera(true);
     private final Map<String, MeshView> bodyViews = new LinkedHashMap<>();
     private final SubScene scene;
+    private final ReadOnlyObjectWrapper<ViewOrientation> orientation =
+            new ReadOnlyObjectWrapper<>(ViewOrientation.HOME);
+    private final ViewCube viewCube;
+    private Map<String, MeshData> currentMeshes = Map.of();
     private double lastX, lastY;
     private double distance = 180;
     private BiConsumer<String, Integer> selection = (id, face) -> {};
@@ -61,6 +69,12 @@ public final class Viewport extends StackPane {
         scene.widthProperty().bind(widthProperty());
         scene.heightProperty().bind(heightProperty());
         getChildren().add(scene);
+        viewCube =
+                new ViewCube(
+                        this::setOrientation, this::orbitBy, this::home, () -> fit(currentMeshes));
+        StackPane.setAlignment(viewCube, Pos.TOP_RIGHT);
+        StackPane.setMargin(viewCube, new Insets(8));
+        getChildren().add(viewCube);
         setDark(false);
         grid();
         scene.setOnMousePressed(
@@ -79,8 +93,7 @@ public final class Viewport extends StackPane {
                             pan.setX(pan.getX() + dx * distance / 700);
                             pan.setY(pan.getY() + dy * distance / 700);
                         } else {
-                            orbit.setAngle(orbit.getAngle() + dx * 0.5);
-                            tilt.setAngle(Math.clamp(tilt.getAngle() - dy * 0.5, -89, 89));
+                            orbitBy(dx, dy);
                         }
                     }
                 });
@@ -315,9 +328,11 @@ public final class Viewport extends StackPane {
 
     public void setDark(boolean dark) {
         scene.setFill(Color.web(dark ? "#161c23" : "#e8edf1"));
+        viewCube.setDark(dark);
     }
 
     public void showBodies(Map<String, MeshData> meshes) {
+        currentMeshes = Map.copyOf(meshes);
         bodies.getChildren().clear();
         bodyViews.clear();
         meshes.forEach(
@@ -408,24 +423,27 @@ public final class Viewport extends StackPane {
     }
 
     public void standardView(String name) {
-        switch (name) {
-            case "Top" -> {
-                tilt.setAngle(90);
-                orbit.setAngle(0);
-            }
-            case "Front" -> {
-                tilt.setAngle(0);
-                orbit.setAngle(0);
-            }
-            case "Right" -> {
-                tilt.setAngle(0);
-                orbit.setAngle(90);
-            }
-            default -> {
-                tilt.setAngle(28);
-                orbit.setAngle(-35);
-            }
-        }
+        setOrientation(ViewOrientation.named(name));
+    }
+
+    ReadOnlyObjectProperty<ViewOrientation> orientationProperty() {
+        return orientation.getReadOnlyProperty();
+    }
+
+    private void setOrientation(ViewOrientation value) {
+        tilt.setAngle(value.tilt());
+        orbit.setAngle(value.orbit());
+        viewCube.setOrientation(value);
+        orientation.set(value);
+    }
+
+    private void orbitBy(double dx, double dy) {
+        setOrientation(orientation.get().dragged(dx, dy));
+    }
+
+    private void home() {
+        setOrientation(ViewOrientation.HOME);
+        fit(currentMeshes);
     }
 
     private void grid() {

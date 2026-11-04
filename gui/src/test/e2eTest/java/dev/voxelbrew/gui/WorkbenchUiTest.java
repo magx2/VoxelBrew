@@ -14,6 +14,7 @@ import javafx.scene.*;
 import javafx.scene.control.*;
 import javafx.scene.input.*;
 import javafx.scene.robot.Robot;
+import javafx.scene.shape.Polygon;
 import javafx.stage.*;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.io.TempDir;
@@ -436,6 +437,163 @@ class WorkbenchUiTest {
         click("file-confirm");
         ready();
         assertTrue(Files.exists(path));
+    }
+
+    private void cubeClick(String region, ViewOrientation expected) throws Exception {
+        fx(
+                () -> {
+                    var polygon = (Polygon) node("#view-cube-" + region);
+                    double x = 0, y = 0;
+                    var points = polygon.getPoints();
+                    for (int i = 0; i < points.size(); i += 2) {
+                        x += points.get(i);
+                        y += points.get(i + 1);
+                    }
+                    robot.mouseMove(
+                            polygon.localToScreen(x * 2 / points.size(), y * 2 / points.size()));
+                    return null;
+                });
+        Thread.sleep(100);
+        fx(
+                () -> {
+                    robot.mousePress(MouseButton.PRIMARY);
+                    return null;
+                });
+        Thread.sleep(60);
+        fx(
+                () -> {
+                    robot.mouseRelease(MouseButton.PRIMARY);
+                    return null;
+                });
+        Thread.sleep(180);
+        assertEquals(expected, fx(() -> workbench.viewport().orientationProperty().get()), region);
+        assertEquals(expected.name(), fx(() -> ((ComboBox<?>) node("#standard-view")).getValue()));
+    }
+
+    @Test
+    void viewCubeSnapsOrbitsAndFitsWithoutChangingTheDocument() throws Exception {
+        rectangle(0);
+        click("extrude");
+        ready();
+        key(KeyCode.ENTER);
+        ready();
+        save(directory.resolve("navigation.jcad"));
+        var snapshot = fx(() -> workbench.controller().snapshot());
+        click("view-cube-home");
+        var point = new Point3D(60, 40, 5);
+        var homeProjection = fx(() -> workbench.viewport().modelToScreen(point));
+        cubeClick("front", ViewOrientation.named("Front"));
+        cubeClick("front-right", ViewOrientation.lookingFrom(1, -1, 0));
+        cubeClick("right", ViewOrientation.named("Right"));
+        cubeClick("back-right", ViewOrientation.lookingFrom(1, 1, 0));
+        cubeClick("back", ViewOrientation.named("Back"));
+        cubeClick("back-left", ViewOrientation.lookingFrom(-1, 1, 0));
+        cubeClick("left", ViewOrientation.named("Left"));
+        cubeClick("top-left", ViewOrientation.lookingFrom(-1, 0, 1));
+        cubeClick("top", ViewOrientation.named("Top"));
+        cubeClick("top-front", ViewOrientation.lookingFrom(0, -1, 1));
+        cubeClick("front", ViewOrientation.named("Front"));
+        cubeClick("bottom-front", ViewOrientation.lookingFrom(0, -1, -1));
+        cubeClick("bottom", ViewOrientation.named("Bottom"));
+        cubeClick("bottom-front", ViewOrientation.lookingFrom(0, -1, -1));
+        cubeClick("front", ViewOrientation.named("Front"));
+        cubeClick("top-front-right", ViewOrientation.lookingFrom(1, -1, 1));
+        var beforeOrbit = fx(() -> List.copyOf(((Polygon) node("#view-cube-top")).getPoints()));
+        navigate(false);
+        assertNotEquals(
+                beforeOrbit,
+                fx(() -> List.copyOf(((Polygon) node("#view-cube-top")).getPoints())),
+                "Cube follows main viewport orbit");
+        var orientation = fx(() -> workbench.viewport().orientationProperty().get());
+        navigate(true);
+        fx(
+                () -> {
+                    robot.mouseWheel(4);
+                    return null;
+                });
+        Thread.sleep(200);
+        assertEquals(
+                orientation,
+                fx(() -> workbench.viewport().orientationProperty().get()),
+                "Pan and zoom do not rotate the cube");
+        assertTrue(
+                homeProjection.distance(fx(() -> workbench.viewport().modelToScreen(point))) > 2);
+        click("view-cube-home");
+        assertEquals(
+                0,
+                homeProjection.distance(fx(() -> workbench.viewport().modelToScreen(point))),
+                0.01,
+                "Home resets rotation, pan and zoom");
+        var beforeDrag = fx(() -> workbench.viewport().modelToScreen(point));
+        fx(
+                () -> {
+                    var face = node("#view-cube-front");
+                    var bounds = face.localToScreen(face.getBoundsInLocal());
+                    robot.mouseMove(bounds.getCenterX(), bounds.getCenterY());
+                    return null;
+                });
+        Thread.sleep(100);
+        fx(
+                () -> {
+                    robot.mousePress(MouseButton.PRIMARY);
+                    return null;
+                });
+        Thread.sleep(100);
+        fx(
+                () -> {
+                    robot.mouseMove(robot.getMouseX() + 30, robot.getMouseY() + 20);
+                    return null;
+                });
+        Thread.sleep(150);
+        fx(
+                () -> {
+                    robot.mouseRelease(MouseButton.PRIMARY);
+                    return null;
+                });
+        Thread.sleep(180);
+        assertTrue(
+                beforeDrag.distance(fx(() -> workbench.viewport().modelToScreen(point))) > 2,
+                "Dragging cube orbits the main view");
+        assertEquals(
+                ViewOrientation.HOME.dragged(30, 20),
+                fx(() -> workbench.viewport().orientationProperty().get()),
+                "Drag must not also snap on release");
+        click("view-cube-menu");
+        assertTrue(fx(() -> ((MenuButton) node("#view-cube-menu")).isShowing()));
+        key(KeyCode.DOWN);
+        key(KeyCode.DOWN);
+        key(KeyCode.ENTER);
+        assertEquals(
+                ViewOrientation.named("Top"),
+                fx(() -> workbench.viewport().orientationProperty().get()));
+        // Cube input is consumed by navigation, including while the sketch plane is active.
+        click("rectangle");
+        var draftX = fx(() -> ((TextField) node("#sketch-x")).getText());
+        cubeClick("top-front", ViewOrientation.lookingFrom(0, -1, 1));
+        assertEquals(draftX, fx(() -> ((TextField) node("#sketch-x")).getText()));
+        key(KeyCode.ESCAPE);
+        click("view-cube-home");
+        modelClick(30, 20, 5);
+        assertTrue(
+                fx(
+                        () ->
+                                ((Label) workbench.lookup(".selection-title"))
+                                        .getText()
+                                        .startsWith("Face")),
+                "Model picking still works around the overlay");
+        assertEquals(snapshot, fx(() -> workbench.controller().snapshot()));
+        assertFalse(fx(() -> workbench.controller().dirty()));
+        for (int palette = 1; palette <= 2; palette++) {
+            choice("appearance", palette);
+            String name = palette == 1 ? "view-cube-light.png" : "view-cube-dark.png";
+            fx(
+                    () -> {
+                        Screenshot.save(
+                                stage.getScene(),
+                                Path.of(System.getProperty("voxelbrew.ui.artifacts"), name));
+                        return null;
+                    });
+        }
     }
 
     @Test

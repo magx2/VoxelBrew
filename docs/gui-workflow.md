@@ -37,18 +37,21 @@ evaluated revision; sketches continue to use stable XY-parallel plane references
 
 ## Navigation, editing and files
 
-| Input                           | Action                                         |
-| ------------------------------- | ---------------------------------------------- |
-| Left click                      | Select a sketch profile, body or rendered face |
-| Middle drag                     | Orbit                                          |
-| Shift + middle drag             | Pan                                            |
-| Mouse wheel                     | Zoom                                           |
-| View selector / Fit             | Isometric, Top, Front, Right / frame the model |
-| Ctrl+N / Ctrl+O                 | New / Open                                     |
-| Ctrl+S / Ctrl+Shift+S           | Save / Save As                                 |
-| Ctrl+Z / Ctrl+Y or Ctrl+Shift+Z | Undo / Redo                                    |
-| Enter in a dimension            | Apply or commit the entered value              |
-| Escape                          | Cancel the active drawing or extrusion tool    |
+| Input                           | Action                                                 |
+| ------------------------------- | ------------------------------------------------------ |
+| Left click                      | Select a sketch profile, body or rendered face         |
+| Middle drag                     | Orbit                                                  |
+| Shift + middle drag             | Pan                                                    |
+| Mouse wheel                     | Zoom                                                   |
+| View selector / Fit             | Isometric and all six standard views / frame the model |
+| View cube face / edge / corner  | Snap to one of 26 viewing directions                   |
+| Left drag on the view cube      | Orbit the model                                        |
+| View cube Home                  | Restore the fitted isometric overview                  |
+| Ctrl+N / Ctrl+O                 | New / Open                                             |
+| Ctrl+S / Ctrl+Shift+S           | Save / Save As                                         |
+| Ctrl+Z / Ctrl+Y or Ctrl+Shift+Z | Undo / Redo                                            |
+| Enter in a dimension            | Apply or commit the entered value                      |
+| Escape                          | Cancel the active drawing or extrusion tool            |
 
 The tree, viewport, inspector and timeline share selection. The timeline cursor
 is independent of undo/redo. Return to the end before adding features. Broken
@@ -63,6 +66,12 @@ overlays inside the document window, keeping keyboard focus stable under WSLg.
 File dialogs accept an editable path and offer native browsing. Saving and exporting use engine-owned atomic
 publication. Existing export files require the explicit replacement checkbox.
 Camera and selection are transient and are not saved into `.jcad`.
+
+The view cube in the upper-right corner follows the viewport rotation and shows
+the X (red), Y (green), and Z (blue) axes. Hover over a face, beveled edge, or
+corner to highlight its snap target. Its menu also provides hidden faces and
+Fit model; focused cube targets activate with Enter or Space. Navigation keeps
+the view selector synchronized and never creates a feature or undo entry.
 
 ## Appearance and exporters
 

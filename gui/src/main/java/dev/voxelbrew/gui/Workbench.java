@@ -83,7 +83,7 @@ public final class Workbench extends BorderPane implements AutoCloseable {
                     Thread.ofPlatform().daemon().name("voxelbrew-appearance").factory());
     private Appearance.Choice appearanceChoice;
     private long appearanceRequest;
-    private boolean closed, refreshing;
+    private boolean closed, refreshing, updatingView;
     private Tool tool = Tool.NONE;
     private String selectedFeature, selectedBody;
     private final Map<String, TextField> fields = new LinkedHashMap<>();
@@ -117,9 +117,22 @@ public final class Workbench extends BorderPane implements AutoCloseable {
         var title = new HBox(12, brand, caption, spacer, new Label("Design workspace"));
         title.getStyleClass().add("title-strip");
         views.setId("standard-view");
-        views.getItems().setAll("Isometric", "Top", "Front", "Right");
+        views.getItems().setAll("Isometric", "Top", "Front", "Right", "Back", "Left", "Bottom");
         views.setValue("Isometric");
-        views.setOnAction(e -> viewport.standardView(views.getValue()));
+        views.setOnAction(
+                e -> {
+                    if (!updatingView) viewport.standardView(views.getValue());
+                });
+        viewport.orientationProperty()
+                .addListener(
+                        (observable, before, after) -> {
+                            updatingView = true;
+                            try {
+                                views.setValue(after.name());
+                            } finally {
+                                updatingView = false;
+                            }
+                        });
         var themes = new ComboBox<String>();
         themes.setId("appearance");
         themes.getItems().setAll("System", "Light", "Dark");

@@ -52,6 +52,20 @@
   -fx-alignment: center-left;
   -fx-background-color: -fx-base;
 }
+.view-cube-control {
+  -fx-background-color: transparent;
+  -fx-padding: 5;
+  -fx-cursor: hand;
+}
+.view-cube-control:hover,
+.view-cube-control:focused {
+  -fx-background-color: -fx-base;
+}
+.view-cube-home-icon {
+  -fx-fill: transparent;
+  -fx-stroke: -fx-text-background-color;
+  -fx-stroke-width: 1.5;
+}
 .side-panel {
   -fx-padding: 16 12;
   -fx-background-color: -fx-control-inner-background;

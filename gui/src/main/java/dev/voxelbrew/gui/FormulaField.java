@@ -34,6 +34,7 @@ final class FormulaField extends TextField {
                             if (b != null) refreshFormula();
                         });
         preview.setOnShowing(e -> refreshFormula());
+        new ParameterSuggestions(this, parameters, () -> translations);
     }
 
     static FormulaField number(String text, Supplier<ParameterSet> parameters, ParameterUnit unit) {

@@ -164,6 +164,21 @@ class WorkbenchUiTest {
                                                         label.getText()
                                                                 .equals("PROJEKTOWANIE 3D"))));
         closeShortcutHelp();
+        click("rectangle");
+        text("sketch-width", "=$");
+        assertEquals(List.of(), completionNames());
+        assertEquals(
+                "Brak pasujących parametrów",
+                fx(
+                        () ->
+                                ((Label)
+                                                ((ListView<?>) node("#formula-suggestions"))
+                                                        .getPlaceholder())
+                                        .getText()));
+        key(KeyCode.ESCAPE);
+        assertNoCompletion();
+        assertNotNull(fx(() -> node("#sketch-width")), "Escape closes suggestions before the tool");
+        key(KeyCode.ESCAPE);
         assertEquals("Zapisz", fx(() -> command(workbench, "save").getText()));
         assertButtonDescriptions();
         assertEquals("Widok: Góra", fx(() -> node("#view-cube-top").getAccessibleText()));
@@ -1133,6 +1148,148 @@ class WorkbenchUiTest {
     }
 
     @Test
+    void parameterCompletionFiltersAtCaretAndInsertsWithoutCommittingAcrossEditors()
+            throws Exception {
+        choice("appearance", 1);
+        click("parameters");
+        parameter("fooWidth", "60");
+        parameter("fooHeight", "40");
+        parameter("bar", "10");
+        click("parameters-apply");
+        ready();
+        var original = document();
+        click("rectangle");
+        text("sketch-width", "=$");
+        assertEquals(List.of("bar", "fooHeight", "fooWidth"), completionNames());
+        key(KeyCode.F);
+        key(KeyCode.O);
+        key(KeyCode.O);
+        assertEquals("=$foo", fx(() -> ((TextField) node("#sketch-width")).getText()));
+        assertEquals(List.of("fooHeight", "fooWidth"), completionNames());
+        completionScreenshot("parameter-completion-light.png");
+        key(KeyCode.DOWN);
+        key(KeyCode.ENTER);
+        assertNoCompletion();
+        assertEquals("=$fooWidth", fx(() -> ((TextField) node("#sketch-width")).getText()));
+        assertEquals(
+                original, document(), "Accepting a suggestion creates no feature or history entry");
+        shortcut(KeyCode.Z, false);
+        assertEquals("=$foo", fx(() -> ((TextField) node("#sketch-width")).getText()));
+        assertNoCompletion(); // Text undo selects the replaced reference; resume at its end.
+        key(KeyCode.RIGHT);
+        assertEquals(List.of("fooHeight", "fooWidth"), completionNames());
+        shortcut(KeyCode.Y, false);
+        assertEquals("=$fooWidth", fx(() -> ((TextField) node("#sketch-width")).getText()));
+        completionNames();
+        key(KeyCode.ESCAPE);
+        assertNoCompletion();
+        assertNotNull(fx(() -> node("#sketch-width")));
+        text("sketch-height", "=$fooH");
+        assertEquals(List.of("fooHeight"), completionNames());
+        key(KeyCode.TAB);
+        assertEquals("=$fooHeight", fx(() -> ((TextField) node("#sketch-height")).getText()));
+        assertTrue(fx(() -> node("#sketch-height").isFocused()));
+        assertEquals(original, document());
+        click("finish-sketch");
+        ready();
+        assertEquals(1, document().features().size());
+        var part = document();
+
+        text("dimension-width", "=$fooWidth/2+1");
+        key(KeyCode.HOME);
+        for (int i = 0; i < 5; i++) key(KeyCode.RIGHT);
+        assertEquals(List.of("fooHeight", "fooWidth"), completionNames());
+        click("formula-suggestion-fooHeight");
+        assertNoCompletion();
+        assertEquals("=$fooHeight/2+1", fx(() -> ((TextField) node("#dimension-width")).getText()));
+        assertEquals(part, document(), "Mouse completion also preserves uncommitted editing");
+        text("dimension-width", "=$missing");
+        assertEquals(List.of(), completionNames());
+        key(KeyCode.ESCAPE);
+        assertNoCompletion();
+        assertEquals("=$missing", fx(() -> ((TextField) node("#dimension-width")).getText()));
+        click("history-0");
+
+        choice("appearance", 2);
+        click("parameters");
+        click("parameter-new");
+        text("parameter-comment", "=\"Width: \" + $fooW");
+        assertEquals(List.of("fooWidth"), completionNames());
+        completionScreenshot("parameter-completion-dark.png");
+        key(KeyCode.ENTER);
+        assertNoCompletion();
+        assertEquals(
+                "=\"Width: \" + $fooWidth",
+                fx(() -> ((TextField) node("#parameter-comment")).getText()));
+        assertEquals(
+                "Width: 60", fx(() -> ((FormulaField) node("#parameter-comment")).evaluatedText()));
+        assertNotNull(
+                fx(() -> node("#parameters-apply")),
+                "Completing text does not apply or close a dialog");
+        text("parameter-comment", "=\"literal $foo\"");
+        assertNoCompletion();
+        parameter("fooLength", "5");
+        text("parameter-comment", "=$foo");
+        assertEquals(List.of("fooHeight", "fooLength", "fooWidth"), completionNames());
+        key(KeyCode.ESCAPE);
+        assertNoCompletion();
+        assertNotNull(
+                fx(() -> node("#parameters-cancel")), "Escape does not cancel the parameter draft");
+        click("parameters-cancel");
+        assertEquals(part, document());
+
+        click("constrained-sketch");
+        sketchReady();
+        text("constraint-plane", "=$foo");
+        assertEquals(List.of("fooHeight", "fooWidth"), completionNames());
+        key(KeyCode.ESCAPE);
+        assertNoCompletion();
+        assertEquals("=$foo", fx(() -> ((TextField) node("#constraint-plane")).getText()));
+        text("constraint-plane", "=$fooW");
+        completionNames();
+        click("constraint-cancel");
+        assertNoCompletion();
+        assertEquals(part, document(), "Closing a sketch hides completion and discards the draft");
+    }
+
+    private List<String> completionNames() throws Exception {
+        long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(3);
+        while (!fx(this::completionShowing) && System.nanoTime() < deadline) Thread.sleep(20);
+        assertTrue(fx(this::completionShowing), "Parameter suggestions are visible");
+        return fx(
+                () ->
+                        ((ListView<?>) node("#formula-suggestions"))
+                                .getItems().stream().map(Object::toString).toList());
+    }
+
+    private boolean completionShowing() {
+        return Window.getWindows().stream()
+                .anyMatch(
+                        window ->
+                                window instanceof PopupWindow
+                                        && window.isShowing()
+                                        && window.getScene().lookup("#formula-suggestions")
+                                                != null);
+    }
+
+    private void assertNoCompletion() throws Exception {
+        long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(3);
+        while (fx(this::completionShowing) && System.nanoTime() < deadline) Thread.sleep(20);
+        assertFalse(
+                fx(this::completionShowing), "Suggestions must close without another key or click");
+    }
+
+    private void completionScreenshot(String name) throws Exception {
+        fx(
+                () -> {
+                    Screenshot.save(
+                            node("#formula-suggestions").getScene(),
+                            Path.of(System.getProperty("voxelbrew.ui.artifacts"), name));
+                    return null;
+                });
+    }
+
+    @Test
     void formulaFieldsPreserveNumbersTextParametersHistoryAndFiles() throws Exception {
         Path artifacts = Path.of(System.getProperty("voxelbrew.ui.artifacts"));
         choice("appearance", 1);
@@ -1231,6 +1388,7 @@ class WorkbenchUiTest {
         key(KeyCode.ENTER);
         assertEquals("Width: 5", sketchGeometry().entity(textEntity.id()).text().content());
         text("sketch-edit-text-content", "=\"Width: \" + $width");
+        key(KeyCode.ENTER); // Accept the parameter suggestion first; the next Enter applies.
         key(KeyCode.ENTER);
         sketchReady();
         assertEquals("Width: 60", sketchGeometry().entity(textEntity.id()).text().content());

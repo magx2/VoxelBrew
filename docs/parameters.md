@@ -62,6 +62,16 @@ palettes. Active formulas have a blue background/border; invalid formulas have
 a red border. Hover or focus the field to inspect its result/error tooltip.
 The entered expression stays editable instead of being replaced by its result.
 
+Type **`$`** in an ƒx field to see the current parameters. Continue typing to
+filter by the beginning of the name: `$foo` shows `foo`, `fooLength`, and other
+names starting with `foo`. Matching is case-sensitive, like parameter references.
+Use **↑/↓** to choose and **Enter** or **Tab** to insert, or click a name.
+Completion replaces only the parameter reference around the caret and preserves
+the rest of the expression. Selecting a suggestion does not apply the field or
+commit a feature; press Enter again or use the usual Apply/Finish action.
+**Escape** closes only the suggestions first. Quoted string literals do not
+trigger completion, and an empty list displays “No matching parameters”.
+
 Text fields treat ordinary input literally. Start with `=` to evaluate a formula:
 
 | Input                    | Result (width = 60 mm) |

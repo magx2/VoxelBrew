@@ -194,6 +194,31 @@
 .formula-field:formula-invalid .formula-mark {
   -fx-text-fill: #d65c46;
 }
+
+.parameter-completion {
+  -fx-padding: 10;
+  -fx-background-color: -fx-control-inner-background;
+  -fx-border-color: derive(-fx-base, -25%);
+  -fx-border-radius: 6;
+  -fx-background-radius: 6;
+  -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.22), 12, 0, 0, 3);
+}
+.parameter-completion .list-view {
+  -fx-padding: 0;
+  -fx-background-insets: 0;
+  -fx-border-color: transparent;
+}
+.parameter-completion .list-cell {
+  -fx-background-color: -fx-control-inner-background;
+  -fx-text-fill: -fx-text-background-color;
+}
+.parameter-completion .list-cell:selected {
+  -fx-background-color: -fx-selection-bar;
+}
+.parameter-completion .completion-hint {
+  -fx-font-size: 10px;
+  -fx-opacity: 0.8;
+}
 .timeline {
   -fx-padding: 8 12 5;
   -fx-background-color: -fx-control-inner-background;

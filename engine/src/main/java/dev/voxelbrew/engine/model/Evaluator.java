@@ -53,6 +53,22 @@ public final class Evaluator {
         Map<Feature.BodyRef, Evaluation.Body> outputs = new LinkedHashMap<>();
         Map<String, Evaluation.Body> active = new LinkedHashMap<>();
         Map<String, Evaluation.State> states = new LinkedHashMap<>();
+        var resolved = new ArrayList<>(document.features());
+        Map<String, dev.voxelbrew.engine.parameters.Expressions.Quantity> parameterValues;
+        try {
+            parameterValues = document.parameters().values();
+            for (var binding : document.parameters().bindings())
+                if (document.features().stream()
+                        .noneMatch(f -> f.id().equals(binding.target().featureId())))
+                    throw new IllegalArgumentException(
+                            "Binding refers to missing feature " + binding.target());
+        } catch (IllegalArgumentException failure) {
+            return new Evaluation(
+                    document,
+                    List.of(new Evaluation.Diagnostic("parameters", FAILED, failure.getMessage())),
+                    List.of(),
+                    List.of());
+        }
         try {
             for (int index = 0; index < document.features().size(); index++) {
                 Feature feature = document.features().get(index);
@@ -72,6 +88,13 @@ public final class Evaluator {
                             throw new Blocked("input '" + input + "' did not rebuild");
                         }
                     }
+                    feature =
+                            dev.voxelbrew.engine.parameters.FeatureDimensions.resolve(
+                                    feature,
+                                    document.features(),
+                                    document.parameters(),
+                                    parameterValues);
+                    resolved.set(index, feature);
                     FeatureValidation.validate(feature);
                     if (feature instanceof Feature.Sketch s) {
                         var earlier = planes.get(s.plane().id());
@@ -233,7 +256,8 @@ public final class Evaluator {
                             new Evaluation.Diagnostic(feature.id(), FAILED, failure.getMessage()));
                 }
             }
-            return new Evaluation(document, diagnostics, new ArrayList<>(active.values()), owned);
+            return new Evaluation(
+                    document, diagnostics, new ArrayList<>(active.values()), owned, resolved);
         } catch (Throwable failure) {
             owned.forEach(Solid::close);
             throw failure;

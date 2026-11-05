@@ -193,6 +193,16 @@ final class SketchCommands implements Runnable {
 
         int publish(ModelSession session, SketchGeometry geometry) throws Exception {
             var sketch = selected(session);
+            var parameters =
+                    dev.voxelbrew.engine.parameters.FeatureDimensions.convert(
+                                    sketch, session.document().parameters())
+                            .parameters();
+            parameters =
+                    dev.voxelbrew.engine.parameters.FeatureDimensions.retainSketchBindings(
+                            parameters, sketch.id(), geometry);
+            geometry =
+                    dev.voxelbrew.engine.parameters.FeatureDimensions.resolveSketch(
+                            geometry, sketch.id(), parameters);
             var result = SketchSolver.solve(geometry);
             var solved = result.requireSolved();
             session.replace(
@@ -200,13 +210,24 @@ final class SketchCommands implements Runnable {
                             sketch.id(),
                             sketch.profileId(),
                             sketch.plane(),
-                            new Feature.Constrained(solved)));
+                            new Feature.Constrained(solved)),
+                    parameters);
             spec.commandLine().getOut().println(result.status());
             return save(session);
         }
 
         SketchGeometry geometry(ModelSession session) {
-            return Sketches.fromProfile(selected(session).profile());
+            var document = session.document();
+            var sketch =
+                    (Feature.Sketch)
+                            dev.voxelbrew.engine.parameters.FeatureDimensions.resolve(
+                                    selected(session),
+                                    document.features(),
+                                    document.parameters(),
+                                    document.parameters().values());
+            return dev.voxelbrew.engine.parameters.FeatureDimensions.convert(
+                            sketch, document.parameters())
+                    .geometry();
         }
     }
 

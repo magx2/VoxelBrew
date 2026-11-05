@@ -10,11 +10,14 @@ public final class ModelSession {
     private final String id;
     private List<Feature> features;
     private dev.voxelbrew.engine.printing.PrintSetup printSetup;
+    private dev.voxelbrew.engine.parameters.ParameterSet parameters;
     private int cursor;
     private long revision;
 
     private record State(
-            List<Feature> features, dev.voxelbrew.engine.printing.PrintSetup printSetup) {}
+            List<Feature> features,
+            dev.voxelbrew.engine.printing.PrintSetup printSetup,
+            dev.voxelbrew.engine.parameters.ParameterSet parameters) {}
 
     private final Deque<State> undo = new ArrayDeque<>();
     private final Deque<State> redo = new ArrayDeque<>();
@@ -23,11 +26,12 @@ public final class ModelSession {
         id = document.id();
         features = document.features();
         printSetup = document.printSetup();
+        parameters = document.parameters();
         cursor = document.cursor();
     }
 
     public synchronized CadDocument document() {
-        return new CadDocument(id, features, cursor, printSetup);
+        return new CadDocument(id, features, cursor, printSetup, parameters);
     }
 
     public synchronized long revision() {
@@ -49,6 +53,11 @@ public final class ModelSession {
     }
 
     public synchronized void add(Feature feature) {
+        add(feature, parameters);
+    }
+
+    public synchronized void add(
+            Feature feature, dev.voxelbrew.engine.parameters.ParameterSet expressions) {
         if (cursor != features.size()) {
             throw new ModelException(
                     feature.id(), "return the timeline cursor to the end before adding a feature");
@@ -56,15 +65,39 @@ public final class ModelSession {
         FeatureValidation.validate(feature);
         var next = new ArrayList<>(features);
         next.add(feature);
-        commit(next);
+        expressions.validate();
+        commit(next, printSetup, expressions);
         cursor = features.size();
     }
 
     public synchronized void replace(Feature feature) {
+        replace(feature, parameters);
+    }
+
+    public synchronized void replace(
+            Feature feature, dev.voxelbrew.engine.parameters.ParameterSet expressions) {
         FeatureValidation.validate(feature);
         var next = new ArrayList<>(features);
         next.set(index(feature.id()), feature);
-        commit(next);
+        expressions.validate();
+        commit(next, printSetup, expressions);
+    }
+
+    public synchronized void setParameters(dev.voxelbrew.engine.parameters.ParameterSet next) {
+        dev.voxelbrew.engine.parameters.FeatureDimensions.validateBindings(features, next);
+        commit(features, printSetup, next);
+    }
+
+    public synchronized void bindExpression(String featureId, String field, String expression) {
+        setParameters(
+                dev.voxelbrew.engine.parameters.FeatureDimensions.bind(
+                        document(),
+                        new dev.voxelbrew.engine.parameters.ParameterSet.Target(featureId, field),
+                        expression));
+    }
+
+    public synchronized void selectConfiguration(String nameOrId) {
+        setParameters(parameters.select(nameOrId));
     }
 
     public synchronized void editDimension(String featureId, String field, double value) {
@@ -102,7 +135,16 @@ public final class ModelSession {
                     next.set(i, changed);
                 }
             }
-            commit(next);
+            var unbound = parameters;
+            for (var candidate : next)
+                if (candidate instanceof Feature.Sketch s
+                        && s.plane().id().equals(selected.plane().id()))
+                    unbound =
+                            unbound.bind(
+                                    new dev.voxelbrew.engine.parameters.ParameterSet.Target(
+                                            s.id(), field),
+                                    "");
+            commit(next, printSetup, unbound);
             return;
         }
         Feature replacement;
@@ -153,7 +195,19 @@ public final class ModelSession {
         } else {
             throw new ModelException(featureId, "unknown dimension '" + field + "'");
         }
-        replace(replacement);
+        var unbound =
+                parameters.bind(
+                        new dev.voxelbrew.engine.parameters.ParameterSet.Target(featureId, field),
+                        "");
+        if (feature instanceof Feature.Sketch s
+                && s.profile() instanceof Feature.Constrained
+                && !field.startsWith("constraint:"))
+            unbound =
+                    unbound.bind(
+                            new dev.voxelbrew.engine.parameters.ParameterSet.Target(
+                                    featureId, "constraint:" + field),
+                            "");
+        replace(replacement, unbound);
     }
 
     public synchronized void setCursor(int newCursor) {
@@ -167,10 +221,11 @@ public final class ModelSession {
             return false;
         }
         boolean followEnd = cursor == features.size();
-        redo.push(new State(features, printSetup));
+        redo.push(new State(features, printSetup, parameters));
         var previous = undo.pop();
         features = previous.features();
         printSetup = previous.printSetup();
+        parameters = previous.parameters();
         cursor = followEnd ? features.size() : Math.min(cursor, features.size());
         revision++;
         return true;
@@ -181,10 +236,11 @@ public final class ModelSession {
             return false;
         }
         boolean followEnd = cursor == features.size();
-        undo.push(new State(features, printSetup));
+        undo.push(new State(features, printSetup, parameters));
         var next = redo.pop();
         features = next.features();
         printSetup = next.printSetup();
+        parameters = next.parameters();
         cursor = followEnd ? features.size() : Math.min(cursor, features.size());
         revision++;
         return true;
@@ -216,15 +272,26 @@ public final class ModelSession {
     }
 
     private void commit(List<Feature> next, dev.voxelbrew.engine.printing.PrintSetup setup) {
+        commit(next, setup, parameters);
+    }
+
+    private void commit(
+            List<Feature> next,
+            dev.voxelbrew.engine.printing.PrintSetup setup,
+            dev.voxelbrew.engine.parameters.ParameterSet expressions) {
         List<Feature> validated =
-                new CadDocument(id, next, Math.min(cursor, next.size()), setup).features();
-        if (validated.equals(features) && setup.equals(printSetup)) {
+                new CadDocument(id, next, Math.min(cursor, next.size()), setup, expressions)
+                        .features();
+        if (validated.equals(features)
+                && setup.equals(printSetup)
+                && expressions.equals(parameters)) {
             return;
         }
-        undo.push(new State(features, printSetup));
+        undo.push(new State(features, printSetup, parameters));
         redo.clear();
         features = validated;
         printSetup = setup;
+        parameters = expressions;
         revision++;
     }
 }

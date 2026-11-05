@@ -35,6 +35,56 @@ class DocumentControllerTest {
     }
 
     @Test
+    void configurationsInvalidateGeometryAndUndoPreservesFormulaExtrusions() throws Exception {
+        try (var controller = new DocumentController(callbacks::add)) {
+            var sketch = sketch("plate", 0);
+            controller.add(sketch);
+            await(() -> !controller.rebuilding());
+            var p =
+                    dev.voxelbrew.engine.parameters.ParameterSet.empty()
+                            .put(
+                                    "thickness",
+                                    dev.voxelbrew.engine.parameters.ParameterUnit.MM,
+                                    "5",
+                                    "")
+                            .addConfiguration("Thick", false)
+                            .override("thickness", "Thick", "8")
+                            .addConfiguration("Invalid", false)
+                            .override("thickness", "Invalid", "0");
+            controller.parameters(p);
+            await(() -> !controller.rebuilding());
+            controller.previewExtrusion(sketch, "thickness");
+            await(() -> !controller.rebuilding());
+            controller.cancelPreview();
+            await(() -> !controller.rebuilding());
+            assertTrue(controller.snapshot().document().parameters().bindings().isEmpty());
+            controller.previewExtrusion(sketch, "thickness");
+            controller.commitPreview();
+            await(() -> !controller.rebuilding());
+            assertEquals(12000, controller.build().bodies().getFirst().volume(), .01);
+            controller.undo();
+            await(() -> !controller.rebuilding());
+            assertEquals(1, controller.snapshot().document().features().size());
+            controller.redo();
+            await(() -> !controller.rebuilding());
+            assertEquals(1, controller.snapshot().document().parameters().bindings().size());
+            controller.configuration("Thick");
+            assertFalse(controller.canExport());
+            await(() -> !controller.rebuilding());
+            assertEquals(19200, controller.build().bodies().getFirst().volume(), .01);
+            assertEquals(
+                    8, ((Feature.Extrude) controller.effectiveFeatures().getLast()).distance());
+            controller.configuration("Invalid");
+            await(() -> !controller.rebuilding());
+            assertFalse(controller.canExport());
+            assertTrue(controller.build().bodies().isEmpty());
+            controller.undo();
+            await(() -> !controller.rebuilding());
+            assertTrue(controller.canExport());
+        }
+    }
+
+    @Test
     void customFeaturesRebuildOffThreadAndMissingPluginsNeverExposeStaleGeometry()
             throws Exception {
         Path plugins = Files.createDirectory(directory.resolve("custom plugins"));

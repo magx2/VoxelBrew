@@ -12,7 +12,31 @@ message Document {
   repeated Feature features = 4;
   uint32 cursor = 5;
   PrintSetup print_setup = 16;
+  ParameterSet parameters = 17;
   reserved 6 to 15;
+}
+message ParameterSet {
+  repeated UserParameter parameters = 1;
+  repeated ParameterConfiguration configurations = 2;
+  string active_configuration = 3;
+  repeated DimensionBinding bindings = 4;
+}
+message UserParameter {
+  string id = 1;
+  string name = 2;
+  string unit = 3;
+  string expression = 4;
+  string comment = 5;
+}
+message ParameterConfiguration {
+  string id = 1;
+  string name = 2;
+  map<string, string> overrides = 3;
+}
+message DimensionBinding {
+  string feature_id = 1;
+  string field = 2;
+  string expression = 3;
 }
 enum Units {
   UNITS_UNSPECIFIED = 0;

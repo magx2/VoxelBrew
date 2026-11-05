@@ -1,5 +1,6 @@
 package dev.voxelbrew.gui;
 
+import dev.voxelbrew.engine.parameters.*;
 import dev.voxelbrew.engine.sketch.*;
 import java.util.ArrayDeque;
 import java.util.Deque;
@@ -12,6 +13,7 @@ final class SketchController implements AutoCloseable {
     private record Request(
             long sequence,
             SketchGeometry geometry,
+            ParameterSet parameters,
             SketchGeometry.Ref point,
             SketchGeometry.Vec target,
             boolean commitDrag) {}
@@ -22,7 +24,12 @@ final class SketchController implements AutoCloseable {
     private final Consumer<Runnable> dispatch;
     private final Function<SketchGeometry, SketchSolver.Result> solver;
     private final Object lock = new Object();
-    private final Deque<SketchGeometry> undo = new ArrayDeque<>(), redo = new ArrayDeque<>();
+
+    private record State(SketchGeometry geometry, ParameterSet parameters) {}
+
+    private final Deque<State> undo = new ArrayDeque<>(), redo = new ArrayDeque<>();
+    private ParameterSet parameters = ParameterSet.empty();
+    private String featureId = "sketch";
     private SketchGeometry definition, displayed;
     private SketchSolver.Result result;
     private Runnable changed = () -> {};
@@ -34,6 +41,23 @@ final class SketchController implements AutoCloseable {
 
     SketchController(SketchGeometry geometry, Consumer<Runnable> dispatch) {
         this(geometry, dispatch, SketchSolver::solve);
+    }
+
+    SketchController(
+            SketchGeometry geometry,
+            ParameterSet parameters,
+            String featureId,
+            Consumer<Runnable> dispatch) {
+        definition = displayed = geometry;
+        this.parameters = parameters;
+        this.featureId = featureId;
+        this.dispatch = dispatch;
+        this.solver = SketchSolver::solve;
+        submit(null, null, false);
+    }
+
+    ParameterSet parameters() {
+        return parameters;
     }
 
     SketchController(
@@ -83,15 +107,20 @@ final class SketchController implements AutoCloseable {
     }
 
     void edit(SketchGeometry next) {
-        if (next.equals(definition)) return;
+        edit(next, FeatureDimensions.retainSketchBindings(parameters, featureId, next));
+    }
+
+    void edit(SketchGeometry next, ParameterSet nextParameters) {
+        if (next.equals(definition) && nextParameters.equals(parameters)) return;
         interactionError = "";
         remember();
         definition = displayed = next;
+        parameters = nextParameters;
         submit(null, null, false);
     }
 
     private void remember() {
-        undo.push(definition);
+        undo.push(new State(definition, parameters));
         while (undo.size() > 100) undo.removeLast();
         redo.clear();
     }
@@ -99,16 +128,20 @@ final class SketchController implements AutoCloseable {
     void undo() {
         if (undo.isEmpty()) return;
         interactionError = "";
-        redo.push(definition);
-        definition = displayed = undo.pop();
+        redo.push(new State(definition, parameters));
+        var previous = undo.pop();
+        definition = displayed = previous.geometry();
+        parameters = previous.parameters();
         submit(null, null, false);
     }
 
     void redo() {
         if (redo.isEmpty()) return;
         interactionError = "";
-        undo.push(definition);
-        definition = displayed = redo.pop();
+        undo.push(new State(definition, parameters));
+        var next = redo.pop();
+        definition = displayed = next.geometry();
+        parameters = next.parameters();
         submit(null, null, false);
     }
 
@@ -126,7 +159,7 @@ final class SketchController implements AutoCloseable {
         if (closed) return;
         busy = true;
         dragging = point != null;
-        var request = new Request(++sequence, definition, point, target, commit);
+        var request = new Request(++sequence, definition, parameters, point, target, commit);
         synchronized (lock) {
             pending = request;
             if (!running) {
@@ -150,11 +183,13 @@ final class SketchController implements AutoCloseable {
             }
             SketchSolver.Result solved;
             try {
+                var geometry =
+                        FeatureDimensions.resolveSketch(
+                                request.geometry(), featureId, request.parameters());
                 solved =
                         request.point() == null
-                                ? solver.apply(request.geometry())
-                                : Sketches.drag(
-                                        request.geometry(), request.point(), request.target());
+                                ? solver.apply(geometry)
+                                : Sketches.drag(geometry, request.point(), request.target());
             } catch (CancellationException cancelled) {
                 if (closed) return;
                 continue;

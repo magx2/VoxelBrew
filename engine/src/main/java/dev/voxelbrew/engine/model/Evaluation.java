@@ -20,6 +20,7 @@ public final class Evaluation implements AutoCloseable {
     private final List<Diagnostic> diagnostics;
     private final List<Body> bodies;
     private final List<Solid> owned;
+    private final List<Feature> resolvedFeatures;
     private boolean closed;
 
     Evaluation(
@@ -27,10 +28,28 @@ public final class Evaluation implements AutoCloseable {
             List<Diagnostic> diagnostics,
             List<Body> bodies,
             List<Solid> owned) {
+        this(document, diagnostics, bodies, owned, document.features());
+    }
+
+    Evaluation(
+            CadDocument document,
+            List<Diagnostic> diagnostics,
+            List<Body> bodies,
+            List<Solid> owned,
+            List<Feature> resolvedFeatures) {
         this.document = document;
         this.diagnostics = List.copyOf(diagnostics);
         this.bodies = List.copyOf(bodies);
         this.owned = List.copyOf(owned);
+        this.resolvedFeatures = List.copyOf(resolvedFeatures);
+    }
+
+    /**
+     * Detached numeric definitions for the evaluated revision; expressions remain in the source
+     * document.
+     */
+    public List<Feature> resolvedFeatures() {
+        return resolvedFeatures;
     }
 
     public List<Diagnostic> diagnostics() {

@@ -23,6 +23,9 @@ regular polygons, driving dimensions and geometric constraints. See
 M8 adds the remaining Fusion-style 2D geometry families and creation variants:
 ellipses, conics, slots, fit/control splines, text and text on a path. See
 [sketch geometry types and the comparison](docs/sketch-types.md).
+M9 adds named parameters, unit-aware formulas, and parameter configurations in
+one design. Create them from the workbench or a sketch, then use their names in
+driving dimensions and extrusion distances. See [parameters and configurations](docs/parameters.md).
 
 ## Prerequisites and locked dependencies
 

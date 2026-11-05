@@ -71,6 +71,10 @@ public final class Workbench extends BorderPane implements AutoCloseable {
     private final Button export =
             button("Export…", "export", () -> ExportDialog.show(stage(), controller(), registry()));
     private final Button customFeature = button("Features…", "custom-feature", this::customFeature);
+    private final Button parameters = button("Parameters…", "parameters", this::parameters);
+    private final ComboBox<String> configuration = new ComboBox<>();
+    private dev.voxelbrew.engine.parameters.ParameterSet lastParameters =
+            dev.voxelbrew.engine.parameters.ParameterSet.empty();
     private final Button constrainedSketch =
             button("New sketch…", "constrained-sketch", () -> editSketch(null));
     private final Button rectangle = button("▭  Rectangle", "rectangle", () -> beginSketch(false));
@@ -201,7 +205,22 @@ public final class Workbench extends BorderPane implements AutoCloseable {
                             if (entry.body()) selectBody(entry.id(), -1);
                             else selectFeature(entry.id());
                         });
-        var left = new VBox(10, heading("MODEL"), customFeature, constrainedSketch, tree);
+        configuration.setId("active-configuration");
+        configuration.setMaxWidth(Double.MAX_VALUE);
+        configuration.setOnAction(
+                e -> {
+                    if (!refreshing && configuration.getValue() != null)
+                        attempt(() -> controller.configuration(configuration.getValue()));
+                });
+        var left =
+                new VBox(
+                        10,
+                        heading("MODEL"),
+                        parameters,
+                        configuration,
+                        customFeature,
+                        constrainedSketch,
+                        tree);
         left.getStyleClass().add("side-panel");
         left.setPrefWidth(220);
         left.setMinWidth(185);
@@ -400,8 +419,10 @@ public final class Workbench extends BorderPane implements AutoCloseable {
         try {
             var snapshot = controller.snapshot();
             var document = snapshot.document();
+            var effective = controller.effectiveFeatures();
             boolean changed =
-                    !lastFeatures.equals(document.features())
+                    !lastFeatures.equals(effective)
+                            || !lastParameters.equals(document.parameters())
                             || !lastDocument.equals(document.id());
             if (!lastDocument.equals(document.id())) {
                 selectedFeature = null;
@@ -423,11 +444,11 @@ public final class Workbench extends BorderPane implements AutoCloseable {
                 }
             }
             synchronizeTreeSelection();
-            viewport.showSketches(
-                    document.features().subList(0, document.cursor()), selectedFeature);
+            viewport.showSketches(effective.subList(0, document.cursor()), selectedFeature);
             if (tool == Tool.RECTANGLE || tool == Tool.CIRCLE) sketchPreview();
             if (tool == Tool.NONE && changed) inspect();
-            lastFeatures = document.features();
+            lastFeatures = effective;
+            lastParameters = document.parameters();
             lastDocument = document.id();
             cursor.setMax(document.features().size());
             cursor.setValue(document.cursor());
@@ -448,6 +469,14 @@ public final class Workbench extends BorderPane implements AutoCloseable {
             }
             undo.setDisable(!snapshot.canUndo() || controller.ioBusy());
             redo.setDisable(!snapshot.canRedo() || controller.ioBusy());
+            parameters.setDisable(
+                    controller.ioBusy() || tool != Tool.NONE || controller.rebuilding());
+            var names = new ArrayList<String>();
+            names.add("Default");
+            document.parameters().configurations().forEach(c -> names.add(c.name()));
+            if (!configuration.getItems().equals(names)) configuration.getItems().setAll(names);
+            configuration.setValue(document.parameters().activeName());
+            configuration.setDisable(controller.ioBusy() || tool != Tool.NONE);
             export.setDisable(!controller.canExport());
             splitBody.setDisable(!controller.canExport() || controller.build().bodies().isEmpty());
             printing.documentChanged();
@@ -577,7 +606,7 @@ public final class Workbench extends BorderPane implements AutoCloseable {
     }
 
     private Feature selected() {
-        return controller.snapshot().document().features().stream()
+        return controller.effectiveFeatures().stream()
                 .filter(f -> f.id().equals(selectedFeature))
                 .findFirst()
                 .orElse(null);
@@ -590,9 +619,7 @@ public final class Workbench extends BorderPane implements AutoCloseable {
         viewport.select(null);
         viewport.showSketches(
                 controller
-                        .snapshot()
-                        .document()
-                        .features()
+                        .effectiveFeatures()
                         .subList(0, controller.snapshot().document().cursor()),
                 id);
         inspect();
@@ -744,11 +771,26 @@ public final class Workbench extends BorderPane implements AutoCloseable {
 
     private void dimension(Feature feature, String name, double value) {
         var field = field("dimension-" + name, name + " (mm)", value);
+        String expression =
+                controller
+                        .snapshot()
+                        .document()
+                        .parameters()
+                        .binding(
+                                new dev.voxelbrew.engine.parameters.ParameterSet.Target(
+                                        feature.id(), name));
+        if (!expression.isEmpty()) field.setText(expression);
         var apply =
                 button(
                         "Apply",
                         "apply-" + name,
-                        () -> controller.edit(feature.id(), name, number(field, name)));
+                        () -> {
+                            String text = field.getText().strip();
+                            if (text.matches(
+                                    "[+-]?(?:[0-9]+(?:\\.[0-9]*)?|\\.[0-9]+)(?:[eE][+-]?[0-9]+)?"))
+                                controller.edit(feature.id(), name, number(field, name));
+                            else controller.expression(feature.id(), name, text);
+                        });
         field.setOnAction(e -> apply.fire());
         form.getChildren().add(apply);
     }
@@ -768,6 +810,15 @@ public final class Workbench extends BorderPane implements AutoCloseable {
         } catch (IOException failure) {
             error.setText(failure.getMessage());
         }
+    }
+
+    private void parameters() {
+        cancelTool();
+        ParameterDialog.show(
+                        stage,
+                        controller.effectiveFeatures(),
+                        controller.snapshot().document().parameters())
+                .ifPresent(controller::parameters);
     }
 
     private void referenceEditor(
@@ -1006,14 +1057,15 @@ public final class Workbench extends BorderPane implements AutoCloseable {
         SketchEditor.show(
                 stage,
                 sketch,
-                result -> {
+                controller.effectiveFeatures(),
+                before.document().parameters(),
+                (result, parameters) -> {
                     var current = controller.snapshot();
                     if (!before.document().id().equals(current.document().id())
                             || before.revision() != current.revision())
                         throw new IllegalStateException(
                                 "The document changed while editing. Cancel and reopen the sketch.");
-                    if (sketch == null) controller.add(result);
-                    else controller.replaceFeature(result);
+                    controller.sketch(result, parameters, sketch == null);
                     selectedFeature = result.id();
                     selectedBody = null;
                     inspect();
@@ -1044,8 +1096,16 @@ public final class Workbench extends BorderPane implements AutoCloseable {
                 .addListener(
                         (o, a, b) -> {
                             try {
-                                double value = number(distance, "Distance");
-                                controller.previewExtrusion(sketch, value);
+                                double value =
+                                        controller
+                                                .snapshot()
+                                                .document()
+                                                .parameters()
+                                                .value(
+                                                        distance.getText(),
+                                                        dev.voxelbrew.engine.parameters
+                                                                .ParameterUnit.MM);
+                                controller.previewExtrusion(sketch, distance.getText().strip());
                                 viewport.updateExtrusionDistance(value);
                                 finish.setDisable(false);
                                 error.setText("");

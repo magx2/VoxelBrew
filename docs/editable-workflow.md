@@ -81,7 +81,9 @@ cli inspect broken.jcad
 
 ## .jcad schema and safe writes
 
-`engine/src/main/proto/document.proto` is schema version 5 (versions 1–4 remain readable). The binary envelope
+`engine/src/main/proto/document.proto` is schema version 6 (versions 1–5 remain readable). Named parameters,
+dimension expressions, configuration overrides and the active configuration are
+stored with the feature definitions. See [parameters](parameters.md). The binary envelope
 contains eight magic bytes (`JCAD`, CR, LF, 0x1A, LF), a big-endian 32-bit payload
 length, a SHA-256 digest and the Protobuf message. The 16 MiB payload limit, exact
 length check and digest distinguish truncated/corrupt documents from an empty

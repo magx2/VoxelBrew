@@ -17,6 +17,12 @@
   -fx-control-inner-background: #202933;
   -fx-text-background-color: #e6edf5;
 }
+.dark .table-view .table-row-cell:selected {
+  -fx-background-color: #805a1e;
+}
+.dark .table-view .table-row-cell:selected .table-cell {
+  -fx-text-fill: #ffffff;
+}
 .title-strip {
   -fx-padding: 14 18;
   -fx-alignment: center-left;

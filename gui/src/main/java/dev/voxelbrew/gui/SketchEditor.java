@@ -3,9 +3,9 @@ package dev.voxelbrew.gui;
 import static dev.voxelbrew.engine.sketch.SketchGeometry.*;
 
 import dev.voxelbrew.engine.model.Feature;
+import dev.voxelbrew.engine.parameters.*;
 import dev.voxelbrew.engine.sketch.*;
 import java.util.*;
-import java.util.function.Consumer;
 import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.geometry.Point2D;
@@ -79,8 +79,10 @@ final class SketchEditor extends BorderPane implements AutoCloseable {
     private final Button finish = button("Finish sketch", "constraint-finish", this::finish),
             undo = button("Undo", "sketch-undo", () -> controllerUndo(false)),
             redo = button("Redo", "sketch-redo", () -> controllerUndo(true));
-    private final Consumer<Feature.Sketch> accept;
+    private final java.util.function.BiConsumer<Feature.Sketch, ParameterSet> accept;
     private final Feature.Sketch original;
+    private final String featureId;
+    private final List<Feature> documentFeatures;
     private Runnable dismiss = () -> {};
     private Draw tool = Draw.SELECT;
     private Type activeConstraint;
@@ -91,15 +93,28 @@ final class SketchEditor extends BorderPane implements AutoCloseable {
     private final boolean dark;
     private int nextId = 1;
 
-    static void show(Stage stage, Feature.Sketch sketch, Consumer<Feature.Sketch> accept) {
+    static void show(
+            Stage stage,
+            Feature.Sketch sketch,
+            List<Feature> features,
+            ParameterSet parameters,
+            java.util.function.BiConsumer<Feature.Sketch, ParameterSet> accept) {
         var scene = stage.getScene();
         Parent previous = scene.getRoot();
         Node previousFocus = scene.getFocusOwner();
         var previousClose = stage.getOnCloseRequest();
-        var editor = new SketchEditor(sketch, previous.getStyleClass().contains("dark"), accept);
+        var editor =
+                new SketchEditor(
+                        sketch,
+                        features,
+                        parameters,
+                        previous.getStyleClass().contains("dark"),
+                        accept);
         editor.getStylesheets().setAll(previous.getStylesheets());
         editor.getStyleClass().addAll(previous.getStyleClass());
         var host = new StackPane();
+        host.getStylesheets().setAll(previous.getStylesheets());
+        host.getStyleClass().add(previous.getStyleClass().contains("dark") ? "dark" : "light");
         scene.setRoot(host);
         host.getChildren().addAll(previous, editor);
         StackPane.setMargin(editor, new Insets(8));
@@ -131,13 +146,27 @@ final class SketchEditor extends BorderPane implements AutoCloseable {
                 });
     }
 
-    private SketchEditor(Feature.Sketch sketch, boolean dark, Consumer<Feature.Sketch> accept) {
+    private SketchEditor(
+            Feature.Sketch sketch,
+            List<Feature> features,
+            ParameterSet parameters,
+            boolean dark,
+            java.util.function.BiConsumer<Feature.Sketch, ParameterSet> accept) {
         this.original = sketch;
+        featureId = sketch == null ? "sketch-" + UUID.randomUUID() : sketch.id();
+        documentFeatures = List.copyOf(features);
         this.dark = dark;
         this.accept = accept;
-        var geometry =
-                sketch == null ? SketchGeometry.empty() : Sketches.fromProfile(sketch.profile());
-        controller = new SketchController(geometry, Platform::runLater);
+        var converted =
+                sketch == null
+                        ? new FeatureDimensions.Converted(SketchGeometry.empty(), parameters)
+                        : FeatureDimensions.convert(sketch, parameters);
+        controller =
+                new SketchController(
+                        converted.geometry(),
+                        converted.parameters(),
+                        featureId,
+                        Platform::runLater);
         setId("sketch-editor");
         getStyleClass().add("sketch-editor");
         plane.setId("constraint-plane");
@@ -156,6 +185,7 @@ final class SketchEditor extends BorderPane implements AutoCloseable {
                         title,
                         new Label("Plane Z (mm)"),
                         plane,
+                        button("Parameters…", "sketch-parameters", this::parameters),
                         space,
                         finish,
                         button("Cancel", "constraint-cancel", () -> dismiss.run()));
@@ -384,7 +414,16 @@ final class SketchEditor extends BorderPane implements AutoCloseable {
                             selection.addAll(b.refs());
                             if (b.type().dimension()) {
                                 dimension.setValue(b.type());
-                                dimensionValue.setText(number(b.values().getFirst()));
+                                String expression =
+                                        controller
+                                                .parameters()
+                                                .binding(
+                                                        new ParameterSet.Target(
+                                                                featureId, "constraint:" + b.id()));
+                                dimensionValue.setText(
+                                        expression.isEmpty()
+                                                ? number(b.values().getFirst())
+                                                : expression);
                             }
                             selectionChanged();
                         });
@@ -1011,28 +1050,37 @@ final class SketchEditor extends BorderPane implements AutoCloseable {
 
     private void dimension() {
         try {
-            double value = value(dimensionValue, "Dimension");
             var g = controller.definition();
             var chosen = constraints.getSelectionModel().getSelectedItem();
-            if (chosen != null && chosen.type().dimension()) {
-                edit(
-                        g.withConstraints(
-                                g.constraints().stream()
-                                        .map(
-                                                c ->
-                                                        c.id().equals(chosen.id())
-                                                                ? c.withValue(value)
-                                                                : c)
-                                        .toList()));
-            } else
-                edit(
-                        g.add(
-                                SketchConstraints.create(
-                                        g,
-                                        id("dimension"),
-                                        dimension.getValue(),
-                                        List.copyOf(selection),
-                                        value)));
+            var type =
+                    chosen != null && chosen.type().dimension()
+                            ? chosen.type()
+                            : dimension.getValue();
+            String expression = dimensionValue.getText().strip();
+            double value = controller.parameters().value(expression, FeatureDimensions.unit(type));
+            String id = chosen != null && chosen.type().dimension() ? chosen.id() : id("dimension");
+            var next =
+                    chosen != null && chosen.type().dimension()
+                            ? g.withConstraints(
+                                    g.constraints().stream()
+                                            .map(c -> c.id().equals(id) ? c.withValue(value) : c)
+                                            .toList())
+                            : g.add(
+                                    SketchConstraints.create(
+                                            g, id, type, List.copyOf(selection), value));
+            var parameters =
+                    controller
+                            .parameters()
+                            .bind(
+                                    new ParameterSet.Target(featureId, "constraint:" + id),
+                                    expression.matches(
+                                                    "[+-]?(?:[0-9]+(?:\\.[0-9]*)?|\\.[0-9]+)(?:[eE][+-]?[0-9]+)?")
+                                            ? ""
+                                            : expression);
+            parameters.validate();
+            error.setText("");
+            dimensionValue.getStyleClass().remove("invalid");
+            controller.edit(next, parameters);
         } catch (RuntimeException failure) {
             error.setText(failure.getMessage());
             dimensionValue.getStyleClass().add("invalid");
@@ -1109,6 +1157,19 @@ final class SketchEditor extends BorderPane implements AutoCloseable {
         else controller.undo();
     }
 
+    private void parameters() {
+        var features = new ArrayList<>(documentFeatures);
+        features.removeIf(f -> f.id().equals(featureId));
+        features.add(
+                new Feature.Sketch(
+                        featureId,
+                        original == null ? "profile" : original.profileId(),
+                        original == null ? new Feature.Plane("origin-xy", 0) : original.plane(),
+                        new Feature.Constrained(controller.definition())));
+        ParameterDialog.show(getScene().getWindow(), features, controller.parameters())
+                .ifPresent(p -> controller.edit(controller.definition(), p));
+    }
+
     private void edit(SketchGeometry next) {
         error.setText("");
         dimensionValue.getStyleClass().remove("invalid");
@@ -1173,7 +1234,7 @@ final class SketchEditor extends BorderPane implements AutoCloseable {
             double offset = value(plane, "Plane Z");
             var result =
                     new Feature.Sketch(
-                            original == null ? "sketch-" + UUID.randomUUID() : original.id(),
+                            featureId,
                             original == null
                                     ? "profile-" + UUID.randomUUID()
                                     : original.profileId(),
@@ -1185,7 +1246,7 @@ final class SketchEditor extends BorderPane implements AutoCloseable {
                                             offset)
                                     : original.plane(),
                             new Feature.Constrained(controller.definition()));
-            accept.accept(result);
+            accept.accept(result, controller.parameters());
             dismiss.run();
         } catch (RuntimeException failure) {
             error.setText(failure.getMessage());

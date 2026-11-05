@@ -9,13 +9,28 @@ public record CadDocument(
         String id,
         List<Feature> features,
         int cursor,
-        dev.voxelbrew.engine.printing.PrintSetup printSetup) {
+        dev.voxelbrew.engine.printing.PrintSetup printSetup,
+        dev.voxelbrew.engine.parameters.ParameterSet parameters) {
+    public CadDocument(
+            String id,
+            List<Feature> features,
+            int cursor,
+            dev.voxelbrew.engine.printing.PrintSetup printSetup) {
+        this(
+                id,
+                features,
+                cursor,
+                printSetup,
+                dev.voxelbrew.engine.parameters.ParameterSet.empty());
+    }
+
     public CadDocument(String id, List<Feature> features, int cursor) {
         this(id, features, cursor, dev.voxelbrew.engine.printing.PrintSetup.empty());
     }
 
     public CadDocument {
         java.util.Objects.requireNonNull(printSetup);
+        java.util.Objects.requireNonNull(parameters);
         identifier(id, "document ID");
         features = List.copyOf(features);
         var ids = new HashSet<String>();

@@ -14,10 +14,19 @@ import java.util.function.Function;
 public final class DocumentController implements AutoCloseable {
     public record Body(String id, Feature.BodyRef output, MeshData mesh, double volume) {}
 
-    public record Build(List<Body> bodies, List<Evaluation.Diagnostic> diagnostics, boolean valid) {
+    public record Build(
+            List<Body> bodies,
+            List<Evaluation.Diagnostic> diagnostics,
+            boolean valid,
+            List<Feature> features) {
+        public Build(List<Body> bodies, List<Evaluation.Diagnostic> diagnostics, boolean valid) {
+            this(bodies, diagnostics, valid, List.of());
+        }
+
         public Build {
             bodies = List.copyOf(bodies);
             diagnostics = List.copyOf(diagnostics);
+            features = List.copyOf(features);
         }
     }
 
@@ -43,6 +52,7 @@ public final class DocumentController implements AutoCloseable {
     private CadDocument saved = session.document();
     private Path path;
     private Feature.Extrude preview;
+    private String previewExpression = "";
     private Build build = new Build(List.of(), List.of(), true);
     private boolean rebuilding, ioBusy, displayedPreview;
     private String error = "";
@@ -79,6 +89,40 @@ public final class DocumentController implements AutoCloseable {
 
     public Build build() {
         return build;
+    }
+
+    public List<Feature> effectiveFeatures() {
+        return !rebuilding && build.features().size() == session.document().features().size()
+                ? build.features()
+                : session.document().features();
+    }
+
+    public void parameters(dev.voxelbrew.engine.parameters.ParameterSet parameters) {
+        session.setParameters(parameters);
+        preview = null;
+        schedule(session.document(), false);
+    }
+
+    public void configuration(String nameOrId) {
+        session.selectConfiguration(nameOrId);
+        preview = null;
+        schedule(session.document(), false);
+    }
+
+    public void expression(String id, String field, String expression) {
+        session.bindExpression(id, field, expression);
+        preview = null;
+        schedule(session.document(), false);
+    }
+
+    public void sketch(
+            Feature.Sketch sketch,
+            dev.voxelbrew.engine.parameters.ParameterSet parameters,
+            boolean create) {
+        if (create) session.add(sketch, parameters);
+        else session.replace(sketch, parameters);
+        preview = null;
+        schedule(session.document(), false);
     }
 
     public Path path() {
@@ -184,6 +228,7 @@ public final class DocumentController implements AutoCloseable {
     }
 
     public void previewExtrusion(Feature.Sketch sketch, double distance) {
+        previewExpression = "";
         String id = preview == null ? "extrude-" + UUID.randomUUID() : preview.id();
         var candidate =
                 new Feature.Extrude(
@@ -194,10 +239,33 @@ public final class DocumentController implements AutoCloseable {
         schedule(temporary.document(), true);
     }
 
+    public void previewExtrusion(Feature.Sketch sketch, String expression) {
+        double value =
+                session.document()
+                        .parameters()
+                        .value(expression, dev.voxelbrew.engine.parameters.ParameterUnit.MM);
+        previewExtrusion(sketch, value);
+        if (!expression.matches("[+-]?(?:[0-9]+(?:\\.[0-9]*)?|\\.[0-9]+)(?:[eE][+-]?[0-9]+)?"))
+            previewExpression = expression;
+    }
+
     public void commitPreview() {
         if (preview == null) return;
         var feature = preview;
-        add(feature);
+        if (previewExpression.isEmpty()) add(feature);
+        else {
+            var parameters =
+                    session.document()
+                            .parameters()
+                            .bind(
+                                    new dev.voxelbrew.engine.parameters.ParameterSet.Target(
+                                            feature.id(), "distance"),
+                                    previewExpression);
+            session.add(feature, parameters);
+            preview = null;
+            previewExpression = "";
+            schedule(session.document(), false);
+        }
     }
 
     public void cancelPreview() {
@@ -394,7 +462,9 @@ public final class DocumentController implements AutoCloseable {
 
     static Build evaluate(CadDocument document, Path pluginDirectory) {
         try (var evaluation = Evaluator.evaluate(document, pluginDirectory)) {
-            if (!evaluation.valid()) return new Build(List.of(), evaluation.diagnostics(), false);
+            if (!evaluation.valid())
+                return new Build(
+                        List.of(), evaluation.diagnostics(), false, evaluation.resolvedFeatures());
             var bodies =
                     evaluation.bodies().stream()
                             .map(
@@ -405,7 +475,7 @@ public final class DocumentController implements AutoCloseable {
                                                     b.solid().tessellate(MeshOptions.DEFAULT),
                                                     b.solid().volume()))
                             .toList();
-            return new Build(bodies, evaluation.diagnostics(), true);
+            return new Build(bodies, evaluation.diagnostics(), true, evaluation.resolvedFeatures());
         }
     }
 

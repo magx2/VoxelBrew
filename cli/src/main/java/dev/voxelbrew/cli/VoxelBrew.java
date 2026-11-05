@@ -22,7 +22,7 @@ import picocli.CommandLine.Spec;
         name = "voxelbrew",
         description = "VoxelBrew parametric CAD; all dimensions are millimeters.",
         mixinStandardHelpOptions = true,
-        version = "VoxelBrew 0.1.0 / jcad schema 5",
+        version = "VoxelBrew 0.1.0 / jcad schema 6",
         subcommands = {
             VoxelBrew.Create.class,
             VoxelBrew.Rectangle.class,
@@ -62,6 +62,7 @@ public final class VoxelBrew implements Runnable {
         PrintingCommands.register(cliCommand);
         FeatureCommands.register(cliCommand);
         SketchCommands.register(cliCommand);
+        ParameterCommands.register(cliCommand);
         return cliCommand;
     }
 
@@ -409,13 +410,21 @@ public final class VoxelBrew implements Runnable {
                 description = "width, height, x, y, centerX, centerY, diameter, offsetZ, distance")
         String field;
 
-        @Option(names = "--value", required = true)
-        double value;
+        @Option(names = "--value")
+        Double value;
+
+        @Option(
+                names = "--expression",
+                description = "Formula or named parameter (instead of --value)")
+        String expression;
 
         @Override
         public Integer call() throws Exception {
             var session = session();
-            session.editDimension(feature, field, value, pluginDirectory);
+            if ((value == null) == (expression == null))
+                throw new IllegalArgumentException("Choose exactly one of --value or --expression");
+            if (expression != null) session.bindExpression(feature, field, expression);
+            else session.editDimension(feature, field, value, pluginDirectory);
             return save(session);
         }
     }

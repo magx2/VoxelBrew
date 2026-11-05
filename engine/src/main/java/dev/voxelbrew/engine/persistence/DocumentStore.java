@@ -23,7 +23,7 @@ import java.util.List;
  * Versioned protobuf persistence with a complete-file integrity envelope and atomic publication.
  */
 public final class DocumentStore {
-    public static final int SCHEMA_VERSION = 5;
+    public static final int SCHEMA_VERSION = 6;
     private static final byte[] MAGIC = {'J', 'C', 'A', 'D', 13, 10, 26, 10};
     private static final int HEADER = 44;
     private static final int MAX_PAYLOAD = 16 * 1024 * 1024;
@@ -78,7 +78,10 @@ public final class DocumentStore {
                     message.getCursor(),
                     message.hasPrintSetup()
                             ? fromProto(message.getPrintSetup())
-                            : PrintSetup.empty());
+                            : PrintSetup.empty(),
+                    message.hasParameters()
+                            ? ParameterCodec.fromProto(message.getParameters())
+                            : dev.voxelbrew.engine.parameters.ParameterSet.empty());
         } catch (DocumentFormatException failure) {
             throw failure;
         } catch (IOException | IllegalArgumentException failure) {
@@ -220,7 +223,8 @@ public final class DocumentStore {
                         .setDocumentId(document.id())
                         .setUnits(DocumentProto.Units.MILLIMETERS)
                         .setCursor(document.cursor())
-                        .setPrintSetup(toProto(document.printSetup()));
+                        .setPrintSetup(toProto(document.printSetup()))
+                        .setParameters(ParameterCodec.toProto(document.parameters()));
         document.features().forEach(feature -> message.addFeatures(toProto(feature)));
         return message.build();
     }

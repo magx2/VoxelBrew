@@ -22,6 +22,56 @@ class SketchControllerTest {
     }
 
     @Test
+    void parameterChangesAndBindingsShareLocalHistoryAndSolveOnTheWorker() throws Exception {
+        var queue = new ConcurrentLinkedQueue<Runnable>();
+        var p =
+                dev.voxelbrew.engine.parameters.ParameterSet.empty()
+                        .put("width", dev.voxelbrew.engine.parameters.ParameterUnit.MM, "60", "")
+                        .bind(
+                                new dev.voxelbrew.engine.parameters.ParameterSet.Target(
+                                        "sketch", "constraint:width"),
+                                "width");
+        try (var controller =
+                new SketchController(
+                        Sketches.rectangle("r", 0, 0, 60, 40, true), p, "sketch", queue::add)) {
+            await(controller, queue);
+            controller.edit(
+                    controller.definition(),
+                    p.put("width", dev.voxelbrew.engine.parameters.ParameterUnit.MM, "80", ""));
+            await(controller, queue);
+            assertTrue(controller.canFinish());
+            assertEquals(
+                    80,
+                    controller
+                            .definition()
+                            .entity("r-bottom")
+                            .at(0)
+                            .distance(controller.definition().entity("r-bottom").at(1)),
+                    1e-5);
+            controller.undo();
+            await(controller, queue);
+            assertEquals("60", controller.parameters().parameter("width").expression());
+            controller.redo();
+            await(controller, queue);
+            assertEquals("80", controller.parameters().parameter("width").expression());
+            controller.edit(
+                    controller.definition(),
+                    controller
+                            .parameters()
+                            .put(
+                                    "width",
+                                    dev.voxelbrew.engine.parameters.ParameterUnit.MM,
+                                    "missing",
+                                    ""));
+            await(controller, queue);
+            assertFalse(controller.canFinish());
+            controller.undo();
+            await(controller, queue);
+            assertTrue(controller.canFinish());
+        }
+    }
+
+    @Test
     void coalescesRequestsAndDiscardsOlderResults() throws Exception {
         var queue = new ConcurrentLinkedQueue<Runnable>();
         var entered = new CountDownLatch(1);

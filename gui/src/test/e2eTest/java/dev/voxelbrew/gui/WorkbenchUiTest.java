@@ -505,6 +505,260 @@ class WorkbenchUiTest {
         return fx(() -> ((SketchEditor) node("#sketch-editor")).controller().definition());
     }
 
+    private void parameter(String name, String expression) throws Exception {
+        click("parameter-new");
+        text("parameter-name", name);
+        text("parameter-expression", expression);
+        click("parameter-save");
+        assertEquals("", fx(() -> ((Label) node("#parameters-error")).getText()));
+    }
+
+    private void parameterTab(int index) throws Exception {
+        var position =
+                fx(
+                        () -> {
+                            var tabs = (TabPane) node("#parameters-tabs");
+                            var headers =
+                                    tabs.lookupAll(".tab").stream()
+                                            .filter(Node::isVisible)
+                                            .sorted(
+                                                    java.util.Comparator.comparingDouble(
+                                                            n ->
+                                                                    n.localToScreen(
+                                                                                    n
+                                                                                            .getBoundsInLocal())
+                                                                            .getMinX()))
+                                            .toList();
+                            return headers.get(index)
+                                    .localToScreen(headers.get(index).getBoundsInLocal());
+                        });
+        fx(
+                () -> {
+                    robot.mouseMove(position.getCenterX(), position.getCenterY());
+                    robot.mouseClick(MouseButton.PRIMARY);
+                    return null;
+                });
+        Thread.sleep(200);
+        assertEquals(
+                index,
+                fx(
+                        () ->
+                                ((TabPane) node("#parameters-tabs"))
+                                        .getSelectionModel()
+                                        .getSelectedIndex()));
+    }
+
+    private void tableRow(String id, int index) throws Exception {
+        click(id);
+        key(KeyCode.HOME);
+        for (int i = 0; i < index; i++) key(KeyCode.DOWN);
+        assertEquals(
+                index,
+                fx(() -> ((TableView<?>) node("#" + id)).getSelectionModel().getSelectedIndex()));
+    }
+
+    @Test
+    void namedSketchParametersAnd3dConfigurationsDriveOneDesign() throws Exception {
+        choice("appearance", 2);
+        click("constrained-sketch");
+        sketchReady();
+        click("sketch-parameters");
+        parameter("width", "60");
+        parameter("thickness", "5");
+        click("parameters-apply");
+        sketchReady();
+        click("sketch-tool-rectangle");
+        sketchClick(0, 0, false);
+        sketchClick(60, 40, false);
+        sketchReady();
+        String bottom = sketchGeometry().entities().getFirst().id();
+        sketchReference(bottom);
+        choice("sketch-dimension-type", 0);
+        text("sketch-dimension-value", "width");
+        click("sketch-apply-dimension");
+        sketchReady();
+        assertEquals(
+                "width",
+                fx(
+                        () ->
+                                ((SketchEditor) node("#sketch-editor"))
+                                        .controller()
+                                        .parameters()
+                                        .bindings()
+                                        .getFirst()
+                                        .expression()));
+        click("sketch-clear-selection");
+        sketchReference(sketchGeometry().entities().get(1).id());
+        text("sketch-dimension-value", "40");
+        click("sketch-apply-dimension");
+        sketchReady();
+        click("constraint-finish");
+        ready();
+        click("extrude");
+        text("extrude-distance", "thickness");
+        click("commit-extrusion");
+        ready();
+        assertEquals(12000, volume(), .01);
+        String body = fx(() -> workbench.controller().build().bodies().getFirst().id());
+        var featureIds =
+                fx(
+                        () ->
+                                workbench.controller().snapshot().document().features().stream()
+                                        .map(Feature::id)
+                                        .toList());
+        click("parameters");
+        parameterTab(1);
+        text("configuration-name", "Large");
+        click("configuration-add");
+        tableRow("configuration-table", 1);
+        choice("configuration-parameter", 0);
+        text("configuration-expression", "80");
+        click("configuration-set");
+        choice("configuration-parameter", 1);
+        text("configuration-expression", "8");
+        click("configuration-set");
+        click("configuration-activate");
+        Path artifacts = Path.of(System.getProperty("voxelbrew.ui.artifacts"));
+        fx(
+                () -> {
+                    Screenshot.save(
+                            stage.getScene(),
+                            artifacts.resolve("parameter-configurations-dark.png"));
+                    return null;
+                });
+        click("parameters-apply");
+        ready();
+        assertEquals(25600, volume(), .02);
+        assertEquals(body, fx(() -> workbench.controller().build().bodies().getFirst().id()));
+        click("undo");
+        ready();
+        assertEquals(12000, volume(), .02);
+        click("redo");
+        ready();
+        assertEquals(25600, volume(), .02);
+        assertEquals(
+                featureIds,
+                fx(
+                        () ->
+                                workbench.controller().snapshot().document().features().stream()
+                                        .map(Feature::id)
+                                        .toList()));
+        Path file = directory.resolve("parameter versions.jcad");
+        save(file);
+        open(file);
+        ready();
+        assertEquals(
+                "Large",
+                fx(() -> workbench.controller().snapshot().document().parameters().activeName()));
+        choice("active-configuration", 0);
+        ready();
+        assertEquals(12000, volume(), .02);
+        choice("active-configuration", 1);
+        ready();
+        assertEquals(25600, volume(), .02);
+        click("save");
+        ready();
+        String inspection = cli("inspect", file.toString());
+        var measured =
+                java.util.regex.Pattern.compile("volume=([0-9.eE+\\-]+)").matcher(inspection);
+        assertTrue(measured.find(), inspection);
+        assertEquals(25600, Double.parseDouble(measured.group(1)), .02, inspection);
+        Files.copy(
+                file,
+                artifacts.resolve("gui-parameter-variants.jcad"),
+                StandardCopyOption.REPLACE_EXISTING);
+        Files.writeString(artifacts.resolve("parameter-cli-inspection.txt"), inspection);
+    }
+
+    @Test
+    void parameterRepairRenameAndSketchCancellationUseRealControls() throws Exception {
+        choice("appearance", 1);
+        rectangle(0);
+        click("parameters");
+        parameter("width", "60");
+        click("parameters-apply");
+        ready();
+        text("dimension-width", "width");
+        click("apply-width");
+        ready();
+        var before = fx(() -> workbench.controller().snapshot());
+        click("parameters");
+        tableRow("parameter-table", 0);
+        text("parameter-expression", "missing");
+        click("parameter-save");
+        assertTrue(
+                fx(
+                        () ->
+                                ((Label) node("#parameters-error"))
+                                        .getText()
+                                        .contains("Unknown parameter")));
+        click("parameters-cancel");
+        assertEquals(before, fx(() -> workbench.controller().snapshot()));
+        click("parameters");
+        tableRow("parameter-table", 0);
+        text("parameter-name", "plateWidth");
+        click("parameter-save");
+        fx(
+                () -> {
+                    Screenshot.save(
+                            stage.getScene(),
+                            Path.of(
+                                    System.getProperty("voxelbrew.ui.artifacts"),
+                                    "parameters-light.png"));
+                    return null;
+                });
+        click("parameters-apply");
+        ready();
+        assertEquals("plateWidth", fx(() -> ((TextField) node("#dimension-width")).getText()));
+        before = fx(() -> workbench.controller().snapshot());
+        click("edit-sketch-constraints");
+        sketchReady();
+        click("sketch-parameters");
+        parameter("temporary", "12");
+        click("parameters-apply");
+        sketchReady();
+        click("constraint-cancel");
+        assertEquals(before, fx(() -> workbench.controller().snapshot()));
+        click("edit-sketch-constraints");
+        sketchReady();
+        click("constraint-finish");
+        ready();
+        assertEquals(
+                "constraint:width",
+                fx(
+                        () ->
+                                workbench
+                                        .controller()
+                                        .snapshot()
+                                        .document()
+                                        .parameters()
+                                        .bindings()
+                                        .getFirst()
+                                        .target()
+                                        .field()));
+        click("extrude");
+        click("commit-extrusion");
+        ready();
+        assertEquals(12000, volume(), .01);
+        click("parameters");
+        parameterTab(1);
+        text("configuration-name", "Invalid");
+        click("configuration-add");
+        tableRow("configuration-table", 1);
+        text("configuration-expression", "0");
+        click("configuration-set");
+        click("configuration-activate");
+        click("parameters-apply");
+        ready();
+        assertFalse(fx(() -> workbench.controller().build().valid()));
+        assertTrue(fx(() -> workbench.controller().build().bodies().isEmpty()));
+        assertTrue(fx(() -> node("#export").isDisabled()));
+        choice("active-configuration", 0);
+        ready();
+        assertEquals(12000, volume(), .01);
+        assertTrue(fx(() -> workbench.controller().canExport()));
+    }
+
     @Test
     void ellipseSlotsAndConicsUseRealSketchTools() throws Exception {
         choice("appearance", 1);

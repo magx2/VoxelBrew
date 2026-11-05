@@ -16,6 +16,87 @@ import org.junit.jupiter.api.io.TempDir;
 class WorkflowTest {
     @TempDir Path directory;
 
+    private void assertVolume(double expected, String output) {
+        var match = java.util.regex.Pattern.compile("volume=([0-9.eE+\\-]+)").matcher(output);
+        assertTrue(match.find(), output);
+        assertEquals(expected, Double.parseDouble(match.group(1)), .01, output);
+    }
+
+    @Test
+    void namedParametersAndVariantsPersistAcrossProcessesAndExport() throws Exception {
+        String file = directory.resolve("parameter configurations.jcad").toString();
+        run(0, "new", file);
+        run(0, "rectangle", file, "--id", "plate", "--width", "60", "--height", "40");
+        run(0, "extrude", file, "--id", "solid", "--sketch", "plate", "--distance", "5");
+        run(0, "parameters", "set", file, "--name", "width", "--expression", "60");
+        run(0, "parameters", "set", file, "--name", "thickness", "--expression", "5");
+        run(
+                0,
+                "parameters",
+                "bind",
+                file,
+                "--feature",
+                "plate",
+                "--field",
+                "width",
+                "--expression",
+                "width");
+        run(
+                0,
+                "edit",
+                file,
+                "--feature",
+                "solid",
+                "--field",
+                "distance",
+                "--expression",
+                "thickness");
+        run(0, "configurations", "add", file, "--name", "Large");
+        run(
+                0,
+                "configurations",
+                "set",
+                file,
+                "--name",
+                "Large",
+                "--parameter",
+                "width",
+                "--expression",
+                "80");
+        run(
+                0,
+                "configurations",
+                "set",
+                file,
+                "--name",
+                "Large",
+                "--parameter",
+                "thickness",
+                "--expression",
+                "8");
+        run(0, "configurations", "activate", file, "--name", "Large");
+        assertVolume(25600, run(0, "inspect", file));
+        var ids = DocumentStore.load(Path.of(file)).features().stream().map(Feature::id).toList();
+        run(0, "sketch", "convert", file, "--sketch", "plate");
+        assertVolume(25600, run(0, "inspect", file));
+        run(0, "parameters", "rename", file, "--name", "width", "--to", "plateWidth");
+        assertTrue(run(0, "parameters", "list", file).contains("constraint:width\tplateWidth"));
+        byte[] before = Files.readAllBytes(Path.of(file));
+        run(1, "parameters", "set", file, "--name", "plateWidth", "--expression", "plateWidth/2");
+        assertArrayEquals(before, Files.readAllBytes(Path.of(file)));
+        run(1, "parameters", "remove", file, "--name", "plateWidth");
+        assertArrayEquals(before, Files.readAllBytes(Path.of(file)));
+        run(0, "configurations", "activate", file, "--name", "Default");
+        assertVolume(12000, run(0, "inspect", file));
+        run(0, "configurations", "activate", file, "--name", "Large");
+        assertEquals(
+                ids,
+                DocumentStore.load(Path.of(file)).features().stream().map(Feature::id).toList());
+        Path output = directory.resolve("large variant.3mf");
+        run(0, "export", file, "--format", "3mf", "--output", output.toString());
+        assertTrue(Files.size(output) > 1000);
+    }
+
     @Test
     void newSketchTypesAndTextPersistAcrossFreshProcesses() throws Exception {
         String file = directory.resolve("new sketch types.jcad").toString();

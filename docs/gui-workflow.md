@@ -12,9 +12,11 @@ Only use a distribution built for the destination OS and architecture.
 
 ## Workbench layout and menus
 
-The workbench uses a compact IDE-style layout: a top menu, a modeling toolbar,
+The workbench uses a compact desktop layout with browser-inspired rounded chrome:
+a document title and menus at the top, grouped modeling tools and workspace tabs,
 a model tree on the left, the viewport in the center, Properties on the right,
-and history and rebuild status below. Drag the panel dividers to give the model
+and history and rebuild status below. The title shows the file name, with its full
+path available on hover. Drag the panel dividers to give the model
 or inspector more space. The toolbar wraps on smaller windows and is hidden
 in the Print workspace. File actions do not take up modeling toolbar space.
 

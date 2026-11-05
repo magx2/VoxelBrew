@@ -345,24 +345,23 @@ public final class Workbench extends BorderPane implements AutoCloseable {
         brand.getStyleClass().add("brand");
         documentTitle.setId("document-title");
         documentTitle.getStyleClass().add("document-title");
+        var documentIcon = new javafx.scene.shape.SVGPath();
+        documentIcon.setContent("M 3 1 L 11 1 L 15 5 L 15 17 L 3 17 Z M 11 1 L 11 5 L 15 5");
+        documentIcon.getStyleClass().add("document-icon");
+        documentTitle.setGraphic(documentIcon);
+        documentTitle.setGraphicTextGap(10);
+        documentTitle.setTextOverrun(OverrunStyle.CENTER_ELLIPSIS);
+        documentTitle.setMinWidth(100);
         documentTitle.setMaxWidth(Double.MAX_VALUE);
         HBox.setHgrow(documentTitle, Priority.ALWAYS);
-        var title = new HBox(16, brand, menuBar, documentTitle);
+        var title = new HBox(16, brand, documentTitle, menuBar);
         title.getStyleClass().add("title-strip");
-        var toolbar =
-                new FlowPane(
-                        6,
-                        6,
-                        undo,
-                        redo,
-                        new Separator(javafx.geometry.Orientation.VERTICAL),
-                        constrainedSketch,
-                        rectangle,
-                        circle,
-                        new Separator(javafx.geometry.Orientation.VERTICAL),
-                        extrude,
-                        cut,
-                        splitBody);
+        var historyCommands = new HBox(2, undo, redo);
+        var sketchCommands = new HBox(2, constrainedSketch, rectangle, circle);
+        var solidCommands = new HBox(2, extrude, cut, splitBody);
+        for (var group : List.of(historyCommands, sketchCommands, solidCommands))
+            group.getStyleClass().add("command-group");
+        var toolbar = new FlowPane(10, 6, historyCommands, sketchCommands, solidCommands);
         toolbar.setId("modeling-toolbar");
         toolbar.getStyleClass().add("command-strip");
         constrainedSketch.getStyleClass().add("primary");

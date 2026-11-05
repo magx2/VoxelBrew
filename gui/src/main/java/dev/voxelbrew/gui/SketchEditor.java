@@ -78,9 +78,7 @@ final class SketchEditor extends BorderPane implements AutoCloseable {
             status = new Label(""),
             error = new Label(),
             hint = new Label();
-    private final Button finish = button("", "constraint-finish", this::finish),
-            undo = button("", "sketch-undo", () -> controllerUndo(false)),
-            redo = button("", "sketch-redo", () -> controllerUndo(true));
+    private final Button finish, undo, redo;
     private final java.util.function.BiConsumer<Feature.Sketch, ParameterSet> accept;
     private final Feature.Sketch original;
     private final String featureId;
@@ -161,6 +159,9 @@ final class SketchEditor extends BorderPane implements AutoCloseable {
             dev.voxelbrew.util.i18n.Translations translations,
             java.util.function.BiConsumer<Feature.Sketch, ParameterSet> accept) {
         this.translations = translations;
+        finish = button("", "constraint-finish", this::finish);
+        undo = button("", "sketch-undo", () -> controllerUndo(false));
+        redo = button("", "sketch-redo", () -> controllerUndo(true));
         closedCurve.setText(translations.text("gui.closed_curve"));
         construction.setText(translations.text("gui.construction"));
         auto.setText(translations.text("gui.auto_constraints"));
@@ -292,6 +293,8 @@ final class SketchEditor extends BorderPane implements AutoCloseable {
         sides.setPrefColumnCount(2);
         construction.setId("sketch-construction");
         auto.setId("sketch-auto");
+        for (var check : List.of(auto, construction, closedCurve))
+            UiHelp.install(check, translations);
         auto.setSelected(true);
         tools.getChildren()
                 .addAll(
@@ -304,6 +307,7 @@ final class SketchEditor extends BorderPane implements AutoCloseable {
                         button(translations.text("action.fit"), "sketch-fit", this::fit));
         var menu = new MenuButton(translations.text("gui.constraints"));
         menu.setId("sketch-constraint-menu");
+        UiHelp.menu(menu, translations);
         var constraintBar = new FlowPane(4, 4, menu);
         for (var type : Type.values()) {
             if (type.dimension()) continue;
@@ -313,6 +317,7 @@ final class SketchEditor extends BorderPane implements AutoCloseable {
                             : translations.text("constraint." + type.name());
             var item = new MenuItem(label);
             item.setId("constraint-menu-" + type.name().toLowerCase(Locale.ROOT));
+            UiHelp.menuItem(item, translations.text("constraint.hint." + type.name()));
             item.setOnAction(e -> request(type));
             menu.getItems().add(item);
             var action =
@@ -322,9 +327,8 @@ final class SketchEditor extends BorderPane implements AutoCloseable {
                             () -> request(type));
             action.getStyleClass().add("constraint-icon");
             action.setAccessibleText(label);
-            action.setTooltip(
-                    new Tooltip(
-                            label + " · " + translations.text("constraint.hint." + type.name())));
+            UiHelp.describe(
+                    action, label + " · " + translations.text("constraint.hint." + type.name()));
             constraintBar.getChildren().add(action);
         }
         hint.setWrapText(true);
@@ -459,7 +463,7 @@ final class SketchEditor extends BorderPane implements AutoCloseable {
                                                         + " · "
                                                         + value.id());
                                 if (!empty && value != null)
-                                    setTooltip(new Tooltip(value.refs().toString()));
+                                    setTooltip(UiHelp.tooltip(value.refs().toString()));
                             }
                         });
         constraints
@@ -488,6 +492,7 @@ final class SketchEditor extends BorderPane implements AutoCloseable {
                         });
         showBadges.setSelected(true);
         showBadges.setId("sketch-show-badges");
+        UiHelp.install(showBadges, translations);
         showBadges.setOnAction(e -> draw());
         var content =
                 new VBox(
@@ -1729,9 +1734,10 @@ final class SketchEditor extends BorderPane implements AutoCloseable {
         return parameters;
     }
 
-    private static Button button(String title, String id, Runnable action) {
+    private Button button(String title, String id, Runnable action) {
         var button = new Button(title);
         button.setId(id);
+        UiHelp.install(button, translations);
         button.setOnAction(e -> action.run());
         return button;
     }

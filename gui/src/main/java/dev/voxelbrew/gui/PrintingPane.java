@@ -94,6 +94,8 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
         autoSupports.setId("print-auto-supports");
         bedOnly.setId("print-bed-only");
         overwrite.setId("print-overwrite");
+        for (var check : List.of(autoSupports, bedOnly, overwrite))
+            UiHelp.install(check, translations);
         materials.getItems().setAll("PLA", "PETG");
         supportRole.getItems().setAll(SupportVolume.Role.values());
         supportRole.setValue(SupportVolume.Role.SOLID_SUPPORT);
@@ -263,10 +265,10 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
                                             "gui.this_backend_provides_support_toolpaths_not_generated_support_meshes"));
                         });
         generated.setDisable(true);
-        generated.setTooltip(
-                new Tooltip(
-                        translations.text(
-                                "gui.generated_support_meshes_are_unavailable_explicit_support_pillars_can_be_exported")));
+        UiHelp.describe(
+                generated,
+                translations.text(
+                        "gui.generated_support_meshes_are_unavailable_explicit_support_pillars_can_be_exported"));
         supports.getChildren().add(generated);
         supportIds.setOnAction(
                 e -> {
@@ -323,6 +325,7 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
         for (var role : GcodeJob.Role.values()) {
             var check = new CheckBox(translations.text("print.role." + role.name()));
             check.setId("print-role-" + role.name().toLowerCase(Locale.ROOT));
+            UiHelp.install(check, translations);
             check.setSelected(role != GcodeJob.Role.TRAVEL);
             check.setOnAction(e -> draw());
             roles.put(role, check);
@@ -391,6 +394,7 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
     private Button button(String title, String id, Runnable action) {
         var button = new Button(title);
         button.setId(id);
+        UiHelp.install(button, translations);
         button.setOnAction(
                 e -> {
                     try {

@@ -416,7 +416,7 @@ public final class Viewport extends StackPane {
     }
 
     public void setDark(boolean dark) {
-        scene.setFill(Color.web(dark ? "#161c23" : "#e8edf1"));
+        scene.setFill(Color.web(dark ? "#1e1f22" : "#f2f3f5"));
         viewCube.setDark(dark);
     }
 

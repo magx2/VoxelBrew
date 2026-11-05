@@ -35,6 +35,8 @@ final class FileDialog {
         path.setId("file-path");
         path.setPrefColumnCount(48);
         var browse = new Button(translations.text("gui.browse"));
+        browse.setId("file-browse");
+        UiHelp.install(browse, translations);
         browse.setOnAction(
                 e -> {
                     var chooser = new FileChooser();

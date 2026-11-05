@@ -114,6 +114,7 @@ final class ParameterDialog {
     private Button button(String label, String id, Runnable action) {
         var b = new Button(label);
         b.setId(id);
+        UiHelp.install(b, translations);
         b.setOnAction(e -> attempt(action));
         return b;
     }

@@ -15,6 +15,7 @@ import java.nio.file.*;
 import java.util.*;
 import java.util.concurrent.*;
 import javafx.application.*;
+import javafx.event.EventHandler;
 import javafx.geometry.Point3D;
 import javafx.scene.*;
 import javafx.scene.control.*;
@@ -149,11 +150,13 @@ class WorkbenchUiTest {
     void polishWorkbenchDialogsSketchPrintingAndLanguagePreferenceUseRealControls()
             throws Exception {
         ready();
-        assertEquals("Zapisz", fx(() -> ((Button) node("#save")).getText()));
+        assertEquals("Zapisz", fx(() -> command(workbench, "save").getText()));
+        assertButtonDescriptions();
         assertEquals("Widok: Góra", fx(() -> node("#view-cube-top").getAccessibleText()));
         choice("appearance", 1);
         click("constrained-sketch");
         sketchReady();
+        assertButtonDescriptions();
         assertEquals("Prostokąt", fx(() -> ((Button) node("#sketch-tool-rectangle")).getText()));
         assertEquals("Zakończ szkic", fx(() -> ((Button) node("#constraint-finish")).getText()));
         assertTrue(
@@ -175,6 +178,7 @@ class WorkbenchUiTest {
         click("constraint-cancel");
         click("parameters");
         assertEquals("Zastosuj", fx(() -> ((Button) node("#parameters-apply")).getText()));
+        assertButtonDescriptions();
         click("parameters-cancel");
         rectangle(0);
         click("extrude");
@@ -246,7 +250,8 @@ class WorkbenchUiTest {
         click("language-close");
         assertEquals(part, document());
         assertFalse(fx(() -> workbench.controller().dirty()));
-        assertEquals("Zapisz", fx(() -> ((Button) node("#save")).getText()));
+        assertEquals("Zapisz", fx(() -> command(workbench, "save").getText()));
+        assertButtonDescriptions();
         // A new window reads the saved preference; the existing one retains its own catalog.
         fx(
                 () -> {
@@ -261,7 +266,7 @@ class WorkbenchUiTest {
                     try {
                         reopenedStage.setScene(new Scene(reopened, 964, 648));
                         reopenedStage.show();
-                        assertEquals("Save", ((Button) reopened.lookup("#save")).getText());
+                        assertEquals("Save", command(reopened, "save").getText());
                     } finally {
                         reopened.close();
                         reopenedStage.hide();
@@ -305,7 +310,7 @@ class WorkbenchUiTest {
                                 new dev.voxelbrew.util.i18n.Translations(
                                                 Locale.forLanguageTag("pl"))
                                         .text("action.save"),
-                                ((Button) second.lookup("#save")).getText());
+                                command(second, "save").getText());
                         assertTrue(second.getStyleClass().contains("dark"));
                         second.close();
                         second.close();
@@ -330,6 +335,154 @@ class WorkbenchUiTest {
         ready();
     }
 
+    private static MenuItem command(Workbench workbench, String id) {
+        return ((MenuBar) workbench.lookup("#main-menu"))
+                .getMenus().stream()
+                        .flatMap(WorkbenchUiTest::menuItems)
+                        .filter(item -> id.equals(item.getId()))
+                        .findFirst()
+                        .orElseThrow(() -> new AssertionError("Missing command: " + id));
+    }
+
+    @Test
+    void menusDescribeActionsAndProtectModalEditing() throws Exception {
+        var artifacts = Path.of(System.getProperty("voxelbrew.ui.artifacts"));
+        ready();
+        assertButtonDescriptions();
+        assertNull(fx(() -> workbench.lookup("#modeling-toolbar").lookup("#save")));
+        click("menu-file");
+        assertEquals("Save", fx(() -> command(workbench, "save").getText()));
+        assertNotNull(fx(() -> command(workbench, "save-as").getAccelerator()));
+        assertNotNull(
+                fx(() -> node("#save").getAccessibleHelp()),
+                "Menu description is attached to the popup node");
+        fx(
+                () -> {
+                    var bounds = node("#save").localToScreen(node("#save").getBoundsInLocal());
+                    robot.mouseMove(bounds.getCenterX(), bounds.getCenterY());
+                    return null;
+                });
+        long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(4);
+        while (!fx(
+                        () ->
+                                Window.getWindows().stream()
+                                        .anyMatch(
+                                                window ->
+                                                        window instanceof Tooltip tip
+                                                                && tip.isShowing()
+                                                                && tip.getText()
+                                                                        .contains(
+                                                                                "features and parameters")))
+                && System.nanoTime() < deadline) Thread.sleep(40);
+        assertTrue(
+                fx(
+                        () ->
+                                Window.getWindows().stream()
+                                        .anyMatch(
+                                                window ->
+                                                        window instanceof Tooltip tip
+                                                                && tip.isShowing()
+                                                                && tip.getText()
+                                                                        .contains(
+                                                                                "features and parameters"))),
+                "Save description is a real hover popup");
+        fx(
+                () -> {
+                    Screenshot.save(
+                            stage.getScene(), artifacts.resolve("workbench-menu-light.png"));
+                    for (var window : Window.getWindows())
+                        if (window instanceof Tooltip && window.isShowing())
+                            Screenshot.save(
+                                    window.getScene(), artifacts.resolve("save-tooltip.png"));
+                    return null;
+                });
+        key(KeyCode.ESCAPE);
+        assertFalse(
+                fx(
+                        () ->
+                                ((MenuBar) workbench.lookup("#main-menu"))
+                                        .getMenus()
+                                        .getFirst()
+                                        .isShowing()));
+        String documentId = document().id();
+        click("save-as");
+        assertButtonDescriptions();
+        assertTrue(
+                fx(() -> command(workbench, "new").isDisable()),
+                "Document commands are disabled behind a modal dialog");
+        shortcut(KeyCode.N, false);
+        assertEquals(documentId, document().id());
+        assertNotNull(fx(() -> node("#file-path")));
+        key(KeyCode.ESCAPE);
+        hoverHelp("rectangle");
+        click("rectangle");
+        assertNotNull(fx(() -> node("#sketch-width")), "Help must not consume the modeling click");
+        key(KeyCode.ESCAPE);
+        hoverHelp("menu-file");
+        click("rectangle");
+        assertNotNull(
+                fx(() -> node("#sketch-width")), "Menu help must not cover a neighboring action");
+        key(KeyCode.ESCAPE);
+        click("constrained-sketch");
+        sketchReady();
+        assertButtonDescriptions();
+        click("constraint-cancel");
+        click("workspace-print");
+        for (String tab : List.of("placement", "process", "supports", "job")) {
+            click("print-tab-" + tab);
+            assertButtonDescriptions();
+        }
+        click("workspace-design");
+        choice("appearance", 2);
+        assertButtonDescriptions();
+        fx(
+                () -> {
+                    Screenshot.save(stage.getScene(), artifacts.resolve("workbench-dark.png"));
+                    return null;
+                });
+        click("menu-file");
+        fx(
+                () -> {
+                    var popup = node("#save").getScene();
+                    assertTrue(popup.getRoot().getStyleClass().contains("dark"));
+                    Screenshot.save(popup, artifacts.resolve("file-menu-dark.png"));
+                    return null;
+                });
+        key(KeyCode.ESCAPE);
+    }
+
+    private static java.util.stream.Stream<MenuItem> menuItems(Menu menu) {
+        return menu.getItems().stream()
+                .flatMap(
+                        item ->
+                                item instanceof Menu child
+                                        ? java.util.stream.Stream.concat(
+                                                java.util.stream.Stream.of(item), menuItems(child))
+                                        : java.util.stream.Stream.of(item));
+    }
+
+    private void assertButtonDescriptions() throws Exception {
+        fx(
+                () -> {
+                    for (var node : stage.getScene().getRoot().lookupAll("*")) {
+                        if (node instanceof ButtonBase button && button.isVisible()) {
+                            assertNotNull(
+                                    button.getAccessibleHelp(),
+                                    "Missing description: "
+                                            + button.getId()
+                                            + " "
+                                            + button.getText());
+                            assertFalse(button.getAccessibleHelp().isBlank());
+                            assertTrue(
+                                    button.getTooltip() != null
+                                            || button.getProperties().containsKey(UiHelp.class),
+                                    "Missing popup: " + button.getId());
+                        }
+                    }
+                    return null;
+                });
+    }
+
     private Node node(String selector) {
         var windows = new ArrayList<>(Window.getWindows());
         Collections.reverse(windows);
@@ -342,6 +495,14 @@ class WorkbenchUiTest {
     }
 
     private void click(String id) throws Exception {
+        String menu =
+                switch (id) {
+                    case "new", "open", "save", "save-as", "export" -> "menu-file";
+                    case "language", "updates" -> "menu-settings";
+                    case "appearance" -> "menu-view";
+                    default -> null;
+                };
+        if (menu != null) click(menu);
         long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
         while (!fx(
                         () -> {
@@ -354,7 +515,7 @@ class WorkbenchUiTest {
                         })
                 && System.nanoTime() < deadline) Thread.sleep(40);
         var window = fx(() -> node("#" + id).getScene().getWindow());
-        focus(window);
+        if (!(window instanceof javafx.stage.PopupWindow)) focus(window);
         reveal(id);
         fx(
                 () -> {
@@ -371,18 +532,59 @@ class WorkbenchUiTest {
                     return null;
                 });
         Thread.sleep(120);
+        var target = fx(() -> node("#" + id));
+        // Native menu rows may act on hover and redirect input into their submenu popup.
+        int expected = target instanceof ButtonBase ? 1 : 0;
+        var pressed = new CountDownLatch(expected);
+        var released = new CountDownLatch(expected);
+        EventHandler<MouseEvent> onPress = e -> pressed.countDown();
+        EventHandler<MouseEvent> onRelease = e -> released.countDown();
         fx(
                 () -> {
-                    robot.mousePress(MouseButton.PRIMARY);
+                    target.addEventFilter(MouseEvent.MOUSE_PRESSED, onPress);
+                    target.addEventFilter(MouseEvent.MOUSE_RELEASED, onRelease);
                     return null;
                 });
-        Thread.sleep(60);
-        fx(
-                () -> {
-                    robot.mouseRelease(MouseButton.PRIMARY);
-                    return null;
-                });
+        try {
+            // Robot queues native input. Wait for delivery rather than assuming the OS and
+            // renderer will process each event within a fixed delay; never replay a click.
+            fx(
+                    () -> {
+                        robot.mousePress(MouseButton.PRIMARY);
+                        return null;
+                    });
+            assertTrue(pressed.await(3, TimeUnit.SECONDS), "Mouse press reached " + id);
+            Thread.sleep(60);
+            fx(
+                    () -> {
+                        robot.mouseRelease(MouseButton.PRIMARY);
+                        return null;
+                    });
+            assertTrue(released.await(3, TimeUnit.SECONDS), "Mouse release reached " + id);
+        } finally {
+            fx(
+                    () -> {
+                        if (released.getCount() != 0) robot.mouseRelease(MouseButton.PRIMARY);
+                        target.removeEventFilter(MouseEvent.MOUSE_PRESSED, onPress);
+                        target.removeEventFilter(MouseEvent.MOUSE_RELEASED, onRelease);
+                        return null;
+                    });
+        }
         Thread.sleep(180);
+    }
+
+    private void hoverHelp(String id) throws Exception {
+        var control = fx(() -> (Control) node("#" + id));
+        fx(
+                () -> {
+                    var bounds = control.localToScreen(control.getBoundsInLocal());
+                    robot.mouseMove(bounds.getCenterX(), bounds.getCenterY());
+                    return null;
+                });
+        long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(4);
+        while (!fx(() -> control.getTooltip().isShowing()) && System.nanoTime() < deadline)
+            Thread.sleep(40);
+        assertTrue(fx(() -> control.getTooltip().isShowing()), "Hover help for " + id);
     }
 
     private void reveal(String id) throws Exception {
@@ -518,6 +720,7 @@ class WorkbenchUiTest {
                 "",
                 fx(() -> ((TextField) node("#" + id)).getText()),
                 "Robot field clearing: " + id);
+        var entered = new StringBuilder();
         for (char c : value.toCharArray()) {
             fx(
                     () -> {
@@ -553,7 +756,18 @@ class WorkbenchUiTest {
                         if (shift) robot.keyRelease(KeyCode.SHIFT);
                         return null;
                     });
-            Thread.sleep(12);
+            entered.append(c);
+            // Some layouts compose these keys with the next character. Verify the combined
+            // prefix after that keystroke; the final field value is always checked exactly.
+            if ("~`^".indexOf(c) >= 0) {
+                Thread.sleep(30);
+                continue;
+            }
+            String expected = entered.toString();
+            long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(2);
+            while (!expected.equals(fx(target::getText)) && System.nanoTime() < deadline)
+                Thread.sleep(10);
+            assertEquals(expected, fx(target::getText), "Delivered keyboard input: " + id);
         }
         Thread.sleep(120);
         assertEquals(
@@ -561,6 +775,36 @@ class WorkbenchUiTest {
     }
 
     private void choice(String id, int index) throws Exception {
+        if (id.equals("appearance")) {
+            click("menu-view");
+            click("menu-appearance");
+            click("appearance-" + List.of("system", "light", "dark").get(index));
+            long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(3);
+            while (fx(
+                            () ->
+                                    ((MenuBar) workbench.lookup("#main-menu"))
+                                            .getMenus().stream().anyMatch(Menu::isShowing))
+                    && System.nanoTime() < deadline) Thread.sleep(25);
+            assertFalse(
+                    fx(
+                            () ->
+                                    ((MenuBar) workbench.lookup("#main-menu"))
+                                            .getMenus().stream().anyMatch(Menu::isShowing)),
+                    "Appearance menus closed after selection");
+            assertTrue(
+                    fx(
+                            () ->
+                                    ((RadioMenuItem)
+                                                    command(
+                                                            workbench,
+                                                            "appearance-"
+                                                                    + List.of(
+                                                                                    "system",
+                                                                                    "light", "dark")
+                                                                            .get(index)))
+                                            .isSelected()));
+            return;
+        }
         click(id);
         // The native popup can appear after a later pulse when switching workspace tabs.
         // Wait for the observed popup; do not replay the click or set its selection in code.
@@ -1210,7 +1454,17 @@ class WorkbenchUiTest {
         ready();
         assertFalse(fx(() -> workbench.controller().build().valid()));
         assertTrue(fx(() -> workbench.controller().build().bodies().isEmpty()));
-        assertTrue(fx(() -> node("#export").isDisabled()));
+        click("menu-file");
+        assertTrue(fx(() -> command(workbench, "export").isDisable()));
+        assertTrue(
+                fx(
+                        () ->
+                                node("#export")
+                                        .getPseudoClassStates()
+                                        .contains(
+                                                javafx.css.PseudoClass.getPseudoClass(
+                                                        "disabled"))));
+        key(KeyCode.ESCAPE);
         choice("active-configuration", 0);
         ready();
         assertEquals(12000, volume(), .01);
@@ -2162,7 +2416,17 @@ class WorkbenchUiTest {
         ready();
         assertFalse(fx(() -> workbench.controller().build().valid()));
         assertEquals(0, volume(), 0);
-        assertTrue(fx(() -> node("#export").isDisabled()));
+        click("menu-file");
+        assertTrue(fx(() -> command(workbench, "export").isDisable()));
+        assertTrue(
+                fx(
+                        () ->
+                                node("#export")
+                                        .getPseudoClassStates()
+                                        .contains(
+                                                javafx.css.PseudoClass.getPseudoClass(
+                                                        "disabled"))));
+        key(KeyCode.ESCAPE);
         click("save");
         ready();
         assertEquals(before, DocumentReader.load(file));

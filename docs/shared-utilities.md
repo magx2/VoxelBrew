@@ -45,7 +45,7 @@ file. Tests use temporary/isolated locations. Explicit `--plugin-dir` still wins
 ## Translations
 
 UTF-8 catalogs `messages_en.properties` and `messages_pl.properties` are in
-`util/src/main/resources/dev/voxelbrew/util/i18n/`. The GUI's **Language… / Język…**
+`util/src/main/resources/dev/voxelbrew/util/i18n/`. The GUI's **Settings → Language… / Ustawienia → Język…**
 dialog selects System, English or Polski and saves through `UserConfiguration`.
 Restart the application to apply the choice; an open window keeps its language
 and unsaved edits. This preference never enters a `.jcad` file.
@@ -73,6 +73,12 @@ and plugin identifiers do not depend on the display language.
 Use `text(key, args)` with complete messages instead of concatenating translated
 fragments. Add matching keys and argument placeholders to both catalogs. GUI
 choice converters translate enum captions without changing underlying values.
+Action descriptions use `help.*` keys keyed by stable control IDs. `UiHelp` in
+`gui` attaches these as hover tooltips and accessible help, including native
+menu popup nodes and standard dialog buttons. Add a description in both catalogs
+when adding a button; keep required selections and the effect of committing or
+cancelling explicit. The source audit and Robot tests cover action factories,
+dynamic constraint/geometry actions, visible help popups and modal shortcut isolation.
 Catalog and enum coverage tests run headlessly; a Polish Robot workflow checks
 editing, dialogs, both palettes, save/reopen and preference persistence alongside
 the existing English workflow on Windows and Ubuntu.

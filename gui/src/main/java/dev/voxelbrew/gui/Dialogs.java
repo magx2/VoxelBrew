@@ -49,6 +49,7 @@ final class Dialogs {
                                                                     ? "dialog.no"
                                                                     : null;
             if (key != null) buttons.get(type).setText(translations.text(key));
+            UiHelp.dialogButton(buttons.get(type), type, translations);
         }
         Node body = pane.getContent();
         pane.setContent(null);

@@ -91,21 +91,23 @@ final class ViewCube extends Pane {
         homeButton.setId("view-cube-home");
         homeButton.getStyleClass().add("view-cube-control");
         homeButton.setAccessibleText(translations.text("gui.home_view_and_fit_model"));
-        homeButton.setTooltip(new Tooltip(translations.text("gui.home_view_fit_model")));
+        UiHelp.install(homeButton, translations);
         homeButton.setOnAction(e -> home.run());
         homeButton.relocate(14, 4);
         var menu = new MenuButton();
         menu.setId("view-cube-menu");
         menu.getStyleClass().add("view-cube-control");
         menu.setAccessibleText(translations.text("gui.standard_views"));
-        menu.setTooltip(new Tooltip(translations.text("gui.standard_views")));
+        UiHelp.menu(menu, translations);
         for (String name :
                 new String[] {"Isometric", "Top", "Front", "Right", "Back", "Left", "Bottom"}) {
             var item = new MenuItem(UiText.view(translations, name));
+            UiHelp.menuItem(item, translations.text("help.standard-view"));
             item.setOnAction(e -> navigate.accept(ViewOrientation.named(name)));
             menu.getItems().add(item);
         }
         var fitItem = new MenuItem(translations.text("gui.fit_model"));
+        UiHelp.menuItem(fitItem, translations.text("help.fit"));
         fitItem.setOnAction(e -> fit.run());
         menu.getItems().add(fitItem);
         menu.relocate(142, 143);
@@ -166,7 +168,7 @@ final class ViewCube extends Pane {
                 translations.text("view.accessible", UiText.view(translations, name)));
         Tooltip.install(
                 polygon,
-                new Tooltip(translations.text("view.orbit", UiText.view(translations, name))));
+                UiHelp.tooltip(translations.text("view.orbit", UiText.view(translations, name))));
         Text label =
                 fixed.size() == 1
                         ? new Text(

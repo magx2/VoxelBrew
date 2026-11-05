@@ -62,7 +62,12 @@ public final class Workbench extends BorderPane implements AutoCloseable {
     private final ComboBox<String> views = new ComboBox<>();
     private final HBox history = new HBox(6);
     private final Button undo, redo;
-    private final Button export;
+    private final MenuItem export;
+    private final javafx.beans.property.BooleanProperty exportUnavailable =
+            new javafx.beans.property.SimpleBooleanProperty(true);
+    private final javafx.beans.property.BooleanProperty fileBusy =
+            new javafx.beans.property.SimpleBooleanProperty();
+    private final Label documentTitle = new Label();
     private final Button customFeature;
     private final Button parameters;
     private final ComboBox<String> configuration = new ComboBox<>();
@@ -188,9 +193,10 @@ public final class Workbench extends BorderPane implements AutoCloseable {
                             controller().redo();
                         });
         this.export =
-                button(
+                menuItem(
                         translations.text("action.export"),
                         "export",
+                        null,
                         () -> ExportDialog.show(stage(), controller(), registry(), translations));
         this.customFeature =
                 button(translations.text("action.features"), "custom-feature", this::customFeature);
@@ -217,29 +223,6 @@ public final class Workbench extends BorderPane implements AutoCloseable {
                 .add(
                         Objects.requireNonNull(getClass().getResource("workbench.css"))
                                 .toExternalForm());
-        var brand = new Label("VOXELBREW");
-        brand.getStyleClass().add("brand");
-        var caption = new Label(translations.text("gui.parametric_cad"));
-        caption.getStyleClass().add("eyebrow");
-        var spacer = new Region();
-        HBox.setHgrow(spacer, Priority.ALWAYS);
-        var title =
-                new HBox(
-                        12,
-                        brand,
-                        caption,
-                        spacer,
-                        button(
-                                translations.text("language.label"),
-                                "language",
-                                () ->
-                                        LanguageDialog.show(
-                                                stage,
-                                                translations,
-                                                configurationStore,
-                                                preferencesWorker)),
-                        button(translations.text("action.updates"), "updates", this::updates));
-        title.getStyleClass().add("title-strip");
         views.setId("standard-view");
         views.getItems().setAll("Isometric", "Top", "Front", "Right", "Back", "Left", "Bottom");
         UiText.choices(views, name -> UiText.view(translations, name));
@@ -261,67 +244,138 @@ public final class Workbench extends BorderPane implements AutoCloseable {
                                 updatingView = false;
                             }
                         });
-        var themes = new ComboBox<String>();
-        themes.setId("appearance");
-        themes.getItems()
-                .setAll(
-                        translations.text("appearance.system"),
-                        translations.text("appearance.light"),
-                        translations.text("appearance.dark"));
-        themes.getSelectionModel().select(appearanceChoice.ordinal());
-        themes.setOnAction(
-                e -> {
-                    appearanceChoice =
-                            Appearance.Choice.values()[
-                                    themes.getSelectionModel().getSelectedIndex()];
-                    appearance.save(appearanceChoice);
-                    applyAppearance();
-                });
+        UiHelp.install(views, translations);
+        var fileMenu = menu("menu-file");
+        var newItem =
+                menuItem(translations.text("action.new"), "new", "Shortcut+N", this::newDocument);
+        var openItem =
+                menuItem(
+                        translations.text("action.open"),
+                        "open",
+                        "Shortcut+O",
+                        () -> requestChange(this::open));
+        var saveItem =
+                menuItem(translations.text("action.save"), "save", "Shortcut+S", () -> save(false));
+        var saveAsItem =
+                menuItem(
+                        translations.text("action.saveAs"),
+                        "save-as",
+                        "Shortcut+Shift+S",
+                        () -> save(true));
+        for (var item : List.of(newItem, openItem, saveItem, saveAsItem))
+            item.disableProperty().bind(disabledProperty().or(fileBusy));
+        export.disableProperty().bind(disabledProperty().or(exportUnavailable));
+        fileMenu.getItems()
+                .addAll(
+                        newItem,
+                        openItem,
+                        new SeparatorMenuItem(),
+                        saveItem,
+                        saveAsItem,
+                        new SeparatorMenuItem(),
+                        export);
+        var editMenu = menu("menu-edit");
+        editMenu.getItems()
+                .addAll(
+                        mirror(undo, "Shortcut+Z"),
+                        mirror(redo, "Shortcut+Shift+Z"),
+                        new SeparatorMenuItem(),
+                        mirror(parameters, null));
+        var viewMenu = menu("menu-view");
+        viewMenu.getItems()
+                .add(
+                        menuItem(
+                                translations.text("action.fit"),
+                                "menu-fit",
+                                null,
+                                () -> viewport.fit(meshes())));
+        for (var name : views.getItems()) {
+            var item =
+                    menuItem(
+                            UiText.view(translations, name),
+                            "view-" + name.toLowerCase(Locale.ROOT),
+                            null,
+                            () -> viewport.standardView(name));
+            viewMenu.getItems().add(item);
+        }
+        var appearanceMenu = new Menu(translations.text("appearance.label"));
+        appearanceMenu.setId("menu-appearance");
+        UiHelp.menu(appearanceMenu, translations);
+        var themeGroup = new ToggleGroup();
+        for (var choice : Appearance.Choice.values()) {
+            String name = choice.name().toLowerCase(Locale.ROOT);
+            var item = new RadioMenuItem(translations.text("appearance." + name));
+            item.setId("appearance-" + name);
+            item.setToggleGroup(themeGroup);
+            item.setSelected(choice == appearanceChoice);
+            item.disableProperty().bind(disabledProperty());
+            UiHelp.menuItem(item, translations.text("help.appearance"));
+            item.setOnAction(
+                    event -> {
+                        appearanceChoice = choice;
+                        appearance.save(choice);
+                        applyAppearance();
+                    });
+            appearanceMenu.getItems().add(item);
+        }
+        viewMenu.getItems().addAll(new SeparatorMenuItem(), appearanceMenu);
+        var settingsMenu = menu("menu-settings");
+        settingsMenu
+                .getItems()
+                .addAll(
+                        menuItem(
+                                translations.text("language.label"),
+                                "language",
+                                null,
+                                () ->
+                                        LanguageDialog.show(
+                                                stage,
+                                                translations,
+                                                configurationStore,
+                                                preferencesWorker)),
+                        menuItem(
+                                translations.text("action.updates"),
+                                "updates",
+                                null,
+                                this::updates));
+        var menuBar = new MenuBar(fileMenu, editMenu, viewMenu, settingsMenu);
+        menuBar.setId("main-menu");
+        UiHelp.menuBar(menuBar);
+        var brand = new Label("VoxelBrew");
+        brand.getStyleClass().add("brand");
+        documentTitle.setId("document-title");
+        documentTitle.getStyleClass().add("document-title");
+        documentTitle.setMaxWidth(Double.MAX_VALUE);
+        HBox.setHgrow(documentTitle, Priority.ALWAYS);
+        var title = new HBox(16, brand, menuBar, documentTitle);
+        title.getStyleClass().add("title-strip");
         var toolbar =
                 new FlowPane(
-                        5,
-                        5,
-                        button(
-                                translations.text("action.new"),
-                                "new",
-                                () ->
-                                        requestChange(
-                                                () -> {
-                                                    cancelTool();
-                                                    selectedFeature = null;
-                                                    selectedBody = null;
-                                                    fitNext = true;
-                                                    controller.newDocument();
-                                                })),
-                        button(
-                                translations.text("action.open"),
-                                "open",
-                                () -> requestChange(this::open)),
-                        button(translations.text("action.save"), "save", () -> save(false)),
-                        button(translations.text("action.saveAs"), "save-as", () -> save(true)),
-                        new Separator(javafx.geometry.Orientation.VERTICAL),
+                        6,
+                        6,
                         undo,
                         redo,
                         new Separator(javafx.geometry.Orientation.VERTICAL),
+                        constrainedSketch,
                         rectangle,
                         circle,
+                        new Separator(javafx.geometry.Orientation.VERTICAL),
                         extrude,
                         cut,
-                        new Separator(javafx.geometry.Orientation.VERTICAL),
-                        export);
+                        splitBody);
+        toolbar.setId("modeling-toolbar");
         toolbar.getStyleClass().add("command-strip");
+        constrainedSketch.getStyleClass().add("primary");
         var viewbar =
                 new FlowPane(
-                        9,
-                        6,
+                        8,
+                        5,
                         new Label(translations.text("view.label")),
                         views,
                         button(
                                 translations.text("action.fit"),
                                 "fit",
-                                () -> viewport.fit(meshes())),
-                        splitBody,
-                        new HBox(7, new Label(translations.text("appearance.label")), themes));
+                                () -> viewport.fit(meshes())));
         viewbar.getStyleClass().add("view-strip");
         setTop(new VBox(title, toolbar));
         tree.setId("model-tree");
@@ -339,6 +393,7 @@ public final class Workbench extends BorderPane implements AutoCloseable {
                             else selectFeature(entry.id());
                         });
         configuration.setId("active-configuration");
+        UiHelp.install(configuration, translations);
         configuration.setMaxWidth(Double.MAX_VALUE);
         configuration.setOnAction(
                 e -> {
@@ -349,11 +404,12 @@ public final class Workbench extends BorderPane implements AutoCloseable {
                 new VBox(
                         10,
                         heading(translations.text("gui.model")),
-                        parameters,
+                        tree,
+                        new Separator(),
+                        heading(translations.text("workbench.configuration")),
                         configuration,
-                        customFeature,
-                        constrainedSketch,
-                        tree);
+                        parameters,
+                        customFeature);
         left.getStyleClass().add("side-panel");
         left.setPrefWidth(220);
         left.setMinWidth(185);
@@ -400,8 +456,11 @@ public final class Workbench extends BorderPane implements AutoCloseable {
                             cancelTool();
                             printing.documentChanged();
                         });
+        toolbar.visibleProperty().bind(designTab.selectedProperty());
+        toolbar.managedProperty().bind(toolbar.visibleProperty());
         setCenter(workspaces);
         cursor.setId("history-cursor");
+        UiHelp.install(cursor, translations);
         cursor.setMin(0);
         cursor.setBlockIncrement(1);
         cursor.setMajorTickUnit(1);
@@ -425,6 +484,9 @@ public final class Workbench extends BorderPane implements AutoCloseable {
                         cursor);
         timeline.getStyleClass().add("timeline");
         var historyScroll = new ScrollPane(history);
+        historyScroll.setPrefViewportHeight(34);
+        historyScroll.setMinHeight(40);
+        historyScroll.setMaxHeight(50);
         historyScroll.setFitToHeight(true);
         historyScroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.AS_NEEDED);
         historyScroll.setVbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
@@ -461,6 +523,7 @@ public final class Workbench extends BorderPane implements AutoCloseable {
         addEventFilter(
                 KeyEvent.KEY_PRESSED,
                 e -> {
+                    if (menuBar.getMenus().stream().anyMatch(Menu::isShowing)) return;
                     if (e.getCode() == KeyCode.ESCAPE) {
                         cancelTool();
                         e.consume();
@@ -475,11 +538,7 @@ public final class Workbench extends BorderPane implements AutoCloseable {
                                 e.consume();
                             }
                             case N -> {
-                                requestChange(
-                                        () -> {
-                                            cancelTool();
-                                            controller.newDocument();
-                                        });
+                                newDocument();
                                 e.consume();
                             }
                             case Z -> {
@@ -529,8 +588,43 @@ public final class Workbench extends BorderPane implements AutoCloseable {
     private Button button(String text, String id, Runnable action) {
         var button = new Button(text);
         button.setId(id);
+        UiHelp.install(button, translations);
         button.setOnAction(e -> attempt(action));
         return button;
+    }
+
+    private Menu menu(String id) {
+        var menu = new Menu(translations.text(id));
+        menu.setId(id);
+        UiHelp.menu(menu, translations);
+        return menu;
+    }
+
+    private MenuItem menuItem(String text, String id, String shortcut, Runnable action) {
+        var item = new MenuItem(text);
+        item.setId(id);
+        item.disableProperty().bind(disabledProperty());
+        if (shortcut != null) item.setAccelerator(KeyCombination.keyCombination(shortcut));
+        UiHelp.menuItem(item, UiHelp.description(translations, id));
+        item.setOnAction(e -> attempt(action));
+        return item;
+    }
+
+    private MenuItem mirror(Button button, String shortcut) {
+        var item = menuItem(button.getText(), "menu-" + button.getId(), shortcut, button::fire);
+        item.disableProperty().bind(disabledProperty().or(button.disabledProperty()));
+        return item;
+    }
+
+    private void newDocument() {
+        requestChange(
+                () -> {
+                    cancelTool();
+                    selectedFeature = null;
+                    selectedBody = null;
+                    fitNext = true;
+                    controller.newDocument();
+                });
     }
 
     private void attempt(Runnable action) {
@@ -612,7 +706,8 @@ public final class Workbench extends BorderPane implements AutoCloseable {
             if (!configuration.getItems().equals(names)) configuration.getItems().setAll(names);
             configuration.setValue(document.parameters().activeName());
             configuration.setDisable(controller.ioBusy() || tool != Tool.NONE);
-            export.setDisable(!controller.canExport());
+            exportUnavailable.set(!controller.canExport());
+            fileBusy.set(controller.ioBusy());
             splitBody.setDisable(!controller.canExport() || controller.build().bodies().isEmpty());
             printing.documentChanged();
             boolean atEnd = document.cursor() == document.features().size() && !controller.ioBusy();
@@ -676,6 +771,16 @@ public final class Workbench extends BorderPane implements AutoCloseable {
                                                                                                             .Body
                                                                                                     ::volume)
                                                                                     .sum())));
+            documentTitle.setText(
+                    (controller.dirty() ? "● " : "")
+                            + (controller.path() == null
+                                    ? translations.text("gui.untitled")
+                                    : controller.path().getFileName().toString()));
+            UiHelp.describe(
+                    documentTitle,
+                    controller.path() == null
+                            ? translations.text("help.unsaved-document")
+                            : controller.path().toString());
             stage.setTitle(
                     (controller.dirty() ? "● " : "")
                             + (controller.path() == null

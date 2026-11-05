@@ -67,6 +67,8 @@ final class UpdateDialog {
         download.setId("update-download");
         version.setId("update-version");
         force.setId("update-force");
+        for (var control : java.util.List.of(force, check, download))
+            UiHelp.install(control, translations);
         status.setId("update-status");
         version.setPromptText(translations.text("update.versionPrompt"));
         status.setWrapText(true);

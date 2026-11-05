@@ -14,7 +14,7 @@ final class FormulaField extends TextField {
     private static final PseudoClass INVALID = PseudoClass.getPseudoClass("formula-invalid");
     private final Supplier<ParameterSet> parameters;
     private final Supplier<ParameterUnit> unit;
-    private final Tooltip preview = new Tooltip();
+    private final Tooltip preview = UiHelp.tooltip("");
     private dev.voxelbrew.util.i18n.Translations translations =
             new dev.voxelbrew.util.i18n.Translations(java.util.Locale.ENGLISH);
 

@@ -42,6 +42,7 @@ final class LanguageDialog {
         }
         var save = new Button(translations.text("action.save"));
         save.setId("language-save");
+        UiHelp.install(save, translations);
         save.setOnAction(
                 event -> {
                     String language = choice.getValue();

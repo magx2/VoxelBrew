@@ -51,4 +51,41 @@ class UiTextTest {
     private static void choices(Translations t, String prefix, Enum<?>[] values) {
         for (var value : values) assertFalse(t.text(prefix + value.name()).isBlank());
     }
+
+    @Test
+    void actionDescriptionsCoverButtonFactoriesAndDynamicSketchActions() throws Exception {
+        var ids = new java.util.HashSet<String>();
+        try (var sources = Files.list(Path.of("src/main/java/dev/voxelbrew/gui"))) {
+            for (var file : sources.filter(p -> p.toString().endsWith(".java")).toList()) {
+                var matcher =
+                        Pattern.compile(
+                                        "button\\(\\s*(?:translations\\.text\\(\"[^\"]+\"\\)|\"[^\"]*\"),\\s*\"([^\"]+)\"\\s*,")
+                                .matcher(Files.readString(file));
+                while (matcher.find()) ids.add(matcher.group(1));
+            }
+        }
+        assertTrue(ids.size() > 50, "Audit the actual production action factories");
+        for (var locale : List.of(Locale.ENGLISH, Locale.forLanguageTag("pl"))) {
+            var translations = new Translations(locale);
+            for (var id : ids) assertFalse(UiHelp.description(translations, id).isBlank(), id);
+            for (var draw : SketchEditor.Draw.values()) {
+                if (draw != SketchEditor.Draw.ADVANCED)
+                    assertFalse(
+                            UiHelp.description(
+                                            translations,
+                                            "sketch-tool-" + draw.name().toLowerCase(Locale.ROOT))
+                                    .isBlank());
+            }
+            for (var type : SketchGeometry.Type.values()) {
+                if (!type.dimension()) {
+                    var id = type.name().toLowerCase(Locale.ROOT);
+                    assertFalse(UiHelp.description(translations, "constraint-" + id).isBlank());
+                    assertFalse(
+                            UiHelp.description(translations, "constraint-menu-" + id).isBlank());
+                }
+            }
+            assertFalse(UiHelp.description(translations, "history-52").isBlank());
+            assertFalse(UiHelp.description(translations, "apply-plugin-width").isBlank());
+        }
+    }
 }

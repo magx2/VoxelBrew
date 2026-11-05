@@ -244,6 +244,11 @@ graphics diagnostics and interaction test commands. GUI Robot tests temporarily
 bring their own windows to the foreground; avoid interacting with the desktop
 during those checks.
 
+The IDE-style menu bar keeps **New / Open / Save / Save As / Export** under
+**File**, appearance under **View**, and language/updates under **Settings**.
+The modeling toolbar stays focused on sketch and solid tools. Hover over buttons
+and menu actions for English or Polish descriptions and selection requirements.
+
 ## Codex agents
 
 Project agents cover the CAD engine, CLI, JavaFX desktop, and Windows/Ubuntu

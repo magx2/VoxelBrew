@@ -93,6 +93,8 @@ final class ExportDialog {
         path.setId("export-path");
         path.setPrefColumnCount(40);
         var browse = new Button(translations.text("gui.browse"));
+        browse.setId("file-browse");
+        UiHelp.install(browse, translations);
         browse.setOnAction(
                 e -> {
                     var chooser = new FileChooser();
@@ -112,6 +114,7 @@ final class ExportDialog {
         angle.setId("export-angle");
         var overwrite = new CheckBox(translations.text("gui.replace_existing_file"));
         overwrite.setId("export-overwrite");
+        UiHelp.install(overwrite, translations);
         var options = new VBox(8);
         Map<String, Node> editors = new LinkedHashMap<>();
         format.valueProperty()
@@ -149,6 +152,11 @@ final class ExportDialog {
                                 if (editor instanceof FormulaField field)
                                     field.localized(translations);
                                 editor.setId("export-option-" + option.key());
+                                if (editor instanceof CheckBox check)
+                                    UiHelp.describe(
+                                            check,
+                                            translations.text(
+                                                    "help.export-option", option.label()));
                                 editors.put(option.key(), editor);
                                 options.getChildren().addAll(new Label(option.label()), editor);
                             }

@@ -10,6 +10,31 @@ Windows or `./gradlew :gui:run` on Ubuntu. Gradle arguments can include
 `bin/gui` launcher requires Java 21 and locates the adjacent native libraries.
 Only use a distribution built for the destination OS and architecture.
 
+## Workbench layout and menus
+
+The workbench uses a compact IDE-style layout: a top menu, a modeling toolbar,
+a model tree on the left, the viewport in the center, Properties on the right,
+and history and rebuild status below. Drag the panel dividers to give the model
+or inspector more space. The toolbar wraps on smaller windows and is hidden
+in the Print workspace. File actions do not take up modeling toolbar space.
+
+- **File**: New, Open, Save, Save As and Export. Save shortcuts are Ctrl+S and
+  Ctrl+Shift+S; the document name and unsaved-change dot stay visible at the top.
+- **Edit**: Undo, Redo and Parameters. Undo/Redo also remain on the modeling toolbar.
+- **View**: Fit, standard camera directions and **Appearance → System / Light / Dark**.
+- **Settings**: Language and Updates. Restart after changing the language.
+
+Hover over a button or menu action for a description of its purpose, prerequisites
+and relevant shortcuts. Descriptions and menu captions are available in English
+and Polish; screen readers can also access action help. Plugin-owned option names
+retain their provider wording. Escape closes an open menu before cancelling a tool.
+Document menu shortcuts are disabled while a modal editor is open.
+
+The model tree is kept above configuration controls. **New sketch…** is the primary
+toolbar action; Rectangle and Circle provide the quick two-point tools. Extrude
+and Through cut require a suitable selected profile. The timeline selects operations;
+its slider changes rollback independently of Undo/Redo.
+
 ## Reference-part demo
 
 For the constraint workspace, choose **New sketch…** or select an existing sketch
@@ -27,11 +52,11 @@ numeric point input and tool-specific settings. See [sketch types](sketch-types.
 3. Choose **Circle**. Click the center and a radius point, or set center
    (10,10), diameter 4, offset 0. Finish the sketch. Choose **Through cut**,
    select the plate body and confirm.
-4. Save as a `.jcad` file. Open it again. Select the extrusion in the tree or
+4. Choose **File → Save As** to save a `.jcad` file. Open it again. Select the extrusion in the tree or
    timeline, change distance from 5 to 8 and press Enter or Apply.
 5. Move the timeline slider to 3: the cut is rolled back and volume is 19200
    mm³. Return to 4. Undo restores 5 mm thickness; Redo restores 8 mm.
-6. Save and choose **Export**. Select 3MF, choose a destination and export.
+6. Save and choose **File → Export**. Select 3MF, choose a destination and export.
    A default export uses chordal tolerance 0.02 mm and angular tolerance 5°.
 7. In the installed CLI, run `cli inspect design.jcad --point 10,10,4`.
    Expected bounds are (0,0,0)–(60,40,8), volume 19099.469035085127 mm³,
@@ -84,7 +109,7 @@ the view selector synchronized and never creates a feature or undo entry.
 
 ## Appearance and exporters
 
-System/Light/Dark is a local user preference, stored as `appearance` in
+**View → Appearance → System/Light/Dark** is a local user preference, stored as `appearance` in
 `~/.voxelbrew/config.properties`, outside the document. The previous Java Preferences
 value is migrated when the configuration has no appearance value. System appearance
 is checked on launch and window focus. See [shared configuration](shared-utilities.md).

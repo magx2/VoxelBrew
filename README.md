@@ -19,8 +19,10 @@ M5 is complete for Windows/Ubuntu desktop and macOS Intel CLI, with bundled-JVM
 app images and checks of both original images and extracted distribution ZIPs.
 macOS GUI qualification remains explicitly deferred. See
 [packaging and platform qualification](docs/packaging.md).
-M6 adds persistent custom feature providers, with a consumer-built spacer plugin
-and shared CLI/GUI parameter editing. See [feature plugins](docs/feature-plugins.md).
+M6 is complete for persistent custom feature providers, with a consumer-built
+spacer plugin, shared CLI/GUI parameter editing, provider-failure isolation and
+lossless missing-plugin recovery. See [feature plugins](docs/feature-plugins.md)
+and [M6 acceptance](docs/acceptance/M6.md).
 M7 adds a 2D sketch constraint workspace: lines, circles, arcs, cubic splines,
 regular polygons, driving dimensions and geometric constraints. See
 [sketch constraints](docs/sketch-constraints.md).
@@ -190,7 +192,8 @@ CI configuration is not itself proof of a successful hosted run.
 See also [M2 export evidence](docs/acceptance/M2.md) and
 [M3 desktop evidence](docs/acceptance/M3.md) and the
 [M4 manufacturing qualification](docs/acceptance/M4.md). Subsequent milestones cover
-general sketch constraints and persistent generated-face references. Feature plugin
+persistently named generated-face references. General sketch constraints are
+implemented in M7. Feature plugin
 qualification is tracked in [M6 evidence](docs/acceptance/M6.md). Packaged platform results are tracked in
 [M5 acceptance](docs/acceptance/M5.md); physical printer checks remain unqualified.
 

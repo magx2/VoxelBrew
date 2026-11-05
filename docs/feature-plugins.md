@@ -6,6 +6,10 @@ and the same `~/.voxelbrew/plugins` directory as exporters and slicers. Override
 it with `--plugin-dir` in either frontend. Load errors, duplicate provider/type
 pairs and incompatible APIs are diagnosed independently; the first compatible
 registration wins. A dedicated class loader discovers providers for each rebuild.
+Assertions and nested service-loading errors from descriptors, codecs or geometry
+evaluation are reported as plugin/feature diagnostics. A failed edit keeps the
+previous revision and undo history; failed evaluation blocks dependent features
+and prevents stale export. Fatal VM errors are not converted to model failures.
 
 API 1 supports numeric parameters and one new solid body named `body`, with
 identity `<feature-id>.body`. Built-in cuts and splits can consume that named
@@ -17,8 +21,9 @@ intermediate solids; the returned independent `Solid` transfers to engine owners
 Native pointers, generated Protobuf classes and frontend types are absent from
 the contract. This is trusted in-process code, without a plugin sandbox.
 
-`.jcad` schema 3 stores provider ID, type, payload version and opaque bytes.
-Versions 1 and 2 remain readable. Unknown plugins or payload versions remain
+Custom definitions were introduced in `.jcad` schema 3; current schema 6 retains
+the provider ID, type, payload version and opaque bytes, and older documents remain
+readable. Unknown plugins or payload versions remain
 savable, with byte-for-byte payload preservation and stable IDs. Their rebuilds
 fail with feature-specific diagnostics, dependents are blocked, and stale geometry
 cannot be exported or sliced. Install the compatible provider and rebuild to
@@ -64,5 +69,6 @@ For printing, place the centered spacer at `(30,30,0)` using the Print tab or
 `place --instance placed --body spacer.body --x 30 --y 30`, supplying `--plugin-dir`
 to subsequent CLI print commands as well.
 
-API 1 does not add arbitrary custom input graphs, general sketch constraints or
-generated-face support references. Those require later API/compatibility work.
+API 1 does not add arbitrary custom input graphs or generated-face support
+references. Those require later API/compatibility work. General sketch constraints
+are available independently through the built-in M7 sketch engine.

@@ -51,7 +51,10 @@ public final class FeatureRegistry implements AutoCloseable {
                 else if (entries.putIfAbsent(descriptor.key(), new Entry(descriptor, provider))
                         != null) diagnostics.add("Duplicate feature ID: " + descriptor.key());
                 failures = 0;
-            } catch (ServiceConfigurationError | LinkageError | RuntimeException failure) {
+            } catch (ServiceConfigurationError
+                    | LinkageError
+                    | RuntimeException
+                    | AssertionError failure) {
                 diagnostics.add("Feature provider load failed: " + failure);
                 if (++failures >= 100) {
                     diagnostics.add("Stopped after 100 consecutive provider failures");
@@ -94,7 +97,10 @@ public final class FeatureRegistry implements AutoCloseable {
         try {
             var entry = require(provider, type);
             return encoded(id, entry, values);
-        } catch (RuntimeException | LinkageError failure) {
+        } catch (RuntimeException
+                | LinkageError
+                | ServiceConfigurationError
+                | AssertionError failure) {
             throw failure(id, failure);
         }
     }
@@ -122,7 +128,10 @@ public final class FeatureRegistry implements AutoCloseable {
                     entry.descriptor(),
                     entry.provider().decode(feature.payloadVersion(), feature.payload()),
                     false);
-        } catch (RuntimeException | LinkageError failure) {
+        } catch (RuntimeException
+                | LinkageError
+                | ServiceConfigurationError
+                | AssertionError failure) {
             throw failure(feature.id(), failure);
         }
     }
@@ -132,7 +141,10 @@ public final class FeatureRegistry implements AutoCloseable {
             var values = new LinkedHashMap<>(parameters(feature));
             values.putAll(changes);
             return encoded(feature.id(), require(feature.providerId(), feature.type()), values);
-        } catch (RuntimeException | LinkageError failure) {
+        } catch (RuntimeException
+                | LinkageError
+                | ServiceConfigurationError
+                | AssertionError failure) {
             throw failure(feature.id(), failure);
         }
     }
@@ -151,11 +163,17 @@ public final class FeatureRegistry implements AutoCloseable {
                 if (!Double.isFinite(volume) || volume <= 0)
                     throw new IllegalArgumentException("Provider returned an invalid volume");
                 return solid;
-            } catch (RuntimeException | LinkageError failure) {
+            } catch (RuntimeException
+                    | LinkageError
+                    | ServiceConfigurationError
+                    | AssertionError failure) {
                 solid.close();
                 throw failure;
             }
-        } catch (RuntimeException | LinkageError failure) {
+        } catch (RuntimeException
+                | LinkageError
+                | ServiceConfigurationError
+                | AssertionError failure) {
             throw failure(feature.id(), failure);
         }
     }

@@ -5,8 +5,10 @@ import static org.junit.jupiter.api.Assertions.*;
 import dev.voxelbrew.engine.feature.*;
 import dev.voxelbrew.engine.model.*;
 import dev.voxelbrew.engine.persistence.DocumentStore;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
 import java.util.*;
+import java.util.jar.*;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -23,6 +25,117 @@ class FeatureProviderTest {
 
     private static double expected(double height) {
         return Math.PI * (100 - 4) * height;
+    }
+
+    private Path providers(String... names) throws Exception {
+        var plugins =
+                Files.createDirectory(directory.resolve("broken feature plugins with spaces"));
+        String service = "META-INF/services/" + FeatureProvider.class.getName();
+        try (var source = new JarFile(System.getProperty("voxelbrew.test.plugin"));
+                var target =
+                        new JarOutputStream(
+                                Files.newOutputStream(plugins.resolve("providers.jar")))) {
+            var entries = source.entries();
+            while (entries.hasMoreElements()) {
+                var entry = entries.nextElement();
+                if (entry.getName().equals(service)) continue;
+                target.putNextEntry(new JarEntry(entry.getName()));
+                if (!entry.isDirectory()) {
+                    try (var input = source.getInputStream(entry)) {
+                        input.transferTo(target);
+                    }
+                }
+                target.closeEntry();
+            }
+            target.putNextEntry(new JarEntry(service));
+            target.write((String.join("\n", names) + "\n").getBytes(StandardCharsets.UTF_8));
+            target.closeEntry();
+        }
+        return plugins;
+    }
+
+    @Test
+    void descriptorAssertionDoesNotPreventDiscoveringAHealthyExternalProvider() throws Exception {
+        var plugins =
+                providers("consumer.BrokenFeatureProviders$Descriptor", "consumer.SpacerProvider");
+        try (var registry = new FeatureRegistry(plugins)) {
+            assertEquals(
+                    List.of("example.spacer/spacer"),
+                    registry.descriptors().stream().map(FeatureDescriptor::key).toList());
+            assertTrue(
+                    registry.diagnostics().stream()
+                            .anyMatch(d -> d.contains("Descriptor assertion")));
+            var spacer = registry.create("spacer", "example.spacer", "spacer", Map.of());
+            try (var solid = registry.evaluate(spacer)) {
+                assertEquals(expected(8), solid.volume(), .01);
+            }
+        }
+    }
+
+    @Test
+    void codecAndEvaluationErrorsPreserveEditsPayloadsAndNativeOwnership() throws Exception {
+        int handles = NativeKernel.liveHandles();
+        var plugins =
+                providers(
+                        "consumer.SpacerProvider",
+                        "consumer.BrokenFeatureProviders$Encoder",
+                        "consumer.BrokenFeatureProviders$Decoder",
+                        "consumer.BrokenFeatureProviders$Evaluation",
+                        "consumer.BrokenFeatureProviders$NestedServices");
+        try (var registry = new FeatureRegistry(plugins)) {
+            var good = registry.create("good", "example.spacer", "spacer", Map.of());
+            assertThrows(
+                    ModelException.class,
+                    () ->
+                            registry.create(
+                                    "new-feature", "example.assert.encode", "spacer", Map.of()));
+            var encoder =
+                    new Feature.Custom(
+                            "encoder", "example.assert.encode", "spacer", 1, good.payload());
+            var session = new ModelSession(new CadDocument("codec-errors", List.of(encoder), 1));
+            var before = session.snapshot();
+            var editFailure =
+                    assertThrows(
+                            ModelException.class,
+                            () -> session.editDimension("encoder", "height", 12, plugins));
+            assertTrue(editFailure.getMessage().contains("encoder"));
+            assertEquals(before, session.snapshot());
+            assertFalse(session.canUndo());
+            for (String provider :
+                    List.of(
+                            "example.assert.decode",
+                            "example.assert.evaluate",
+                            "example.service.evaluate")) {
+                var broken = new Feature.Custom("broken", provider, "spacer", 1, good.payload());
+                var split =
+                        new Feature.SplitBody(
+                                "dependent",
+                                new Feature.BodyRef("broken", "body"),
+                                new Feature.SplitPlane(1, 0, 0, 0));
+                var document = new CadDocument("provider-errors", List.of(good, broken, split), 3);
+                try (var result = Evaluator.evaluate(document, plugins)) {
+                    assertEquals(
+                            List.of(
+                                    Evaluation.State.OK,
+                                    Evaluation.State.FAILED,
+                                    Evaluation.State.BLOCKED),
+                            result.diagnostics().stream()
+                                    .map(Evaluation.Diagnostic::state)
+                                    .toList());
+                    assertEquals("broken", result.diagnostics().get(1).featureId());
+                    assertThrows(IllegalStateException.class, result::bodies);
+                    assertThrows(IllegalStateException.class, result::requireCompleteDocument);
+                }
+                Path file = directory.resolve(provider + ".jcad");
+                DocumentStore.save(document, file, false);
+                assertEquals(document, DocumentStore.load(file));
+                assertArrayEquals(
+                        good.payload(),
+                        ((Feature.Custom) DocumentStore.load(file).features().get(1)).payload());
+                assertEquals(handles, NativeKernel.liveHandles());
+            }
+        }
+        assertEquals(handles, NativeKernel.liveHandles());
     }
 
     @Test

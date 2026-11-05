@@ -102,6 +102,15 @@ Build installers or app images and a headless CLI distribution on Windows, Linux
 
 ### M6 — Extend beyond the first printable release
 
+**Status: done for persistent custom features.** Engine publishes the versioned
+FeatureProvider SPI, `.jcad` preserves opaque plugin definitions, and the
+independent spacer provider works through GUI and CLI. Missing providers remain
+repairable without changing payload bytes or identities. Provider assertions and
+nested service-loading errors are isolated as diagnostics. See
+[M6 acceptance](acceptance/M6.md) and [feature plugins](feature-plugins.md).
+General sketch constraints are delivered separately by M7; sketches attached to
+generated faces remain later work.
+
 Add a FeatureProvider SPI for persistent custom operations once the built-in evaluator is stable. Store provider ID, feature type, payload version and opaque bytes. Verify that a missing plugin leaves the document repairable and preserves its payload on save. Prove the extension with a parameterized gear or spacer feature. Later work can add general sketch constraints and sketches attached to generated faces, each with its own compatibility fixtures.
 
 ### M7 — Constrained 2D sketches

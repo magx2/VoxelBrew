@@ -22,7 +22,7 @@ import picocli.CommandLine.Spec;
         name = "voxelbrew",
         description = "VoxelBrew parametric CAD; all dimensions are millimeters.",
         mixinStandardHelpOptions = true,
-        version = "VoxelBrew 0.1.0 / jcad schema 6",
+        versionProvider = VersionProvider.class,
         subcommands = {
             VoxelBrew.Create.class,
             VoxelBrew.Rectangle.class,

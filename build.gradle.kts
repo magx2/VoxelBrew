@@ -76,7 +76,14 @@ spotless {
         endWithNewline()
     }
     format("webAndDocs") {
-        target("*.md", "*/AGENTS.md", "docs/*.md", ".github/**/*.yml", "gui/src/**/*.css")
+        target(
+            "*.md",
+            "*/AGENTS.md",
+            "docs/*.md",
+            ".github/**/*.yml",
+            ".github/scripts/*.cjs",
+            "gui/src/**/*.css",
+        )
         prettier("3.6.2").config(mapOf("printWidth" to 100, "proseWrap" to "preserve"))
         endWithNewline()
     }
@@ -106,7 +113,7 @@ tasks
 
 allprojects {
     group = "dev.voxelbrew"
-    version = "0.1.0-SNAPSHOT"
+    version = rootProject.providers.gradleProperty("projectVersion").get()
     repositories { mavenCentral() }
 }
 
@@ -192,7 +199,19 @@ for (suite in listOf("test", "integrationTest", "e2eTest", "platformCheck")) {
     }
 }
 
-tasks.named("check") { dependsOn(subprojects.map { "${it.path}:check" }) }
+val workflowTest by
+    tasks.registering(Exec::class) {
+        group = "verification"
+        description = "Test release automation against temporary Git repositories."
+        commandLine("node", "--test", ".github/scripts/release.test.cjs")
+    }
+
+tasks.named("test") { dependsOn(workflowTest) }
+
+tasks.named("check") {
+    dependsOn(workflowTest)
+    dependsOn(subprojects.map { "${it.path}:check" })
+}
 
 tasks.register("headlessPlatformCheck") {
     group = "verification"

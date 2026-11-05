@@ -9,6 +9,13 @@ dependencies {
 
 application { mainClass.set("dev.voxelbrew.cli.VoxelBrew") }
 
+val cliVersion = project.version.toString()
+
+tasks.processResources {
+    inputs.property("version", cliVersion)
+    filesMatching("voxelbrew-version.properties") { expand("version" to cliVersion) }
+}
+
 tasks.named<JavaExec>("run") {
     dependsOn(":engine:buildNative")
     systemProperty(

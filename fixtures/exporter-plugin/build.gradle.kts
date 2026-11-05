@@ -11,6 +11,9 @@ repositories {
 
 java { toolchain.languageVersion.set(JavaLanguageVersion.of(21)) }
 
-dependencies { compileOnly("dev.voxelbrew:engine:0.1.0-SNAPSHOT") }
+// Standalone consumers can choose any published version with -PengineVersion=...
+val engineVersion = providers.gradleProperty("engineVersion").orElse("0.1.0-SNAPSHOT")
+
+dependencies { compileOnly("dev.voxelbrew:engine:${engineVersion.get()}") }
 
 tasks.withType<JavaCompile>().configureEach { options.encoding = "UTF-8" }

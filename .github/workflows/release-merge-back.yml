@@ -1,0 +1,37 @@
+name: Release - merge back to master
+on:
+  push:
+    branches: ["release/**"]
+  repository_dispatch:
+    types: [release-merge-back]
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: "Release branch to merge (release/A.B.x)"
+        required: true
+        type: string
+permissions:
+  contents: write
+  actions: write
+concurrency:
+  group: release-merge-back
+  cancel-in-progress: false
+jobs:
+  merge:
+    if: ${{ github.event_name != 'push' || !github.event.deleted }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      RELEASE_BRANCH: ${{ inputs.branch || github.event.client_payload.branch || github.ref_name }}
+      RELEASE_SOURCE: ${{ github.event.client_payload.source || (github.event_name == 'push' && github.sha) || '' }}
+    steps:
+      # Use trusted default-branch automation, not scripts from the incoming release branch.
+      - uses: actions/checkout@v4
+        with:
+          ref: master
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - run: node .github/scripts/release.cjs merge-back

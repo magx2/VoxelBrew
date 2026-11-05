@@ -30,6 +30,8 @@ M10 uses JSR 385 quantities and units throughout parameter evaluation, CAD
 measurement boundaries and print settings. See [units and typed APIs](docs/units.md).
 M11 parallelizes independent body meshing, larger sketch Jacobians and print
 preflight using a bounded CPU pool. See [computation and performance](docs/computation.md).
+M12 adds release branches, versioned native application downloads, checksums and
+release rehearsals. See [release steps and recovery](docs/releases.md).
 
 ## Prerequisites and locked dependencies
 
@@ -59,7 +61,7 @@ the root build and is included in `check` and CI. Format the whole project with
 not require the native bootstrap or a display.
 
 The pinned formatters cover Java (including the independent exporter fixture),
-Gradle Kotlin scripts, native C++, Protobuf, CSS, Markdown and workflow YAML. Other owned
+Gradle Kotlin scripts, native C++, Protobuf, CSS, Markdown, workflow YAML and release JavaScript. Other owned
 text files and scripts receive consistent whitespace and
 LF line endings. Java uses Google Java Format's four-space AOSP style; Kotlin
 uses ktfmt's Kotlin style. Prettier requires Node.js 18 or later with npm on

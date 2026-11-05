@@ -23,7 +23,10 @@ in a module is reported by Gradle, not counted as test coverage.
 .\gradlew.bat check
 ```
 
-Use `./gradlew` on Ubuntu. Unit tests need Java 21 only (and Gradle dependencies).
+Use `./gradlew` on Ubuntu. Java unit tests need Java 21 (and Gradle dependencies).
+Root `test` and `check` also run `workflowTest`: release automation tests under
+`.github/scripts`, requiring Git and Node.js (CI uses Node 24). These tests use
+temporary local repositories and never publish a GitHub release.
 Integration tests additionally need the native and slicer bootstraps from the
 README, but no display. End-to-end and platform checks require a 3D-capable
 desktop; Ubuntu CI uses Xvfb/Mesa:

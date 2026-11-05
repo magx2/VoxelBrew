@@ -233,6 +233,7 @@ val buildExporterFixture by
         dependsOn("publishEnginePublicationToFixtureRepository")
         dir = rootProject.file("fixtures/exporter-plugin")
         tasks = listOf("jar")
+        startParameter.projectProperties = mapOf("engineVersion" to project.version.toString())
     }
 
 tasks.named<Test>("integrationTest") {

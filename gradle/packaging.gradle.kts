@@ -3,6 +3,34 @@ import org.gradle.jvm.toolchain.JavaToolchainService
 // Applied to the two frontends; packages the host architecture only.
 val packageWindows = System.getProperty("os.name").startsWith("Windows")
 val packageMac = System.getProperty("os.name").startsWith("Mac")
+val productVersion = project.version.toString()
+
+require(
+    productVersion.matches(Regex("(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(-SNAPSHOT)?"))
+) {
+    "projectVersion must be A.B.C or A.B.C-SNAPSHOT"
+}
+
+val numericVersion = productVersion.removeSuffix("-SNAPSHOT")
+
+// JDK 21 requires a positive first Mac bundle component. Keep pre-1.0 builds distinct.
+require(numericVersion.split('.').all { (it.toIntOrNull() ?: -1) in 0..65534 }) {
+    "Version components must be below 65535 (native package limit)"
+}
+
+val bundleVersion =
+    if (packageMac)
+        "${numericVersion.substringBefore('.').toInt() + 1}.${numericVersion.substringAfter('.')}"
+    else numericVersion
+val packagePlatform = if (packageWindows) "windows" else if (packageMac) "macos" else "linux"
+val packageArchitecture =
+    when (System.getProperty("os.arch")) {
+        "amd64",
+        "x86_64" -> "x64"
+        "aarch64",
+        "arm64" -> "arm64"
+        else -> error("Unsupported package architecture: ${System.getProperty("os.arch")}")
+    }
 val applicationName = if (project.name == "gui") "VoxelBrew" else "VoxelBrewCLI"
 val mainType =
     if (project.name == "gui") "dev.voxelbrew.gui.Launcher" else "dev.voxelbrew.cli.VoxelBrew"
@@ -38,6 +66,7 @@ val appImage by
         inputs.dir(packageInput)
         inputs.file(packageJdk.resolve("release"))
         inputs.file(rootProject.file("gradle/packaging.gradle.kts"))
+        inputs.property("productVersion", productVersion)
         outputs.dir(image)
         doFirst {
             check(packageJdk.resolve("jmods/java.se.jmod").isFile) {
@@ -55,9 +84,7 @@ val appImage by
                 "--name",
                 applicationName,
                 "--app-version",
-                // JDK 21's Mac bundler requires a positive first component. This is
-                // the bundle build number; the product and archive remain 0.1.0-SNAPSHOT.
-                if (packageMac) "1.0.0" else "0.1.0",
+                bundleVersion,
                 "--vendor",
                 "voxelbrew.dev",
                 "--input",
@@ -96,14 +123,29 @@ val packageCheck by
 
 tasks.named("platformCheck") { dependsOn(packageCheck) }
 
-tasks.register<Zip>("packageZip") {
-    group = "distribution"
-    dependsOn(appImage)
-    from(imageRoot)
-    // Keep Unix launchers executable after extraction; archives remain platform specific.
-    eachFile { permissions { unix(if (file.canExecute()) "rwxr-xr-x" else "rw-r--r--") } }
-    destinationDirectory.set(layout.buildDirectory.dir("distributions"))
-    archiveFileName.set(
-        "$applicationName-${project.version}-${System.getProperty("os.name").replace(" ", "")}-${System.getProperty("os.arch")}.zip"
+val packageZip by
+    tasks.registering(Zip::class) {
+        group = "distribution"
+        dependsOn(appImage)
+        from(imageRoot)
+        // Keep Unix launchers executable after extraction; archives remain platform specific.
+        eachFile { permissions { unix(if (file.canExecute()) "rwxr-xr-x" else "rw-r--r--") } }
+        destinationDirectory.set(layout.buildDirectory.dir("distributions"))
+        archiveFileName.set(
+            "$applicationName-$productVersion-$packagePlatform-$packageArchitecture.zip"
+        )
+    }
+
+tasks.register<Exec>("releaseArchiveCheck") {
+    group = "verification"
+    description = "Extract and exercise the exact release ZIP, including Unix launcher permissions."
+    dependsOn(packageZip, ":engine:buildExporterFixture")
+    commandLine(
+        if (packageWindows) "python" else "python3",
+        rootProject.file("scripts/check-release-archive.py").absolutePath,
+        project.name,
+        packageZip.get().archiveFile.get().asFile.absolutePath,
+        rootProject.projectDir.absolutePath,
+        layout.buildDirectory.dir("package-artifacts/archive").get().asFile.absolutePath,
     )
 }

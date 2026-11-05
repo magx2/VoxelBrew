@@ -1,0 +1,112 @@
+name: Release native applications
+on:
+  workflow_dispatch:
+    inputs:
+      dry-run:
+        description: "Build and verify only; master is allowed for a rehearsal. Disable only on release/A.B.x to publish."
+        type: boolean
+        default: true
+permissions:
+  contents: read
+concurrency:
+  group: release-mutations
+  cancel-in-progress: false
+jobs:
+  candidate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      RELEASE_DRY_RUN: ${{ inputs.dry-run }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - run: node --test .github/scripts/release.test.cjs
+      - name: Stage immutable release commits without publishing refs
+        run: node .github/scripts/release.cjs candidate .tools/release-plan
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-plan
+          path: .tools/release-plan/
+          include-hidden-files: true
+          retention-days: 3
+          if-no-files-found: error
+  native:
+    needs: candidate
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-2022
+            suite: check
+          - os: ubuntu-24.04
+            suite: check
+          - os: macos-15-intel
+            suite: headlessPlatformCheck
+    uses: ./.github/workflows/native-check.yml
+    with:
+      os: ${{ matrix.os }}
+      suite: ${{ matrix.suite }}
+      artifact-name: release-evidence-${{ matrix.os }}
+      archive: true
+      release-candidate: true
+  verify:
+    needs: [candidate, native]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - uses: actions/download-artifact@v4
+        with:
+          name: release-plan
+          path: .tools/release-plan
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: release-assets-*
+          merge-multiple: true
+          path: .tools/release-assets
+      - name: Verify complete platform set and checksums
+        run: node .github/scripts/release.cjs manifest .tools/release-plan .tools/release-assets
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-downloads
+          path: .tools/release-assets/
+          include-hidden-files: true
+          retention-days: 3
+          if-no-files-found: error
+  publish:
+    if: ${{ !inputs.dry-run }}
+    needs: [candidate, native, verify]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - uses: actions/download-artifact@v4
+        with:
+          name: release-plan
+          path: .tools/release-plan
+      - uses: actions/download-artifact@v4
+        with:
+          name: release-downloads
+          path: .tools/release-assets
+      - name: Stage assets, atomically publish refs, then publish release
+        run: node .github/scripts/release.cjs publish .tools/release-plan .tools/release-assets
+      - name: Explicitly trigger merge-back after ref publication
+        if: ${{ always() && !cancelled() }}
+        run: node .github/scripts/release.cjs dispatch-merge .tools/release-plan

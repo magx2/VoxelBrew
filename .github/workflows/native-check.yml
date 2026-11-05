@@ -14,6 +14,9 @@ on:
       archive:
         default: false
         type: boolean
+      release-candidate:
+        default: false
+        type: boolean
 permissions:
   contents: read
 jobs:
@@ -23,6 +26,19 @@ jobs:
     timeout-minutes: 75
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - uses: actions/download-artifact@v4
+        if: inputs.release-candidate
+        with:
+          name: release-plan
+          path: .tools/release-plan
+      - name: Check out the exact staged release commit
+        if: inputs.release-candidate
+        run: node .github/scripts/release.cjs checkout .tools/release-plan
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -85,7 +101,28 @@ jobs:
       - name: Archive app images
         if: inputs.archive
         shell: bash
-        run: ./gradlew :cli:packageZip :gui:packageZip ${{ runner.os == 'Windows' && '''-PvsGenerator=Visual Studio 17 2022''' || '' }}
+        run: ./gradlew ${{ inputs.release-candidate && runner.os == 'macOS' && ':cli:packageZip' || ':cli:packageZip :gui:packageZip' }} ${{ runner.os == 'Windows' && '''-PvsGenerator=Visual Studio 17 2022''' || '' }}
+      - name: Test extracted release archives (Ubuntu)
+        if: inputs.release-candidate && runner.os == 'Linux'
+        run: xvfb-run -a -s '-screen 0 1600x1000x24' env LIBGL_ALWAYS_SOFTWARE=1 ./gradlew :cli:releaseArchiveCheck :gui:releaseArchiveCheck
+      - name: Test extracted release archives (Windows)
+        if: inputs.release-candidate && runner.os == 'Windows'
+        shell: pwsh
+        run: ./gradlew.bat :cli:releaseArchiveCheck :gui:releaseArchiveCheck '-PvsGenerator=Visual Studio 17 2022'
+      - name: Test extracted release archive (macOS CLI)
+        if: inputs.release-candidate && runner.os == 'macOS'
+        run: ./gradlew :cli:releaseArchiveCheck
+      - name: Collect qualified release archives and provenance
+        if: inputs.release-candidate
+        run: node .github/scripts/release.cjs collect .tools/release-plan .tools/release-assets
+      - uses: actions/upload-artifact@v4
+        if: inputs.release-candidate && success()
+        with:
+          name: release-assets-${{ inputs.os }}
+          path: .tools/release-assets/
+          include-hidden-files: true
+          retention-days: 3
+          if-no-files-found: error
       - name: Retain successful OCCT compilation after later failures
         if: ${{ always() && !cancelled() && steps.occt-cache.outputs.cache-hit != 'true' && hashFiles('engine/build/native/bridge/CMakeCache.txt') != '' }}
         uses: actions/cache/save@v4
@@ -108,7 +145,7 @@ jobs:
             cli/build/package-artifacts/
             gui/build/package-artifacts/
       - uses: actions/upload-artifact@v4
-        if: inputs.archive && success()
+        if: inputs.archive && !inputs.release-candidate && success()
         with:
           name: app-images-${{ inputs.os }}
           retention-days: 3

@@ -22,8 +22,12 @@ dependency selection exists but is not qualified. Other Linux distributions,
 Unix variants and architectures require separate qualification. These are app
 images, without installer integration or signing/notarization.
 JDK 21's Mac bundler requires a positive first version component, so macOS app
-metadata uses bundle build number `1.0.0`. The product and archive version remains
-`0.1.0-SNAPSHOT`; this does not designate a stable 1.0 product release.
+metadata uses `(major + 1).minor.patch` (for example product `0.1.0` uses
+bundle number `1.1.0`). Product versions, CLI output and archive names use
+`projectVersion` unchanged. Snapshot suffixes are omitted from native metadata.
+Archives use stable `windows-x64`, `linux-x64` and `macos-x64` platform names.
+The [release procedure](releases.md) publishes qualified GUI/CLI downloads with
+checksums; it publishes only the CLI on macOS.
 
 Examples after extracting the appropriate archive:
 

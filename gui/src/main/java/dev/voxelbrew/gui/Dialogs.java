@@ -103,12 +103,16 @@ final class Dialogs {
         ButtonBase cancelButton = cancel;
         EventHandler<KeyEvent> escape =
                 e -> {
-                    if (e.getCode() == KeyCode.ESCAPE && cancelButton != null) {
-                        cancelButton.fire();
+                    if (e.getCode() == KeyCode.ESCAPE
+                            && cancelButton != null
+                            && scene.getRoot() == host) {
                         e.consume();
+                        cancelButton.fire();
                     }
                 };
-        panel.addEventFilter(KeyEvent.KEY_PRESSED, escape);
+        // MenuBarSkin retains a scene-level Escape filter even when its workbench is
+        // disabled behind this overlay. Only the topmost modal owns this window filter.
+        owner.addEventFilter(KeyEvent.KEY_PRESSED, escape);
         owner.setOnCloseRequest(
                 e -> {
                     e.consume();
@@ -116,14 +120,19 @@ final class Dialogs {
                 });
         EventHandler<WindowEvent> hidden = e -> finish.accept(null);
         owner.addEventHandler(WindowEvent.WINDOW_HIDDEN, hidden);
-        if (initial != null) initial.requestFocus();
-        else panel.requestFocus();
+        Node initialFocus = initial != null ? initial : cancel != null ? cancel : panel;
+        initialFocus.requestFocus();
+        // A newly attached overlay may not yet be focusable until its first scene pulse.
+        Platform.runLater(
+                () -> {
+                    if (!completed[0] && !panel.isDisabled()) initialFocus.requestFocus();
+                });
         try {
             return Optional.ofNullable((T) Platform.enterNestedEventLoop(loop));
         } finally {
             owner.removeEventHandler(WindowEvent.WINDOW_HIDDEN, hidden);
             owner.setOnCloseRequest(previousClose);
-            panel.removeEventFilter(KeyEvent.KEY_PRESSED, escape);
+            owner.removeEventFilter(KeyEvent.KEY_PRESSED, escape);
             host.getChildren().clear();
             scene.setRoot(content);
             content.setDisable(disabled);

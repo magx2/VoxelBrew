@@ -150,6 +150,20 @@ class WorkbenchUiTest {
     void polishWorkbenchDialogsSketchPrintingAndLanguagePreferenceUseRealControls()
             throws Exception {
         ready();
+        key(KeyCode.ALT); // A focused background menu must not swallow modal Escape.
+        openShortcutHelp();
+        assertNotNull(fx(() -> node("#keyboard-shortcuts-list")));
+        assertTrue(
+                fx(
+                        () ->
+                                node("#keyboard-shortcuts-list").lookupAll(".label").stream()
+                                        .filter(Label.class::isInstance)
+                                        .map(Label.class::cast)
+                                        .anyMatch(
+                                                label ->
+                                                        label.getText()
+                                                                .equals("PROJEKTOWANIE 3D"))));
+        closeShortcutHelp();
         assertEquals("Zapisz", fx(() -> command(workbench, "save").getText()));
         assertButtonDescriptions();
         assertEquals("Widok: Góra", fx(() -> node("#view-cube-top").getAccessibleText()));
@@ -657,6 +671,27 @@ class WorkbenchUiTest {
                     return null;
                 });
         Thread.sleep(100);
+    }
+
+    private void openShortcutHelp() throws Exception {
+        focus(stage);
+        key(KeyCode.F1);
+        long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(3);
+        while (!fx(() -> node("#keyboard-shortcuts-close").isFocused())
+                && System.nanoTime() < deadline) Thread.sleep(20);
+        assertTrue(
+                fx(() -> node("#keyboard-shortcuts-close").isFocused()),
+                "The shortcut reference gives its Close button keyboard focus");
+    }
+
+    private void closeShortcutHelp() throws Exception {
+        key(KeyCode.ESCAPE);
+        long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(3);
+        while (fx(() -> stage.getScene().lookup("#keyboard-shortcuts-list") != null)
+                && System.nanoTime() < deadline) Thread.sleep(20);
+        assertNull(
+                fx(() -> stage.getScene().lookup("#keyboard-shortcuts-list")),
+                "One Escape closes the shortcut reference");
     }
 
     private void shortcut(KeyCode code, boolean shift) throws Exception {
@@ -2610,6 +2645,177 @@ class WorkbenchUiTest {
                                 ((javafx.scene.layout.VBox) node("#feature-diagnostics"))
                                         .getChildren()
                                         .isEmpty()));
+    }
+
+    @Test
+    void keyboardModelingNavigationAndSketchDraftsRespectFocusAndModalBoundaries()
+            throws Exception {
+        ready();
+        click("fit");
+        key(KeyCode.E);
+        assertNull(
+                fx(() -> workbench.lookup("#extrude-distance")),
+                "Disabled extrusion stays unavailable");
+        shortcut(KeyCode.E, false);
+        assertFalse(fx(workbench::isDisabled), "Unavailable export does not open a dialog");
+        key(KeyCode.R);
+        text("sketch-width", "60");
+        text("sketch-height", "40");
+        click("finish-sketch");
+        ready();
+        assertEquals(1, document().features().size());
+        var rectangle = document();
+        text("dimension-width", "=30+30");
+        shortcut(KeyCode.Z, false);
+        assertEquals(rectangle, document(), "Typing undo must not remove a CAD feature");
+        assertNotEquals("=30+30", fx(() -> ((TextField) node("#dimension-width")).getText()));
+        shortcut(KeyCode.Y, false);
+        assertEquals("=30+30", fx(() -> ((TextField) node("#dimension-width")).getText()));
+        text("dimension-width", "circle");
+        assertNull(fx(() -> workbench.lookup("#sketch-diameter")), "Letters stay in the field");
+        text("dimension-width", "60");
+        click("fit");
+        key(KeyCode.E);
+        assertNotNull(fx(() -> node("#extrude-distance")));
+        key(KeyCode.ESCAPE);
+        assertEquals(rectangle, document(), "Cancelled extrusion creates no history entry");
+        click("fit");
+        key(KeyCode.E);
+        text("extrude-distance", "-5");
+        key(KeyCode.ENTER);
+        ready();
+        assertEquals(2, document().features().size());
+        assertEquals(12000, volume(), .01);
+        click("fit");
+        shortcut(KeyCode.Z, false);
+        ready();
+        assertEquals(1, document().features().size());
+        shortcut(KeyCode.Z, true);
+        ready();
+        assertEquals(2, document().features().size());
+        var part = document();
+        for (var entry :
+                Map.of(
+                                KeyCode.DIGIT0,
+                                "Isometric",
+                                KeyCode.DIGIT1,
+                                "Top",
+                                KeyCode.DIGIT2,
+                                "Front",
+                                KeyCode.DIGIT3,
+                                "Right",
+                                KeyCode.DIGIT4,
+                                "Back",
+                                KeyCode.DIGIT5,
+                                "Left",
+                                KeyCode.DIGIT6,
+                                "Bottom")
+                        .entrySet()) {
+            key(entry.getKey());
+            assertEquals(
+                    entry.getValue(),
+                    fx(() -> workbench.viewport().orientationProperty().get().name()));
+        }
+        key(KeyCode.F);
+        assertEquals(part, document(), "Navigation must not edit the document");
+        shortcut(KeyCode.DIGIT2, false);
+        assertEquals(
+                "workspace-print",
+                fx(
+                        () ->
+                                ((TabPane) node("#workspaces"))
+                                        .getSelectionModel()
+                                        .getSelectedItem()
+                                        .getId()));
+        key(KeyCode.R);
+        assertNull(
+                fx(() -> workbench.lookup("#sketch-width")), "Design tools are inactive in Print");
+        shortcut(KeyCode.DIGIT1, false);
+        shortcut(KeyCode.P, true);
+        assertNotNull(fx(() -> node("#parameters-cancel")));
+        shortcut(KeyCode.N, false);
+        assertEquals(part, document());
+        click("parameters-cancel");
+        shortcut(KeyCode.E, false);
+        assertNotNull(fx(() -> node("#export-path")));
+        key(KeyCode.ESCAPE);
+        click("fit");
+        key(KeyCode.K);
+        sketchReady();
+        assertEquals(
+                "0",
+                fx(() -> ((TextField) node("#constraint-plane")).getText()),
+                "The shortcut must not type into the newly opened editor");
+        key(KeyCode.R);
+        sketchClick(0, 0, false);
+        sketchClick(20, 10, false);
+        sketchReady();
+        assertEquals(4, sketchGeometry().entities().size());
+        shortcut(KeyCode.Z, false);
+        sketchReady();
+        assertTrue(sketchGeometry().entities().isEmpty());
+        shortcut(KeyCode.Y, false);
+        sketchReady();
+        assertEquals(4, sketchGeometry().entities().size());
+        assertEquals(part, document(), "Sketch undo/redo stays in the draft");
+        int constraints = sketchGeometry().constraints().size();
+        assertTrue(constraints > 0);
+        click("sketch-constraints");
+        key(KeyCode.HOME);
+        key(KeyCode.DELETE);
+        sketchReady();
+        assertEquals(
+                constraints - 1,
+                sketchGeometry().constraints().size(),
+                "Delete works on the focused constraint list");
+        shortcut(KeyCode.Z, false);
+        sketchReady();
+        assertEquals(constraints, sketchGeometry().constraints().size());
+        openShortcutHelp();
+        assertNotNull(fx(() -> node("#keyboard-shortcuts-list")));
+        fx(
+                () -> {
+                    Screenshot.save(
+                            stage.getScene(),
+                            Path.of(
+                                    System.getProperty("voxelbrew.ui.artifacts"),
+                                    "keyboard-shortcuts-light.png"));
+                    return null;
+                });
+        shortcut(KeyCode.ENTER, false);
+        assertEquals(part, document(), "Help overlay blocks finish-sketch");
+        closeShortcutHelp();
+        shortcut(KeyCode.ENTER, false);
+        ready();
+        assertEquals(
+                3, document().features().size(), "Finish sketch commits exactly one operation");
+        click("fit");
+        shortcut(KeyCode.Z, false);
+        ready();
+        assertEquals(part, document());
+        click("history-cursor");
+        key(KeyCode.HOME);
+        ready();
+        assertEquals(0, document().cursor());
+        key(KeyCode.R);
+        assertNull(fx(() -> workbench.lookup("#sketch-width")), "Rollback blocks new features");
+        shortcut(KeyCode.E, false);
+        assertFalse(fx(workbench::isDisabled), "Rollback blocks export");
+        key(KeyCode.END);
+        ready();
+        assertEquals(part, document());
+        choice("appearance", 2);
+        openShortcutHelp();
+        fx(
+                () -> {
+                    Screenshot.save(
+                            stage.getScene(),
+                            Path.of(
+                                    System.getProperty("voxelbrew.ui.artifacts"),
+                                    "keyboard-shortcuts-dark.png"));
+                    return null;
+                });
+        closeShortcutHelp();
     }
 
     @Test

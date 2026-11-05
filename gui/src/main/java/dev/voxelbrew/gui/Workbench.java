@@ -196,7 +196,7 @@ public final class Workbench extends BorderPane implements AutoCloseable {
                 menuItem(
                         translations.text("action.export"),
                         "export",
-                        null,
+                        true,
                         () -> ExportDialog.show(stage(), controller(), registry(), translations));
         this.customFeature =
                 button(translations.text("action.features"), "custom-feature", this::customFeature);
@@ -246,22 +246,16 @@ public final class Workbench extends BorderPane implements AutoCloseable {
                         });
         UiHelp.install(views, translations);
         var fileMenu = menu("menu-file");
-        var newItem =
-                menuItem(translations.text("action.new"), "new", "Shortcut+N", this::newDocument);
+        var newItem = menuItem(translations.text("action.new"), "new", true, this::newDocument);
         var openItem =
                 menuItem(
                         translations.text("action.open"),
                         "open",
-                        "Shortcut+O",
+                        true,
                         () -> requestChange(this::open));
-        var saveItem =
-                menuItem(translations.text("action.save"), "save", "Shortcut+S", () -> save(false));
+        var saveItem = menuItem(translations.text("action.save"), "save", true, () -> save(false));
         var saveAsItem =
-                menuItem(
-                        translations.text("action.saveAs"),
-                        "save-as",
-                        "Shortcut+Shift+S",
-                        () -> save(true));
+                menuItem(translations.text("action.saveAs"), "save-as", true, () -> save(true));
         for (var item : List.of(newItem, openItem, saveItem, saveAsItem))
             item.disableProperty().bind(disabledProperty().or(fileBusy));
         export.disableProperty().bind(disabledProperty().or(exportUnavailable));
@@ -277,24 +271,24 @@ public final class Workbench extends BorderPane implements AutoCloseable {
         var editMenu = menu("menu-edit");
         editMenu.getItems()
                 .addAll(
-                        mirror(undo, "Shortcut+Z"),
-                        mirror(redo, "Shortcut+Shift+Z"),
+                        mirror(undo, true),
+                        mirror(redo, true),
                         new SeparatorMenuItem(),
-                        mirror(parameters, null));
+                        mirror(parameters, true));
         var viewMenu = menu("menu-view");
         viewMenu.getItems()
                 .add(
                         menuItem(
                                 translations.text("action.fit"),
                                 "menu-fit",
-                                null,
+                                false,
                                 () -> viewport.fit(meshes())));
         for (var name : views.getItems()) {
             var item =
                     menuItem(
                             UiText.view(translations, name),
                             "view-" + name.toLowerCase(Locale.ROOT),
-                            null,
+                            false,
                             () -> viewport.standardView(name));
             viewMenu.getItems().add(item);
         }
@@ -326,7 +320,7 @@ public final class Workbench extends BorderPane implements AutoCloseable {
                         menuItem(
                                 translations.text("language.label"),
                                 "language",
-                                null,
+                                false,
                                 () ->
                                         LanguageDialog.show(
                                                 stage,
@@ -336,8 +330,14 @@ public final class Workbench extends BorderPane implements AutoCloseable {
                         menuItem(
                                 translations.text("action.updates"),
                                 "updates",
-                                null,
-                                this::updates));
+                                false,
+                                this::updates),
+                        new SeparatorMenuItem(),
+                        menuItem(
+                                translations.text("shortcuts.title"),
+                                "keyboard-shortcuts",
+                                true,
+                                () -> KeyboardShortcuts.show(stage, translations)));
         var menuBar = new MenuBar(fileMenu, editMenu, viewMenu, settingsMenu);
         menuBar.setId("main-menu");
         UiHelp.menuBar(menuBar);
@@ -446,6 +446,8 @@ public final class Workbench extends BorderPane implements AutoCloseable {
         printTab.setId("workspace-print");
         printTab.setClosable(false);
         var workspaces = new TabPane(designTab, printTab);
+        designTab.setTooltip(UiHelp.tooltip(UiHelp.description(translations, "workspace-design")));
+        printTab.setTooltip(UiHelp.tooltip(UiHelp.description(translations, "workspace-print")));
         workspaces.setId("workspaces");
         workspaces
                 .getSelectionModel()
@@ -522,37 +524,62 @@ public final class Workbench extends BorderPane implements AutoCloseable {
         addEventFilter(
                 KeyEvent.KEY_PRESSED,
                 e -> {
-                    if (menuBar.getMenus().stream().anyMatch(Menu::isShowing)) return;
+                    if (isDisabled() || menuBar.getMenus().stream().anyMatch(Menu::isShowing))
+                        return;
+                    var focus = getScene().getFocusOwner();
+                    if (KeyboardShortcuts.textUndo(e, focus)) return;
                     if (e.getCode() == KeyCode.ESCAPE) {
                         cancelTool();
                         e.consume();
-                    } else if (e.isShortcutDown())
-                        switch (e.getCode()) {
-                            case S -> {
-                                save(e.isShiftDown());
-                                e.consume();
-                            }
-                            case O -> {
-                                requestChange(this::open);
-                                e.consume();
-                            }
-                            case N -> {
-                                newDocument();
-                                e.consume();
-                            }
-                            case Z -> {
-                                if (e.isShiftDown()) controller.redo();
-                                else controller.undo();
-                                cancelTool();
-                                e.consume();
-                            }
-                            case Y -> {
-                                controller.redo();
-                                cancelTool();
-                                e.consume();
-                            }
-                            default -> {}
+                        return;
+                    }
+                    String action =
+                            KeyboardShortcuts.match(KeyboardShortcuts.Scope.DOCUMENT, e, focus);
+                    if (action != null) {
+                        // Consume before opening a modal nested event loop, and use the same
+                        // enabled-state gates as the visible controls.
+                        e.consume();
+                        switch (action) {
+                            case "new" -> fire(newItem);
+                            case "open" -> fire(openItem);
+                            case "save" -> fire(saveItem);
+                            case "save-as" -> fire(saveAsItem);
+                            case "export" -> fire(export);
+                            case "undo" -> undo.fire();
+                            case "redo" -> redo.fire();
+                            case "parameters" -> parameters.fire();
+                            case "workspace-design" ->
+                                    workspaces.getSelectionModel().select(designTab);
+                            case "workspace-print" ->
+                                    workspaces.getSelectionModel().select(printTab);
+                            case "keyboard-shortcuts" ->
+                                    KeyboardShortcuts.show(stage, translations);
+                            default -> throw new IllegalStateException(action);
                         }
+                        return;
+                    }
+                    if (!designTab.isSelected()) return;
+                    action = KeyboardShortcuts.match(KeyboardShortcuts.Scope.DESIGN, e, focus);
+                    if (action == null) return;
+                    KeyboardShortcuts.consume(e, getScene());
+                    String viewAction = action;
+                    switch (action) {
+                        case "constrained-sketch" -> constrainedSketch.fire();
+                        case "rectangle" -> rectangle.fire();
+                        case "circle" -> circle.fire();
+                        case "extrude" -> extrude.fire();
+                        case "cut" -> cut.fire();
+                        case "split-body" -> splitBody.fire();
+                        case "fit" -> viewport.fit(meshes());
+                        default ->
+                                views.getItems().stream()
+                                        .filter(
+                                                name ->
+                                                        ("view-" + name.toLowerCase(Locale.ROOT))
+                                                                .equals(viewAction))
+                                        .findFirst()
+                                        .ifPresent(viewport::standardView);
+                    }
                 });
         stage.setOnCloseRequest(
                 e -> {
@@ -599,17 +626,23 @@ public final class Workbench extends BorderPane implements AutoCloseable {
         return menu;
     }
 
-    private MenuItem menuItem(String text, String id, String shortcut, Runnable action) {
+    private MenuItem menuItem(String text, String id, boolean shortcut, Runnable action) {
         var item = new MenuItem(text);
         item.setId(id);
         item.disableProperty().bind(disabledProperty());
-        if (shortcut != null) item.setAccelerator(KeyCombination.keyCombination(shortcut));
+        if (shortcut)
+            item.setAccelerator(
+                    KeyboardShortcuts.primary(id.startsWith("menu-") ? id.substring(5) : id));
         UiHelp.menuItem(item, UiHelp.description(translations, id));
         item.setOnAction(e -> attempt(action));
         return item;
     }
 
-    private MenuItem mirror(Button button, String shortcut) {
+    private static void fire(MenuItem item) {
+        if (!item.isDisable()) item.fire();
+    }
+
+    private MenuItem mirror(Button button, boolean shortcut) {
         var item = menuItem(button.getText(), "menu-" + button.getId(), shortcut, button::fire);
         item.disableProperty().bind(disabledProperty().or(button.disabledProperty()));
         return item;

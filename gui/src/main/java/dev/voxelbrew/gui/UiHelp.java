@@ -14,6 +14,10 @@ final class UiHelp {
     private UiHelp() {}
 
     static String description(Translations translations, String id) {
+        return KeyboardShortcuts.describe(translations, id, baseDescription(translations, id));
+    }
+
+    static String baseDescription(Translations translations, String id) {
         String key = id;
         if (id.startsWith("view-") && !id.startsWith("view-cube-"))
             return translations.text("help.standard-view");

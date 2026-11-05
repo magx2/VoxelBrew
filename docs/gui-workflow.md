@@ -24,7 +24,7 @@ in the Print workspace. File actions do not take up modeling toolbar space.
   Ctrl+Shift+S; the document name and unsaved-change dot stay visible at the top.
 - **Edit**: Undo, Redo and Parameters. Undo/Redo also remain on the modeling toolbar.
 - **View**: Fit, standard camera directions and **Appearance → System / Light / Dark**.
-- **Settings**: Language and Updates. Restart after changing the language.
+- **Settings**: Language, Updates and **Keyboard shortcuts… (F1)**. Restart after changing the language.
 
 Hover over a button or menu action for a description of its purpose, prerequisites
 and relevant shortcuts. Descriptions and menu captions are available in English
@@ -73,21 +73,42 @@ evaluated revision; sketches continue to use stable XY-parallel plane references
 
 ## Navigation, editing and files
 
-| Input                           | Action                                                 |
-| ------------------------------- | ------------------------------------------------------ |
-| Left click                      | Select a sketch profile, body or rendered face         |
-| Middle drag                     | Orbit                                                  |
-| Shift + middle drag             | Pan                                                    |
-| Mouse wheel                     | Zoom                                                   |
-| View selector / Fit             | Isometric and all six standard views / frame the model |
-| View cube face / edge / corner  | Snap to one of 26 viewing directions                   |
-| Left drag on the view cube      | Orbit the model                                        |
-| View cube Home                  | Restore the fitted isometric overview                  |
-| Ctrl+N / Ctrl+O                 | New / Open                                             |
-| Ctrl+S / Ctrl+Shift+S           | Save / Save As                                         |
-| Ctrl+Z / Ctrl+Y or Ctrl+Shift+Z | Undo / Redo                                            |
-| Enter in a dimension            | Apply or commit the entered value                      |
-| Escape                          | Cancel the active drawing or extrusion tool            |
+| Input                           | Action                                                  |
+| ------------------------------- | ------------------------------------------------------- |
+| Left click                      | Select a sketch profile, body or rendered face          |
+| Middle drag                     | Orbit                                                   |
+| Shift + middle drag             | Pan                                                     |
+| Mouse wheel                     | Zoom                                                    |
+| View selector / Fit             | Isometric and all six standard views / frame the model  |
+| View cube face / edge / corner  | Snap to one of 26 viewing directions                    |
+| Left drag on the view cube      | Orbit the model                                         |
+| View cube Home                  | Restore the fitted isometric overview                   |
+| Ctrl+N / Ctrl+O                 | New / Open                                              |
+| Ctrl+S / Ctrl+Shift+S           | Save / Save As                                          |
+| Ctrl+Z / Ctrl+Y or Ctrl+Shift+Z | Undo / Redo                                             |
+| Ctrl+E                          | Export the current evaluated model                      |
+| Ctrl+Shift+P                    | Edit parameters (document or sketch draft)              |
+| Ctrl+1 / Ctrl+2                 | Switch to Design / Print                                |
+| K / R / C                       | New constrained sketch / quick rectangle / quick circle |
+| E / H / X                       | Extrude / through cut / split body                      |
+| F / 0                           | Fit model / isometric view                              |
+| 1 / 2 / 3 / 4 / 5 / 6           | Top / front / right / back / left / bottom view         |
+| F1                              | Open the translated shortcut reference                  |
+| Enter in a dimension            | Apply or commit the entered value                       |
+| Escape                          | Cancel the active drawing or extrusion tool             |
+
+In the 2D sketch editor, **V/P/L/R/C/A/S/G** select the selection, point,
+line, rectangle, circle, arc, spline and polygon tools. **F** fits the sketch,
+**Delete** removes the selected constraint, and **Ctrl+Enter** finishes the sketch
+as one document operation. Undo/Redo acts on the sketch draft; Cancel discards it.
+The F1 reference and button tooltips show the same bindings in English or Polish.
+
+Letter and view-number shortcuts are inactive in text fields and selection lists;
+modified shortcuts use exact modifiers, so Ctrl+C/V and AltGr text entry keep their
+normal behavior. Ctrl+Z/Y (or Ctrl+Shift+Z) operates on the focused text field while
+typing. Disabled actions cannot be invoked by keyboard, and modal dialogs suspend
+underlying workspace shortcuts. On macOS, Command replaces Ctrl (GUI qualification
+is still deferred).
 
 The tree, viewport, inspector and timeline share selection. The timeline cursor
 is independent of undo/redo. Return to the end before adding features. Broken

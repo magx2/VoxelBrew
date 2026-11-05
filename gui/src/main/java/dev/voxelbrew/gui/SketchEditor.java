@@ -79,6 +79,7 @@ final class SketchEditor extends BorderPane implements AutoCloseable {
             error = new Label(),
             hint = new Label();
     private final Button finish, undo, redo;
+    private final Map<String, Button> shortcutActions = new LinkedHashMap<>();
     private final java.util.function.BiConsumer<Feature.Sketch, ParameterSet> accept;
     private final Feature.Sketch original;
     private final String featureId;
@@ -124,11 +125,24 @@ final class SketchEditor extends BorderPane implements AutoCloseable {
         StackPane.setMargin(editor, new Insets(8));
         boolean disabled = previous.isDisable();
         previous.setDisable(true);
-        javafx.event.EventHandler<WindowEvent> hidden = event -> editor.close();
+        javafx.event.EventHandler<KeyEvent> escape =
+                event -> {
+                    if (event.getCode() == KeyCode.ESCAPE && scene.getRoot() == host) {
+                        event.consume();
+                        editor.cancelDrawing();
+                    }
+                };
+        stage.addEventFilter(KeyEvent.KEY_PRESSED, escape);
+        javafx.event.EventHandler<WindowEvent> hidden =
+                event -> {
+                    stage.removeEventFilter(KeyEvent.KEY_PRESSED, escape);
+                    editor.close();
+                };
         stage.addEventHandler(WindowEvent.WINDOW_HIDDEN, hidden);
         editor.dismiss =
                 () -> {
                     editor.close();
+                    stage.removeEventFilter(KeyEvent.KEY_PRESSED, escape);
                     stage.removeEventHandler(WindowEvent.WINDOW_HIDDEN, hidden);
                     stage.setOnCloseRequest(previousClose);
                     host.getChildren().clear();
@@ -304,7 +318,13 @@ final class SketchEditor extends BorderPane implements AutoCloseable {
                         auto,
                         undo,
                         redo,
-                        button(translations.text("action.fit"), "sketch-fit", this::fit));
+                        button(translations.text("action.fit"), "sketch-fit", this::fit),
+                        button(
+                                "F1",
+                                "keyboard-shortcuts",
+                                () ->
+                                        KeyboardShortcuts.show(
+                                                getScene().getWindow(), translations)));
         var menu = new MenuButton(translations.text("gui.constraints"));
         menu.setId("sketch-constraint-menu");
         UiHelp.menu(menu, translations);
@@ -356,41 +376,41 @@ final class SketchEditor extends BorderPane implements AutoCloseable {
         addEventFilter(
                 KeyEvent.KEY_PRESSED,
                 e -> {
+                    if (isDisabled() || menu.isShowing()) return;
+                    var focus = getScene().getFocusOwner();
+                    if (KeyboardShortcuts.textUndo(e, focus)) return;
                     if (e.getCode() == KeyCode.ESCAPE) {
-                        if (dragPoint != null) controller.cancelDrag();
-                        dragPoint = null;
-                        moving = false;
-                        drawing.clear();
-                        snaps.clear();
-                        tool(Draw.SELECT);
-                        selection.clear();
-                        refresh();
-                        e.consume();
-                    } else if (e.isShortcutDown()
-                            && (e.getCode() == KeyCode.Z || e.getCode() == KeyCode.Y)) {
-                        controllerUndo(e.getCode() == KeyCode.Y || e.isShiftDown());
+                        cancelDrawing();
                         e.consume();
                     } else if (e.getCode() == KeyCode.ENTER
+                            && !e.isShortcutDown()
+                            && !e.isAltDown()
+                            && !e.isShiftDown()
                             && tool == Draw.ADVANCED
-                            && !(getScene().getFocusOwner() instanceof TextInputControl)) {
+                            && !(focus instanceof TextInputControl)) {
                         finishAdvanced();
                         e.consume();
-                    } else if (!(getScene().getFocusOwner() instanceof TextInputControl)) {
-                        switch (e.getCode()) {
-                            case L -> tool(Draw.LINE);
-                            case R -> tool(Draw.RECTANGLE);
-                            case C -> tool(Draw.CIRCLE);
-                            case A -> tool(Draw.ARC);
-                            case S -> tool(Draw.SPLINE);
-                            case DELETE -> removeConstraint();
-                            default -> {
-                                return;
-                            }
+                    } else {
+                        String action =
+                                KeyboardShortcuts.match(KeyboardShortcuts.Scope.SKETCH, e, focus);
+                        if (action != null) {
+                            KeyboardShortcuts.consume(e, getScene());
+                            shortcutActions.get(action).fire();
                         }
-                        e.consume();
                     }
                 });
         tool(Draw.SELECT);
+        refresh();
+    }
+
+    private void cancelDrawing() {
+        if (dragPoint != null) controller.cancelDrag();
+        dragPoint = null;
+        moving = false;
+        drawing.clear();
+        snaps.clear();
+        tool(Draw.SELECT);
+        selection.clear();
         refresh();
     }
 
@@ -1736,6 +1756,7 @@ final class SketchEditor extends BorderPane implements AutoCloseable {
 
     private Button button(String title, String id, Runnable action) {
         var button = new Button(title);
+        shortcutActions.put(id, button);
         button.setId(id);
         UiHelp.install(button, translations);
         button.setOnAction(e -> action.run());

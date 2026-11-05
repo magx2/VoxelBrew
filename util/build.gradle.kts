@@ -17,6 +17,15 @@ tasks.processResources {
     filesMatching("voxelbrew-util-version.properties") { expand("version" to buildVersion) }
 }
 
+tasks.jar { manifest.attributes("Implementation-Version" to buildVersion) }
+
+tasks.named<Test>("integrationTest") {
+    val artifact = tasks.jar.flatMap { it.archiveFile }
+    inputs.file(artifact)
+    systemProperty("voxelbrew.test.utilJar", artifact.get().asFile.absolutePath)
+    systemProperty("voxelbrew.test.buildVersion", buildVersion)
+}
+
 publishing {
     publications { create<MavenPublication>("util") { from(components["java"]) } }
     repositories {

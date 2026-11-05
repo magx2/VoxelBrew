@@ -18,6 +18,14 @@ The engine's version resource remains as the CAD artifact identity, independentl
 checked alongside the utility identity in packaged installations. No `.jcad`
 schema or public CAD plugin contracts change.
 
+## Application version
+
+`dev.voxelbrew.util.Version.version()` returns the Gradle project version embedded
+in the utility JAR's `Implementation-Version` manifest attribute (for example,
+`1.2.3`). It preserves snapshot suffixes. IDE/class-directory runs return `0.0.0`,
+including when processed Gradle resources are present. The updater's strict
+artifact identity checks remain separate.
+
 ## User configuration
 
 Both frontends use `~/.voxelbrew/config.properties`. For example:

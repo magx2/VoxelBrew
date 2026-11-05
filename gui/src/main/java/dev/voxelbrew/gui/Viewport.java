@@ -254,24 +254,32 @@ public final class Viewport extends StackPane {
             boolean chosen) {
         var group = new Group();
         for (var entity : geometry.entities()) {
-            var points = entity.sample();
-            for (int i = 1; i < points.size(); i++) {
-                if (entity.construction() && i % 4 >= 2) continue;
-                var a = points.get(i - 1);
-                var b = points.get(i);
-                if (a.distance(b) < 1e-9) continue;
-                group.getChildren()
-                        .add(
-                                line(
-                                        toView(a.x(), a.y(), sketch.plane().offsetZ() + .04),
-                                        toView(b.x(), b.y(), sketch.plane().offsetZ() + .04),
-                                        chosen ? .14 : .075,
-                                        Color.web(
-                                                chosen
-                                                        ? "#dc8d18"
-                                                        : entity.construction()
-                                                                ? "#8795a3"
-                                                                : "#2d839f")));
+            java.util.List<dev.voxelbrew.engine.sketch.SketchGeometry.Entity> curves;
+            try {
+                curves = geometry.curves(entity);
+            } catch (IllegalArgumentException invalid) {
+                continue;
+            }
+            for (var curve : curves) {
+                var points = curve.sample();
+                for (int i = 1; i < points.size(); i++) {
+                    if (entity.construction() && i % 4 >= 2) continue;
+                    var a = points.get(i - 1);
+                    var b = points.get(i);
+                    if (a.distance(b) < 1e-9) continue;
+                    group.getChildren()
+                            .add(
+                                    line(
+                                            toView(a.x(), a.y(), sketch.plane().offsetZ() + .04),
+                                            toView(b.x(), b.y(), sketch.plane().offsetZ() + .04),
+                                            chosen ? .14 : .075,
+                                            Color.web(
+                                                    chosen
+                                                            ? "#dc8d18"
+                                                            : entity.construction()
+                                                                    ? "#8795a3"
+                                                                    : "#2d839f")));
+                }
             }
         }
         group.setOnMouseClicked(
@@ -324,7 +332,11 @@ public final class Viewport extends StackPane {
             y = c.centerY();
         } else {
             var geometry = ((Feature.Constrained) sketch.profile()).geometry();
-            var points = geometry.entities().stream().flatMap(e -> e.sample().stream()).toList();
+            var points =
+                    geometry.entities().stream()
+                            .flatMap(e -> geometry.curves(e).stream())
+                            .flatMap(e -> e.sample().stream())
+                            .toList();
             x =
                     points.stream()
                             .mapToDouble(dev.voxelbrew.engine.sketch.SketchGeometry.Vec::x)

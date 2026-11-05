@@ -6,6 +6,7 @@ import dev.voxelbrew.engine.model.*;
 import dev.voxelbrew.engine.persistence.DocumentStore;
 import dev.voxelbrew.engine.printing.*;
 import dev.voxelbrew.engine.sketch.SketchGeometry;
+import dev.voxelbrew.engine.sketch.SketchTools;
 import java.nio.file.*;
 import java.util.*;
 import java.util.concurrent.*;
@@ -480,6 +481,255 @@ class WorkbenchUiTest {
         text("sketch-dimension-value", value);
         click("sketch-apply-dimension");
         sketchReady();
+    }
+
+    private void sketchType(SketchTools.Tool tool) throws Exception {
+        choice("sketch-create-type", tool.ordinal());
+    }
+
+    private void open(Path file) throws Exception {
+        click("open");
+        text("file-path", file.toString());
+        click("file-confirm");
+        ready();
+    }
+
+    private void sketchNumericPoint(double x, double y) throws Exception {
+        text("sketch-point-x", Double.toString(x));
+        text("sketch-point-y", Double.toString(y));
+        click("sketch-add-point");
+        sketchReady();
+    }
+
+    private SketchGeometry sketchGeometry() throws Exception {
+        return fx(() -> ((SketchEditor) node("#sketch-editor")).controller().definition());
+    }
+
+    @Test
+    void ellipseSlotsAndConicsUseRealSketchTools() throws Exception {
+        choice("appearance", 1);
+        click("constrained-sketch");
+        sketchReady();
+        sketchType(SketchTools.Tool.ELLIPSE);
+        sketchClick(15, 10, false);
+        sketchClick(25, 10, false);
+        sketchClick(15, 15, false);
+        sketchReady();
+        String ellipse = sketchGeometry().entities().getFirst().id();
+        sketchReference(ellipse);
+        sketchDimension(7, "10");
+        sketchDimension(8, "5");
+        sketchType(SketchTools.Tool.SLOT_CENTER_TO_CENTER);
+        sketchNumericPoint(5, 30);
+        sketchNumericPoint(25, 30);
+        sketchNumericPoint(15, 32);
+        sketchType(SketchTools.Tool.CONIC);
+        text("sketch-tool-rho", Double.toString(Math.sqrt(.5) / (1 + Math.sqrt(.5))));
+        sketchNumericPoint(45, 10);
+        sketchNumericPoint(35, 20);
+        sketchNumericPoint(45, 20);
+        click("sketch-tool-line");
+        sketchClick(35, 20, false);
+        sketchClick(45, 10, false);
+        sketchReady();
+        assertTrue(
+                fx(() -> ((SketchEditor) node("#sketch-editor")).controller().canFinish()),
+                fx(() -> ((Label) node("#sketch-error")).getText()));
+        Path artifacts = Path.of(System.getProperty("voxelbrew.ui.artifacts"));
+        fx(
+                () -> {
+                    Screenshot.save(
+                            stage.getScene(),
+                            artifacts.resolve("sketch-types-ellipse-slot-conic.png"));
+                    return null;
+                });
+        click("constraint-finish");
+        ready();
+        click("extrude");
+        ready();
+        key(KeyCode.ENTER);
+        ready();
+        assertEquals(3, fx(() -> workbench.controller().build().bodies().size()));
+        assertEquals((50 * Math.PI + 80 + 4 * Math.PI + 25 * Math.PI - 50) * 5, volume(), .02);
+        var file = directory.resolve("ellipse slot conic.jcad");
+        save(file);
+        open(file);
+        ready();
+        assertEquals(3, fx(() -> workbench.controller().build().bodies().size()));
+    }
+
+    @Test
+    void fitControlSplinesAndTextUseRealSketchTools() throws Exception {
+        choice("appearance", 2);
+        click("constrained-sketch");
+        sketchReady();
+        sketchType(SketchTools.Tool.FIT_SPLINE);
+        click("sketch-closed-curve");
+        sketchNumericPoint(0, 0);
+        sketchNumericPoint(15, 0);
+        sketchNumericPoint(15, 15);
+        sketchNumericPoint(0, 15);
+        click("sketch-complete-curve");
+        sketchReady();
+        sketchType(SketchTools.Tool.CONTROL_SPLINE);
+        choice("sketch-spline-degree", 1);
+        sketchNumericPoint(0, 35);
+        sketchNumericPoint(0, 45);
+        sketchNumericPoint(10, 55);
+        sketchNumericPoint(20, 55);
+        sketchNumericPoint(30, 45);
+        sketchNumericPoint(30, 35);
+        click("sketch-complete-curve");
+        sketchReady();
+        var before = sketchGeometry();
+        sketchDrag(0, 35, 2, 37, false);
+        var control =
+                sketchGeometry().entities().stream()
+                        .filter(e -> e.kind() == SketchGeometry.Kind.CONTROL_SPLINE)
+                        .findFirst()
+                        .orElseThrow();
+        assertEquals(2, control.value(0), .3);
+        assertEquals(37, control.value(1), .3);
+        click("sketch-undo");
+        sketchReady();
+        assertEquals(before, sketchGeometry());
+        sketchType(SketchTools.Tool.TEXT);
+        text("sketch-text-content", "OB");
+        text("sketch-text-height", "8");
+        sketchNumericPoint(40, 10);
+        String textId =
+                sketchGeometry().entities().stream()
+                        .filter(e -> e.kind() == SketchGeometry.Kind.TEXT)
+                        .findFirst()
+                        .orElseThrow()
+                        .id();
+        sketchReference(textId);
+        click("sketch-edit-text");
+        text("sketch-edit-text-content", "OC");
+        key(KeyCode.ENTER);
+        sketchReady();
+        assertEquals("OC", sketchGeometry().entity(textId).text().content());
+        click("sketch-fit");
+        Path artifacts = Path.of(System.getProperty("voxelbrew.ui.artifacts"));
+        fx(
+                () -> {
+                    Screenshot.save(
+                            stage.getScene(),
+                            artifacts.resolve("sketch-types-splines-text-dark.png"));
+                    return null;
+                });
+        click("constraint-finish");
+        ready();
+        click("extrude");
+        ready();
+        key(KeyCode.ENTER);
+        ready();
+        assertEquals(4, fx(() -> workbench.controller().build().bodies().size()));
+        var file = directory.resolve("splines and editable text.jcad");
+        save(file);
+        var saved = document();
+        click("undo");
+        ready();
+        assertTrue(fx(() -> workbench.controller().build().bodies().isEmpty()));
+        click("redo");
+        ready();
+        assertEquals(saved, document());
+        open(file);
+        ready();
+        assertEquals(saved, document());
+        Files.writeString(
+                artifacts.resolve("sketch-types-cli-inspection.txt"),
+                cli("inspect", file.toString(), "--point", "5,5,2"));
+    }
+
+    @Test
+    void tangentCirclesAndAssociativeTextPathsUseRealControls() throws Exception {
+        click("constrained-sketch");
+        sketchReady();
+        click("sketch-construction");
+        click("sketch-tool-line");
+        sketchClick(0, 0, false);
+        sketchClick(50, 0, false);
+        sketchReady();
+        click("sketch-tool-line");
+        sketchClick(0, 0, false);
+        sketchClick(0, 50, false);
+        sketchReady();
+        var lines = sketchGeometry().entities();
+        click("sketch-construction");
+        sketchReference(lines.get(0).id());
+        sketchReference(lines.get(1).id());
+        sketchType(SketchTools.Tool.CIRCLE_TWO_TANGENT);
+        sketchClick(8, 8, false);
+        sketchReady();
+        var circle =
+                sketchGeometry().entities().stream()
+                        .filter(e -> e.kind() == SketchGeometry.Kind.CIRCLE)
+                        .findFirst()
+                        .orElseThrow();
+        assertEquals(
+                0,
+                circle.point(SketchGeometry.Part.CENTER).distance(new SketchGeometry.Vec(5, 5)),
+                .05);
+        click("sketch-construction");
+        click("sketch-tool-arc");
+        sketchClick(30, 20, false);
+        sketchClick(50, 20, false);
+        sketchClick(30, 40, false);
+        sketchReady();
+        click("sketch-construction");
+        String arc =
+                sketchGeometry().entities().stream()
+                        .filter(e -> e.kind() == SketchGeometry.Kind.ARC)
+                        .findFirst()
+                        .orElseThrow()
+                        .id();
+        sketchReference(arc);
+        sketchType(SketchTools.Tool.TEXT_ON_PATH);
+        text("sketch-text-content", "CAD");
+        text("sketch-text-height", "4");
+        sketchNumericPoint(50, 20);
+        var text =
+                sketchGeometry().entities().stream()
+                        .filter(e -> e.kind() == SketchGeometry.Kind.TEXT)
+                        .findFirst()
+                        .orElseThrow();
+        assertEquals(arc, text.text().pathId());
+        var before = sketchGeometry().curves(text).getFirst().at(0);
+        sketchDrag(30, 20, 35, 20, false);
+        assertTrue(before.distance(sketchGeometry().curves(text).getFirst().at(0)) > 4);
+        Path artifacts = Path.of(System.getProperty("voxelbrew.ui.artifacts"));
+        fx(
+                () -> {
+                    Screenshot.save(
+                            stage.getScene(),
+                            artifacts.resolve("sketch-types-tangent-and-path-text.png"));
+                    return null;
+                });
+        sketchReference(text.id());
+        click("sketch-edit-text");
+        choice("sketch-edit-text-path", 0);
+        key(KeyCode.ENTER);
+        sketchReady();
+        assertEquals("", sketchGeometry().entity(text.id()).text().pathId());
+        click("sketch-undo");
+        sketchReady();
+        assertEquals(arc, sketchGeometry().entity(text.id()).text().pathId());
+        click("constraint-finish");
+        ready();
+        click("extrude");
+        ready();
+        key(KeyCode.ENTER);
+        ready();
+        assertEquals(4, fx(() -> workbench.controller().build().bodies().size()));
+        var saved = document();
+        click("constrained-sketch");
+        sketchReady();
+        sketchType(SketchTools.Tool.CONIC);
+        sketchClick(0, 0, false);
+        key(KeyCode.ESCAPE);
+        click("constraint-cancel");
+        assertEquals(saved, document());
     }
 
     @Test

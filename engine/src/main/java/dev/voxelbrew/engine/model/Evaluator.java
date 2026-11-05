@@ -95,6 +95,7 @@ public final class Evaluator {
                     } else if (feature instanceof Feature.Extrude e) {
                         Feature.Sketch sketch = profile(e.id(), e.profile(), sketches);
                         Solid solid;
+                        var additionalBodies = new ArrayList<Evaluation.Body>();
                         if (sketch.profile() instanceof Feature.Rectangle r) {
                             solid =
                                     Solid.rectanglePrism(
@@ -113,16 +114,35 @@ public final class Evaluator {
                                             c.diameter(),
                                             e.distance());
                         } else if (sketch.profile() instanceof Feature.Constrained c) {
+                            var regions =
+                                    dev.voxelbrew.engine.sketch.SketchProfiles.regions(
+                                            c.geometry());
                             solid =
                                     Solid.profilePrism(
-                                            dev.voxelbrew.engine.sketch.SketchProfiles.profile(
-                                                    c.geometry()),
+                                            regions.getFirst().profile(),
                                             sketch.plane().offsetZ(),
                                             e.distance());
+                            owned.add(solid);
+                            for (int region = 1; region < regions.size(); region++) {
+                                var r = regions.get(region);
+                                var extra =
+                                        Solid.profilePrism(
+                                                r.profile(),
+                                                sketch.plane().offsetZ(),
+                                                e.distance());
+                                owned.add(extra);
+                                String name = "body-" + r.id();
+                                var body =
+                                        new Evaluation.Body(
+                                                e.id() + "." + name,
+                                                new Feature.BodyRef(e.id(), name),
+                                                extra);
+                                additionalBodies.add(body);
+                            }
                         } else {
                             throw new ModelException(e.id(), "unsupported extrusion profile");
                         }
-                        owned.add(solid);
+                        if (!owned.contains(solid)) owned.add(solid);
                         var body =
                                 new Evaluation.Body(
                                         e.id() + ".body",
@@ -130,6 +150,10 @@ public final class Evaluator {
                                         solid);
                         outputs.put(body.output(), body);
                         active.put(body.id(), body);
+                        for (var additional : additionalBodies) {
+                            outputs.put(additional.output(), additional);
+                            active.put(additional.id(), additional);
+                        }
                     } else if (feature instanceof Feature.SplitBody split) {
                         Evaluation.Body input = outputs.get(split.body());
                         if (input == null)
@@ -182,13 +206,15 @@ public final class Evaluator {
                                                     circle.diameter());
                         } else {
                             var constrained = (Feature.Constrained) sketch.profile();
-                            solid =
-                                    input.solid()
-                                            .cutThroughProfile(
-                                                    dev.voxelbrew.engine.sketch.SketchProfiles
-                                                            .profile(constrained.geometry()));
+                            solid = input.solid();
+                            for (var region :
+                                    dev.voxelbrew.engine.sketch.SketchProfiles.regions(
+                                            constrained.geometry())) {
+                                solid = solid.cutThroughProfile(region.profile());
+                                owned.add(solid);
+                            }
                         }
-                        owned.add(solid);
+                        if (!owned.contains(solid)) owned.add(solid);
                         var body =
                                 new Evaluation.Body(
                                         input.id(), new Feature.BodyRef(cut.id(), "body"), solid);

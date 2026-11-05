@@ -17,6 +17,137 @@ class WorkflowTest {
     @TempDir Path directory;
 
     @Test
+    void newSketchTypesAndTextPersistAcrossFreshProcesses() throws Exception {
+        String file = directory.resolve("new sketch types.jcad").toString();
+        run(0, "new", file);
+        run(0, "sketch", "new", file, "--id", "ellipse");
+        run(
+                0,
+                "sketch",
+                "draw",
+                file,
+                "--sketch",
+                "ellipse",
+                "--id",
+                "outline",
+                "--tool",
+                "ELLIPSE",
+                "--points",
+                "0,0,10,0,0,5");
+        run(
+                0,
+                "sketch",
+                "constrain",
+                file,
+                "--sketch",
+                "ellipse",
+                "--id",
+                "major",
+                "--type",
+                "MAJOR_RADIUS",
+                "--refs",
+                "outline",
+                "--value",
+                "10");
+        run(0, "extrude", file, "--id", "oval", "--sketch", "ellipse", "--distance", "2");
+        assertTrue(run(0, "inspect", file).contains("volume=314.159"));
+        run(
+                0,
+                "edit",
+                file,
+                "--feature",
+                "ellipse",
+                "--field",
+                "constraint:major",
+                "--value",
+                "12");
+        assertTrue(run(0, "inspect", file).contains("volume=376.991"));
+        run(0, "sketch", "new", file, "--id", "slot");
+        run(
+                0,
+                "sketch",
+                "draw",
+                file,
+                "--sketch",
+                "slot",
+                "--id",
+                "slot-outline",
+                "--tool",
+                "SLOT_ARC_CENTER",
+                "--points",
+                "40,0,50,0,40,10,52,0");
+        run(0, "extrude", file, "--id", "curved-slot", "--sketch", "slot", "--distance", "2");
+        run(0, "sketch", "new", file, "--id", "spline");
+        run(
+                0,
+                "sketch",
+                "draw",
+                file,
+                "--sketch",
+                "spline",
+                "--id",
+                "fit",
+                "--tool",
+                "FIT_SPLINE",
+                "--points",
+                "0,30,10,30,10,40,0,40",
+                "--closed");
+        run(0, "extrude", file, "--id", "spline-body", "--sketch", "spline", "--distance", "2");
+        run(0, "sketch", "new", file, "--id", "label");
+        run(
+                0,
+                "sketch",
+                "draw",
+                file,
+                "--sketch",
+                "label",
+                "--id",
+                "text",
+                "--tool",
+                "TEXT",
+                "--points",
+                "30,30",
+                "--text",
+                "OB",
+                "--height",
+                "8");
+        run(0, "extrude", file, "--id", "letters", "--sketch", "label", "--distance", "2");
+        assertTrue(run(0, "inspect", file).contains("bodyCount=5"));
+        var before = DocumentStore.load(Path.of(file));
+        run(0, "sketch", "text-edit", file, "--sketch", "label", "--id", "text", "--text", "OC");
+        var after = DocumentStore.load(Path.of(file));
+        assertEquals(before.id(), after.id());
+        assertEquals(
+                before.features().stream().map(Feature::id).toList(),
+                after.features().stream().map(Feature::id).toList());
+        var bytes = Files.readAllBytes(Path.of(file));
+        run(
+                1,
+                "sketch",
+                "draw",
+                file,
+                "--sketch",
+                "label",
+                "--id",
+                "invalid",
+                "--tool",
+                "CONIC",
+                "--points",
+                "0,0,20,0,10,10",
+                "--rho",
+                "1");
+        assertArrayEquals(bytes, Files.readAllBytes(Path.of(file)));
+        run(
+                0,
+                "export",
+                file,
+                "--format",
+                "3mf",
+                "--output",
+                directory.resolve("new types.3mf").toString());
+    }
+
+    @Test
     void constrainedProfilesPersistAndRejectConflictsAcrossFreshProcesses() throws Exception {
         String file = directory.resolve("CLI constrained plate.jcad").toString();
         run(0, "new", file);

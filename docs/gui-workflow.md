@@ -18,6 +18,8 @@ geometric constraints, driving dimensions, point dragging and local undo/redo.
 See [the constrained sketch workflow](sketch-constraints.md) for selection rules
 and an equivalent headless workflow. The quick rectangle/circle tools below
 remain available.
+The **More sketch types…** selector provides the M8 creation variants, with
+numeric point input and tool-specific settings. See [sketch types](sketch-types.md).
 
 1. Choose **Rectangle**. Click (0,0) and (60,40) in the top viewport, or set
    X=0, Y=0, Width=60, Height=40, Plane offset Z=0. Choose **Finish sketch**.

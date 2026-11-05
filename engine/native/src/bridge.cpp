@@ -6,6 +6,10 @@
 #include <BRepBuilderAPI_MakeEdge.hxx>
 #include <BRepBuilderAPI_MakeWire.hxx>
 #include <Geom_BezierCurve.hxx>
+#include <Geom_BSplineCurve.hxx>
+#include <TColStd_Array1OfReal.hxx>
+#include <TColStd_Array1OfInteger.hxx>
+#include <gp_Elips.hxx>
 #include <TColgp_Array1OfPnt.hxx>
 #include <TopoDS_Edge.hxx>
 #include <TopoDS_Wire.hxx>
@@ -107,21 +111,25 @@ Bnd_Box exactBounds(const TopoDS_Shape& shape) {
 }
 
 TopoDS_Shape profilePrism(JNIEnv* env, jintArray typeArray, jintArray loopArray,
-                          jdoubleArray parameterArray, double z, double distance) {
+                          jintArray sizeArray, jdoubleArray parameterArray, double z,
+                          double distance) {
     requireFinite(z);
     requirePositive(std::abs(distance));
     requireFinite(z + distance);
-    if (!typeArray || !loopArray || !parameterArray)
+    if (!typeArray || !loopArray || !sizeArray || !parameterArray)
         throw std::invalid_argument("profile arrays are required");
     const int count = env->GetArrayLength(typeArray), loopCount = env->GetArrayLength(loopArray);
-    if (count < 1 || count > 64 || loopCount < 1 || loopCount > 64 ||
-        env->GetArrayLength(parameterArray) != count * 8)
+    if (count < 1 || count > 4096 || loopCount < 1 || loopCount > 256 ||
+        env->GetArrayLength(sizeArray) != count ||
+        env->GetArrayLength(parameterArray) > count * 128)
         throw std::invalid_argument("invalid profile array sizes");
-    std::vector<jint> types(count), loops(loopCount);
-    std::vector<jdouble> parameters(count * 8);
+    std::vector<jint> types(count), loops(loopCount), sizes(count);
+    std::vector<jdouble> parameters(env->GetArrayLength(parameterArray));
     env->GetIntArrayRegion(typeArray, 0, count, types.data());
     env->GetIntArrayRegion(loopArray, 0, loopCount, loops.data());
-    env->GetDoubleArrayRegion(parameterArray, 0, count * 8, parameters.data());
+    env->GetIntArrayRegion(sizeArray, 0, count, sizes.data());
+    env->GetDoubleArrayRegion(parameterArray, 0, static_cast<jsize>(parameters.size()),
+                              parameters.data());
     if (env->ExceptionCheck()) throw std::runtime_error("could not read profile arrays");
     int total = 0;
     for (int n : loops) {
@@ -129,16 +137,27 @@ TopoDS_Shape profilePrism(JNIEnv* env, jintArray typeArray, jintArray loopArray,
         total += n;
     }
     if (total != count) throw std::invalid_argument("profile loop counts do not match curves");
+    int parameterCount = 0;
+    for (int size : sizes) {
+        if (size < 3 || size > 128) throw std::invalid_argument("invalid curve parameter count");
+        parameterCount += size;
+    }
+    if (parameterCount != static_cast<int>(parameters.size()))
+        throw std::invalid_argument("curve parameter sizes do not match");
     for (double value : parameters) requireFinite(value);
     std::vector<TopoDS_Wire> wires;
-    int index = 0;
+    int index = 0, offset = 0;
     for (int size : loops) {
         BRepBuilderAPI_MakeWire wire;
         for (int n = 0; n < size; ++n, ++index) {
             const int code = types[index];
-            if (code == 0 || code < -4 || code > 4)
+            if (code == 0 || code < -7 || code > 7)
                 throw std::invalid_argument("unknown profile curve type");
-            const double* p = parameters.data() + index * 8;
+            const double* p = parameters.data() + offset;
+            offset += sizes[index];
+            const int expected[] = {0, 4, 3, 5, 8, 5, 7};
+            if (std::abs(code) <= 6 && sizes[index] != expected[std::abs(code)])
+                throw std::invalid_argument("invalid parameters for curve type");
             TopoDS_Edge edge;
             if (std::abs(code) == 1) {
                 BRepBuilderAPI_MakeEdge builder(gp_Pnt(p[0], p[1], z), gp_Pnt(p[2], p[3], z));
@@ -161,13 +180,73 @@ TopoDS_Shape profilePrism(JNIEnv* env, jintArray typeArray, jintArray loopArray,
                     edge = builder.Edge();
                     if (p[4] < 0) edge.Reverse();
                 }
-            } else {
+            } else if (std::abs(code) == 4) {
                 TColgp_Array1OfPnt poles(1, 4);
                 for (int i = 0; i < 4; ++i)
                     poles.SetValue(i + 1, gp_Pnt(p[2 * i], p[2 * i + 1], z));
                 Handle(Geom_BezierCurve) curve = new Geom_BezierCurve(poles);
                 BRepBuilderAPI_MakeEdge builder(curve);
                 if (!builder.IsDone()) throw std::runtime_error("spline edge construction failed");
+                edge = builder.Edge();
+            } else if (std::abs(code) == 5) {
+                requirePositive(p[2]);
+                requirePositive(p[3]);
+                double angle = p[4], major = p[2], minor = p[3];
+                if (major < minor) {
+                    std::swap(major, minor);
+                    angle += std::acos(-1.0) / 2;
+                }
+                gp_Elips ellipse(gp_Ax2(gp_Pnt(p[0], p[1], z), gp_Dir(0, 0, 1),
+                                        gp_Dir(std::cos(angle), std::sin(angle), 0)),
+                                 major, minor);
+                BRepBuilderAPI_MakeEdge builder(ellipse);
+                if (!builder.IsDone()) throw std::runtime_error("ellipse edge construction failed");
+                edge = builder.Edge();
+            } else if (std::abs(code) == 6) {
+                if (p[6] <= 0 || p[6] >= 1)
+                    throw std::invalid_argument("conic rho must be between 0 and 1");
+                TColgp_Array1OfPnt poles(1, 3);
+                TColStd_Array1OfReal weights(1, 3);
+                for (int i = 0; i < 3; ++i) {
+                    poles.SetValue(i + 1, gp_Pnt(p[2 * i], p[2 * i + 1], z));
+                    weights.SetValue(i + 1, i == 1 ? p[6] / (1 - p[6]) : 1);
+                }
+                Handle(Geom_BezierCurve) curve = new Geom_BezierCurve(poles, weights);
+                BRepBuilderAPI_MakeEdge builder(curve);
+                if (!builder.IsDone()) throw std::runtime_error("conic edge construction failed");
+                edge = builder.Edge();
+            } else {
+                if ((p[0] != 3 && p[0] != 5) || p[1] < 4 || p[1] > 37 || std::floor(p[1]) != p[1])
+                    throw std::invalid_argument("invalid spline degree or pole count");
+                const int degree = static_cast<int>(p[0]), poleCount = static_cast<int>(p[1]);
+                if ((degree != 3 && degree != 5) || p[0] != degree || p[1] != poleCount ||
+                    poleCount < degree + 1 || poleCount > 37 ||
+                    sizes[index] != 3 + 3 * poleCount + degree)
+                    throw std::invalid_argument("invalid spline degree, poles or knots");
+                TColgp_Array1OfPnt poles(1, poleCount);
+                for (int i = 0; i < poleCount; ++i)
+                    poles.SetValue(i + 1, gp_Pnt(p[2 + 2 * i], p[3 + 2 * i], z));
+                std::vector<double> unique;
+                std::vector<int> multiplicities;
+                for (int i = 2 + 2 * poleCount; i < sizes[index]; ++i) {
+                    if (!unique.empty() && p[i] < unique.back())
+                        throw std::invalid_argument("spline knots must increase");
+                    if (unique.empty() || p[i] != unique.back()) {
+                        unique.push_back(p[i]);
+                        multiplicities.push_back(1);
+                    } else
+                        ++multiplicities.back();
+                }
+                TColStd_Array1OfReal knots(1, static_cast<int>(unique.size()));
+                TColStd_Array1OfInteger mult(1, static_cast<int>(unique.size()));
+                for (int i = 0; i < static_cast<int>(unique.size()); ++i) {
+                    knots.SetValue(i + 1, unique[i]);
+                    mult.SetValue(i + 1, multiplicities[i]);
+                }
+                Handle(Geom_BSplineCurve) curve = new Geom_BSplineCurve(poles, knots, mult, degree);
+                BRepBuilderAPI_MakeEdge builder(curve);
+                if (!builder.IsDone())
+                    throw std::runtime_error("B-spline edge construction failed");
                 edge = builder.Edge();
             }
             if (code < 0) edge.Reverse();
@@ -276,20 +355,21 @@ JNIEXPORT jlong JNICALL Java_dev_voxelbrew_engine_geometry_NativeKernel_circlePr
 }
 
 JNIEXPORT jlong JNICALL Java_dev_voxelbrew_engine_geometry_NativeKernel_profilePrism(
-    JNIEnv* env, jclass, jintArray types, jintArray loops, jdoubleArray parameters, jdouble z,
-    jdouble distance) {
+    JNIEnv* env, jclass, jintArray types, jintArray loops, jintArray sizes, jdoubleArray parameters,
+    jdouble z, jdouble distance) {
     return guarded<jlong>(env, "constrained profile extrusion", 0, [&] {
-        return own(profilePrism(env, types, loops, parameters, z, distance));
+        return own(profilePrism(env, types, loops, sizes, parameters, z, distance));
     });
 }
 
 JNIEXPORT jlong JNICALL Java_dev_voxelbrew_engine_geometry_NativeKernel_cutThroughProfile(
-    JNIEnv* env, jclass, jlong id, jintArray types, jintArray loops, jdoubleArray parameters) {
+    JNIEnv* env, jclass, jlong id, jintArray types, jintArray loops, jintArray sizes,
+    jdoubleArray parameters) {
     return guarded<jlong>(env, "through-all profile cut", 0, [&] {
         const auto source = lookup(id);
         double xmin, ymin, zmin, xmax, ymax, zmax;
         exactBounds(*source).Get(xmin, ymin, zmin, xmax, ymax, zmax);
-        auto tool = profilePrism(env, types, loops, parameters, zmin - 1, zmax - zmin + 2);
+        auto tool = profilePrism(env, types, loops, sizes, parameters, zmin - 1, zmax - zmin + 2);
         BRepAlgoAPI_Cut cut;
         TopTools_ListOfShape arguments, tools;
         arguments.Append(*source);

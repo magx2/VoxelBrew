@@ -24,7 +24,9 @@ import picocli.CommandLine.*;
             SketchCommands.Solve.class,
             SketchCommands.Listing.class,
             SketchCommands.Move.class,
-            SketchCommands.Polygon.class
+            SketchCommands.Polygon.class,
+            SketchCommands.Draw.class,
+            SketchCommands.EditText.class
         })
 final class SketchCommands implements Runnable {
     @Spec CommandLine.Model.CommandSpec spec;
@@ -35,6 +37,146 @@ final class SketchCommands implements Runnable {
 
     static void register(CommandLine cli) {
         cli.addSubcommand("sketch", new SketchCommands());
+    }
+
+    @Command(
+            name = "draw",
+            mixinStandardHelpOptions = true,
+            description = "Create a sketch type/variant; use --help for tools and numeric options")
+    static final class Draw extends EditSketch {
+        @Option(names = "--id", required = true)
+        String id;
+
+        @Option(names = "--tool", required = true, description = "${COMPLETION-CANDIDATES}")
+        SketchTools.Tool tool;
+
+        @Option(
+                names = "--points",
+                required = true,
+                split = ",",
+                description = "Ordered x,y pairs in millimeters")
+        List<Double> points;
+
+        @Option(
+                names = "--refs",
+                split = ",",
+                description = "Selected lines, tangent endpoint, or text path")
+        List<String> refs = List.of();
+
+        @Option(names = "--sides", defaultValue = "6")
+        int sides;
+
+        @Option(names = "--degree", defaultValue = "3")
+        int degree;
+
+        @Option(names = "--closed")
+        boolean closed;
+
+        @Option(names = "--construction")
+        boolean construction;
+
+        @Option(names = "--radius", defaultValue = "5", description = "2-tangent circle radius")
+        double radius;
+
+        @Option(names = "--rho", defaultValue = "0.5")
+        double rho;
+
+        @Option(names = "--text", defaultValue = "Text")
+        String text;
+
+        @Option(names = "--font", defaultValue = "SansSerif")
+        String font;
+
+        @Option(
+                names = "--style",
+                defaultValue = "0",
+                description = "0 regular, 1 bold, 2 italic, 3 bold italic")
+        int style;
+
+        @Option(names = "--height", defaultValue = "10")
+        double height;
+
+        @Option(names = "--angle", defaultValue = "0", description = "Text rotation in degrees")
+        double angle;
+
+        @Option(
+                names = "--spacing",
+                defaultValue = "0",
+                description = "Extra text character spacing in em")
+        double spacing;
+
+        public Integer call() throws Exception {
+            if (points.size() % 2 != 0)
+                throw new IllegalArgumentException("Points must be x,y pairs");
+            var positions = new ArrayList<Vec>();
+            for (int i = 0; i < points.size(); i += 2)
+                positions.add(new Vec(points.get(i), points.get(i + 1)));
+            var session = session();
+            return publish(
+                    session,
+                    SketchTools.add(
+                            geometry(session),
+                            tool,
+                            id,
+                            positions,
+                            refs.stream().map(Ref::parse).toList(),
+                            new SketchTools.Options(
+                                    sides,
+                                    degree,
+                                    closed,
+                                    construction,
+                                    radius,
+                                    rho,
+                                    text,
+                                    font,
+                                    style,
+                                    height,
+                                    Math.toRadians(angle),
+                                    spacing)));
+        }
+    }
+
+    @Command(
+            name = "text-edit",
+            mixinStandardHelpOptions = true,
+            description =
+                    "Change persisted sketch text while preserving its identity and dimensions")
+    static final class EditText extends EditSketch {
+        @Option(names = "--id", required = true)
+        String id;
+
+        @Option(names = "--text", required = true)
+        String text;
+
+        @Option(names = "--font")
+        String font;
+
+        @Option(
+                names = "--path",
+                description = "Replacement text path ID; an empty value detaches it")
+        String path;
+
+        public Integer call() throws Exception {
+            var session = session();
+            var g = geometry(session);
+            var e = g.entity(id);
+            if (e.kind() != Kind.TEXT) throw new IllegalArgumentException("Select a text entity");
+            var data = e.text();
+            var edited =
+                    SketchText.create(
+                            id,
+                            text,
+                            font == null ? data.font() : font,
+                            data.style(),
+                            e.value(0),
+                            e.value(1),
+                            e.value(2),
+                            e.value(3),
+                            e.value(4),
+                            path == null ? data.pathId() : path,
+                            e.construction());
+            return publish(session, g.replace(edited));
+        }
     }
 
     abstract static class EditSketch extends VoxelBrew.FileCommand {
@@ -93,7 +235,7 @@ final class SketchCommands implements Runnable {
             name = "entity",
             mixinStandardHelpOptions = true,
             description =
-                    "Add an entity: POINT x,y; LINE x1,y1,x2,y2; CIRCLE cx,cy,r; ARC cx,cy,r,start,sweep (radians); SPLINE x0,y0,x1,y1,x2,y2,x3,y3")
+                    "Add POINT x,y; LINE x1,y1,x2,y2; CIRCLE cx,cy,r; ARC cx,cy,r,start,sweep; ELLIPSE cx,cy,r1,r2,angle; CONIC startX,startY,vertexX,vertexY,endX,endY,rho; SPLINE four x,y pairs; FIT_SPLINE / CONTROL_SPLINE variable x,y pairs. Angles are radians. Use sketch draw for text.")
     static final class PutEntity extends EditSketch {
         @Option(names = "--id", required = true)
         String id;
@@ -108,6 +250,15 @@ final class SketchCommands implements Runnable {
         boolean construction;
 
         @Option(
+                names = "--degree",
+                defaultValue = "3",
+                description = "Control spline degree: 3 or 5")
+        int degree;
+
+        @Option(names = "--closed", description = "Close a fit/control spline")
+        boolean closed;
+
+        @Option(
                 names = "--replace",
                 description =
                         "Replace an existing entity; reject edits that conflict with constraints")
@@ -116,7 +267,15 @@ final class SketchCommands implements Runnable {
         public Integer call() throws Exception {
             var session = session();
             var g = geometry(session);
-            var entity = new Entity(id, kind, values, construction || kind == Kind.POINT);
+            var entity =
+                    new Entity(
+                            id,
+                            kind,
+                            values,
+                            construction || kind == Kind.POINT,
+                            kind == Kind.CONTROL_SPLINE ? degree : 0,
+                            closed,
+                            null);
             if (replace) {
                 var previous = g.entity(id);
                 if (previous.kind() != kind)

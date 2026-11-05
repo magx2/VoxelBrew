@@ -26,14 +26,23 @@ public final class Solid implements AutoCloseable {
         positive("absolute distance", Math.abs(distance));
         return new Solid(
                 NativeKernel.profilePrism(
-                        profile.types(), profile.sizes(), profile.parameters(), z, distance));
+                        profile.types(),
+                        profile.sizes(),
+                        profile.parameterSizes(),
+                        profile.parameters(),
+                        z,
+                        distance));
     }
 
     public synchronized Solid cutThroughProfile(PlanarProfile profile) {
         requireOpen();
         return new Solid(
                 NativeKernel.cutThroughProfile(
-                        token, profile.types(), profile.sizes(), profile.parameters()));
+                        token,
+                        profile.types(),
+                        profile.sizes(),
+                        profile.parameterSizes(),
+                        profile.parameters()));
     }
 
     public static Solid circlePrism(

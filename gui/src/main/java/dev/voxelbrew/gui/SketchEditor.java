@@ -33,7 +33,8 @@ final class SketchEditor extends BorderPane implements AutoCloseable {
         CIRCLE,
         ARC,
         SPLINE,
-        POLYGON
+        POLYGON,
+        ADVANCED
     }
 
     private record Hit(Ref ref, Vec position) {}
@@ -49,6 +50,21 @@ final class SketchEditor extends BorderPane implements AutoCloseable {
     private final ListView<Constraint> constraints = new ListView<>();
     private final ComboBox<Ref> references = new ComboBox<>();
     private final ComboBox<Type> dimension = new ComboBox<>();
+    private final ComboBox<SketchTools.Tool> createType = new ComboBox<>();
+    private SketchTools.Tool advanced;
+    private final VBox toolOptions = new VBox(6);
+    private final TextField toolRadius = new TextField("5"),
+            toolRho = new TextField("0.5"),
+            textContent = new TextField("Text"),
+            textFont = new TextField("SansSerif"),
+            textHeight = new TextField("10"),
+            textAngle = new TextField("0"),
+            textSpacing = new TextField("0"),
+            pointX = new TextField("0"),
+            pointY = new TextField("0");
+    private final ComboBox<Integer> splineDegree = new ComboBox<>();
+    private final ComboBox<String> textStyle = new ComboBox<>();
+    private final CheckBox closedCurve = new CheckBox("Closed curve");
     private final TextField dimensionValue = new TextField("10"),
             plane = new TextField("0"),
             sides = new TextField("6");
@@ -146,6 +162,7 @@ final class SketchEditor extends BorderPane implements AutoCloseable {
         header.setAlignment(Pos.CENTER_LEFT);
         var tools = new FlowPane(5, 5);
         for (var draw : Draw.values()) {
+            if (draw == Draw.ADVANCED) continue;
             var button =
                     button(
                             title(draw.name()),
@@ -153,6 +170,45 @@ final class SketchEditor extends BorderPane implements AutoCloseable {
                             () -> tool(draw));
             tools.getChildren().add(button);
         }
+        createType.setId("sketch-create-type");
+        createType.setPromptText("More sketch types…");
+        createType.setAccessibleText("More sketch types");
+        createType.setButtonCell(
+                new ListCell<>() {
+                    @Override
+                    protected void updateItem(SketchTools.Tool item, boolean empty) {
+                        super.updateItem(item, empty);
+                        setText(item == null ? "More sketch types…" : item.toString());
+                    }
+                });
+        createType.setPrefWidth(185);
+        createType.getItems().setAll(SketchTools.Tool.values());
+        createType.setOnAction(
+                event -> {
+                    if (createType.getValue() == null) return;
+                    advanced = createType.getValue();
+                    var refs = List.copyOf(selection);
+                    tool(Draw.ADVANCED);
+                    selection.addAll(refs);
+                    selectionChanged();
+                });
+        tools.getChildren().add(createType);
+        splineDegree.getItems().setAll(3, 5);
+        splineDegree.setValue(3);
+        splineDegree.setId("sketch-spline-degree");
+        textStyle.getItems().setAll("Regular", "Bold", "Italic", "Bold italic");
+        textStyle.getSelectionModel().select(0);
+        textStyle.setId("sketch-text-style");
+        closedCurve.setId("sketch-closed-curve");
+        toolRadius.setId("sketch-tool-radius");
+        toolRho.setId("sketch-tool-rho");
+        textContent.setId("sketch-text-content");
+        textFont.setId("sketch-text-font");
+        textHeight.setId("sketch-text-height");
+        textAngle.setId("sketch-text-angle");
+        textSpacing.setId("sketch-text-spacing");
+        pointX.setId("sketch-point-x");
+        pointY.setId("sketch-point-y");
         sides.setId("sketch-polygon-sides");
         sides.setPrefColumnCount(2);
         construction.setId("sketch-construction");
@@ -225,6 +281,11 @@ final class SketchEditor extends BorderPane implements AutoCloseable {
                     } else if (e.isShortcutDown()
                             && (e.getCode() == KeyCode.Z || e.getCode() == KeyCode.Y)) {
                         controllerUndo(e.getCode() == KeyCode.Y || e.isShiftDown());
+                        e.consume();
+                    } else if (e.getCode() == KeyCode.ENTER
+                            && tool == Draw.ADVANCED
+                            && !(getScene().getFocusOwner() instanceof TextInputControl)) {
+                        finishAdvanced();
                         e.consume();
                     } else if (!(getScene().getFocusOwner() instanceof TextInputControl)) {
                         switch (e.getCode()) {
@@ -333,6 +394,7 @@ final class SketchEditor extends BorderPane implements AutoCloseable {
         var content =
                 new VBox(
                         8,
+                        toolOptions,
                         new Label("SELECTED GEOMETRY"),
                         selected,
                         references,
@@ -344,7 +406,7 @@ final class SketchEditor extends BorderPane implements AutoCloseable {
                                     if (activeConstraint != null) apply(activeConstraint);
                                 }),
                         new Separator(),
-                        new Label("DRIVING DIMENSION (mm / degrees)"),
+                        new Label("DRIVING VALUE (mm / degrees / ratio)"),
                         dimension,
                         dimensionValue,
                         apply,
@@ -356,6 +418,7 @@ final class SketchEditor extends BorderPane implements AutoCloseable {
                                 "sketch-remove-constraint",
                                 this::removeConstraint),
                         showBadges,
+                        button("Edit selected text…", "sketch-edit-text", this::editText),
                         new Separator(),
                         button(
                                 "Toggle construction",
@@ -508,14 +571,200 @@ final class SketchEditor extends BorderPane implements AutoCloseable {
                             "Click start, first control point, second control point, then end.";
                     case POLYGON ->
                             "Click center, then a vertex. The sides remain equal with a Regular polygon constraint.";
+                    case ADVANCED -> advanced.instructions();
                 });
+        showToolOptions();
+        if (next != Draw.ADVANCED) createType.setValue(null);
         draw();
+    }
+
+    private void showToolOptions() {
+        toolOptions.getChildren().clear();
+        boolean visible = tool == Draw.ADVANCED;
+        toolOptions.setVisible(visible);
+        toolOptions.setManaged(visible);
+        if (!visible) return;
+        toolOptions.getChildren().add(new Label(advanced.toString()));
+        switch (advanced) {
+            case CIRCLE_TWO_TANGENT -> option("Radius (mm)", toolRadius);
+            case CONIC -> option("Rho (0–1)", toolRho);
+            case CONTROL_SPLINE -> {
+                option("Degree", splineDegree);
+                toolOptions.getChildren().add(closedCurve);
+            }
+            case FIT_SPLINE -> toolOptions.getChildren().add(closedCurve);
+            case TEXT, TEXT_ON_PATH -> {
+                option("Text (up to 32 characters)", textContent);
+                option("Font family", textFont);
+                option("Style", textStyle);
+                option("Height (mm)", textHeight);
+                option("Angle (degrees)", textAngle);
+                option("Extra spacing (em)", textSpacing);
+            }
+            default -> {}
+        }
+        option("Next point X (mm)", pointX);
+        option("Next point Y (mm)", pointY);
+        toolOptions
+                .getChildren()
+                .add(
+                        button(
+                                "Add numeric point",
+                                "sketch-add-point",
+                                () -> {
+                                    try {
+                                        advancedPoint(
+                                                new Vec(value(pointX, "X"), value(pointY, "Y")));
+                                    } catch (RuntimeException failure) {
+                                        error.setText(failure.getMessage());
+                                    }
+                                }));
+        toolOptions
+                .getChildren()
+                .add(button("Complete / retry", "sketch-complete-curve", this::finishAdvanced));
+        toolOptions.getChildren().add(new Separator());
+    }
+
+    private void option(String label, Node input) {
+        toolOptions.getChildren().addAll(new Label(label), input);
+    }
+
+    private SketchTools.Options options() {
+        return new SketchTools.Options(
+                Integer.parseInt(sides.getText().strip()),
+                splineDegree.getValue(),
+                closedCurve.isSelected(),
+                construction.isSelected(),
+                value(toolRadius, "Radius"),
+                value(toolRho, "Rho"),
+                textContent.getText(),
+                textFont.getText().strip(),
+                textStyle.getSelectionModel().getSelectedIndex(),
+                value(textHeight, "Text height"),
+                Math.toRadians(value(textAngle, "Text angle")),
+                value(textSpacing, "Text spacing"));
+    }
+
+    private void advancedPoint(Vec point) {
+        error.setText("");
+        if (advanced.clicks() > 0 && drawing.size() >= advanced.clicks()) drawing.removeLast();
+        if (advanced.clicks() == 0
+                && drawing.size() >= 3
+                && drawing.getFirst().distance(point) * scale < 7) {
+            closedCurve.setSelected(true);
+            finishAdvanced();
+            return;
+        }
+        drawing.add(point);
+        if (advanced.clicks() > 0 && drawing.size() == advanced.clicks()) finishAdvanced();
+        else draw();
+    }
+
+    private void finishAdvanced() {
+        if (tool != Draw.ADVANCED) return;
+        try {
+            var next =
+                    SketchTools.add(
+                            controller.definition(),
+                            advanced,
+                            id(advanced.name().toLowerCase(Locale.ROOT)),
+                            List.copyOf(drawing),
+                            List.copyOf(selection),
+                            options());
+            edit(next);
+            drawing.clear();
+            snaps.clear();
+            tool(Draw.SELECT);
+        } catch (RuntimeException failure) {
+            error.setText(failure.getMessage());
+            // Numeric options can be repaired and the same points retried with Enter.
+            draw();
+        }
+    }
+
+    private void editText() {
+        try {
+            var chosen =
+                    selection.stream()
+                            .map(r -> controller.definition().entity(r.entityId()))
+                            .filter(e -> e.kind() == Kind.TEXT)
+                            .findFirst()
+                            .orElseThrow(
+                                    () ->
+                                            new IllegalArgumentException(
+                                                    "Select a text entity first"));
+            var dialog = new Dialog<Entity>();
+            dialog.initOwner(getScene().getWindow());
+            dialog.setTitle("Edit sketch text");
+            var content = new TextField(chosen.text().content());
+            content.setId("sketch-edit-text-content");
+            var font = new TextField(chosen.text().font());
+            font.setId("sketch-edit-text-font");
+            var path = new ComboBox<String>();
+            path.setId("sketch-edit-text-path");
+            path.getItems().add("");
+            for (var entity : controller.definition().entities())
+                if (entity.kind() != Kind.TEXT && entity.kind() != Kind.POINT)
+                    path.getItems().add(entity.id());
+            if (!path.getItems().contains(chosen.text().pathId()))
+                path.getItems().add(chosen.text().pathId());
+            path.setValue(chosen.text().pathId());
+            path.setPromptText("No path (baseline position)");
+            var message = new Label();
+            message.setWrapText(true);
+            dialog.getDialogPane()
+                    .setContent(
+                            new VBox(
+                                    7,
+                                    new Label("Text"),
+                                    content,
+                                    new Label("Font family"),
+                                    font,
+                                    new Label("Path (blank to detach)"),
+                                    path,
+                                    message));
+            dialog.getDialogPane().getButtonTypes().setAll(ButtonType.OK, ButtonType.CANCEL);
+            var result = new Entity[1];
+            dialog.getDialogPane()
+                    .lookupButton(ButtonType.OK)
+                    .addEventFilter(
+                            javafx.event.ActionEvent.ACTION,
+                            event -> {
+                                try {
+                                    result[0] =
+                                            SketchText.create(
+                                                    chosen.id(),
+                                                    content.getText(),
+                                                    font.getText().strip(),
+                                                    chosen.text().style(),
+                                                    chosen.value(0),
+                                                    chosen.value(1),
+                                                    chosen.value(2),
+                                                    chosen.value(3),
+                                                    chosen.value(4),
+                                                    path.getValue(),
+                                                    chosen.construction());
+                                } catch (RuntimeException failure) {
+                                    message.setText(failure.getMessage());
+                                    event.consume();
+                                }
+                            });
+            dialog.setResultConverter(button -> button == ButtonType.OK ? result[0] : null);
+            Dialogs.show(dialog, getScene().getWindow())
+                    .ifPresent(e -> edit(controller.definition().replace(e)));
+        } catch (RuntimeException failure) {
+            error.setText(failure.getMessage());
+        }
     }
 
     private void drawingClick(MouseEvent event) {
         try {
             var hit = auto.isSelected() ? hitPoint(event.getX(), event.getY(), 8) : null;
             var p = hit == null ? model(event.getX(), event.getY()) : hit.position();
+            if (tool == Draw.ADVANCED) {
+                advancedPoint(p);
+                return;
+            }
             if (tool == Draw.LINE
                     && drawing.size() == 1
                     && (auto.isSelected() || event.isShiftDown())) {
@@ -881,7 +1130,7 @@ final class SketchEditor extends BorderPane implements AutoCloseable {
             refs.add(ORIGIN);
             for (var e : controller.definition().entities()) {
                 refs.add(e.ref());
-                for (var p : e.points()) refs.add(e.ref(p));
+                refs.addAll(e.pointRefs());
             }
             var selectedRef = references.getValue();
             references.getItems().setAll(refs);
@@ -959,6 +1208,7 @@ final class SketchEditor extends BorderPane implements AutoCloseable {
     private void fit() {
         var points =
                 controller.displayed().entities().stream()
+                        .flatMap(e -> displayCurves(controller.displayed(), e).stream())
                         .flatMap(e -> e.sample().stream())
                         .toList();
         if (points.isEmpty()) {
@@ -1010,12 +1260,12 @@ final class SketchEditor extends BorderPane implements AutoCloseable {
         Hit result = null;
         double distance = radius;
         for (var e : controller.displayed().entities())
-            for (var part : e.points()) {
-                var p = e.point(part);
+            for (var ref : e.pointRefs()) {
+                var p = e.point(ref);
                 double d = Math.hypot(px(p.x()) - x, py(p.y()) - y);
                 if (d < distance) {
                     distance = d;
-                    result = new Hit(e.ref(part), p);
+                    result = new Hit(ref, p);
                 }
             }
         if (Math.hypot(px(0) - x, py(0) - y) < distance) return new Hit(ORIGIN, new Vec(0, 0));
@@ -1029,20 +1279,30 @@ final class SketchEditor extends BorderPane implements AutoCloseable {
         double best = 6 / scale;
         var p = model(x, y);
         for (var e : controller.displayed().entities()) {
-            var samples = e.sample();
-            for (int i = 1; i < samples.size(); i++) {
-                var a = samples.get(i - 1);
-                var d = samples.get(i).minus(a);
-                double t = Math.clamp(p.minus(a).dot(d) / Math.max(1e-20, d.dot(d)), 0, 1);
-                var near = a.plus(d.times(t));
-                double distance = p.distance(near);
-                if (distance < best) {
-                    best = distance;
-                    result = new Hit(e.ref(), near);
+            for (var curve : displayCurves(controller.displayed(), e)) {
+                var samples = curve.sample();
+                for (int i = 1; i < samples.size(); i++) {
+                    var a = samples.get(i - 1);
+                    var d = samples.get(i).minus(a);
+                    double t = Math.clamp(p.minus(a).dot(d) / Math.max(1e-20, d.dot(d)), 0, 1);
+                    var near = a.plus(d.times(t));
+                    double distance = p.distance(near);
+                    if (distance < best) {
+                        best = distance;
+                        result = new Hit(e.ref(), near);
+                    }
                 }
             }
         }
         return result;
+    }
+
+    private static List<Entity> displayCurves(SketchGeometry geometry, Entity entity) {
+        try {
+            return geometry.curves(entity);
+        } catch (IllegalArgumentException invalid) {
+            return List.of(entity);
+        }
     }
 
     private void draw() {
@@ -1087,11 +1347,13 @@ final class SketchEditor extends BorderPane implements AutoCloseable {
             graphics.setStroke(color);
             graphics.setLineWidth(chosen ? 2.5 : 1.5);
             graphics.setLineDashes(entity.construction() ? new double[] {7, 5} : new double[] {});
-            var points = entity.sample();
-            graphics.beginPath();
-            graphics.moveTo(px(points.getFirst().x()), py(points.getFirst().y()));
-            for (var p : points) graphics.lineTo(px(p.x()), py(p.y()));
-            graphics.stroke();
+            for (var curve : displayCurves(g, entity)) {
+                var points = curve.sample();
+                graphics.beginPath();
+                graphics.moveTo(px(points.getFirst().x()), py(points.getFirst().y()));
+                for (var p : points) graphics.lineTo(px(p.x()), py(p.y()));
+                graphics.stroke();
+            }
             graphics.setLineDashes();
             if (entity.kind() == Kind.SPLINE) {
                 graphics.setLineWidth(1);
@@ -1105,10 +1367,27 @@ final class SketchEditor extends BorderPane implements AutoCloseable {
                 graphics.strokeLine(px(p2.x()), py(p2.y()), px(p3.x()), py(p3.y()));
                 graphics.setLineDashes();
             }
-            for (var part : entity.points()) {
-                var p = entity.point(part);
-                graphics.setFill(
-                        selection.contains(entity.ref(part)) ? Color.web("#e6a239") : color);
+            if (entity.kind() == Kind.CONTROL_SPLINE || entity.kind() == Kind.CONIC) {
+                graphics.setStroke(Color.web(dark ? "#647587" : "#abb7c2"));
+                graphics.setLineDashes(3, 4);
+                var controls =
+                        entity.kind() == Kind.CONTROL_SPLINE
+                                ? entity.pointRefs().stream()
+                                        .filter(r -> r.part() == Part.CONTROL)
+                                        .map(entity::point)
+                                        .toList()
+                                : List.of(entity.at(0), entity.point(Part.CONTROL1), entity.at(1));
+                for (int i = 1; i < controls.size(); i++)
+                    graphics.strokeLine(
+                            px(controls.get(i - 1).x()),
+                            py(controls.get(i - 1).y()),
+                            px(controls.get(i).x()),
+                            py(controls.get(i).y()));
+                graphics.setLineDashes();
+            }
+            for (var ref : entity.pointRefs()) {
+                var p = entity.point(ref);
+                graphics.setFill(selection.contains(ref) ? Color.web("#e6a239") : color);
                 graphics.fillOval(px(p.x()) - 3.5, py(p.y()) - 3.5, 7, 7);
             }
         }

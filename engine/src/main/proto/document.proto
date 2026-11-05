@@ -50,11 +50,33 @@ message SketchEntity {
     CIRCLE = 3;
     ARC = 4;
     SPLINE = 5;
+    ELLIPSE = 6;
+    CONIC = 7;
+    FIT_SPLINE = 8;
+    CONTROL_SPLINE = 9;
+    TEXT = 10;
   }
   string id = 1;
   Kind kind = 2;
   repeated double values = 3;
   bool construction = 4;
+  uint32 degree = 5;
+  bool closed = 6;
+  SketchText text = 7;
+}
+message SketchContour {
+  repeated SketchEntity curves = 1;
+}
+message SketchGlyph {
+  double advance = 1;
+  repeated SketchContour contours = 2;
+}
+message SketchText {
+  string content = 1;
+  string font = 2;
+  uint32 style = 3;
+  string path_id = 4;
+  repeated SketchGlyph glyphs = 5;
 }
 message SketchReference {
   enum Part {
@@ -66,9 +88,14 @@ message SketchReference {
     CENTER = 5;
     CONTROL1 = 6;
     CONTROL2 = 7;
+    MAJOR = 8;
+    MINOR = 9;
+    CONTROL = 10;
+    FIT = 11;
   }
   string entity_id = 1;
   Part part = 2;
+  uint32 index = 3;
 }
 message SketchConstraint {
   enum Type {
@@ -94,6 +121,11 @@ message SketchConstraint {
     RADIUS = 19;
     DIAMETER = 20;
     ANGLE = 21;
+    MAJOR_RADIUS = 22;
+    MINOR_RADIUS = 23;
+    RHO = 24;
+    TEXT_HEIGHT = 25;
+    TEXT_SPACING = 26;
   }
   string id = 1;
   Type type = 2;

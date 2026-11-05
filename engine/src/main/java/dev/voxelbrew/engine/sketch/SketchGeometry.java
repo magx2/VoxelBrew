@@ -35,11 +35,25 @@ public record SketchGeometry(
         return new SketchGeometry(List.of(), List.of(), List.of());
     }
 
+    static String derivedId(String id, String suffix) {
+        String result = id + suffix;
+        if (result.length() <= 128) return result;
+        return id.substring(0, Math.min(80, id.length()))
+                + "-"
+                + java.util.UUID.nameUUIDFromBytes(
+                        result.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+    }
+
     public enum Kind {
         POINT("Point", "x", "y"),
         LINE("Line", "startX", "startY", "endX", "endY"),
         CIRCLE("Circle", "centerX", "centerY", "radius"),
         ARC("Arc", "centerX", "centerY", "radius", "startAngle", "sweepAngle"),
+        ELLIPSE("Ellipse", "centerX", "centerY", "majorRadius", "minorRadius", "angle"),
+        CONIC("Conic curve", "startX", "startY", "vertexX", "vertexY", "endX", "endY", "rho"),
+        FIT_SPLINE("Fit point spline"),
+        CONTROL_SPLINE("Control point spline"),
+        TEXT("Text", "x", "y", "height", "angle", "spacing"),
         SPLINE(
                 "Cubic spline",
                 "startX",
@@ -70,12 +84,41 @@ public record SketchGeometry(
     }
 
     /** Arc angles are radians. Splines are exact cubic Bezier curves, not sampled polylines. */
-    public record Entity(String id, Kind kind, List<Double> values, boolean construction) {
+    public record Entity(
+            String id,
+            Kind kind,
+            List<Double> values,
+            boolean construction,
+            int degree,
+            boolean closed,
+            SketchText.Data text) {
+        public Entity(String id, Kind kind, List<Double> values, boolean construction) {
+            this(id, kind, values, construction, kind == Kind.CONTROL_SPLINE ? 3 : 0, false, null);
+        }
+
         public Entity {
             CadDocument.identifier(id, "sketch entity ID");
             java.util.Objects.requireNonNull(kind);
             values = List.copyOf(values);
-            if (values.size() != kind.parameters().size())
+            boolean variable = kind == Kind.FIT_SPLINE || kind == Kind.CONTROL_SPLINE;
+            if (variable
+                    && (values.size() % 2 != 0
+                            || values.size() > 64
+                            || values.size()
+                                    < (kind == Kind.CONTROL_SPLINE
+                                            ? (degree + 1) * 2
+                                            : closed ? 6 : 4)))
+                throw new IllegalArgumentException(
+                        "A spline needs 2–32 fit points or degree+1–32 control points");
+            if (kind == Kind.CONTROL_SPLINE && degree != 3 && degree != 5)
+                throw new IllegalArgumentException("Control spline degree must be 3 or 5");
+            if ((kind != Kind.CONTROL_SPLINE && degree != 0) || (!variable && closed))
+                throw new IllegalArgumentException(
+                        "Degree and closed flags apply only to spline types");
+            if ((kind == Kind.TEXT) != (text != null))
+                throw new IllegalArgumentException(
+                        "Text geometry requires its persisted glyph outlines");
+            if (!variable && values.size() != kind.parameters().size())
                 throw new IllegalArgumentException(
                         kind + " needs " + kind.parameters().size() + " parameters");
             for (double value : values)
@@ -89,11 +132,11 @@ public record SketchGeometry(
         }
 
         public Entity withValues(List<Double> next) {
-            return new Entity(id, kind, next, construction);
+            return new Entity(id, kind, next, construction, degree, closed, text);
         }
 
         public Entity withConstruction(boolean next) {
-            return new Entity(id, kind, values, next);
+            return new Entity(id, kind, values, next, degree, closed, text);
         }
 
         public Ref ref() {
@@ -104,6 +147,29 @@ public record SketchGeometry(
             return new Ref(id, part);
         }
 
+        public List<Ref> pointRefs() {
+            var result = new ArrayList<>(points().stream().map(this::ref).toList());
+            if (kind == Kind.FIT_SPLINE || kind == Kind.CONTROL_SPLINE)
+                for (int i = 0; i < values.size() / 2; i++)
+                    result.add(new Ref(id, kind == Kind.FIT_SPLINE ? Part.FIT : Part.CONTROL, i));
+            return List.copyOf(result);
+        }
+
+        public Vec point(Ref ref) {
+            if (ref.part() == Part.FIT || ref.part() == Part.CONTROL) {
+                if ((ref.part() == Part.FIT ? kind != Kind.FIT_SPLINE : kind != Kind.CONTROL_SPLINE)
+                        || ref.index() < 0
+                        || ref.index() >= values.size() / 2)
+                    throw new IllegalArgumentException("Invalid spline point: " + ref);
+                return new Vec(value(2 * ref.index()), value(2 * ref.index() + 1));
+            }
+            return point(ref.part());
+        }
+
+        public boolean loop() {
+            return kind == Kind.CIRCLE || kind == Kind.ELLIPSE || closed;
+        }
+
         public List<Part> points() {
             return switch (kind) {
                 case POINT -> List.of(Part.POINT);
@@ -111,6 +177,10 @@ public record SketchGeometry(
                 case CIRCLE -> List.of(Part.CENTER);
                 case ARC -> List.of(Part.CENTER, Part.START, Part.END);
                 case SPLINE -> List.of(Part.START, Part.CONTROL1, Part.CONTROL2, Part.END);
+                case ELLIPSE -> List.of(Part.CENTER, Part.MAJOR, Part.MINOR);
+                case CONIC -> List.of(Part.START, Part.CONTROL1, Part.END);
+                case FIT_SPLINE, CONTROL_SPLINE -> List.of(Part.START, Part.END);
+                case TEXT -> List.of(Part.POINT);
             };
         }
 
@@ -123,11 +193,20 @@ public record SketchGeometry(
                 case END -> at(1);
                 case CONTROL1 -> new Vec(value(2), value(3));
                 case CONTROL2 -> new Vec(value(4), value(5));
+                case MAJOR -> at(0);
+                case MINOR -> at(0.25);
+                case CONTROL, FIT ->
+                        throw new IllegalArgumentException("Select an indexed spline point");
                 case OBJECT -> throw new IllegalArgumentException("Select an endpoint or center");
             };
         }
 
         public Vec at(double t) {
+            if (kind == Kind.ELLIPSE
+                    || kind == Kind.CONIC
+                    || kind == Kind.FIT_SPLINE
+                    || kind == Kind.CONTROL_SPLINE
+                    || kind == Kind.TEXT) return SketchCurves.at(this, t, 0);
             return switch (kind) {
                 case POINT -> new Vec(value(0), value(1));
                 case LINE -> new Vec(value(0), value(1)).mix(new Vec(value(2), value(3)), t);
@@ -145,10 +224,16 @@ public record SketchGeometry(
                             .plus(new Vec(value(4), value(5)).times(3 * s * t * t))
                             .plus(new Vec(value(6), value(7)).times(t * t * t));
                 }
+                default -> throw new IllegalArgumentException("Unsupported curve");
             };
         }
 
         public Vec derivative(double t) {
+            if (kind == Kind.ELLIPSE
+                    || kind == Kind.CONIC
+                    || kind == Kind.FIT_SPLINE
+                    || kind == Kind.CONTROL_SPLINE
+                    || kind == Kind.TEXT) return SketchCurves.at(this, t, 1);
             return switch (kind) {
                 case POINT -> new Vec(0, 0);
                 case LINE -> at(1).minus(at(0));
@@ -167,10 +252,19 @@ public record SketchGeometry(
                             .plus(p2.minus(p1).times(6 * (1 - t) * t))
                             .plus(p3.minus(p2).times(3 * t * t));
                 }
+                default -> throw new IllegalArgumentException("Unsupported curve");
             };
         }
 
         public double curvature(double t) {
+            if (kind == Kind.ELLIPSE
+                    || kind == Kind.CONIC
+                    || kind == Kind.FIT_SPLINE
+                    || kind == Kind.CONTROL_SPLINE) {
+                var first = SketchCurves.at(this, t, 1);
+                return first.cross(SketchCurves.at(this, t, 2))
+                        / Math.pow(Math.max(first.length(), 1e-12), 3);
+            }
             if (kind == Kind.CIRCLE) return 1 / value(2);
             if (kind == Kind.ARC) return Math.copySign(1 / value(2), value(4));
             if (kind != Kind.SPLINE) return 0;
@@ -188,6 +282,8 @@ public record SketchGeometry(
         }
 
         public List<Vec> sample() {
+            if (kind == Kind.FIT_SPLINE || kind == Kind.CONTROL_SPLINE)
+                return SketchCurves.sample(this, 128);
             int count = kind == Kind.LINE || kind == Kind.POINT ? 1 : 128;
             var result = new ArrayList<Vec>();
             for (int i = 0; i <= count; i++) result.add(at((double) i / count));
@@ -202,13 +298,23 @@ public record SketchGeometry(
         END,
         CENTER,
         CONTROL1,
-        CONTROL2
+        CONTROL2,
+        MAJOR,
+        MINOR,
+        CONTROL,
+        FIT
     }
 
-    public record Ref(String entityId, Part part) {
+    public record Ref(String entityId, Part part, int index) {
+        public Ref(String entityId, Part part) {
+            this(entityId, part, 0);
+        }
+
         public Ref {
             CadDocument.identifier(entityId, "sketch reference ID");
             java.util.Objects.requireNonNull(part);
+            if (index < 0 || index > 31 || (part != Part.CONTROL && part != Part.FIT && index != 0))
+                throw new IllegalArgumentException("Invalid reference index");
         }
 
         @Override
@@ -216,13 +322,27 @@ public record SketchGeometry(
             return entityId
                     + (part == Part.OBJECT
                             ? ""
-                            : "." + part.name().toLowerCase(java.util.Locale.ROOT));
+                            : "."
+                                    + part.name().toLowerCase(java.util.Locale.ROOT)
+                                    + (part == Part.CONTROL || part == Part.FIT
+                                            ? "[" + index + "]"
+                                            : ""));
         }
 
         public static Ref parse(String value) {
             int dot = value.lastIndexOf('.');
             if (dot > 0) {
                 try {
+                    String suffix = value.substring(dot + 1);
+                    int bracket = suffix.indexOf('[');
+                    if (bracket > 0 && suffix.endsWith("]"))
+                        return new Ref(
+                                value.substring(0, dot),
+                                Part.valueOf(
+                                        suffix.substring(0, bracket)
+                                                .toUpperCase(java.util.Locale.ROOT)),
+                                Integer.parseInt(
+                                        suffix.substring(bracket + 1, suffix.length() - 1)));
                     return new Ref(
                             value.substring(0, dot),
                             Part.valueOf(
@@ -256,7 +376,12 @@ public record SketchGeometry(
         DISTANCE_Y("Vertical distance"),
         RADIUS("Radius"),
         DIAMETER("Diameter"),
-        ANGLE("Angle");
+        ANGLE("Angle"),
+        MAJOR_RADIUS("Ellipse first radius"),
+        MINOR_RADIUS("Ellipse second radius"),
+        RHO("Conic rho"),
+        TEXT_HEIGHT("Text height"),
+        TEXT_SPACING("Text spacing (em)");
         private final String label;
 
         Type(String label) {
@@ -340,8 +465,12 @@ public record SketchGeometry(
                 .orElseThrow(() -> new IllegalArgumentException("Missing sketch entity: " + id));
     }
 
+    public List<Entity> curves(Entity entity) {
+        return entity.kind() == Kind.TEXT ? SketchText.curves(this, entity) : List.of(entity);
+    }
+
     public Vec point(Ref ref) {
-        return ref.equals(ORIGIN) ? new Vec(0, 0) : entity(ref.entityId()).point(ref.part());
+        return ref.equals(ORIGIN) ? new Vec(0, 0) : entity(ref.entityId()).point(ref);
     }
 
     public SketchGeometry withEntities(List<Entity> next) {

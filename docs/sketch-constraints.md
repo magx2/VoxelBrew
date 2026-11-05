@@ -4,6 +4,8 @@ Choose **New sketch…** in the Design workbench. To constrain an existing
 rectangle or circle, select it and choose **Edit sketch / constraints…** in
 Properties. Conversion preserves its feature, plane and profile identities,
 dimensions and position. Existing extrusions and cuts keep their references.
+Use **More sketch types…** for the expanded M8 geometry tools; see
+[the type inventory and workflow](sketch-types.md).
 
 ## Drawing and selection
 
@@ -72,24 +74,25 @@ on a background worker; obsolete results cannot overwrite later edits.
 
 ## Solids and persistence
 
-Extrude or through-cut one closed outer loop, optionally with closed holes.
-Lines, circles, arcs and Bezier curves remain exact OCCT curves; screen samples
+Extrude or through-cut closed regions, optionally with closed holes.
+Disconnected regions create separate bodies; nested islands become separate
+regions. Lines, circles, arcs, ellipses, conics and spline curves remain exact OCCT curves; screen samples
 do not become polygonal solid boundaries. Signed extrusions are supported.
-Open sketches can be saved and edited but cannot be extruded. Disconnected
-outer regions, nested islands and invalid/intersecting boundaries require repair.
+Open sketches can be saved and edited but cannot be extruded. Invalid or
+intersecting boundaries require repair.
 
-The `.jcad` schema is version 4, with entity/constraint IDs, references,
-parameters, construction flags and selected boundary curves. Versions 1–3 remain
+The `.jcad` schema is version 5, with entity/constraint IDs, indexed spline references,
+parameters, text outlines, construction flags and selected boundary curves. Versions 1–4 remain
 readable. Older applications reject unsupported data rather than rewriting it.
 Body results and display geometry remain disposable.
 
 The current limits are 64 entities and 256 constraints per sketch, XY-parallel
-planes, and cubic Bezier splines. The local nonlinear solver may need a better
+planes, and 32 points per fit/control spline. The local nonlinear solver may need a better
 initial pose for difficult configurations. A conflicting solve never commits
 invalid geometry. Residual acceptance is `1e-6` in each equation's units; kernel
 reference-part tolerances remain 0.001 mm bounds and 0.01 mm³ volume. This is a
-focused sketch workflow, not complete Fusion feature parity (no ellipse, trim,
-offset or general B-spline editor).
+focused sketch workflow, not complete Fusion feature parity: trim, offset,
+projection, patterns and generated-face attachment remain separate work.
 
 ## CLI example
 

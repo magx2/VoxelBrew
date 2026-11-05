@@ -20,6 +20,9 @@ and shared CLI/GUI parameter editing. See [feature plugins](docs/feature-plugins
 M7 adds a 2D sketch constraint workspace: lines, circles, arcs, cubic splines,
 regular polygons, driving dimensions and geometric constraints. See
 [sketch constraints](docs/sketch-constraints.md).
+M8 adds the remaining Fusion-style 2D geometry families and creation variants:
+ellipses, conics, slots, fit/control splines, text and text on a path. See
+[sketch geometry types and the comparison](docs/sketch-types.md).
 
 ## Prerequisites and locked dependencies
 

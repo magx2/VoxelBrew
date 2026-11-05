@@ -54,9 +54,10 @@ final class NativeKernel {
     static native long circlePrism(double x, double y, double z, double diameter, double distance);
 
     static native long profilePrism(
-            int[] types, int[] loops, double[] parameters, double z, double distance);
+            int[] types, int[] loops, int[] sizes, double[] parameters, double z, double distance);
 
-    static native long cutThroughProfile(long body, int[] types, int[] loops, double[] parameters);
+    static native long cutThroughProfile(
+            long body, int[] types, int[] loops, int[] sizes, double[] parameters);
 
     static native long cutThroughCircle(long body, double x, double y, double diameter);
 

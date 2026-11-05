@@ -61,19 +61,22 @@ public final class SketchConstraints {
             case HORIZONTAL, VERTICAL -> "Select a line, or two points.";
             case COINCIDENT -> "Select two points, or a point and a line/circle/arc/spline.";
             case TANGENT -> "Select a line and circle, two circles, or two curve endpoints.";
-            case EQUAL -> "Select two lines, or two circles/arcs.";
+            case EQUAL -> "Select two lines, two circles/arcs, or two ellipses.";
             case PARALLEL, PERPENDICULAR, COLLINEAR -> "Select two lines.";
             case FIX -> "Select one entity or point. Select its Fix constraint to unfix.";
             case MIDPOINT -> "Select a point, then a line or arc.";
-            case CONCENTRIC -> "Select two circles or arcs.";
+            case CONCENTRIC -> "Select two circles, arcs or ellipses.";
             case SYMMETRY -> "Select two points/entities, then the symmetry-axis line.";
-            case CURVATURE -> "Select two curve endpoints; at least one must be a cubic spline.";
+            case CURVATURE -> "Select two curve endpoints; at least one must be a spline.";
             case POLYGON -> "Select at least three connected lines in boundary order.";
             case LENGTH -> "Select one line.";
             case DISTANCE, DISTANCE_X, DISTANCE_Y ->
                     "Select two points (the origin is selectable).";
             case RADIUS, DIAMETER -> "Select a circle or arc.";
             case ANGLE -> "Select one line (from X), or two lines. Enter degrees.";
+            case MAJOR_RADIUS, MINOR_RADIUS -> "Select an ellipse.";
+            case RHO -> "Select a conic curve; enter a ratio between 0 and 1.";
+            case TEXT_HEIGHT, TEXT_SPACING -> "Select a text entity.";
         };
     }
 
@@ -122,8 +125,9 @@ public final class SketchConstraints {
                             new double[] {
                                 point.distance(curve.point(Part.CENTER)) - curve.value(2)
                             };
-                    case ARC, SPLINE -> xy(point.minus(curve.at(nearest(curve, point))));
-                    case POINT -> xy(point.minus(curve.at(0)));
+                    case ARC, SPLINE, ELLIPSE, CONIC, FIT_SPLINE, CONTROL_SPLINE ->
+                            xy(point.minus(curve.at(nearest(curve, point))));
+                    case POINT, TEXT -> xy(point.minus(curve.at(0)));
                 };
             }
             case PARALLEL, PERPENDICULAR, COLLINEAR -> {
@@ -142,6 +146,8 @@ public final class SketchConstraints {
                 var b = object(g, refs.get(1));
                 if (a.kind() == Kind.LINE && b.kind() == Kind.LINE)
                     return new double[] {direction(a).length() - direction(b).length()};
+                if (a.kind() == Kind.ELLIPSE && b.kind() == Kind.ELLIPSE)
+                    return new double[] {a.value(2) - b.value(2), a.value(3) - b.value(3)};
                 circular(a);
                 circular(b);
                 return new double[] {a.value(2) - b.value(2)};
@@ -173,8 +179,8 @@ public final class SketchConstraints {
                 count(c, 2);
                 var a = object(g, refs.get(0));
                 var b = object(g, refs.get(1));
-                circular(a);
-                circular(b);
+                if (a.kind() != Kind.ELLIPSE) circular(a);
+                if (b.kind() != Kind.ELLIPSE) circular(b);
                 return xy(a.point(Part.CENTER).minus(b.point(Part.CENTER)));
             }
             case SYMMETRY -> {
@@ -189,13 +195,21 @@ public final class SketchConstraints {
                 if (ea.kind() != eb.kind())
                     throw new IllegalArgumentException("Symmetric objects must have the same type");
                 var residual = new ArrayList<Double>();
-                for (var part : ea.points()) {
-                    var delta = reflect(ea.point(part), axis).minus(eb.point(part));
+                if (ea.values().size() != eb.values().size())
+                    throw new IllegalArgumentException(
+                            "Symmetric splines need matching point counts");
+                for (var ref : ea.pointRefs()) {
+                    // Reflection reverses the handedness of an ellipse's local axes.
+                    if (ea.kind() == Kind.ELLIPSE && ref.part() == Part.MINOR) continue;
+                    var delta =
+                            reflect(ea.point(ref), axis)
+                                    .minus(eb.point(new Ref(eb.id(), ref.part(), ref.index())));
                     residual.add(delta.x());
                     residual.add(delta.y());
                 }
                 if (ea.kind() == Kind.CIRCLE || ea.kind() == Kind.ARC)
                     residual.add(ea.value(2) - eb.value(2));
+                if (ea.kind() == Kind.ELLIPSE) residual.add(ea.value(3) - eb.value(3));
                 return array(residual);
             }
             case TANGENT, CURVATURE -> {
@@ -225,8 +239,10 @@ public final class SketchConstraints {
                 }
                 if (!endpoint(ra)
                         || !endpoint(rb)
-                        || a.kind() == Kind.CIRCLE
-                        || b.kind() == Kind.CIRCLE)
+                        || a.loop()
+                        || b.loop()
+                        || a.kind() == Kind.TEXT
+                        || b.kind() == Kind.TEXT)
                     throw new IllegalArgumentException(selectionHint(c.type()));
                 double ta = ra.part() == Part.START ? 0 : 1, tb = rb.part() == Part.START ? 0 : 1;
                 var delta = a.at(ta).minus(b.at(tb));
@@ -234,7 +250,7 @@ public final class SketchConstraints {
                 var v = b.derivative(tb).unit().times(tb == 0 ? 1 : -1);
                 double angle = 10 * Math.atan2(u.cross(v), -u.dot(v));
                 if (c.type() == Type.TANGENT) return new double[] {delta.x(), delta.y(), angle};
-                if (a.kind() != Kind.SPLINE && b.kind() != Kind.SPLINE)
+                if (!spline(a) && !spline(b))
                     throw new IllegalArgumentException("Curvature requires at least one spline");
                 return new double[] {
                     delta.x(),
@@ -302,10 +318,47 @@ public final class SketchConstraints {
             }
             case ANGLE -> {
                 if (n != 1 && n != 2) throw new IllegalArgumentException(selectionHint(c.type()));
+                if (n == 1) {
+                    var entity = object(g, refs.getFirst());
+                    if (entity.kind() == Kind.ELLIPSE || entity.kind() == Kind.TEXT) {
+                        double delta =
+                                entity.value(entity.kind() == Kind.ELLIPSE ? 4 : 3)
+                                        - Math.toRadians(values.getFirst());
+                        return new double[] {10 * Math.atan2(Math.sin(delta), Math.cos(delta))};
+                    }
+                }
                 var a = n == 1 ? new Vec(1, 0) : direction(line(g, refs.get(0)));
                 var b = direction(line(g, refs.getLast()));
                 double delta = Math.atan2(a.cross(b), a.dot(b)) - Math.toRadians(values.getFirst());
                 return new double[] {10 * Math.atan2(Math.sin(delta), Math.cos(delta))};
+            }
+            case MAJOR_RADIUS, MINOR_RADIUS, RHO, TEXT_HEIGHT, TEXT_SPACING -> {
+                count(c, 1);
+                var entity = object(g, refs.getFirst());
+                Kind expected =
+                        c.type() == Type.RHO
+                                ? Kind.CONIC
+                                : c.type() == Type.MAJOR_RADIUS || c.type() == Type.MINOR_RADIUS
+                                        ? Kind.ELLIPSE
+                                        : Kind.TEXT;
+                if (entity.kind() != expected)
+                    throw new IllegalArgumentException(selectionHint(c.type()));
+                double value = values.getFirst();
+                if (c.type() == Type.RHO) {
+                    if (value <= .000001 || value >= .999999)
+                        throw new IllegalArgumentException("Rho must be between 0 and 1");
+                } else if (c.type() == Type.TEXT_SPACING) {
+                    if (value < -.5)
+                        throw new IllegalArgumentException("Spacing must be at least -0.5 em");
+                } else positive(value);
+                int index =
+                        switch (c.type()) {
+                            case MAJOR_RADIUS, TEXT_HEIGHT -> 2;
+                            case MINOR_RADIUS -> 3;
+                            case TEXT_SPACING -> 4;
+                            default -> 6;
+                        };
+                return new double[] {entity.value(index) - value};
             }
         }
         throw new IllegalArgumentException("Unsupported constraint");
@@ -313,6 +366,30 @@ public final class SketchConstraints {
 
     public static void validateGeometry(SketchGeometry g) {
         for (var e : g.entities()) {
+            if (e.kind() == Kind.ELLIPSE && (e.value(2) < 1e-6 || e.value(3) < 1e-6))
+                throw new IllegalArgumentException(
+                        "Entity " + e.id() + ": ellipse radii must be positive");
+            if (e.kind() == Kind.CONIC
+                    && (e.value(6) <= 0.000001
+                            || e.value(6) >= 0.999999
+                            || e.at(0).distance(e.at(1)) < 1e-6
+                            || e.derivative(0).length() < 1e-6
+                            || e.derivative(1).length() < 1e-6))
+                throw new IllegalArgumentException(
+                        "Entity "
+                                + e.id()
+                                + ": conic needs distinct endpoints/vertex and 0 < rho < 1");
+            if (e.kind() == Kind.FIT_SPLINE) SketchCurves.fitSegments(e);
+            if (e.kind() == Kind.CONTROL_SPLINE
+                    && (e.derivative(0).length() < 1e-6 || e.derivative(1).length() < 1e-6))
+                throw new IllegalArgumentException(
+                        "Entity " + e.id() + ": spline endpoint controls must not collapse");
+            if (e.kind() == Kind.TEXT) {
+                if (e.value(2) < 1e-6 || e.value(4) < -0.5)
+                    throw new IllegalArgumentException(
+                            "Text needs positive height and spacing >= -0.5 em");
+                g.curves(e);
+            }
             if (e.kind() == Kind.LINE && direction(e).length() < 1e-6)
                 throw new IllegalArgumentException("Entity " + e.id() + ": line must not collapse");
             if ((e.kind() == Kind.CIRCLE || e.kind() == Kind.ARC) && e.value(2) < 1e-6)
@@ -350,6 +427,12 @@ public final class SketchConstraints {
 
     private static boolean endpoint(Ref r) {
         return r.part() == Part.START || r.part() == Part.END;
+    }
+
+    private static boolean spline(Entity e) {
+        return e.kind() == Kind.SPLINE
+                || e.kind() == Kind.FIT_SPLINE
+                || e.kind() == Kind.CONTROL_SPLINE;
     }
 
     private static Vec direction(Entity e) {

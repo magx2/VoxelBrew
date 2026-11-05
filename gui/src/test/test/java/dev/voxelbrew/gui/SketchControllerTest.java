@@ -10,6 +10,42 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
 
 class SketchControllerTest {
+    @Test
+    void textFormulaDraftsRebuildAndKeepBindingsInUndoHistory() throws Exception {
+        var queue = new ConcurrentLinkedQueue<Runnable>();
+        var text = SketchText.create("text", "Width: 5", "SansSerif", 0, 0, 0, 5, 0, 0, "", false);
+        var geometry = new SketchGeometry(List.of(text), List.of(), List.of("text"));
+        var parameters =
+                dev.voxelbrew.engine.parameters.ParameterSet.empty()
+                        .put("width", dev.voxelbrew.engine.parameters.ParameterUnit.MM, "5", "")
+                        .bind(
+                                new dev.voxelbrew.engine.parameters.ParameterSet.Target(
+                                        "sketch", "text:text:content"),
+                                "=\"Width: \"+$width");
+        try (var controller = new SketchController(geometry, parameters, "sketch", queue::add)) {
+            await(controller, queue);
+            controller.edit(
+                    controller.definition(),
+                    parameters.put(
+                            "width", dev.voxelbrew.engine.parameters.ParameterUnit.MM, "8", ""));
+            await(controller, queue);
+            assertTrue(controller.canFinish());
+            assertEquals("Width: 8", controller.definition().entity("text").text().content());
+            controller.undo();
+            await(controller, queue);
+            assertEquals("Width: 5", controller.definition().entity("text").text().content());
+            controller.redo();
+            await(controller, queue);
+            assertEquals("Width: 8", controller.definition().entity("text").text().content());
+            controller.edit(SketchGeometry.empty());
+            await(controller, queue);
+            assertTrue(controller.parameters().bindings().isEmpty());
+            controller.undo();
+            await(controller, queue);
+            assertEquals(parameters.bindings(), controller.parameters().bindings());
+        }
+    }
+
     private static void await(SketchController controller, ConcurrentLinkedQueue<Runnable> queue)
             throws Exception {
         long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(10);

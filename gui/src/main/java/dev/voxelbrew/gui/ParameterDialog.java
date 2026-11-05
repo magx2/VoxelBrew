@@ -6,7 +6,6 @@ import java.util.*;
 import java.util.function.Function;
 import javafx.beans.property.ReadOnlyStringWrapper;
 import javafx.scene.control.*;
-import javafx.scene.control.cell.TextFieldTableCell;
 import javafx.scene.layout.*;
 import javafx.stage.Window;
 
@@ -19,7 +18,7 @@ final class ParameterDialog {
     private final TableView<ParameterSet.Parameter> parameters = new TableView<>();
     private final TableView<String> configurations = new TableView<>();
     private final TableView<FeatureDimensions.Dimension> dimensions = new TableView<>();
-    private final TextField name = field("parameter-name"),
+    private final FormulaField name = field("parameter-name"),
             expression = field("parameter-expression"),
             comment = field("parameter-comment"),
             configName = field("configuration-name"),
@@ -60,8 +59,35 @@ final class ParameterDialog {
         draft = initial;
     }
 
-    private static TextField field(String id) {
-        var field = new TextField();
+    private FormulaField field(String id) {
+        var field =
+                switch (id) {
+                    case "parameter-expression" ->
+                            FormulaField.number(
+                                    "",
+                                    () -> draft,
+                                    () ->
+                                            unit.getValue() == null
+                                                    ? ParameterUnit.MM
+                                                    : unit.getValue());
+                    case "configuration-expression" ->
+                            FormulaField.number(
+                                    "",
+                                    () -> draft.select(selectedConfig()),
+                                    () -> requiredParameter().unit());
+                    case "parameter-binding-expression" ->
+                            FormulaField.number(
+                                    "",
+                                    () -> draft,
+                                    () -> {
+                                        var selected =
+                                                dimensions.getSelectionModel().getSelectedItem();
+                                        return selected == null
+                                                ? ParameterUnit.MM
+                                                : selected.unit();
+                                    });
+                    default -> FormulaField.text("", () -> draft);
+                };
         field.setId(id);
         return field;
     }
@@ -134,7 +160,7 @@ final class ParameterDialog {
                             name.setText(p.name());
                             unit.setValue(p.unit());
                             expression.setText(draft.expression(p, draft.active()));
-                            comment.setText(p.comment());
+                            comment.setText(Expressions.literalText(p.comment()));
                         });
         unit.setId("parameter-unit");
         unit.getItems().setAll(ParameterUnit.values());
@@ -156,16 +182,17 @@ final class ParameterDialog {
                                     if (selectedParameter != null
                                             && !next.parameter(selectedParameter)
                                                     .name()
-                                                    .equals(name.getText().strip()))
+                                                    .equals(name.evaluatedText().strip()))
                                         next =
                                                 next.rename(
-                                                        selectedParameter, name.getText().strip());
+                                                        selectedParameter,
+                                                        name.evaluatedText().strip());
                                     update(
                                             next.put(
-                                                    name.getText().strip(),
+                                                    name.evaluatedText().strip(),
                                                     unit.getValue(),
                                                     expression.getText().strip(),
-                                                    comment.getText()));
+                                                    comment.evaluatedText()));
                                 }),
                         button(
                                 "New",
@@ -182,7 +209,7 @@ final class ParameterDialog {
                                 "Remove",
                                 "parameter-remove",
                                 () -> {
-                                    update(draft.remove(name.getText().strip()));
+                                    update(draft.remove(name.evaluatedText().strip()));
                                     selectedParameter = null;
                                 }));
         var parameterPane =
@@ -203,7 +230,7 @@ final class ParameterDialog {
                 .addListener(
                         (o, a, id) -> {
                             if (refreshing || id == null) return;
-                            configName.setText(configLabel(id));
+                            configName.setText(Expressions.literalText(configLabel(id)));
                             updateOverride();
                         });
         overrideParameter.setId("configuration-parameter");
@@ -226,14 +253,15 @@ final class ParameterDialog {
                                 () ->
                                         update(
                                                 draft.addConfiguration(
-                                                        configName.getText().strip(), false))),
+                                                        configName.evaluatedText().strip(),
+                                                        false))),
                         button(
                                 "Duplicate active",
                                 "configuration-copy",
                                 () ->
                                         update(
                                                 draft.addConfiguration(
-                                                        configName.getText().strip(), true))),
+                                                        configName.evaluatedText().strip(), true))),
                         button(
                                 "Rename",
                                 "configuration-rename",
@@ -241,7 +269,7 @@ final class ParameterDialog {
                                         update(
                                                 draft.renameConfiguration(
                                                         selectedConfig(),
-                                                        configName.getText().strip()))),
+                                                        configName.evaluatedText().strip()))),
                         button(
                                 "Remove",
                                 "configuration-remove",
@@ -411,7 +439,47 @@ final class ParameterDialog {
                                 p.name() + " (" + p.unit() + ")",
                                 130,
                                 id -> draft.expression(p, id));
-                c.setCellFactory(TextFieldTableCell.forTableColumn());
+                c.setCellFactory(
+                        column ->
+                                new TableCell<>() {
+                                    private FormulaField editor;
+
+                                    @Override
+                                    public void startEdit() {
+                                        super.startEdit();
+                                        if (!isEditing()) return;
+                                        editor =
+                                                FormulaField.number(
+                                                        getItem(),
+                                                        () -> draft.select(getTableRow().getItem()),
+                                                        p.unit());
+                                        editor.setOnAction(e -> commitEdit(editor.getText()));
+                                        editor.setOnKeyPressed(
+                                                e -> {
+                                                    if (e.getCode()
+                                                            == javafx.scene.input.KeyCode.ESCAPE)
+                                                        cancelEdit();
+                                                });
+                                        setText(null);
+                                        setGraphic(editor);
+                                        editor.requestFocus();
+                                        editor.selectAll();
+                                    }
+
+                                    @Override
+                                    public void cancelEdit() {
+                                        super.cancelEdit();
+                                        setGraphic(null);
+                                        setText(getItem());
+                                    }
+
+                                    @Override
+                                    protected void updateItem(String text, boolean empty) {
+                                        super.updateItem(text, empty);
+                                        setText(empty || isEditing() ? null : text);
+                                        setGraphic(empty || !isEditing() ? null : editor);
+                                    }
+                                });
                 c.setOnEditCommit(
                         event ->
                                 attempt(

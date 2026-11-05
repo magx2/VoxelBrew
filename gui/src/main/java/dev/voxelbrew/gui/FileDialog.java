@@ -1,5 +1,6 @@
 package dev.voxelbrew.gui;
 
+import dev.voxelbrew.engine.parameters.ParameterSet;
 import java.nio.file.Path;
 import java.util.Optional;
 import javafx.event.ActionEvent;
@@ -12,15 +13,17 @@ import javafx.stage.Window;
 final class FileDialog {
     private FileDialog() {}
 
-    static Optional<Path> choose(Window owner, boolean save, Path current) {
+    static Optional<Path> choose(
+            Window owner, boolean save, Path current, ParameterSet parameters) {
         var dialog = new Dialog<Path>();
         dialog.setTitle(save ? "Save editable design" : "Open editable design");
         var path =
-                new TextField(
+                FormulaField.text(
                         current == null
                                 ? Path.of(System.getProperty("user.home"), "Untitled.jcad")
                                         .toString()
-                                : current.toString());
+                                : current.toString(),
+                        () -> parameters);
         path.setId("file-path");
         path.setPrefColumnCount(48);
         var browse = new Button("Browse…");
@@ -52,16 +55,16 @@ final class FileDialog {
                 ActionEvent.ACTION,
                 e -> {
                     try {
-                        if (path.getText().isBlank())
+                        if (path.evaluatedText().isBlank())
                             throw new IllegalArgumentException("Choose a file path");
-                        Path.of(path.getText());
+                        Path.of(path.evaluatedText());
                     } catch (IllegalArgumentException failure) {
                         error.setText(failure.getMessage());
                         e.consume();
                     }
                 });
         dialog.setResultConverter(
-                b -> b == confirm ? Path.of(path.getText()).toAbsolutePath() : null);
+                b -> b == confirm ? Path.of(path.evaluatedText()).toAbsolutePath() : null);
         return Dialogs.show(dialog, owner);
     }
 }

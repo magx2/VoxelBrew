@@ -159,6 +159,10 @@ public final class FeatureDimensions {
                                                                 .equals(sketch.plane().id()));
             }
             if (!own && !sharedPlane) continue;
+            if (own && FeatureText.isField(binding.target().field())) {
+                FeatureText.field(feature, binding.target().field());
+                continue;
+            }
             var descriptor = dimension(feature, binding.target().field());
             double value =
                     descriptor
@@ -170,6 +174,20 @@ public final class FeatureDimensions {
             if (previous != null && Math.abs(previous - value) > 1e-9)
                 throw new IllegalArgumentException(
                         "Conflicting expressions for shared plane " + feature.id());
+        }
+        if (feature instanceof Feature.Sketch sketch
+                && sketch.profile() instanceof Feature.Constrained profile) {
+            var geometry =
+                    FeatureText.resolve(profile.geometry(), feature.id(), parameters, values);
+            if (geometry != profile.geometry()) {
+                if (changes.isEmpty()) geometry = SketchSolver.solve(geometry).requireSolved();
+                feature =
+                        new Feature.Sketch(
+                                sketch.id(),
+                                sketch.profileId(),
+                                sketch.plane(),
+                                new Feature.Constrained(geometry));
+            }
         }
         return apply(feature, changes);
     }
@@ -184,7 +202,9 @@ public final class FeatureDimensions {
                                 () ->
                                         new IllegalArgumentException(
                                                 "Missing feature: " + target.featureId()));
-        var dimension = dimension(feature, target.field());
+        boolean text = FeatureText.isField(target.field());
+        if (text) FeatureText.field(feature, target.field());
+        else dimension(feature, target.field());
         var parameters = document.parameters();
         // One shared plane has one expression, regardless of which sketch is used to edit it.
         if (feature instanceof Feature.Sketch s && target.field().equals("offsetZ")) {
@@ -200,7 +220,10 @@ public final class FeatureDimensions {
             result.configurations().forEach(c -> configs.add(c.id()));
             for (var id : configs) {
                 var values = result.values(id);
-                Expressions.evaluate(expression, dimension.unit(), values::get);
+                if (text) FeatureText.validate(expression, values);
+                else
+                    Expressions.evaluate(
+                            expression, dimension(feature, target.field()).unit(), values::get);
             }
         }
         return result;
@@ -223,9 +246,14 @@ public final class FeatureDimensions {
                                                 new IllegalArgumentException(
                                                         "Missing bound feature: "
                                                                 + binding.target()));
-                var dimension = dimension(feature, binding.target().field());
                 try {
-                    Expressions.evaluate(binding.expression(), dimension.unit(), values::get);
+                    if (FeatureText.isField(binding.target().field())) {
+                        FeatureText.field(feature, binding.target().field());
+                        FeatureText.validate(binding.expression(), values);
+                    } else {
+                        var dimension = dimension(feature, binding.target().field());
+                        Expressions.evaluate(binding.expression(), dimension.unit(), values::get);
+                    }
                 } catch (IllegalArgumentException failure) {
                     throw new IllegalArgumentException(
                             binding.target() + ": " + failure.getMessage(), failure);
@@ -240,6 +268,7 @@ public final class FeatureDimensions {
         geometry.constraints().stream()
                 .filter(c -> c.type().dimension())
                 .forEach(c -> fields.add("constraint:" + c.id()));
+        FeatureText.list(id, geometry).forEach(f -> fields.add(f.target().field()));
         return new ParameterSet(
                 parameters.parameters(),
                 parameters.configurations(),
@@ -248,7 +277,8 @@ public final class FeatureDimensions {
                         .filter(
                                 b ->
                                         !b.target().featureId().equals(id)
-                                                || !b.target().field().startsWith("constraint:")
+                                                || (!b.target().field().startsWith("constraint:")
+                                                        && !FeatureText.isField(b.target().field()))
                                                 || fields.contains(b.target().field()))
                         .toList());
     }
@@ -256,6 +286,7 @@ public final class FeatureDimensions {
     public static SketchGeometry resolveSketch(
             SketchGeometry geometry, String featureId, ParameterSet parameters) {
         var values = parameters.values();
+        geometry = FeatureText.resolve(geometry, featureId, parameters, values);
         var changes = new LinkedHashMap<String, Double>();
         for (var b : parameters.bindings())
             if (b.target().featureId().equals(featureId)

@@ -3,6 +3,7 @@ package dev.voxelbrew.gui;
 import static org.junit.jupiter.api.Assertions.*;
 
 import dev.voxelbrew.engine.model.*;
+import dev.voxelbrew.engine.parameters.*;
 import dev.voxelbrew.engine.printing.*;
 import dev.voxelbrew.engine.sketch.SketchGeometry;
 import dev.voxelbrew.engine.sketch.SketchTools;
@@ -381,8 +382,7 @@ class WorkbenchUiTest {
         for (char c : value.toCharArray()) {
             fx(
                     () -> {
-                        boolean shift =
-                                Character.isUpperCase(c) || c == ':' || c == '_' || c == '~';
+                        boolean shift = Character.isUpperCase(c) || ":_~+$\"()*^".indexOf(c) >= 0;
                         KeyCode code;
                         if (Character.isLetter(c))
                             code = KeyCode.valueOf(Character.toString(Character.toUpperCase(c)));
@@ -397,6 +397,14 @@ class WorkbenchUiTest {
                                         case ':' -> KeyCode.SEMICOLON;
                                         case '`', '~' -> KeyCode.BACK_QUOTE;
                                         case ' ' -> KeyCode.SPACE;
+                                        case '=', '+' -> KeyCode.EQUALS;
+                                        case '$' -> KeyCode.DIGIT4;
+                                        case '"' -> KeyCode.QUOTE;
+                                        case '(' -> KeyCode.DIGIT9;
+                                        case ')' -> KeyCode.DIGIT0;
+                                        case '*' -> KeyCode.DIGIT8;
+                                        case '^' -> KeyCode.DIGIT6;
+                                        case ',' -> KeyCode.COMMA;
                                         default ->
                                                 throw new IllegalArgumentException(
                                                         "Unsupported test character " + c);
@@ -703,6 +711,156 @@ class WorkbenchUiTest {
         assertEquals(
                 index,
                 fx(() -> ((TableView<?>) node("#" + id)).getSelectionModel().getSelectedIndex()));
+    }
+
+    @Test
+    void formulaFieldsPreserveNumbersTextParametersHistoryAndFiles() throws Exception {
+        Path artifacts = Path.of(System.getProperty("voxelbrew.ui.artifacts"));
+        choice("appearance", 1);
+        click("parameters");
+        parameter("width", "=60");
+        click("parameters-apply");
+        ready();
+        var before = document();
+        click("rectangle");
+        text("sketch-x", "0");
+        text("sketch-y", "0");
+        text("sketch-width", "=$width/2");
+        text("sketch-height", "=20+20");
+        text("sketch-offset", "0");
+        fx(
+                () -> {
+                    var field = (FormulaField) node("#sketch-width");
+                    assertEquals(30, field.value());
+                    assertTrue(
+                            field.getPseudoClassStates()
+                                    .contains(javafx.css.PseudoClass.getPseudoClass("formula")));
+                    assertNotNull(field.lookup(".formula-mark"));
+                    assertTrue(field.getTooltip().getText().contains("30"));
+                    var centimeters =
+                            FormulaField.number(
+                                    "=$width/2",
+                                    () -> workbench.controller().snapshot().document().parameters(),
+                                    ParameterUnit.CM);
+                    assertEquals(30, centimeters.value());
+                    assertEquals(3, centimeters.declaredValue());
+                    Screenshot.save(stage.getScene(), artifacts.resolve("formulas-light.png"));
+                    return null;
+                });
+        text("sketch-height", "=1/0");
+        click("finish-sketch");
+        assertEquals(before, document());
+        assertTrue(
+                fx(
+                        () ->
+                                node("#sketch-height")
+                                        .getPseudoClassStates()
+                                        .contains(
+                                                javafx.css.PseudoClass.getPseudoClass(
+                                                        "formula-invalid"))));
+        text("sketch-height", "=20+20");
+        click("finish-sketch");
+        ready();
+        assertEquals(2, document().parameters().bindings().size());
+        click("extrude");
+        text("extrude-distance", "=1+2/3");
+        click("commit-extrusion");
+        ready();
+        assertEquals(2000, volume(), .01);
+        click("undo");
+        ready();
+        assertEquals(1, document().features().size());
+        click("redo");
+        ready();
+        choice("appearance", 2);
+        click("constrained-sketch");
+        sketchReady();
+        sketchType(SketchTools.Tool.TEXT);
+        text("sketch-text-content", "=\"Width: \" + 5");
+        text("sketch-text-height", "=$width/12");
+        fx(
+                () -> {
+                    assertEquals(
+                            "Width: 5",
+                            ((FormulaField) node("#sketch-text-content")).evaluatedText());
+                    Screenshot.save(stage.getScene(), artifacts.resolve("formulas-dark.png"));
+                    return null;
+                });
+        sketchNumericPoint(0, 50);
+        var textEntity =
+                sketchGeometry().entities().stream()
+                        .filter(e -> e.kind() == SketchGeometry.Kind.TEXT)
+                        .findFirst()
+                        .orElseThrow();
+        assertEquals("Width: 5", textEntity.text().content());
+        assertEquals(5, textEntity.value(2), .00001);
+        sketchReference(textEntity.id());
+        click("sketch-edit-text");
+        assertEquals(
+                "=\"Width: \" + 5",
+                fx(() -> ((TextField) node("#sketch-edit-text-content")).getText()));
+        text("sketch-edit-text-content", "=\"Width: \" + $missing");
+        assertEquals(
+                javafx.scene.paint.Color.web("#d65c46"),
+                fx(
+                        () ->
+                                ((TextField) node("#sketch-edit-text-content"))
+                                        .getBorder()
+                                        .getStrokes()
+                                        .getFirst()
+                                        .getTopStroke()));
+        key(KeyCode.ENTER);
+        assertEquals("Width: 5", sketchGeometry().entity(textEntity.id()).text().content());
+        text("sketch-edit-text-content", "=\"Width: \" + $width");
+        key(KeyCode.ENTER);
+        sketchReady();
+        assertEquals("Width: 60", sketchGeometry().entity(textEntity.id()).text().content());
+        click("sketch-undo");
+        sketchReady();
+        assertEquals("Width: 5", sketchGeometry().entity(textEntity.id()).text().content());
+        click("sketch-redo");
+        sketchReady();
+        click("constraint-finish");
+        ready();
+        click("parameters");
+        parameter("width", "=80");
+        click("parameters-apply");
+        ready();
+        assertEquals(8000.0 / 3, volume(), .01);
+        assertEquals(
+                1,
+                fx(
+                        () ->
+                                ((SubScene) workbench.viewport().getChildren().getFirst())
+                                        .getRoot()
+                                        .lookupAll(".sketch-curves")
+                                        .size()));
+        var file = directory.resolve("formula fields.jcad");
+        save(file);
+        var saved = document();
+        open(file);
+        assertEquals(saved, document());
+        assertTrue(
+                DocumentReader.load(file).parameters().bindings().stream()
+                        .anyMatch(b -> b.expression().equals("=\"Width: \" + $width")));
+        click("history-2");
+        click("edit-sketch-constraints");
+        sketchReady();
+        assertEquals("Width: 80", sketchGeometry().entity(textEntity.id()).text().content());
+        assertEquals(80.0 / 12, sketchGeometry().entity(textEntity.id()).value(2), .00001);
+        sketchReference(textEntity.id());
+        click("sketch-edit-text");
+        text("sketch-edit-text-content", "=\"Cancelled\"");
+        key(KeyCode.ESCAPE);
+        click("constraint-cancel");
+        ready();
+        assertEquals(saved, document());
+        Files.copy(
+                file,
+                artifacts.resolve("formula-fields.jcad"),
+                StandardCopyOption.REPLACE_EXISTING);
+        Files.writeString(
+                artifacts.resolve("formula-cli-inspection.txt"), cli("inspect", file.toString()));
     }
 
     @Test

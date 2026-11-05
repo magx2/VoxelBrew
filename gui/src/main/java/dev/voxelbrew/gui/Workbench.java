@@ -4,6 +4,7 @@ import dev.voxelbrew.engine.export.*;
 import dev.voxelbrew.engine.feature.FeatureRegistry;
 import dev.voxelbrew.engine.mesh.MeshData;
 import dev.voxelbrew.engine.model.*;
+import dev.voxelbrew.engine.parameters.*;
 import dev.voxelbrew.exporter.ExporterRegistry;
 import dev.voxelbrew.util.i18n.Translations;
 import java.io.IOException;
@@ -828,7 +829,8 @@ public final class Workbench extends BorderPane implements AutoCloseable {
                             field(
                                     "dimension-" + parameter.key(),
                                     parameter.label() + " (" + parameter.unit() + ")",
-                                    values.get(parameter.key()));
+                                    values.get(parameter.key()),
+                                    FormulaField.unit(parameter.unit()));
                     var apply =
                             button(
                                     "Apply",
@@ -837,7 +839,7 @@ public final class Workbench extends BorderPane implements AutoCloseable {
                                             controller.edit(
                                                     custom.id(),
                                                     parameter.key(),
-                                                    number(input, parameter.key())));
+                                                    input.declaredValue()));
                     input.setOnAction(e -> apply.fire());
                     form.getChildren().add(apply);
                 }
@@ -906,7 +908,7 @@ public final class Workbench extends BorderPane implements AutoCloseable {
     private void customFeature() {
         cancelTool();
         try {
-            FeatureDialog.show(stage, pluginDirectory, featureProviders)
+            FeatureDialog.show(stage, pluginDirectory, featureProviders, formulaParameters())
                     .ifPresent(
                             feature -> {
                                 controller.add(feature);
@@ -946,7 +948,9 @@ public final class Workbench extends BorderPane implements AutoCloseable {
         }
         var bodies = new ComboBox<String>();
         bodies.setId("repair-body");
-        var output = new TextField(body == null ? "body" : body.outputName());
+        var output =
+                FormulaField.text(
+                        body == null ? "body" : body.outputName(), this::formulaParameters);
         output.setId("repair-output");
         if (body != null) {
             earlier.stream()
@@ -974,7 +978,7 @@ public final class Workbench extends BorderPane implements AutoCloseable {
                                                                 Objects.requireNonNull(
                                                                         bodies.getValue(),
                                                                         "Choose an earlier body"),
-                                                                output.getText()),
+                                                                output.evaluatedText()),
                                                         split.plane()));
                                         return;
                                     }
@@ -1006,12 +1010,20 @@ public final class Workbench extends BorderPane implements AutoCloseable {
                                                                     Objects.requireNonNull(
                                                                             bodies.getValue(),
                                                                             "Choose an earlier body"),
-                                                                    output.getText())));
+                                                                    output.evaluatedText())));
                                 }));
     }
 
-    private TextField field(String id, String label, double initial) {
-        var text = new TextField(Double.toString(initial));
+    private ParameterSet formulaParameters() {
+        return controller.snapshot().document().parameters();
+    }
+
+    private FormulaField field(String id, String label, double initial) {
+        return field(id, label, initial, ParameterUnit.MM);
+    }
+
+    private FormulaField field(String id, String label, double initial, ParameterUnit unit) {
+        var text = FormulaField.number(Double.toString(initial), this::formulaParameters, unit);
         text.setId(id);
         fields.put(id, text);
         form.getChildren().addAll(new Label(label), text);
@@ -1020,11 +1032,16 @@ public final class Workbench extends BorderPane implements AutoCloseable {
 
     private static double number(TextField field, String name) {
         try {
-            double value = Double.parseDouble(field.getText().trim());
+            double value =
+                    field instanceof FormulaField formula
+                            ? formula.value()
+                            : Double.parseDouble(field.getText().trim());
             if (!Double.isFinite(value)) throw new NumberFormatException();
+            field.getStyleClass().remove("invalid");
             return value;
-        } catch (NumberFormatException failure) {
-            throw new IllegalArgumentException(name + " must be a finite number");
+        } catch (IllegalArgumentException failure) {
+            if (!field.getStyleClass().contains("invalid")) field.getStyleClass().add("invalid");
+            throw new IllegalArgumentException(name + ": " + failure.getMessage(), failure);
         }
     }
 
@@ -1066,7 +1083,10 @@ public final class Workbench extends BorderPane implements AutoCloseable {
                             String id = (isCircle ? "circle-" : "rectangle-") + UUID.randomUUID();
                             var plane =
                                     new Feature.Plane(
-                                            z == 0 ? "origin-xy" : "plane-" + UUID.randomUUID(), z);
+                                            z == 0 && Expressions.isNumber(offset.getText())
+                                                    ? "origin-xy"
+                                                    : "plane-" + UUID.randomUUID(),
+                                            z);
                             Feature.Profile profile =
                                     isCircle
                                             ? new Feature.Circle(
@@ -1079,7 +1099,20 @@ public final class Workbench extends BorderPane implements AutoCloseable {
                                                     value("sketch-width"),
                                                     value("sketch-height"));
                             var feature = new Feature.Sketch(id, id + ".profile", plane, profile);
-                            controller.add(feature);
+                            var parameters = formulaParameters();
+                            for (var dimension : FeatureDimensions.list(feature)) {
+                                String key =
+                                        switch (dimension.target().field()) {
+                                            case "x", "centerX" -> "x";
+                                            case "y", "centerY" -> "y";
+                                            case "offsetZ" -> "offset";
+                                            default -> dimension.target().field();
+                                        };
+                                String expression = fields.get("sketch-" + key).getText();
+                                if (!Expressions.isNumber(expression))
+                                    parameters = parameters.bind(dimension.target(), expression);
+                            }
+                            controller.add(feature, parameters);
                             tool = Tool.NONE;
                             viewport.stopDrawing();
                             selectedFeature = id;
@@ -1313,7 +1346,7 @@ public final class Workbench extends BorderPane implements AutoCloseable {
         axis.setId("split-axis");
         axis.getItems().setAll("X", "Y", "Z");
         axis.setValue("X");
-        var offset = new TextField("30");
+        var offset = FormulaField.number("30", this::formulaParameters, ParameterUnit.MM);
         offset.setId("split-offset");
         var error = new Label();
         error.setWrapText(true);
@@ -1338,7 +1371,7 @@ public final class Workbench extends BorderPane implements AutoCloseable {
                 event -> {
                     try {
                         String id = "split-" + UUID.randomUUID();
-                        controller.add(
+                        var feature =
                                 new Feature.SplitBody(
                                         id,
                                         Objects.requireNonNull(body.getValue(), "Choose a body")
@@ -1347,7 +1380,14 @@ public final class Workbench extends BorderPane implements AutoCloseable {
                                                 axis.getValue().equals("X") ? 1 : 0,
                                                 axis.getValue().equals("Y") ? 1 : 0,
                                                 axis.getValue().equals("Z") ? 1 : 0,
-                                                number(offset, "offset"))));
+                                                number(offset, "offset")));
+                        var parameters = formulaParameters();
+                        if (!Expressions.isNumber(offset.getText()))
+                            parameters =
+                                    parameters.bind(
+                                            new ParameterSet.Target(id, "offset"),
+                                            offset.getText());
+                        controller.add(feature, parameters);
                         selectedFeature = id;
                     } catch (RuntimeException failure) {
                         error.setText(failure.getMessage());
@@ -1369,7 +1409,7 @@ public final class Workbench extends BorderPane implements AutoCloseable {
     }
 
     private void open() {
-        FileDialog.choose(stage, false, controller.path())
+        FileDialog.choose(stage, false, controller.path(), formulaParameters())
                 .ifPresent(
                         path -> {
                             cancelTool();
@@ -1384,7 +1424,7 @@ public final class Workbench extends BorderPane implements AutoCloseable {
         Optional<Path> chosen =
                 !saveAs && controller.path() != null
                         ? Optional.of(controller.path())
-                        : FileDialog.choose(stage, true, controller.path());
+                        : FileDialog.choose(stage, true, controller.path(), formulaParameters());
         if (chosen.isEmpty())
             return CompletableFuture.failedFuture(new java.util.concurrent.CancellationException());
         Path path = chosen.get();

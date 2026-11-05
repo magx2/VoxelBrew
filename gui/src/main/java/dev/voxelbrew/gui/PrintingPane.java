@@ -2,6 +2,7 @@ package dev.voxelbrew.gui;
 
 import dev.voxelbrew.engine.export.*;
 import dev.voxelbrew.engine.mesh.*;
+import dev.voxelbrew.engine.parameters.*;
 import dev.voxelbrew.engine.persistence.DocumentCodec;
 import dev.voxelbrew.engine.printing.*;
 import dev.voxelbrew.exporter.ExporterRegistry;
@@ -36,7 +37,7 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
             supportOwners = new ComboBox<>();
     private final ComboBox<SlicerBackend.Descriptor> backends = new ComboBox<>();
     private final ComboBox<SupportVolume.Role> supportRole = new ComboBox<>();
-    private final Map<String, TextField> fields = new LinkedHashMap<>();
+    private final Map<String, FormulaField> fields = new LinkedHashMap<>();
     private final CheckBox autoSupports = new CheckBox("Automatic supports"),
             bedOnly = new CheckBox("Build plate only"),
             overwrite = new CheckBox("Replace existing job");
@@ -298,7 +299,16 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
     }
 
     private VBox row(String id, String label, String initial) {
-        var field = new TextField(initial);
+        java.util.function.Supplier<ParameterSet> parameters =
+                () -> document.snapshot().document().parameters();
+        var unit =
+                label.contains("(mm)")
+                        ? ParameterUnit.MM
+                        : label.contains("degrees") ? ParameterUnit.DEG : ParameterUnit.NUMBER;
+        var field =
+                Set.of("print-support-name", "print-executable", "print-output").contains(id)
+                        ? FormulaField.text(initial, parameters)
+                        : FormulaField.number(initial, parameters, unit);
         field.setId(id);
         fields.put(id, field);
         var caption = new Label(label);
@@ -323,14 +333,14 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
     private double number(String id) {
         var field = fields.get(id);
         try {
-            double value = Double.parseDouble(field.getText());
+            double value = field.value();
             if (!Double.isFinite(value)) throw new NumberFormatException();
             field.setStyle("");
             return value;
-        } catch (NumberFormatException failure) {
+        } catch (IllegalArgumentException failure) {
             field.setStyle("-fx-border-color: #d04a3c;");
             throw new IllegalArgumentException(
-                    id.replace("print-", "") + " must be a finite number");
+                    id.replace("print-", "") + ": " + failure.getMessage(), failure);
         }
     }
 
@@ -512,7 +522,7 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
     private void applySupport() {
         var volume =
                 new SupportVolume(
-                        fields.get("print-support-name").getText(),
+                        fields.get("print-support-name").evaluatedText(),
                         Objects.requireNonNull(
                                 supportOwners.getValue(), "Choose an attached instance"),
                         Objects.requireNonNull(supportRole.getValue()),
@@ -564,8 +574,8 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
         jobs.start(
                         document.snapshot().document(),
                         slicers.require(setup().backendId()),
-                        Path.of(fields.get("print-executable").getText()),
-                        Path.of(fields.get("print-output").getText()),
+                        Path.of(fields.get("print-executable").evaluatedText()),
+                        Path.of(fields.get("print-output").evaluatedText()),
                         overwrite.isSelected())
                 .exceptionally(failure -> null);
     }

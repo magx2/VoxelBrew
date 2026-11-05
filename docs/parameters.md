@@ -53,6 +53,46 @@ in application preferences. Save/reopen starts a fresh undo history as usual.
 
 ## Expressions and units
 
+Number fields accept Excel-style formulas such as `=1+2/3` and `=$width/2`.
+The leading `=` and `$` reference prefix are optional for numeric expressions;
+existing formulas such as `width / 2` continue to work.
+
+Formula-enabled fields have an **ƒx** marker and a distinct border in both
+palettes. Active formulas have a blue background/border; invalid formulas have
+a red border. Hover or focus the field to inspect its result/error tooltip.
+The entered expression stays editable instead of being replaced by its result.
+
+Text fields treat ordinary input literally. Start with `=` to evaluate a formula:
+
+| Input                    | Result (width = 60 mm) |
+| ------------------------ | ---------------------- |
+| `="Width: " + 5`         | `Width: 5`             |
+| `="Width: " + $width`    | `Width: 60`            |
+| `="Half: " + ($width/2)` | `Half: 30`             |
+| `="Say ""hello"""`       | `Say "hello"`          |
+| `="=literal"`            | `=literal`             |
+
+`+` concatenates when either operand is text; otherwise it adds numbers.
+Multiplication/division and parentheses retain numeric precedence. Other
+arithmetic operators require numbers. Text interpolation uses locale-independent
+canonical model values (millimeters/degrees), without unit suffixes or trailing
+zeros. Add a suffix explicitly, for example `="Width: " + $width + " mm"`.
+This is the CAD expression grammar, not an Excel workbook or cell-reference engine.
+
+Dimension and sketch-text content/font formulas are saved as parameter bindings
+in `.jcad`; configuration changes and undo/redo recalculate them. Text creation
+height, angle and spacing formulas create driving sketch dimensions. Edit text
+through **Edit selected text…** to recover or replace its original formula.
+Unchanged text reuses persisted glyph outlines; changing its content/font needs
+that font installed (logical fonts such as `SansSerif` are portable). Existing
+sketch-text length and geometric validity limits still apply.
+
+Creation coordinates and other tool options evaluate when used; use driving
+sketch constraints for persistent relationships. File paths, parameter names and
+comments, configuration names, exporter/plugin options and printing settings
+evaluate once when applied. They do not acquire persistent parameter bindings.
+Release-version identifiers in the updater remain literal.
+
 Units, quantity arithmetic and conversions use JSR 385 (`javax.measure`) with
 Indriya. The parser implements the expression grammar below; it does not define
 its own dimensional exponents or conversion factors. See [typed unit APIs](units.md).
@@ -117,6 +157,9 @@ cli inspect part.jcad
 
 For constrained sketches, bind `--field constraint:<dimension-id>`; for example
 `constraint:width` on a converted rectangle. `parameters list` prints bindings.
+Sketch text also accepts `--field text:<entity-id>:content` or
+`text:<entity-id>:font` with a leading-`=` expression. Quote expressions containing
+`$` so your shell does not expand parameter references before passing them to CLI.
 Use `parameters rename --name width --to plateWidth`, or `parameters remove`.
 `configurations add --copy-active` duplicates the active expressions; rename and
 remove subcommands take `--name`, with `--to` for renaming. All commands take the

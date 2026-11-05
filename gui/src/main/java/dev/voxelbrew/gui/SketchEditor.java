@@ -53,21 +53,23 @@ final class SketchEditor extends BorderPane implements AutoCloseable {
     private final ComboBox<SketchTools.Tool> createType = new ComboBox<>();
     private SketchTools.Tool advanced;
     private final VBox toolOptions = new VBox(6);
-    private final TextField toolRadius = new TextField("5"),
-            toolRho = new TextField("0.5"),
-            textContent = new TextField("Text"),
-            textFont = new TextField("SansSerif"),
-            textHeight = new TextField("10"),
-            textAngle = new TextField("0"),
-            textSpacing = new TextField("0"),
-            pointX = new TextField("0"),
-            pointY = new TextField("0");
+    private final FormulaField toolRadius = numeric("5", ParameterUnit.MM),
+            toolRho = numeric("0.5", ParameterUnit.NUMBER),
+            textContent = FormulaField.text("Text", this::formulaParameters),
+            textFont = FormulaField.text("SansSerif", this::formulaParameters),
+            textHeight = numeric("10", ParameterUnit.MM),
+            textAngle = numeric("0", ParameterUnit.DEG),
+            textSpacing = numeric("0", ParameterUnit.NUMBER),
+            pointX = numeric("0", ParameterUnit.MM),
+            pointY = numeric("0", ParameterUnit.MM);
     private final ComboBox<Integer> splineDegree = new ComboBox<>();
     private final ComboBox<String> textStyle = new ComboBox<>();
     private final CheckBox closedCurve = new CheckBox("Closed curve");
-    private final TextField dimensionValue = new TextField("10"),
-            plane = new TextField("0"),
-            sides = new TextField("6");
+    private final FormulaField
+            dimensionValue =
+                    FormulaField.number("10", this::formulaParameters, this::dimensionUnit),
+            plane = numeric("0", ParameterUnit.MM),
+            sides = numeric("6", ParameterUnit.NUMBER);
     private final CheckBox construction = new CheckBox("Construction"),
             auto = new CheckBox("Auto constraints"),
             showBadges = new CheckBox("Show badges");
@@ -668,14 +670,14 @@ final class SketchEditor extends BorderPane implements AutoCloseable {
 
     private SketchTools.Options options() {
         return new SketchTools.Options(
-                Integer.parseInt(sides.getText().strip()),
+                sides.integer(),
                 splineDegree.getValue(),
                 closedCurve.isSelected(),
                 construction.isSelected(),
                 value(toolRadius, "Radius"),
                 value(toolRho, "Rho"),
-                textContent.getText(),
-                textFont.getText().strip(),
+                textContent.evaluatedText(),
+                textFont.evaluatedText().strip(),
                 textStyle.getSelectionModel().getSelectedIndex(),
                 value(textHeight, "Text height"),
                 dev.voxelbrew.engine.units.Measurements.radians(value(textAngle, "Text angle")),
@@ -700,15 +702,45 @@ final class SketchEditor extends BorderPane implements AutoCloseable {
     private void finishAdvanced() {
         if (tool != Draw.ADVANCED) return;
         try {
+            String entityId = id(advanced.name().toLowerCase(Locale.ROOT));
             var next =
                     SketchTools.add(
                             controller.definition(),
                             advanced,
-                            id(advanced.name().toLowerCase(Locale.ROOT)),
+                            entityId,
                             List.copyOf(drawing),
                             List.copyOf(selection),
                             options());
-            edit(next);
+            if (advanced == SketchTools.Tool.TEXT || advanced == SketchTools.Tool.TEXT_ON_PATH) {
+                var parameters = bindText(controller.parameters(), entityId, textContent, textFont);
+                for (var entry :
+                        Map.of(
+                                        Type.TEXT_HEIGHT,
+                                        textHeight,
+                                        Type.ANGLE,
+                                        textAngle,
+                                        Type.TEXT_SPACING,
+                                        textSpacing)
+                                .entrySet()) {
+                    if (Expressions.isNumber(entry.getValue().getText())) continue;
+                    String constraintId = id("dimension");
+                    next =
+                            next.add(
+                                    SketchConstraints.create(
+                                            next,
+                                            constraintId,
+                                            entry.getKey(),
+                                            List.of(new Ref(entityId, Part.OBJECT)),
+                                            entry.getValue().value()));
+                    parameters =
+                            parameters.bind(
+                                    new ParameterSet.Target(
+                                            featureId, "constraint:" + constraintId),
+                                    entry.getValue().getText());
+                }
+                parameters.validate();
+                controller.edit(next, parameters);
+            } else edit(next);
             drawing.clear();
             snaps.clear();
             tool(Draw.SELECT);
@@ -733,9 +765,15 @@ final class SketchEditor extends BorderPane implements AutoCloseable {
             var dialog = new Dialog<Entity>();
             dialog.initOwner(getScene().getWindow());
             dialog.setTitle("Edit sketch text");
-            var content = new TextField(chosen.text().content());
+            var content =
+                    FormulaField.text(
+                            textExpression(chosen, "content", chosen.text().content()),
+                            this::formulaParameters);
             content.setId("sketch-edit-text-content");
-            var font = new TextField(chosen.text().font());
+            var font =
+                    FormulaField.text(
+                            textExpression(chosen, "font", chosen.text().font()),
+                            this::formulaParameters);
             font.setId("sketch-edit-text-font");
             var path = new ComboBox<String>();
             path.setId("sketch-edit-text-path");
@@ -762,6 +800,7 @@ final class SketchEditor extends BorderPane implements AutoCloseable {
                                     message));
             dialog.getDialogPane().getButtonTypes().setAll(ButtonType.OK, ButtonType.CANCEL);
             var result = new Entity[1];
+            var parameters = new ParameterSet[1];
             dialog.getDialogPane()
                     .lookupButton(ButtonType.OK)
                     .addEventFilter(
@@ -771,8 +810,8 @@ final class SketchEditor extends BorderPane implements AutoCloseable {
                                     result[0] =
                                             SketchText.create(
                                                     chosen.id(),
-                                                    content.getText(),
-                                                    font.getText().strip(),
+                                                    content.evaluatedText(),
+                                                    font.evaluatedText().strip(),
                                                     chosen.text().style(),
                                                     chosen.value(0),
                                                     chosen.value(1),
@@ -781,6 +820,13 @@ final class SketchEditor extends BorderPane implements AutoCloseable {
                                                     chosen.value(4),
                                                     path.getValue(),
                                                     chosen.construction());
+                                    parameters[0] =
+                                            bindText(
+                                                    controller.parameters(),
+                                                    chosen.id(),
+                                                    content,
+                                                    font);
+                                    parameters[0].validate();
                                 } catch (RuntimeException failure) {
                                     message.setText(failure.getMessage());
                                     event.consume();
@@ -788,7 +834,10 @@ final class SketchEditor extends BorderPane implements AutoCloseable {
                             });
             dialog.setResultConverter(button -> button == ButtonType.OK ? result[0] : null);
             Dialogs.show(dialog, getScene().getWindow())
-                    .ifPresent(e -> edit(controller.definition().replace(e)));
+                    .ifPresent(
+                            e ->
+                                    controller.edit(
+                                            controller.definition().replace(e), parameters[0]));
         } catch (RuntimeException failure) {
             error.setText(failure.getMessage());
         }
@@ -840,13 +889,7 @@ final class SketchEditor extends BorderPane implements AutoCloseable {
                                 Math.abs(a.y() - b.y()),
                                 false);
             else if (tool == Draw.POLYGON)
-                addition =
-                        Sketches.polygon(
-                                id,
-                                a.x(),
-                                a.y(),
-                                a.distance(b),
-                                Integer.parseInt(sides.getText().strip()));
+                addition = Sketches.polygon(id, a.x(), a.y(), a.distance(b), sides.integer());
             else {
                 Entity entity =
                         switch (tool) {
@@ -1238,13 +1281,18 @@ final class SketchEditor extends BorderPane implements AutoCloseable {
                                     : original.profileId(),
                             original == null
                                     ? new Feature.Plane(
-                                            offset == 0
+                                            offset == 0 && Expressions.isNumber(plane.getText())
                                                     ? "origin-xy"
                                                     : "plane-" + UUID.randomUUID(),
                                             offset)
                                     : original.plane(),
                             new Feature.Constrained(controller.definition()));
-            accept.accept(result, controller.parameters());
+            var parameters = controller.parameters();
+            if (original == null && !Expressions.isNumber(plane.getText()))
+                parameters =
+                        parameters.bind(
+                                new ParameterSet.Target(featureId, "offsetZ"), plane.getText());
+            accept.accept(result, parameters);
             dismiss.run();
         } catch (RuntimeException failure) {
             error.setText(failure.getMessage());
@@ -1534,14 +1582,57 @@ final class SketchEditor extends BorderPane implements AutoCloseable {
 
     private static double value(TextField field, String label) {
         try {
-            double v = Double.parseDouble(field.getText().strip());
+            double v =
+                    field instanceof FormulaField formula
+                            ? formula.value()
+                            : Double.parseDouble(field.getText().strip());
             if (!Double.isFinite(v)) throw new NumberFormatException();
             field.getStyleClass().remove("invalid");
             return v;
-        } catch (NumberFormatException failure) {
+        } catch (IllegalArgumentException failure) {
             field.getStyleClass().add("invalid");
-            throw new IllegalArgumentException(label + " must be a finite number");
+            throw new IllegalArgumentException(label + ": " + failure.getMessage());
         }
+    }
+
+    private ParameterSet formulaParameters() {
+        return controller.parameters();
+    }
+
+    private FormulaField numeric(String text, ParameterUnit unit) {
+        return FormulaField.number(text, this::formulaParameters, unit);
+    }
+
+    private ParameterUnit dimensionUnit() {
+        var selected = constraints.getSelectionModel().getSelectedItem();
+        var type =
+                selected != null && selected.type().dimension()
+                        ? selected.type()
+                        : dimension.getValue();
+        return type == null ? ParameterUnit.MM : FeatureDimensions.unit(type);
+    }
+
+    private String textExpression(Entity entity, String property, String fallback) {
+        String expression =
+                controller
+                        .parameters()
+                        .binding(
+                                new ParameterSet.Target(
+                                        featureId, FeatureText.key(entity.id(), property)));
+        return expression.isEmpty() ? Expressions.literalText(fallback) : expression;
+    }
+
+    private ParameterSet bindText(
+            ParameterSet parameters, String entityId, FormulaField content, FormulaField font) {
+        for (var entry : Map.of("content", content, "font", font).entrySet()) {
+            String expression = entry.getValue().getText();
+            parameters =
+                    parameters.bind(
+                            new ParameterSet.Target(
+                                    featureId, FeatureText.key(entityId, entry.getKey())),
+                            Expressions.isFormula(expression) ? expression : "");
+        }
+        return parameters;
     }
 
     private static Button button(String title, String id, Runnable action) {

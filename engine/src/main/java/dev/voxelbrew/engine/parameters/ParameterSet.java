@@ -363,8 +363,24 @@ public record ParameterSet(
     }
 
     public double value(String expression, ParameterUnit unit) {
-        var values = values();
-        return unit.modelValue(Expressions.evaluate(expression, unit, values::get));
+        return unit.modelValue(Expressions.evaluate(expression, unit, expressionValues()));
+    }
+
+    public String text(String expression) {
+        return Expressions.evaluateText(expression, expressionValues());
+    }
+
+    // Literal inputs must remain usable when repairing or saving a document with bad parameters.
+    private java.util.function.Function<String, Quantity<?>> expressionValues() {
+        return new java.util.function.Function<>() {
+            private Map<String, Quantity<?>> resolved;
+
+            @Override
+            public Quantity<?> apply(String name) {
+                if (resolved == null) resolved = values();
+                return resolved.get(name);
+            }
+        };
     }
 
     public void validate() {
@@ -375,7 +391,7 @@ public record ParameterSet(
             try {
                 var values = values(id);
                 for (var binding : bindings)
-                    Expressions.evaluateRaw(binding.expression(), values::get);
+                    Expressions.evaluateAny(binding.expression(), values::get);
             } catch (IllegalArgumentException failure) {
                 String name =
                         id.isEmpty()

@@ -43,6 +43,8 @@ public final class Viewport extends StackPane {
     private double distance = 180;
     private BiConsumer<String, Integer> selection = (id, face) -> {};
     private String selected;
+    private List<Feature> shownSketches = List.of();
+    private String shownSketchSelection;
     private Consumer<Point3D> planeClick;
     private double planeZ;
     private final Group handle = new Group();
@@ -170,8 +172,12 @@ public final class Viewport extends StackPane {
     }
 
     public void showSketches(List<Feature> features, String selectedSketch) {
-        sketches.getChildren().clear();
         sketches.setDepthTest(planeClick == null ? DepthTest.INHERIT : DepthTest.DISABLE);
+        if (shownSketches.equals(features)
+                && java.util.Objects.equals(shownSketchSelection, selectedSketch)) return;
+        shownSketches = List.copyOf(features);
+        shownSketchSelection = selectedSketch;
+        sketches.getChildren().clear();
         for (var feature : features)
             if (feature instanceof Feature.Sketch sketch) {
                 if (sketch.profile() instanceof Feature.Constrained constrained) {
@@ -264,6 +270,7 @@ public final class Viewport extends StackPane {
             } catch (IllegalArgumentException invalid) {
                 continue;
             }
+            var segments = new java.util.ArrayList<SketchStrokes.Segment>();
             for (var curve : curves) {
                 var points = curve.sample();
                 for (int i = 1; i < points.size(); i++) {
@@ -271,19 +278,24 @@ public final class Viewport extends StackPane {
                     var a = points.get(i - 1);
                     var b = points.get(i);
                     if (a.distance(b) < 1e-9) continue;
-                    group.getChildren()
-                            .add(
-                                    line(
-                                            toView(a.x(), a.y(), sketch.plane().offsetZ() + .04),
-                                            toView(b.x(), b.y(), sketch.plane().offsetZ() + .04),
-                                            chosen ? .14 : .075,
-                                            Color.web(
-                                                    chosen
-                                                            ? "#dc8d18"
-                                                            : entity.construction()
-                                                                    ? "#8795a3"
-                                                                    : "#2d839f")));
+                    segments.add(new SketchStrokes.Segment(a, b));
                 }
+            }
+            if (!segments.isEmpty()) {
+                var view =
+                        meshView(
+                                SketchStrokes.mesh(
+                                        segments,
+                                        sketch.plane().offsetZ() + .04,
+                                        chosen ? .14 : .075));
+                view.getStyleClass().add("sketch-curves");
+                view.setMaterial(
+                        new PhongMaterial(
+                                Color.web(
+                                        chosen
+                                                ? "#dc8d18"
+                                                : entity.construction() ? "#8795a3" : "#2d839f")));
+                group.getChildren().add(view);
             }
         }
         group.setOnMouseClicked(

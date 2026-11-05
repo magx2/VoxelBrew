@@ -2,6 +2,7 @@ package dev.voxelbrew.engine.parameters;
 
 import static dev.voxelbrew.engine.units.Measurements.*;
 
+import java.math.BigDecimal;
 import java.util.*;
 import java.util.function.Function;
 import java.util.regex.Pattern;
@@ -17,7 +18,46 @@ public final class Expressions {
                     "abs", "sqrt", "min", "max", "sin", "cos", "tan", "asin", "acos", "atan",
                     "floor", "ceil", "round");
     private static final Pattern TOKEN =
-            Pattern.compile("(?<![A-Za-z_0-9.])[A-Za-z_][A-Za-z_0-9]*");
+            Pattern.compile("\"(?:[^\"]|\"\")*\"|(?<![A-Za-z_0-9.])[A-Za-z_][A-Za-z_0-9]*");
+
+    public static boolean isFormula(String text) {
+        return text != null && text.stripLeading().startsWith("=");
+    }
+
+    /** Preserve a stored literal when displaying it in an expression-enabled text editor. */
+    public static String literalText(String text) {
+        return isFormula(text) ? "=\"" + text.replace("\"", "\"\"") + "\"" : text;
+    }
+
+    public static boolean isNumber(String text) {
+        return text != null
+                && text.strip()
+                        .matches("[+-]?(?:[0-9]+(?:\\.[0-9]*)?|\\.[0-9]+)(?:[eE][+-]?[0-9]+)?");
+    }
+
+    private static Quantity<?> numeric(Object value) {
+        if (value instanceof Quantity<?> quantity) return quantity;
+        throw new IllegalArgumentException("Expected a number, but the expression produced text");
+    }
+
+    /** Stable, locale-independent display; dimensional results use model units (mm/degrees). */
+    public static String format(Object value) {
+        if (value instanceof String text) return text;
+        double number = number(numeric(value));
+        if (!Double.isFinite(number))
+            throw new IllegalArgumentException("Expression must be finite");
+        return BigDecimal.valueOf(number).stripTrailingZeros().toPlainString();
+    }
+
+    /** Text is literal unless it starts with '='. Use doubled quotes inside string literals. */
+    public static String evaluateText(String text, Function<String, Quantity<?>> names) {
+        Objects.requireNonNull(text);
+        return isFormula(text) ? format(evaluateAny(text, names)) : text;
+    }
+
+    public static Object evaluateAny(String expression, Function<String, Quantity<?>> names) {
+        return new Parser(expression, names, ParameterUnit.MM).parse();
+    }
 
     private static boolean scalar(Quantity<?> q) {
         return sameKind(q.getUnit(), ONE);
@@ -62,18 +102,21 @@ public final class Expressions {
 
     public static String rename(String expression, String oldName, String newName) {
         return TOKEN.matcher(expression)
-                .replaceAll(m -> m.group().equals(oldName) ? newName : m.group());
+                .replaceAll(
+                        m ->
+                                java.util.regex.Matcher.quoteReplacement(
+                                        m.group().equals(oldName) ? newName : m.group()));
     }
 
     public static Quantity<?> evaluate(
             String expression, ParameterUnit unit, Function<String, Quantity<?>> names) {
-        var value = new Parser(expression, names, unit).parse();
+        var value = numeric(new Parser(expression, names, unit).parse());
         if (scalar(value)) value = unit.quantity(value(value, ONE));
         return to(value, unit.canonicalUnit());
     }
 
     public static Quantity<?> evaluateRaw(String expression, Function<String, Quantity<?>> names) {
-        return new Parser(expression, names, ParameterUnit.MM).parse();
+        return numeric(evaluateAny(expression, names));
     }
 
     private static final class Parser {
@@ -88,9 +131,10 @@ public final class Expressions {
             this.input = input;
             this.names = names;
             this.unit = unit;
+            take('=');
         }
 
-        Quantity<?> parse() {
+        Object parse() {
             var result = sum();
             skip();
             if (index != input.length()) throw error("Unexpected input");
@@ -114,20 +158,26 @@ public final class Expressions {
             return new IllegalArgumentException(message + " at character " + (index + 1));
         }
 
-        Quantity<?> sum() {
+        Object sum() {
             var q = product();
             while (true) {
-                if (take('+')) q = add(q, product(), unit);
-                else if (take('-')) q = add(q, product().negate(), unit);
+                if (take('+')) {
+                    var next = product();
+                    if (q instanceof String || next instanceof String) {
+                        q = format(q) + format(next);
+                        if (((String) q).length() > 4096)
+                            throw error("Text result exceeds 4096 characters");
+                    } else q = add(numeric(q), numeric(next), unit);
+                } else if (take('-')) q = add(numeric(q), numeric(product()).negate(), unit);
                 else return q;
             }
         }
 
-        Quantity<?> product() {
+        Object product() {
             var q = unary();
             while (true) {
-                if (take('*')) q = times(q, unary(), false);
-                else if (take('/')) q = times(q, unary(), true);
+                if (take('*')) q = times(numeric(q), numeric(unary()), false);
+                else if (take('/')) q = times(numeric(q), numeric(unary()), true);
                 else {
                     skip();
                     int begin = index;
@@ -137,26 +187,27 @@ public final class Expressions {
                                     .filter(u -> u.toString().equals(word))
                                     .findFirst();
                     index = begin;
-                    if (suffix.isPresent()) q = times(q, unary(), false);
+                    if (suffix.isPresent()) q = times(numeric(q), numeric(unary()), false);
                     else return q;
                 }
             }
         }
 
-        Quantity<?> unary() {
+        Object unary() {
             if (++depth > 32) throw error("Expression is too deeply nested");
             try {
-                if (take('+')) return unary();
-                if (take('-')) return unary().negate();
+                if (take('+')) return numeric(unary());
+                if (take('-')) return numeric(unary()).negate();
                 var q = atom();
                 if (take('^')) {
-                    var exponent = unary();
+                    var exponent = numeric(unary());
                     if (!scalar(exponent)) throw error("Exponent must be unitless");
                     double p = value(exponent, ONE);
-                    if (!scalar(q) && (p != Math.rint(p) || Math.abs(p) > 8))
+                    var base = numeric(q);
+                    if (!scalar(base) && (p != Math.rint(p) || Math.abs(p) > 8))
                         throw error("Dimensional powers must be integers between -8 and 8");
-                    Unit<?> target = scalar(q) ? ONE : q.getUnit().pow((int) p);
-                    q = normalized(quantity(Math.pow(number(q), p), target));
+                    Unit<?> target = scalar(base) ? ONE : base.getUnit().pow((int) p);
+                    q = normalized(quantity(Math.pow(number(base), p), target));
                 }
                 return q;
             } finally {
@@ -177,7 +228,7 @@ public final class Expressions {
             return input.substring(start, index);
         }
 
-        Quantity<?> atom() {
+        Object atom() {
             if (++tokens > 256) throw error("Expression is too complex");
             if (take('(')) {
                 var q = sum();
@@ -186,6 +237,25 @@ public final class Expressions {
             }
             skip();
             if (index >= input.length()) throw error("Expected a value");
+            if (take('"')) {
+                var text = new StringBuilder();
+                while (index < input.length()) {
+                    char character = input.charAt(index++);
+                    if (character != '"') text.append(character);
+                    else if (index < input.length() && input.charAt(index) == '"') {
+                        text.append('"');
+                        index++;
+                    } else return text.toString();
+                }
+                throw error("Expected closing quote");
+            }
+            if (take('$')) {
+                String name = word();
+                if (name.isEmpty()) throw error("Expected a parameter name after '$'");
+                var q = names.apply(name);
+                if (q == null) throw error("Unknown parameter '" + name + "'");
+                return normalized(q);
+            }
             char first = input.charAt(index);
             if (Character.isDigit(first) || first == '.') {
                 int begin = index++;
@@ -212,8 +282,8 @@ public final class Expressions {
                 throw error("Expression must be finite");
             if (take('(')) {
                 var arguments = new ArrayList<Quantity<?>>();
-                arguments.add(sum());
-                while (take(',')) arguments.add(sum());
+                arguments.add(numeric(sum()));
+                while (take(',')) arguments.add(numeric(sum()));
                 if (!take(')')) throw error("Expected closing parenthesis");
                 return function(name, arguments);
             }

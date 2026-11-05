@@ -2,6 +2,7 @@ package dev.voxelbrew.gui;
 
 import dev.voxelbrew.engine.feature.*;
 import dev.voxelbrew.engine.model.Feature;
+import dev.voxelbrew.engine.parameters.ParameterSet;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.*;
@@ -15,7 +16,8 @@ final class FeatureDialog {
     private FeatureDialog() {}
 
     static Optional<Feature.Custom> show(
-            Window owner, Path directory, FeatureRegistry.Factory features) throws IOException {
+            Window owner, Path directory, FeatureRegistry.Factory features, ParameterSet parameters)
+            throws IOException {
         try (var registry = features.open(directory)) {
             var dialog = new Dialog<Feature.Custom>();
             dialog.setTitle("Add feature");
@@ -23,7 +25,7 @@ final class FeatureDialog {
             type.setId("custom-type");
             type.getItems().setAll(registry.descriptors());
             type.setMaxWidth(Double.MAX_VALUE);
-            var fields = new LinkedHashMap<String, TextField>();
+            var fields = new LinkedHashMap<String, FormulaField>();
             var form = new VBox(8);
             var errors = new Label();
             errors.setWrapText(true);
@@ -40,7 +42,11 @@ final class FeatureDialog {
                         errors.setText("");
                         if (type.getValue() != null)
                             for (var p : type.getValue().parameters()) {
-                                var input = new TextField(Double.toString(p.defaultValue()));
+                                var input =
+                                        FormulaField.number(
+                                                Double.toString(p.defaultValue()),
+                                                () -> parameters,
+                                                FormulaField.unit(p.unit()));
                                 input.setId("custom-" + p.key());
                                 fields.put(p.key(), input);
                                 form.getChildren()
@@ -79,7 +85,7 @@ final class FeatureDialog {
                             for (var p : type.getValue().parameters()) {
                                 var field = fields.get(p.key());
                                 try {
-                                    double value = Double.parseDouble(field.getText());
+                                    double value = field.declaredValue();
                                     p.validate(value);
                                     values.put(p.key(), value);
                                 } catch (IllegalArgumentException failure) {

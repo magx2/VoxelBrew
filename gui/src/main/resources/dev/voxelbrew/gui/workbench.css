@@ -125,6 +125,40 @@
   -fx-border-color: #d65c46;
   -fx-border-radius: 4;
 }
+.text-field.formula-field {
+  -fx-padding: 4 6 4 27;
+  -fx-border-color: #6c8da8;
+  -fx-border-radius: 4;
+}
+.formula-field .formula-mark {
+  -fx-font-weight: bold;
+  -fx-font-style: italic;
+  -fx-text-fill: #416e92;
+}
+.text-field.formula-field:formula {
+  -fx-control-inner-background: #edf5ff;
+  -fx-border-color: #3475aa;
+  -fx-border-width: 1 1 1 3;
+}
+.dark .text-field.formula-field {
+  -fx-border-color: #698ba6;
+}
+.dark .text-field.formula-field:formula {
+  -fx-control-inner-background: #223b50;
+  -fx-border-color: #7db8e9;
+}
+.dark .formula-field .formula-mark {
+  -fx-text-fill: #9ecbf0;
+}
+.text-field.formula-field:formula-invalid,
+.text-field.formula-field.invalid,
+.dark .text-field.formula-field:formula-invalid,
+.dark .text-field.formula-field.invalid {
+  -fx-border-color: #d65c46;
+}
+.formula-field:formula-invalid .formula-mark {
+  -fx-text-fill: #d65c46;
+}
 .timeline {
   -fx-padding: 12 16 8;
   -fx-background-color: -fx-control-inner-background;

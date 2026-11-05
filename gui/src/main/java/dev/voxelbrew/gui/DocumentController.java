@@ -227,6 +227,12 @@ public final class DocumentController implements AutoCloseable {
         schedule(session.document(), false);
     }
 
+    public void add(Feature feature, dev.voxelbrew.engine.parameters.ParameterSet parameters) {
+        session.add(feature, parameters);
+        preview = null;
+        schedule(session.document(), false);
+    }
+
     public void edit(String id, String field, double value) {
         session.editDimension(id, field, value, pluginDirectory);
         preview = null;

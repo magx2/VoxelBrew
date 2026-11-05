@@ -48,6 +48,10 @@ public final class SketchSolver {
     }
 
     public static Result solve(SketchGeometry input) {
+        return solve(input, true);
+    }
+
+    static Result solve(SketchGeometry input, boolean parallel) {
         double[] x =
                 input.entities().stream()
                         .flatMap(e -> e.values().stream())
@@ -65,7 +69,7 @@ public final class SketchSolver {
                 var svd =
                         new SingularValueDecomposition(
                                 new Array2DRowRealMatrix(
-                                        jacobian(input, x, residual.length), false));
+                                        jacobian(input, x, residual.length, parallel), false));
                 var singular = svd.getSingularValues();
                 var u = svd.getU();
                 var v = svd.getV();
@@ -109,7 +113,7 @@ public final class SketchSolver {
             var singular =
                     new SingularValueDecomposition(
                                     new Array2DRowRealMatrix(
-                                            jacobian(input, x, residual.length), false))
+                                            jacobian(input, x, residual.length, parallel), false))
                             .getSingularValues();
             double cutoff = Math.max(1e-7, singular[0] * 1e-8);
             int rank = 0;
@@ -147,18 +151,26 @@ public final class SketchSolver {
         return values.stream().mapToDouble(Double::doubleValue).toArray();
     }
 
-    private static double[][] jacobian(SketchGeometry definition, double[] x, int rows) {
+    private static double[][] jacobian(
+            SketchGeometry definition, double[] x, int rows, boolean parallel) {
         double[][] result = new double[rows][x.length];
-        for (int col = 0; col < x.length; col++) {
-            if (Thread.currentThread().isInterrupted())
-                throw new CancellationException("Sketch solve cancelled");
-            double h = 1e-6 * Math.max(1, Math.abs(x[col]));
-            double[] a = x.clone(), b = x.clone();
-            a[col] += h;
-            b[col] -= h;
-            double[] ra = residual(unpack(definition, a)), rb = residual(unpack(definition, b));
-            for (int row = 0; row < rows; row++) result[row][col] = (ra[row] - rb[row]) / (2 * h);
-        }
+        java.util.function.IntConsumer column =
+                col -> {
+                    if (Thread.currentThread().isInterrupted())
+                        throw new CancellationException("Sketch solve cancelled");
+                    double h = 1e-6 * Math.max(1, Math.abs(x[col]));
+                    double[] a = x.clone(), b = x.clone();
+                    a[col] += h;
+                    b[col] -= h;
+                    double[] ra = residual(unpack(definition, a)),
+                            rb = residual(unpack(definition, b));
+                    for (int row = 0; row < rows; row++)
+                        result[row][col] = (ra[row] - rb[row]) / (2 * h);
+                };
+        // Tiny sketches cost less than scheduling work. Columns write disjoint matrix entries.
+        if (parallel && x.length >= 128 && (long) rows * x.length >= 16384)
+            dev.voxelbrew.engine.concurrent.CpuWork.forEach(x.length, column);
+        else for (int col = 0; col < x.length; col++) column.accept(col);
         return result;
     }
 

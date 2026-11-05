@@ -466,15 +466,14 @@ public final class DocumentController implements AutoCloseable {
                 return new Build(
                         List.of(), evaluation.diagnostics(), false, evaluation.resolvedFeatures());
             var bodies =
-                    evaluation.bodies().stream()
-                            .map(
-                                    b ->
-                                            new Body(
-                                                    b.id(),
-                                                    b.output(),
-                                                    b.solid().tessellate(MeshOptions.DEFAULT),
-                                                    b.solid().volume()))
-                            .toList();
+                    dev.voxelbrew.engine.concurrent.CpuWork.map(
+                            evaluation.bodies(),
+                            b ->
+                                    new Body(
+                                            b.id(),
+                                            b.output(),
+                                            b.solid().tessellate(MeshOptions.DEFAULT),
+                                            b.solid().volume()));
             return new Build(bodies, evaluation.diagnostics(), true, evaluation.resolvedFeatures());
         }
     }

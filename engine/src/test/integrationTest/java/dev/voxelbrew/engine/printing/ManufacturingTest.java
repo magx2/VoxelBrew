@@ -68,9 +68,10 @@ class ManufacturingTest {
                                                 3,
                                                 3,
                                                 3)));
-        var report =
-                PrintValidation.validate(
-                        new ManufacturingModel("fixture", "rev", setup, profile, base.meshes()));
+        var model = new ManufacturingModel("fixture", "rev", setup, profile, base.meshes());
+        var report = PrintValidation.validate(model);
+        assertSame(report.meshes().get("rotated"), report.meshes().get("tall"));
+        assertEquals(report, PrintValidation.validate(model));
         for (var expected :
                 List.of(
                         "rotated:OUTSIDE_BED",

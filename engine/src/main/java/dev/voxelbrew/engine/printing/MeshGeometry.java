@@ -121,17 +121,21 @@ public final class MeshGeometry {
     }
 
     static Area footprint(MeshData mesh) {
-        var area = new Area();
+        // All projected triangles wind the same way, so nonzero winding gives their union,
+        // including overlaps, without repeatedly reprocessing the growing boundary.
+        var path = new Path2D.Double(Path2D.WIND_NON_ZERO);
         for (int t = 0; t < mesh.triangleCount(); t++) {
-            var path = new Path2D.Double();
-            for (int c = 0; c < 3; c++) {
-                int v = mesh.vertexIndex(t, c);
-                if (c == 0) path.moveTo(mesh.coordinate(v, 0), mesh.coordinate(v, 1));
-                else path.lineTo(mesh.coordinate(v, 0), mesh.coordinate(v, 1));
-            }
+            int a = mesh.vertexIndex(t, 0), b = mesh.vertexIndex(t, 1), c = mesh.vertexIndex(t, 2);
+            double ax = mesh.coordinate(a, 0), ay = mesh.coordinate(a, 1);
+            double bx = mesh.coordinate(b, 0), by = mesh.coordinate(b, 1);
+            double cx = mesh.coordinate(c, 0), cy = mesh.coordinate(c, 1);
+            double cross = (bx - ax) * (cy - ay) - (by - ay) * (cx - ax);
+            if (cross == 0) continue;
+            path.moveTo(ax, ay);
+            path.lineTo(cross > 0 ? bx : cx, cross > 0 ? by : cy);
+            path.lineTo(cross > 0 ? cx : bx, cross > 0 ? cy : by);
             path.closePath();
-            area.add(new Area(path));
         }
-        return area;
+        return new Area(path);
     }
 }

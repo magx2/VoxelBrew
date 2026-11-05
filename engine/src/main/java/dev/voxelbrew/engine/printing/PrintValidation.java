@@ -27,6 +27,8 @@ public final class PrintValidation {
 
     private PrintValidation() {}
 
+    private record Placement(Area footprint, Bounds bounds) {}
+
     public static Result validate(ManufacturingModel model) {
         var diagnostics = new ArrayList<Diagnostic>();
         var reports = new LinkedHashMap<String, MeshValidation.Report>();
@@ -36,7 +38,31 @@ public final class PrintValidation {
             diagnostics.add(new Diagnostic("print", "EMPTY", "Add at least one build instance"));
         var bed = MeshGeometry.polygon(model.profile().printer().bed());
         bed.add(new Area(new BasicStroke(0.002f).createStrokedShape(bed)));
-        for (var instance : model.instances()) {
+        // Mesh topology belongs to a body, so repeated placements only need one inspection.
+        var bodyIds =
+                model.instances().stream()
+                        .map(i -> i.bodyId())
+                        .distinct()
+                        .filter(model.meshes()::containsKey)
+                        .toList();
+        var bodyReports =
+                dev.voxelbrew.engine.concurrent.CpuWork.map(
+                        bodyIds, id -> MeshValidation.inspect(model.meshes().get(id)));
+        var reportsByBody = new HashMap<String, MeshValidation.Report>();
+        for (int i = 0; i < bodyIds.size(); i++)
+            reportsByBody.put(bodyIds.get(i), bodyReports.get(i));
+        var placements =
+                dev.voxelbrew.engine.concurrent.CpuWork.map(
+                        model.instances(),
+                        instance -> {
+                            if (!model.meshes().containsKey(instance.bodyId()))
+                                return new Placement(null, null);
+                            var placed = model.placedMesh(instance);
+                            return new Placement(
+                                    MeshGeometry.footprint(placed), MeshGeometry.bounds(placed));
+                        });
+        for (int index = 0; index < model.instances().size(); index++) {
+            var instance = model.instances().get(index);
             var mesh = model.meshes().get(instance.bodyId());
             if (mesh == null) {
                 diagnostics.add(
@@ -46,13 +72,12 @@ public final class PrintValidation {
                                 "Missing body " + instance.bodyId()));
                 continue;
             }
-            var report = MeshValidation.inspect(mesh);
+            var report = reportsByBody.get(instance.bodyId());
             reports.put(instance.id(), report);
             if (!report.closed())
                 diagnostics.add(new Diagnostic(instance.id(), "MESH", report.toString()));
-            var placed = model.placedMesh(instance);
-            var footprint = MeshGeometry.footprint(placed);
-            var box = MeshGeometry.bounds(placed);
+            var footprint = placements.get(index).footprint();
+            var box = placements.get(index).bounds();
             footprints.put(instance.id(), footprint);
             bounds.put(instance.id(), box);
             checkBed(instance.id(), footprint, box, bed, model.profile(), diagnostics);

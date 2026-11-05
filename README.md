@@ -28,6 +28,8 @@ one design. Create them from the workbench or a sketch, then use their names in
 driving dimensions and extrusion distances. See [parameters and configurations](docs/parameters.md).
 M10 uses JSR 385 quantities and units throughout parameter evaluation, CAD
 measurement boundaries and print settings. See [units and typed APIs](docs/units.md).
+M11 parallelizes independent body meshing, larger sketch Jacobians and print
+preflight using a bounded CPU pool. See [computation and performance](docs/computation.md).
 
 ## Prerequisites and locked dependencies
 

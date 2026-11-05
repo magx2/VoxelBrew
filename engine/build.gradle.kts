@@ -202,6 +202,22 @@ tasks.register<Test>("nativeIntegrationTest") {
     filter { includeTestsMatching("*NativeKernelTest") }
 }
 
+tasks.register<JavaExec>("computeBenchmark") {
+    description =
+        "Measures real meshing, print preflight and sketch solves; use -PcomputeThreads=1 or 4."
+    group = "verification"
+    dependsOn("integrationTestClasses", buildNative)
+    classpath = sourceSets["integrationTest"].runtimeClasspath
+    mainClass.set("dev.voxelbrew.engine.performance.ComputeBenchmark")
+    args(providers.gradleProperty("computeScenario").orElse("all").get())
+    systemProperty("voxelbrew.native.path", runtime.absolutePath)
+    systemProperty(
+        "voxelbrew.compute.threads",
+        providers.gradleProperty("computeThreads").orElse("4").get(),
+    )
+    maxHeapSize = "1g"
+}
+
 publishing {
     publications { create<MavenPublication>("engine") { from(components["java"]) } }
     repositories {

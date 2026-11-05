@@ -5,7 +5,3 @@ dependencies {
     add("implementation", "com.google.dagger:dagger:$daggerVersion")
     add("annotationProcessor", "com.google.dagger:dagger-compiler:$daggerVersion")
 }
-
-// Dagger deliberately leaves annotations available to cooperating processors.
-// Keep all other lint warnings fatal, including in generated code.
-tasks.withType<JavaCompile>().configureEach { options.compilerArgs.add("-Xlint:-processing") }

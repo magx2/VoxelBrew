@@ -7,6 +7,10 @@ import java.util.Deque;
 import java.util.concurrent.*;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.Setter;
+import lombok.experimental.Accessors;
 
 /** One isolated sketch-edit transaction. Solves are coalesced and never run on the FX thread. */
 final class SketchController implements AutoCloseable {
@@ -31,14 +35,40 @@ final class SketchController implements AutoCloseable {
     private record State(SketchGeometry geometry, ParameterSet parameters) {}
 
     private final Deque<State> undo = new ArrayDeque<>(), redo = new ArrayDeque<>();
+
+    @Getter(AccessLevel.PACKAGE)
+    @Accessors(fluent = true)
     private ParameterSet parameters = ParameterSet.empty();
+
     private String featureId = "sketch";
-    private SketchGeometry definition, displayed;
+
+    @Getter(AccessLevel.PACKAGE)
+    @Accessors(fluent = true)
+    private SketchGeometry definition;
+
+    @Getter(AccessLevel.PACKAGE)
+    @Accessors(fluent = true)
+    private SketchGeometry displayed;
+
+    @Getter(AccessLevel.PACKAGE)
+    @Accessors(fluent = true)
     private SketchSolver.Result result;
-    private Runnable changed = () -> {};
+
+    @Setter(AccessLevel.PACKAGE)
+    @Accessors(fluent = true, chain = false)
+    private Runnable onChanged = () -> {};
+
     private Request pending;
-    private boolean running, busy, dragging;
+    private boolean running, dragging;
+
+    @Getter(AccessLevel.PACKAGE)
+    @Accessors(fluent = true)
+    private boolean busy;
+
+    @Getter(AccessLevel.PACKAGE)
+    @Accessors(fluent = true)
     private String interactionError = "";
+
     private volatile boolean closed;
     private volatile long sequence;
 
@@ -88,10 +118,6 @@ final class SketchController implements AutoCloseable {
         submit(null, null, false);
     }
 
-    ParameterSet parameters() {
-        return parameters;
-    }
-
     SketchController(
             SketchGeometry geometry,
             Consumer<Runnable> dispatch,
@@ -103,30 +129,6 @@ final class SketchController implements AutoCloseable {
                 dispatch,
                 solver,
                 WindowResources.worker("sketch-solver"));
-    }
-
-    void onChanged(Runnable listener) {
-        changed = listener;
-    }
-
-    SketchGeometry definition() {
-        return definition;
-    }
-
-    SketchGeometry displayed() {
-        return displayed;
-    }
-
-    SketchSolver.Result result() {
-        return result;
-    }
-
-    boolean busy() {
-        return busy;
-    }
-
-    String interactionError() {
-        return interactionError;
     }
 
     boolean canUndo() {
@@ -202,7 +204,7 @@ final class SketchController implements AutoCloseable {
                 worker.execute(this::drain);
             }
         }
-        changed.run();
+        onChanged.run();
     }
 
     private void drain() {
@@ -261,7 +263,7 @@ final class SketchController implements AutoCloseable {
                             submit(null, null, false);
                             return;
                         }
-                        changed.run();
+                        onChanged.run();
                     });
         }
     }

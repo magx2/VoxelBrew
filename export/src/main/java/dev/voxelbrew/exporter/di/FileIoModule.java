@@ -5,24 +5,20 @@ import dagger.Provides;
 import dev.voxelbrew.exporter.*;
 import dev.voxelbrew.exporter.printing.SlicerRegistry;
 import dev.voxelbrew.importer.*;
-import java.util.Objects;
 import javax.inject.Singleton;
+import lombok.NonNull;
+import lombok.RequiredArgsConstructor;
 
 /** Production adapters, with explicit replacements for isolated application tests. */
 @Module
+@RequiredArgsConstructor
 public final class FileIoModule {
-    private final DocumentSource source;
-    private final DocumentSink sink;
-    private final GcodeSource gcode;
+    @NonNull private final DocumentSource source;
+    @NonNull private final DocumentSink sink;
+    @NonNull private final GcodeSource gcode;
 
     public FileIoModule() {
         this(DocumentReader::load, DocumentWriter::save, GcodeReader::read);
-    }
-
-    public FileIoModule(DocumentSource source, DocumentSink sink, GcodeSource gcode) {
-        this.source = Objects.requireNonNull(source);
-        this.sink = Objects.requireNonNull(sink);
-        this.gcode = Objects.requireNonNull(gcode);
     }
 
     @Provides

@@ -5,8 +5,12 @@ import dev.voxelbrew.engine.mesh.*;
 import dev.voxelbrew.engine.model.*;
 import dev.voxelbrew.engine.persistence.DocumentCodec;
 import java.util.*;
+import lombok.Getter;
+import lombok.experimental.Accessors;
 
 /** Detached immutable revision shared by validators, exporters, slicers and preview. */
+@Getter
+@Accessors(fluent = true)
 public final class ManufacturingModel implements ModelView {
     public enum Selection {
         MODEL,
@@ -58,26 +62,6 @@ public final class ManufacturingModel implements ModelView {
                 document.printSetup(),
                 PrintProfile.resolve(document.printSetup()),
                 meshes);
-    }
-
-    public String documentId() {
-        return documentId;
-    }
-
-    public String revision() {
-        return revision;
-    }
-
-    public PrintSetup setup() {
-        return setup;
-    }
-
-    public PrintProfile profile() {
-        return profile;
-    }
-
-    public Map<String, MeshData> meshes() {
-        return meshes;
     }
 
     @Override

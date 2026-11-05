@@ -3,17 +3,15 @@ package dev.voxelbrew.cli;
 import java.util.Map;
 import javax.inject.Inject;
 import javax.inject.Provider;
+import lombok.AccessLevel;
+import lombok.RequiredArgsConstructor;
 import picocli.CommandLine;
 
 /** Picocli's construction boundary; business commands never look up services. */
 @javax.inject.Singleton
+@RequiredArgsConstructor(access = AccessLevel.PACKAGE, onConstructor_ = @Inject)
 final class CommandFactory implements CommandLine.IFactory {
     private final Map<Class<?>, Provider<Object>> commands;
-
-    @Inject
-    CommandFactory(Map<Class<?>, Provider<Object>> commands) {
-        this.commands = commands;
-    }
 
     @Override
     public <K> K create(Class<K> type) throws Exception {

@@ -13,6 +13,7 @@ import javafx.scene.layout.VBox;
 import javafx.stage.Window;
 
 /** Explicit updater. All network, archive and helper work stays off the JavaFX thread. */
+@lombok.extern.slf4j.Slf4j
 final class UpdateDialog {
     @dagger.assisted.AssistedFactory
     interface Factory {
@@ -246,8 +247,7 @@ final class UpdateDialog {
         try {
             prepared.close();
         } catch (IOException failure) {
-            java.util.logging.Logger.getLogger(UpdateDialog.class.getName())
-                    .log(java.util.logging.Level.WARNING, "Update staging cleanup failed", failure);
+            log.warn("Update staging cleanup failed", failure);
         }
     }
 }

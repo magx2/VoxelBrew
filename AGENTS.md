@@ -24,6 +24,9 @@
   and resource shutdown explicit. Do not inject components as service locators or
   put DI annotations into CAD value objects or plugin contracts. Follow
   `docs/dependency-injection.md` when adding bindings.
+- Use Lombok `@Slf4j` for application diagnostics and generated accessors/constructors
+  for plain boilerplate. Preserve validation, defensive copies, synchronization,
+  visibility and existing method names; follow `docs/lombok.md`.
 - Keep the GUI a JavaFX desktop application. Headless engine and CLI workflows
   must not require JavaFX, a display server, or a GPU.
 - Keep JavaFX, CLI parsing, generated Protobuf classes, and native pointers out

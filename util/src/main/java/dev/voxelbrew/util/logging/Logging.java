@@ -8,8 +8,10 @@ import java.nio.file.Path;
 import java.util.Locale;
 import java.util.Map;
 import java.util.logging.*;
+import lombok.extern.slf4j.Slf4j;
 
 /** Configures only VoxelBrew's logger hierarchy; never resets a host application's logging. */
+@Slf4j
 public final class Logging {
     private static final Logger APPLICATION = Logger.getLogger("dev.voxelbrew");
     private static boolean initialized;
@@ -21,10 +23,7 @@ public final class Logging {
         try {
             configure(UserConfiguration.user(), ApplicationPaths.logs(), component);
         } catch (IOException | IllegalArgumentException failure) {
-            APPLICATION.log(
-                    Level.WARNING,
-                    "Cannot configure file logging; using console diagnostics",
-                    failure);
+            log.warn("Cannot configure file logging; using console diagnostics", failure);
         }
         initialized = true;
     }
@@ -34,12 +33,8 @@ public final class Logging {
         if (!component.matches("[a-zA-Z0-9_-]+"))
             throw new IllegalArgumentException("Invalid logging component");
         Map<String, String> options = configuration.read();
-        Level level =
-                Level.parse(options.getOrDefault("logging.level", "INFO").toUpperCase(Locale.ROOT));
-        Level consoleLevel =
-                Level.parse(
-                        options.getOrDefault("logging.console.level", "WARNING")
-                                .toUpperCase(Locale.ROOT));
+        Level level = level(options.getOrDefault("logging.level", "INFO"));
+        Level consoleLevel = level(options.getOrDefault("logging.console.level", "WARNING"));
         int bytes = Integer.parseInt(options.getOrDefault("logging.file.limit", "1048576"));
         int count = Integer.parseInt(options.getOrDefault("logging.file.count", "3"));
         if (bytes < 1024 || count < 1 || count > 20)
@@ -65,6 +60,17 @@ public final class Logging {
         APPLICATION.setLevel(level);
         APPLICATION.addHandler(file);
         APPLICATION.addHandler(console);
+    }
+
+    private static Level level(String value) {
+        String name = value.toUpperCase(Locale.ROOT);
+        return switch (name) {
+            case "ERROR" -> Level.SEVERE;
+            case "WARN" -> Level.WARNING;
+            case "DEBUG" -> Level.FINE;
+            case "TRACE" -> Level.FINEST;
+            default -> Level.parse(name);
+        };
     }
 
     public static synchronized void close() {

@@ -8,9 +8,11 @@ import java.nio.file.Path;
 import java.util.List;
 import java.util.concurrent.*;
 import javax.inject.*;
+import lombok.extern.slf4j.Slf4j;
 
 /** Window-owned resources. Dagger scopes instances; the window explicitly closes them. */
 @Singleton
+@Slf4j
 final class WindowResources implements AutoCloseable {
     final ExporterRegistry exporters;
     final SlicerRegistry slicers;
@@ -98,13 +100,8 @@ final class WindowResources implements AutoCloseable {
         }
         if (failed == null) disposal.complete(null);
         else {
-            log(failed);
+            log.debug("Closing plugin loader", failed);
             disposal.completeExceptionally(failed);
         }
-    }
-
-    private static void log(IOException failure) {
-        java.util.logging.Logger.getLogger(WindowResources.class.getName())
-                .log(java.util.logging.Level.FINE, "Closing plugin loader", failure);
     }
 }

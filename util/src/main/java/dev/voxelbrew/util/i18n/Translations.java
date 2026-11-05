@@ -4,12 +4,17 @@ import dev.voxelbrew.util.config.UserConfiguration;
 import java.io.IOException;
 import java.text.MessageFormat;
 import java.util.*;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import lombok.Getter;
+import lombok.experimental.Accessors;
+import lombok.extern.slf4j.Slf4j;
 
 /** Immutable, thread-safe translation catalog. Missing languages fall back to English. */
+@Slf4j
 public final class Translations {
+    @Getter
+    @Accessors(fluent = true)
     private final Locale locale;
+
     private final ResourceBundle messages;
 
     public Translations(Locale locale) {
@@ -20,10 +25,6 @@ public final class Translations {
                         locale,
                         ResourceBundle.Control.getNoFallbackControl(
                                 ResourceBundle.Control.FORMAT_PROPERTIES));
-    }
-
-    public Locale locale() {
-        return locale;
     }
 
     public ResourceBundle bundle() {
@@ -46,8 +47,7 @@ public final class Translations {
                             : new Locale.Builder().setLanguageTag(language).build();
             return new Translations(selected);
         } catch (IOException | IllformedLocaleException failure) {
-            Logger.getLogger(Translations.class.getName())
-                    .log(Level.WARNING, "Cannot read language preference; using English", failure);
+            log.warn("Cannot read language preference; using English", failure);
             return new Translations(Locale.ENGLISH);
         }
     }

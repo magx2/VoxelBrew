@@ -39,6 +39,7 @@ import picocli.CommandLine.Spec;
             VoxelBrew.Inspect.class,
             VoxelBrew.NativeDemo.class
         })
+@lombok.extern.slf4j.Slf4j
 public final class VoxelBrew implements Runnable {
 
     @javax.inject.Inject
@@ -84,11 +85,7 @@ public final class VoxelBrew implements Runnable {
                         .addSubcommand("export", Export.class)
                         .setExecutionExceptionHandler(
                                 (failure, command, parsed) -> {
-                                    java.util.logging.Logger.getLogger(VoxelBrew.class.getName())
-                                            .log(
-                                                    java.util.logging.Level.FINE,
-                                                    "Command failed",
-                                                    failure);
+                                    log.debug("Command failed", failure);
                                     command.getErr().println("ERROR: " + failure.getMessage());
                                     return 1;
                                 });

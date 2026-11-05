@@ -16,6 +16,13 @@
 - **CMake 3.31.6**, BSD-3-Clause, https://github.com/Kitware/CMake/tree/v3.31.6.
   Its downloaded distribution retains the upstream notices.
 - **JUnit 5.12.1**, EPL-2.0, test dependency only, https://junit.org/junit5/.
+- **Lombok 1.18.48**, MIT, https://projectlombok.org/.
+  Compile-only annotation processor; its JAR is not bundled with applications.
+  Upstream license: `third_party/lombok/LICENSE`.
+- **SLF4J 2.0.20**, MIT, https://www.slf4j.org/.
+  Applications bundle the API and JUL provider, preserving VoxelBrew's configured
+  logging handlers. Published libraries do not select a backend.
+  Upstream license: `third_party/slf4j/LICENSE`.
 - **Dagger 2.60.1**, Apache-2.0, https://github.com/google/dagger/tree/dagger-2.60.1.
   Compile-time dependency injection; the runtime and generated component classes
   ship with the applications. The annotation processor and its compiler-only

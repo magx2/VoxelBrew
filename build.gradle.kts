@@ -93,6 +93,7 @@ spotless {
             ".gitattributes",
             ".gitignore",
             "*.properties",
+            "lombok.config",
             "scripts/*.properties",
             "scripts/*.sh",
             "scripts/*.ps1",
@@ -129,6 +130,7 @@ subprojects {
         options.release.set(21)
         options.compilerArgs.addAll(listOf("-Xlint:all", "-Werror"))
     }
+    apply(from = rootProject.file("gradle/lombok.gradle.kts"))
     dependencies {
         "testImplementation"(platform("org.junit:junit-bom:5.12.1"))
         "testImplementation"("org.junit.jupiter:junit-jupiter")

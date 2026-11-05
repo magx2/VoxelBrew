@@ -10,6 +10,9 @@ import java.nio.file.Path;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.function.*;
+import lombok.Getter;
+import lombok.Setter;
+import lombok.experimental.Accessors;
 
 /** Owner-thread state with cancellable worker execution and revision-guarded publication. */
 @javax.inject.Singleton
@@ -27,14 +30,34 @@ public final class PrintController implements AutoCloseable {
     private final Consumer<Runnable> dispatch;
     private final Supplier<CadDocument> current;
     private final Path pluginDirectory;
+
+    @Getter
+    @Accessors(fluent = true)
     private State state = State.IDLE;
+
     private Cancellation cancellation;
-    private String revision = "", message = "Ready to slice";
+    private String revision = "";
+
+    @Getter
+    @Accessors(fluent = true)
+    private String message = "Ready to slice";
+
     private final List<String> diagnostics = new ArrayList<>();
+
+    @Getter
+    @Accessors(fluent = true)
     private SliceService.Result result;
-    private Runnable changed = () -> {};
+
+    @Setter
+    @Accessors(fluent = true, chain = false)
+    private Runnable onChanged = () -> {};
+
     private long generation;
-    private boolean closed, running;
+    private boolean closed;
+
+    @Getter
+    @Accessors(fluent = true)
+    private boolean running;
 
     public PrintController(Consumer<Runnable> dispatch, Supplier<CadDocument> current) {
         this(dispatch, current, dev.voxelbrew.engine.feature.FeatureRegistry.defaultDirectory());
@@ -57,28 +80,8 @@ public final class PrintController implements AutoCloseable {
         this.worker = Objects.requireNonNull(worker);
     }
 
-    public State state() {
-        return state;
-    }
-
-    public boolean running() {
-        return running;
-    }
-
-    public String message() {
-        return message;
-    }
-
     public List<String> diagnostics() {
         return List.copyOf(diagnostics);
-    }
-
-    public SliceService.Result result() {
-        return result;
-    }
-
-    public void onChanged(Runnable listener) {
-        changed = listener;
     }
 
     public void documentChanged(CadDocument document) {
@@ -97,7 +100,7 @@ public final class PrintController implements AutoCloseable {
         result = null;
         state = State.OUTDATED;
         message = reason;
-        changed.run();
+        onChanged.run();
     }
 
     public CompletableFuture<SliceService.Result> start(
@@ -118,7 +121,7 @@ public final class PrintController implements AutoCloseable {
         cancellation = token;
         long ticket = ++generation;
         var future = new CompletableFuture<SliceService.Result>();
-        changed.run();
+        onChanged.run();
         worker.execute(
                 () -> {
                     try {
@@ -145,7 +148,7 @@ public final class PrintController implements AutoCloseable {
                                                                 diagnostics.removeFirst();
                                                             diagnostics.add(line);
                                                             message = line;
-                                                            changed.run();
+                                                            onChanged.run();
                                                         }),
                                         (captured, commit) ->
                                                 publish(ticket, captured, token, commit));
@@ -171,7 +174,7 @@ public final class PrintController implements AutoCloseable {
                                         message = "Job ready: " + completed.output();
                                         future.complete(completed);
                                     }
-                                    changed.run();
+                                    onChanged.run();
                                 });
                     } catch (Exception | LinkageError failure) {
                         dispatch.accept(
@@ -196,7 +199,7 @@ public final class PrintController implements AutoCloseable {
                                                 Objects.toString(
                                                         failure.getMessage(), failure.toString());
                                     }
-                                    changed.run();
+                                    onChanged.run();
                                     future.completeExceptionally(failure);
                                 });
                     }
@@ -243,7 +246,7 @@ public final class PrintController implements AutoCloseable {
             state = State.CANCELLED;
             result = null;
             message = "Cancelling slicer";
-            changed.run();
+            onChanged.run();
         }
     }
 

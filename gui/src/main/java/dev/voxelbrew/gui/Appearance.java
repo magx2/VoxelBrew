@@ -8,10 +8,13 @@ import java.nio.file.Path;
 import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.TimeUnit;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import java.util.prefs.Preferences;
+import lombok.AccessLevel;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
+@RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 final class Appearance {
     enum Choice {
         SYSTEM,
@@ -19,7 +22,6 @@ final class Appearance {
         DARK
     }
 
-    private static final Logger LOG = Logger.getLogger(Appearance.class.getName());
     private final UserConfiguration configuration;
     private final java.util.function.Supplier<String> legacyAppearance;
 
@@ -34,12 +36,6 @@ final class Appearance {
         this(
                 configuration,
                 () -> Preferences.userNodeForPackage(Appearance.class).get("appearance", null));
-    }
-
-    Appearance(
-            UserConfiguration configuration, java.util.function.Supplier<String> legacyAppearance) {
-        this.configuration = configuration;
-        this.legacyAppearance = legacyAppearance;
     }
 
     Choice load() {
@@ -57,7 +53,7 @@ final class Appearance {
         } catch (IllegalArgumentException ignored) {
             return Choice.SYSTEM;
         } catch (IOException | SecurityException failure) {
-            LOG.log(Level.WARNING, "Cannot load appearance preference", failure);
+            log.warn("Cannot load appearance preference", failure);
             return Choice.SYSTEM;
         }
     }
@@ -66,7 +62,7 @@ final class Appearance {
         try {
             configuration.set("appearance", choice.name());
         } catch (IOException failure) {
-            LOG.log(Level.WARNING, "Cannot save appearance preference", failure);
+            log.warn("Cannot save appearance preference", failure);
         }
     }
 

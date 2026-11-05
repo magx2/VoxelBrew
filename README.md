@@ -19,6 +19,8 @@ no production dependency on them. There are six first-party projects. See
 CLI commands and each desktop window are assembled by Dagger with constructor
 injection, scoped services and explicit resource ownership. See
 [dependency injection and application composition](docs/dependency-injection.md).
+Lombok generates routine constructors/accessors and SLF4J loggers; see
+[Lombok conventions and logging](docs/lombok.md).
 M4 adds editable splitting, build placement, persisted
 PLA/PETG process settings, supports and real PrusaSlicer jobs. See the
 [printing workflow](docs/printing-workflow.md) and [qualification record](docs/acceptance/M4.md).
@@ -56,6 +58,7 @@ dialog, with verified app-image replacement and recovery backups. See
 
 - JDK **21**, with `JAVA_HOME` set to a full JDK (including JNI headers).
 - Dagger **2.60.1**, pinned in `gradle/di.gradle.kts`; its compiler is build-only.
+- Lombok **1.18.48** (compile-only) and SLF4J **2.0.20**, pinned in `gradle/lombok.gradle.kts`.
 - Units of Measurement API **2.2** and Indriya **2.2.4**, resolved by Gradle.
 - Gradle **9.1.0**, through the committed, SHA-256-verified wrapper.
 - CMake **3.31.6** and OCCT **7.9.0**, downloaded and checksum-verified by the bootstrap.

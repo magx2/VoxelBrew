@@ -58,8 +58,11 @@ CLI does not initialize JavaFX, and creating a graph never loads the OCCT kernel
   in tests. Avoid mutable static test overrides or reflective field injection.
 
 The compiler retains `-Werror` and other lint checks. Only javac's `processing`
-lint warning is disabled in Dagger projects because cooperating processors do not
-claim all annotations. Application-image checks verify that generated components
+lint warning is disabled because cooperating Lombok/Dagger processors do not
+claim all annotations. Simple injected constructors may use Lombok's
+`@RequiredArgsConstructor(onConstructor_ = @Inject)`; qualified parameters,
+assisted inputs and initialization logic retain explicit constructors. See
+[Lombok conventions](lombok.md). Application-image checks verify that generated components
 and the Dagger runtime ship, while `dagger-compiler` and its SPI do not.
 
 ## Verification

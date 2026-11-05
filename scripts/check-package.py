@@ -69,6 +69,10 @@ for jar in (f"engine-{version}.jar", f"util-{version}.jar", f"import-{version}.j
 assert list(app.glob("dagger-2.*.jar")), "Dagger runtime is missing"
 assert not list(app.glob("dagger-compiler*.jar")), "Annotation processors must not ship at runtime"
 assert not list(app.glob("dagger-spi*.jar")), "Compiler SPI must not ship at runtime"
+assert not list(app.glob("lombok*.jar")), "Lombok must stay compile-only"
+assert len(list(app.glob("slf4j-api-*.jar"))) == 1, "Exactly one SLF4J API must ship"
+assert len(list(app.glob("slf4j-jdk14-*.jar"))) == 1, "The configured JUL logging provider must ship"
+assert not list(app.glob("jul-to-slf4j*.jar")), "Do not install a recursive JUL/SLF4J bridge"
 with zipfile.ZipFile(app / installation["mainJar"]) as main_jar:
     graph = "Cli" if kind == "cli" else "Gui"
     assert f"dev/voxelbrew/{kind}/Dagger{graph}Component.class" in main_jar.namelist(), "Generated dependency graph is missing"
@@ -117,6 +121,7 @@ def execute(command):
     result = subprocess.run(command, cwd=workspace, env=env, capture_output=True, text=True, timeout=90)
     transcript.append({"command": command, "exit": result.returncode, "stdout": result.stdout, "stderr": result.stderr})
     (artifacts / "commands.json").write_text(json.dumps(transcript, indent=2), encoding="utf-8")
+    assert "SLF4J:" not in result.stderr, "Logging provider configuration failed: " + result.stderr
     assert result.returncode == 0, transcript[-1]
     return result.stdout, result.stderr
 

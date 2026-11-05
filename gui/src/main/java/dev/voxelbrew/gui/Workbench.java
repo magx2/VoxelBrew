@@ -18,6 +18,8 @@ import javafx.scene.control.*;
 import javafx.scene.input.*;
 import javafx.scene.layout.*;
 import javafx.stage.Stage;
+import lombok.Getter;
+import lombok.experimental.Accessors;
 
 /** CAD workbench: model state stays in engine; scene graph and tool previews stay here. */
 @javax.inject.Singleton
@@ -37,10 +39,18 @@ public final class Workbench extends BorderPane implements AutoCloseable {
     }
 
     private final Stage stage;
+
+    @Getter
+    @Accessors(fluent = true)
     private final DocumentController controller;
+
     private final Path pluginDirectory;
     private final ExporterRegistry registry;
+
+    @Getter
+    @Accessors(fluent = true)
     private final Viewport viewport = new Viewport();
+
     private final PrintingPane printing;
     private final TreeView<Entry> tree = new TreeView<>();
     private final VBox inspector = new VBox(12), form = new VBox(9);
@@ -479,14 +489,6 @@ public final class Workbench extends BorderPane implements AutoCloseable {
 
     private ExporterRegistry registry() {
         return registry;
-    }
-
-    public DocumentController controller() {
-        return controller;
-    }
-
-    public Viewport viewport() {
-        return viewport;
     }
 
     private static Label heading(String text) {

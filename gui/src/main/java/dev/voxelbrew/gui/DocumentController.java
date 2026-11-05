@@ -12,6 +12,9 @@ import java.util.*;
 import java.util.concurrent.*;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import lombok.Getter;
+import lombok.Setter;
+import lombok.experimental.Accessors;
 
 /** UI-neutral document controller. UI dispatch confines all state changes to its owner thread. */
 @javax.inject.Singleton
@@ -52,13 +55,37 @@ public final class DocumentController implements AutoCloseable {
     private long documentGeneration;
     private ModelSession session = new ModelSession(CadDocument.empty());
     private CadDocument saved = session.document();
+
+    @Getter
+    @Accessors(fluent = true)
     private Path path;
+
     private Feature.Extrude preview;
     private String previewExpression = "";
+
+    @Getter
+    @Accessors(fluent = true)
     private Build build = new Build(List.of(), List.of(), true);
-    private boolean rebuilding, ioBusy, displayedPreview;
+
+    @Getter
+    @Accessors(fluent = true)
+    private boolean rebuilding;
+
+    @Getter
+    @Accessors(fluent = true)
+    private boolean ioBusy;
+
+    @Getter
+    @Accessors(fluent = true)
+    private boolean displayedPreview;
+
+    @Getter
+    @Accessors(fluent = true)
     private String error = "";
-    private Runnable changed = () -> {};
+
+    @Setter
+    @Accessors(fluent = true, chain = false)
+    private Runnable onChanged = () -> {};
 
     public DocumentController(Consumer<Runnable> dispatch) {
         this(dispatch, dev.voxelbrew.engine.feature.FeatureRegistry.defaultDirectory());
@@ -121,16 +148,8 @@ public final class DocumentController implements AutoCloseable {
         this.documentWriter = Objects.requireNonNull(documentWriter);
     }
 
-    public void onChanged(Runnable listener) {
-        changed = listener;
-    }
-
     public ModelSession.Snapshot snapshot() {
         return session.snapshot();
-    }
-
-    public Build build() {
-        return build;
     }
 
     public List<Feature> effectiveFeatures() {
@@ -167,32 +186,12 @@ public final class DocumentController implements AutoCloseable {
         schedule(session.document(), false);
     }
 
-    public Path path() {
-        return path;
-    }
-
     public boolean dirty() {
         return !session.document().equals(saved);
     }
 
-    public boolean rebuilding() {
-        return rebuilding;
-    }
-
-    public boolean ioBusy() {
-        return ioBusy;
-    }
-
     public boolean hasPreview() {
         return preview != null;
-    }
-
-    public boolean displayedPreview() {
-        return displayedPreview;
-    }
-
-    public String error() {
-        return error;
     }
 
     public boolean canExport() {
@@ -320,7 +319,7 @@ public final class DocumentController implements AutoCloseable {
     public CompletableFuture<Void> open(Path source) {
         requireIdleIo();
         ioBusy = true;
-        changed.run();
+        onChanged.run();
         var result = new CompletableFuture<Void>();
         io.execute(
                 () -> {
@@ -348,7 +347,7 @@ public final class DocumentController implements AutoCloseable {
         var captured = session.document();
         long generation = documentGeneration;
         ioBusy = true;
-        changed.run();
+        onChanged.run();
         var result = new CompletableFuture<Void>();
         io.execute(
                 () -> {
@@ -365,7 +364,7 @@ public final class DocumentController implements AutoCloseable {
                                         saved = captured;
                                         path = destination.toAbsolutePath();
                                     }
-                                    changed.run();
+                                    onChanged.run();
                                     result.complete(null);
                                 });
                     } catch (Exception failure) {
@@ -406,7 +405,7 @@ public final class DocumentController implements AutoCloseable {
                     "Export requires the current complete, successfully rebuilt document");
         var captured = session.document();
         ioBusy = true;
-        changed.run();
+        onChanged.run();
         var result = new CompletableFuture<Void>();
         io.execute(
                 () -> {
@@ -431,7 +430,7 @@ public final class DocumentController implements AutoCloseable {
                     }
                     ioBusy = false;
                     if (failure != null) error = failure.getMessage();
-                    changed.run();
+                    onChanged.run();
                     if (failure == null) future.complete(null);
                     else future.completeExceptionally(failure);
                 });
@@ -457,7 +456,7 @@ public final class DocumentController implements AutoCloseable {
                 worker.execute(this::drain);
             }
         }
-        changed.run();
+        onChanged.run();
     }
 
     private void drain() {
@@ -493,7 +492,7 @@ public final class DocumentController implements AutoCloseable {
                         rebuilding = false;
                         displayedPreview = request.preview();
                         error = failureMessage;
-                        changed.run();
+                        onChanged.run();
                     });
         }
     }

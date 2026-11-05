@@ -147,7 +147,7 @@ val updatePackageCheck by
         group = "verification"
         description =
             "Update a relocated app image with a verified offline release fixture and real bundled JVM."
-        dependsOn(appImage)
+        dependsOn(appImage, "packageZip")
         mustRunAfter(packageCheck)
         environment("VOXELBREW_TEST_JDK", packageJdk.absolutePath)
         commandLine(
@@ -157,6 +157,13 @@ val updatePackageCheck by
             image.get().asFile.absolutePath,
             rootProject.projectDir.absolutePath,
             layout.buildDirectory.dir("package-artifacts").get().asFile.absolutePath,
+            layout.buildDirectory
+                .file(
+                    "distributions/$applicationName-$productVersion-$packagePlatform-$packageArchitecture.zip"
+                )
+                .get()
+                .asFile
+                .absolutePath,
         )
         doFirst { layout.buildDirectory.dir("package-artifacts").get().asFile.mkdirs() }
     }
@@ -167,7 +174,9 @@ val packageZip by
     tasks.registering(Zip::class) {
         group = "distribution"
         dependsOn(appImage)
-        from(imageRoot)
+        mustRunAfter(packageCheck)
+        // Only ship the app image. Runtime instance locks live beside it after package checks.
+        from(image) { into(applicationName + if (packageMac) ".app" else "") }
         // Keep Unix launchers executable after extraction; archives remain platform specific.
         eachFile { permissions { unix(if (file.canExecute()) "rwxr-xr-x" else "rw-r--r--") } }
         destinationDirectory.set(layout.buildDirectory.dir("distributions"))

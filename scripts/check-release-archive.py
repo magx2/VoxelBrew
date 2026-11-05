@@ -22,6 +22,7 @@ with zipfile.ZipFile(archive) as contents:
     if sys.platform != "win32":
         assert contents.getinfo(launcher).external_attr >> 16 & stat.S_IXUSR, "Missing launcher execute permission"
     for member in contents.infolist():
+        assert member.filename.startswith(image_name + "/"), "Unexpected top-level archive entry: " + member.filename
         target = (destination / member.filename).resolve()
         assert target.is_relative_to(destination), "Unsafe ZIP entry"
         contents.extract(member, destination)

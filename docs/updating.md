@@ -93,7 +93,9 @@ be removed after all application/helper processes have exited.
 
 `check` includes `:cli:updatePackageCheck` and `:gui:updatePackageCheck` on qualified
 platforms. These copy the real app image to a path containing spaces, construct an
-offline release fixture, and use the real bundled JVM and updater helper. They
+offline release fixture from the actual Gradle-produced ZIP, and use the real
+bundled JVM and updater helper. They reject unexpected top-level archive entries
+(including sibling runtime locks that must never ship). They
 verify metadata-only checks, checksum failure preserving the installation, waiting
 for a second process, directory replacement, the retained backup and the new build
 identity. CLI acceptance then reopens the real-kernel reference part. GUI Robot

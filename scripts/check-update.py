@@ -4,14 +4,16 @@ import json
 import os
 from pathlib import Path
 import shutil
+import stat
 import subprocess
 import sys
 import tempfile
 import time
 import zipfile
 
-kind, image_arg, root_arg, artifacts_arg = sys.argv[1:]
+kind, image_arg, root_arg, artifacts_arg, archive_arg = sys.argv[1:]
 image, root, artifacts = map(Path, (image_arg, root_arg, artifacts_arg))
+release_archive = Path(archive_arg)
 artifacts.mkdir(parents=True, exist_ok=True)
 workspace = Path(tempfile.mkdtemp(prefix="update with spaces ", dir=artifacts)).resolve()
 platform = "windows-x64" if os.name == "nt" else "macos-x64" if sys.platform == "darwin" else "linux-x64"
@@ -21,7 +23,19 @@ launcher_relative = Path(image.stem + ".exe" if os.name == "nt" else "Contents/M
 install = workspace / "installation" / image.name
 payload = workspace / "release" / image.name
 shutil.copytree(image, install)
-shutil.copytree(image, payload)
+payload.parent.mkdir()
+# Use the exact Gradle-produced archive as the release fixture's source. This catches packaging
+# errors (such as sibling runtime lock files) that copying an app directory alone cannot expose.
+with zipfile.ZipFile(release_archive) as packaged:
+    assert packaged.testzip() is None
+    for entry in packaged.infolist():
+        assert entry.filename.startswith(image.name + "/"), "Unexpected top-level archive entry: " + entry.filename
+        target = (payload.parent / entry.filename).resolve()
+        assert target.is_relative_to(payload.parent)
+        assert not stat.S_ISLNK(entry.external_attr >> 16), "Linked release entry: " + entry.filename
+        packaged.extract(entry, payload.parent)
+        if os.name != "nt" and not entry.is_dir():
+            target.chmod((entry.external_attr >> 16) & 0o777)
 old_version = next(line.split("=", 1)[1] for line in (install / app_relative / "voxelbrew-install.properties").read_text().splitlines() if line.startswith("version="))
 numeric = list(map(int, old_version.removesuffix("-SNAPSHOT").split(".")))
 # Keep the fixture newer than the packaged version, including future release branches.
@@ -163,6 +177,7 @@ shutil.copy2(status_path, workspace / "status.properties")
 shutil.copy2(status_path.with_name("helper.log"), workspace / "helper.log")
 result = {"result": "PASS", "component": kind, "platform": platform, "oldVersion": old_version,
           "newVersion": new_version, "workspace": str(workspace), "status": str(workspace / "status.properties"),
+          "sourceArchive": release_archive.name, "sourceArchiveSha256": hashlib.sha256(release_archive.read_bytes()).hexdigest(),
           "transport": "offline gh fixture", "runtime": "real packaged JVM", "otherInstanceWait": True}
 (artifacts / "update-result.json").write_text(json.dumps(result, indent=2), encoding="utf-8")
 # Retain transcripts, status and logs as acceptance evidence, without uploading several JVM copies.

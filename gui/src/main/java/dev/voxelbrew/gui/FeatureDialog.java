@@ -16,11 +16,15 @@ final class FeatureDialog {
     private FeatureDialog() {}
 
     static Optional<Feature.Custom> show(
-            Window owner, Path directory, FeatureRegistry.Factory features, ParameterSet parameters)
+            Window owner,
+            Path directory,
+            FeatureRegistry.Factory features,
+            ParameterSet parameters,
+            dev.voxelbrew.util.i18n.Translations translations)
             throws IOException {
         try (var registry = features.open(directory)) {
             var dialog = new Dialog<Feature.Custom>();
-            dialog.setTitle("Add feature");
+            dialog.setTitle(translations.text("gui.add_feature"));
             var type = new ComboBox<FeatureDescriptor>();
             type.setId("custom-type");
             type.getItems().setAll(registry.descriptors());
@@ -33,7 +37,7 @@ final class FeatureDialog {
             errors.getStyleClass().add("error");
             var diagnostics = new Label(String.join("\n", registry.diagnostics()));
             diagnostics.setWrapText(true);
-            var details = new TitledPane("Plugin diagnostics", diagnostics);
+            var details = new TitledPane(translations.text("gui.plugin_diagnostics"), diagnostics);
             details.setExpanded(false);
             type.setOnAction(
                     e -> {
@@ -44,9 +48,10 @@ final class FeatureDialog {
                             for (var p : type.getValue().parameters()) {
                                 var input =
                                         FormulaField.number(
-                                                Double.toString(p.defaultValue()),
-                                                () -> parameters,
-                                                FormulaField.unit(p.unit()));
+                                                        Double.toString(p.defaultValue()),
+                                                        () -> parameters,
+                                                        FormulaField.unit(p.unit()))
+                                                .localized(translations);
                                 input.setId("custom-" + p.key());
                                 fields.put(p.key(), input);
                                 form.getChildren()
@@ -59,21 +64,28 @@ final class FeatureDialog {
             var scroll = new ScrollPane(form);
             scroll.setFitToWidth(true);
             scroll.setPrefViewportHeight(230);
-            var location = new Label("Trusted plugin directory: " + directory);
+            var location = new Label(translations.text("plugin.directory", directory));
             location.setWrapText(true);
             var content =
                     new VBox(
-                            10, new Label("Feature type"), type, scroll, errors, location, details);
+                            10,
+                            new Label(translations.text("gui.feature_type")),
+                            type,
+                            scroll,
+                            errors,
+                            location,
+                            details);
             content.setPrefWidth(440);
             dialog.getDialogPane().setContent(content);
-            var add = new ButtonType("Add", ButtonBar.ButtonData.OK_DONE);
+            var add = new ButtonType(translations.text("gui.add"), ButtonBar.ButtonData.OK_DONE);
             dialog.getDialogPane().getButtonTypes().setAll(add, ButtonType.CANCEL);
             var button = (Button) dialog.getDialogPane().lookupButton(add);
             button.setId("custom-add");
             button.setDisable(type.getItems().isEmpty());
             if (type.getItems().isEmpty())
                 errors.setText(
-                        "No feature providers installed. Add a trusted JAR to this directory and reopen Features.");
+                        translations.text(
+                                "gui.no_feature_providers_installed_add_a_trusted_jar_to_this_directory_and_reopen_features"));
             dialog.getDialogPane().lookupButton(ButtonType.CANCEL).setId("custom-cancel");
             Feature.Custom[] result = new Feature.Custom[1];
             button.addEventFilter(
@@ -112,7 +124,7 @@ final class FeatureDialog {
                         }
                     });
             dialog.setResultConverter(choice -> choice == add ? result[0] : null);
-            return Dialogs.show(dialog, owner);
+            return Dialogs.show(dialog, owner, translations);
         }
     }
 }

@@ -17,7 +17,7 @@ public final class WorkbenchApplication extends Application {
     public void start(Stage stage) throws java.io.IOException {
         if (!Platform.isSupported(ConditionalFeature.SCENE3D))
             throw new IllegalStateException(
-                    "JavaFX 3D is unavailable. Check graphics drivers and WSLg/Mesa. For Mesa software rendering use JAVA_OPTS='-Dprism.order=es2 -Dprism.forceGPU=true'.");
+                    dev.voxelbrew.util.i18n.Translations.current().text("graphics.unavailable"));
         var args = getParameters().getRaw();
         Path plugins = ExporterRegistry.defaultDirectory(), open = null;
         Path smokeOutput =

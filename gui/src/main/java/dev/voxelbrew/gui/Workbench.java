@@ -50,7 +50,7 @@ public final class Workbench extends BorderPane implements AutoCloseable {
 
     @Getter
     @Accessors(fluent = true)
-    private final Viewport viewport = new Viewport();
+    private final Viewport viewport;
 
     private final PrintingPane printing;
     private final TreeView<Entry> tree = new TreeView<>();
@@ -78,6 +78,7 @@ public final class Workbench extends BorderPane implements AutoCloseable {
     private final Appearance appearance;
     private final ExecutorService preferencesWorker;
     private final Translations translations;
+    private final dev.voxelbrew.util.config.UserConfiguration configurationStore;
     private final WindowResources resources;
     private final FeatureRegistry.Factory featureProviders;
     private final SketchController.Factory sketches;
@@ -147,6 +148,7 @@ public final class Workbench extends BorderPane implements AutoCloseable {
             Appearance appearance,
             @javax.inject.Named("appearance") ExecutorService preferencesWorker,
             Translations translations,
+            dev.voxelbrew.util.config.UserConfiguration configurationStore,
             UpdateDialog.Factory updates,
             WindowResources resources,
             FeatureRegistry.Factory featureProviders,
@@ -159,6 +161,8 @@ public final class Workbench extends BorderPane implements AutoCloseable {
         this.appearance = appearance;
         this.preferencesWorker = preferencesWorker;
         this.translations = translations;
+        this.configurationStore = configurationStore;
+        this.viewport = new Viewport(translations);
         this.updates = updates;
         this.resources = resources;
         this.featureProviders = featureProviders;
@@ -187,7 +191,7 @@ public final class Workbench extends BorderPane implements AutoCloseable {
                 button(
                         translations.text("action.export"),
                         "export",
-                        () -> ExportDialog.show(stage(), controller(), registry()));
+                        () -> ExportDialog.show(stage(), controller(), registry(), translations));
         this.customFeature =
                 button(translations.text("action.features"), "custom-feature", this::customFeature);
         this.parameters =
@@ -215,7 +219,7 @@ public final class Workbench extends BorderPane implements AutoCloseable {
                                 .toExternalForm());
         var brand = new Label("VOXELBREW");
         brand.getStyleClass().add("brand");
-        var caption = new Label("PARAMETRIC CAD");
+        var caption = new Label(translations.text("gui.parametric_cad"));
         caption.getStyleClass().add("eyebrow");
         var spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
@@ -225,10 +229,23 @@ public final class Workbench extends BorderPane implements AutoCloseable {
                         brand,
                         caption,
                         spacer,
+                        button(
+                                translations.text("language.label"),
+                                "language",
+                                () ->
+                                        LanguageDialog.show(
+                                                stage,
+                                                translations,
+                                                configurationStore,
+                                                preferencesWorker)),
                         button(translations.text("action.updates"), "updates", this::updates));
         title.getStyleClass().add("title-strip");
         views.setId("standard-view");
         views.getItems().setAll("Isometric", "Top", "Front", "Right", "Back", "Left", "Bottom");
+        UiText.choices(views, name -> UiText.view(translations, name));
+        UiText.choices(
+                configuration,
+                name -> name.equals("Default") ? translations.text("configuration.default") : name);
         views.setValue("Isometric");
         views.setOnAction(
                 e -> {
@@ -261,7 +278,9 @@ public final class Workbench extends BorderPane implements AutoCloseable {
                     applyAppearance();
                 });
         var toolbar =
-                new ToolBar(
+                new FlowPane(
+                        5,
+                        5,
                         button(
                                 translations.text("action.new"),
                                 "new",
@@ -280,31 +299,30 @@ public final class Workbench extends BorderPane implements AutoCloseable {
                                 () -> requestChange(this::open)),
                         button(translations.text("action.save"), "save", () -> save(false)),
                         button(translations.text("action.saveAs"), "save-as", () -> save(true)),
-                        new Separator(),
+                        new Separator(javafx.geometry.Orientation.VERTICAL),
                         undo,
                         redo,
-                        new Separator(),
+                        new Separator(javafx.geometry.Orientation.VERTICAL),
                         rectangle,
                         circle,
                         extrude,
                         cut,
-                        new Separator(),
+                        new Separator(javafx.geometry.Orientation.VERTICAL),
                         export);
+        toolbar.getStyleClass().add("command-strip");
         var viewbar =
-                new HBox(
+                new FlowPane(
                         9,
+                        6,
                         new Label(translations.text("view.label")),
                         views,
                         button(
                                 translations.text("action.fit"),
                                 "fit",
                                 () -> viewport.fit(meshes())),
-                        new Region(),
                         splitBody,
-                        new Label(translations.text("appearance.label")),
-                        themes);
+                        new HBox(7, new Label(translations.text("appearance.label")), themes));
         viewbar.getStyleClass().add("view-strip");
-        HBox.setHgrow(viewbar.getChildren().get(3), Priority.ALWAYS);
         setTop(new VBox(title, toolbar));
         tree.setId("model-tree");
         tree.setShowRoot(false);
@@ -330,7 +348,7 @@ public final class Workbench extends BorderPane implements AutoCloseable {
         var left =
                 new VBox(
                         10,
-                        heading("MODEL"),
+                        heading(translations.text("gui.model")),
                         parameters,
                         configuration,
                         customFeature,
@@ -355,16 +373,21 @@ public final class Workbench extends BorderPane implements AutoCloseable {
         error.visibleProperty().bind(error.managedProperty());
         inspector
                 .getChildren()
-                .addAll(heading("PROPERTIES"), selectionLabel, scroll, error, toolActions);
+                .addAll(
+                        heading(translations.text("gui.properties")),
+                        selectionLabel,
+                        scroll,
+                        error,
+                        toolActions);
         var center = new BorderPane(viewport);
         center.setTop(viewbar);
         center.getStyleClass().add("viewport-panel");
         var split = new SplitPane(left, center, inspector);
         split.setDividerPositions(0.18, 0.78);
-        var designTab = new Tab("Design", split);
+        var designTab = new Tab(translations.text("tab.Design"), split);
         designTab.setId("workspace-design");
         designTab.setClosable(false);
-        var printTab = new Tab("Print", printing);
+        var printTab = new Tab(translations.text("tab.Print"), printing);
         printTab.setId("workspace-print");
         printTab.setClosable(false);
         var workspaces = new TabPane(designTab, printTab);
@@ -394,7 +417,12 @@ public final class Workbench extends BorderPane implements AutoCloseable {
                                 controller.cursor(position);
                             }
                         });
-        var timeline = new VBox(8, new HBox(12, heading("HISTORY"), cursorLabel), history, cursor);
+        var timeline =
+                new VBox(
+                        8,
+                        new HBox(12, heading(translations.text("gui.history")), cursorLabel),
+                        history,
+                        cursor);
         timeline.getStyleClass().add("timeline");
         var historyScroll = new ScrollPane(history);
         historyScroll.setFitToHeight(true);
@@ -413,7 +441,7 @@ public final class Workbench extends BorderPane implements AutoCloseable {
                         progress,
                         status,
                         statusSpacer,
-                        new Label("mm   ·   OCCT 7.9   ·   Grid 10 mm"));
+                        new Label(translations.text("gui.mm_occt_7_9_grid_10_mm")));
         statusbar.getStyleClass().add("status-strip");
         setBottom(new VBox(timeline, statusbar));
         viewport.onSelection(
@@ -622,16 +650,21 @@ public final class Workbench extends BorderPane implements AutoCloseable {
                     !controller.error().isBlank()
                             ? controller.error()
                             : controller.ioBusy()
-                                    ? "Working with file…"
+                                    ? translations.text("gui.working_with_file")
                                     : controller.rebuilding()
-                                            ? "Rebuilding…"
+                                            ? translations.text("gui.rebuilding")
                                             : !diagnostics.isBlank()
                                                     ? diagnostics
                                                     : controller.hasPreview()
-                                                            ? "Preview — release or Enter to commit; Escape to cancel"
-                                                            : controller.build().bodies().size()
-                                                                    + " bodies  ·  "
-                                                                    + String.format(
+                                                            ? translations.text(
+                                                                    "gui.preview_release_or_enter_to_commit_escape_to_cancel")
+                                                            : translations.text(
+                                                                    "status.bodies",
+                                                                    controller
+                                                                            .build()
+                                                                            .bodies()
+                                                                            .size(),
+                                                                    String.format(
                                                                             Locale.ROOT,
                                                                             "%.3f mm³",
                                                                             controller
@@ -642,11 +675,11 @@ public final class Workbench extends BorderPane implements AutoCloseable {
                                                                                             DocumentController
                                                                                                             .Body
                                                                                                     ::volume)
-                                                                                    .sum()));
+                                                                                    .sum())));
             stage.setTitle(
                     (controller.dirty() ? "● " : "")
                             + (controller.path() == null
-                                    ? "Untitled"
+                                    ? translations.text("gui.untitled")
                                     : controller.path().getFileName())
                             + " — VoxelBrew CAD");
         } finally {
@@ -655,21 +688,24 @@ public final class Workbench extends BorderPane implements AutoCloseable {
     }
 
     private String shortName(Feature feature) {
-        if (feature instanceof Feature.Custom custom) return "Custom · " + custom.type();
+        if (feature instanceof Feature.Custom custom)
+            return translations.text("feature.custom", custom.type());
         return feature instanceof Feature.Sketch s
                 ? (s.profile() instanceof Feature.Circle
-                        ? "Circle"
-                        : s.profile() instanceof Feature.Constrained ? "Sketch" : "Rectangle")
+                        ? translations.text("gui.circle")
+                        : s.profile() instanceof Feature.Constrained
+                                ? translations.text("gui.sketch")
+                                : translations.text("gui.rectangle"))
                 : feature instanceof Feature.Extrude
-                        ? "Extrude"
+                        ? translations.text("gui.extrude")
                         : feature instanceof Feature.SplitBody
-                                ? "Split"
+                                ? translations.text("gui.split")
                                 : translations.text("action.cut");
     }
 
     private void rebuildTree(CadDocument document) {
-        var root = new TreeItem<>(new Entry(null, "Document", false));
-        var features = new TreeItem<>(new Entry(null, "Features", false));
+        var root = new TreeItem<>(new Entry(null, translations.text("gui.document"), false));
+        var features = new TreeItem<>(new Entry(null, translations.text("gui.features"), false));
         features.setExpanded(true);
         for (int i = 0; i < document.features().size(); i++) {
             var feature = document.features().get(i);
@@ -690,11 +726,17 @@ public final class Workbench extends BorderPane implements AutoCloseable {
                                     false));
             features.getChildren().add(item);
         }
-        var bodies = new TreeItem<>(new Entry(null, "Bodies", true));
+        var bodies = new TreeItem<>(new Entry(null, translations.text("gui.bodies"), true));
         bodies.setExpanded(true);
         int index = 1;
         for (var body : controller.build().bodies())
-            bodies.getChildren().add(new TreeItem<>(new Entry(body.id(), "Body " + index++, true)));
+            bodies.getChildren()
+                    .add(
+                            new TreeItem<>(
+                                    new Entry(
+                                            body.id(),
+                                            translations.text("feature.body", index++),
+                                            true)));
         root.getChildren().add(features);
         root.getChildren().add(bodies);
         tree.setRoot(root);
@@ -746,7 +788,9 @@ public final class Workbench extends BorderPane implements AutoCloseable {
         inspect();
         if (face >= 0)
             selectionLabel.setText(
-                    "Face " + face + " · " + shortName(Objects.requireNonNull(selected())));
+                    translations.text("feature.face", face)
+                            + " · "
+                            + shortName(Objects.requireNonNull(selected())));
         refresh();
     }
 
@@ -758,10 +802,11 @@ public final class Workbench extends BorderPane implements AutoCloseable {
         error.setText("");
         var feature = selected();
         if (feature == null) {
-            selectionLabel.setText("Start a design");
+            selectionLabel.setText(translations.text("gui.start_a_design"));
             var hint =
                     new Label(
-                            "Draw a rectangle or circle on XY, then extrude its closed profile.\n\nMiddle-drag to orbit\nShift + middle-drag to pan\nScroll to zoom");
+                            translations.text(
+                                    "gui.draw_a_rectangle_or_circle_on_xy_then_extrude_its_closed_profile_middle_drag_to_orbit_shift_mid"));
             hint.setWrapText(true);
             form.getChildren().add(hint);
             return;
@@ -784,26 +829,27 @@ public final class Workbench extends BorderPane implements AutoCloseable {
             } else if (s.profile() instanceof Feature.Constrained c) {
                 var info =
                         new Label(
-                                c.geometry().entities().size()
-                                        + " entities · "
-                                        + c.geometry().constraints().size()
-                                        + " constraints");
+                                translations.text(
+                                        "feature.sketchSummary",
+                                        c.geometry().entities().size(),
+                                        c.geometry().constraints().size()));
                 info.setWrapText(true);
                 form.getChildren().add(info);
                 var hint =
                         new Label(
-                                "Edit sketch to change driving dimensions, constraints, or the profile boundary.");
+                                translations.text(
+                                        "gui.edit_sketch_to_change_driving_dimensions_constraints_or_the_profile_boundary"));
                 hint.setWrapText(true);
                 form.getChildren().add(hint);
             }
             form.getChildren()
                     .add(
                             button(
-                                    "Edit sketch / constraints…",
+                                    translations.text("gui.edit_sketch_constraints"),
                                     "edit-sketch-constraints",
                                     () -> editSketch(s)));
             dimension(feature, "offsetZ", s.plane().offsetZ());
-            form.getChildren().add(new Label("Plane: " + s.plane().id()));
+            form.getChildren().add(new Label(translations.text("feature.plane", s.plane().id())));
         } else if (feature instanceof Feature.Extrude e) {
             dimension(feature, "distance", e.distance());
             referenceEditor(feature, e.profile(), null);
@@ -833,7 +879,7 @@ public final class Workbench extends BorderPane implements AutoCloseable {
                                     FormulaField.unit(parameter.unit()));
                     var apply =
                             button(
-                                    "Apply",
+                                    translations.text("gui.apply"),
                                     "apply-" + parameter.key(),
                                     () ->
                                             controller.edit(
@@ -852,7 +898,7 @@ public final class Workbench extends BorderPane implements AutoCloseable {
             form.getChildren()
                     .add(
                             button(
-                                    "Reload plugin and rebuild",
+                                    translations.text("gui.reload_plugin_and_rebuild"),
                                     "custom-rebuild",
                                     () -> {
                                         inspect();
@@ -880,7 +926,11 @@ public final class Workbench extends BorderPane implements AutoCloseable {
     }
 
     private void dimension(Feature feature, String name, double value) {
-        var field = field("dimension-" + name, name + " (mm)", value);
+        var field =
+                field(
+                        "dimension-" + name,
+                        translations.textOrDefault("dimension." + name, name) + " (mm)",
+                        value);
         String expression =
                 controller
                         .snapshot()
@@ -892,7 +942,7 @@ public final class Workbench extends BorderPane implements AutoCloseable {
         if (!expression.isEmpty()) field.setText(expression);
         var apply =
                 button(
-                        "Apply",
+                        translations.text("gui.apply"),
                         "apply-" + name,
                         () -> {
                             String text = field.getText().strip();
@@ -908,7 +958,12 @@ public final class Workbench extends BorderPane implements AutoCloseable {
     private void customFeature() {
         cancelTool();
         try {
-            FeatureDialog.show(stage, pluginDirectory, featureProviders, formulaParameters())
+            FeatureDialog.show(
+                            stage,
+                            pluginDirectory,
+                            featureProviders,
+                            formulaParameters(),
+                            translations)
                     .ifPresent(
                             feature -> {
                                 controller.add(feature);
@@ -927,7 +982,8 @@ public final class Workbench extends BorderPane implements AutoCloseable {
         ParameterDialog.show(
                         stage,
                         controller.effectiveFeatures(),
-                        controller.snapshot().document().parameters())
+                        controller.snapshot().document().parameters(),
+                        translations)
                 .ifPresent(controller::parameters);
     }
 
@@ -944,13 +1000,14 @@ public final class Workbench extends BorderPane implements AutoCloseable {
                 .forEach(f -> sketches.getItems().add(f.id()));
         if (profile != null) {
             sketches.setValue(profile.sketchId());
-            form.getChildren().addAll(new Label("Input sketch"), sketches);
+            form.getChildren().addAll(new Label(translations.text("gui.input_sketch")), sketches);
         }
         var bodies = new ComboBox<String>();
         bodies.setId("repair-body");
         var output =
                 FormulaField.text(
-                        body == null ? "body" : body.outputName(), this::formulaParameters);
+                                body == null ? "body" : body.outputName(), this::formulaParameters)
+                        .localized(translations);
         output.setId("repair-output");
         if (body != null) {
             earlier.stream()
@@ -959,15 +1016,17 @@ public final class Workbench extends BorderPane implements AutoCloseable {
             bodies.setValue(body.featureId());
             form.getChildren()
                     .addAll(
-                            new Label("Input body feature"),
+                            new Label(translations.text("gui.input_body_feature")),
                             bodies,
-                            new Label("Named output: body, negative or positive"),
+                            new Label(
+                                    translations.text(
+                                            "gui.named_output_body_negative_or_positive")),
                             output);
         }
         form.getChildren()
                 .add(
                         button(
-                                "Repair inputs",
+                                translations.text("gui.repair_inputs"),
                                 "repair",
                                 () -> {
                                     if (feature instanceof Feature.SplitBody split) {
@@ -977,7 +1036,8 @@ public final class Workbench extends BorderPane implements AutoCloseable {
                                                         new Feature.BodyRef(
                                                                 Objects.requireNonNull(
                                                                         bodies.getValue(),
-                                                                        "Choose an earlier body"),
+                                                                        translations.text(
+                                                                                "gui.choose_an_earlier_body")),
                                                                 output.evaluatedText()),
                                                         split.plane()));
                                         return;
@@ -998,7 +1058,9 @@ public final class Workbench extends BorderPane implements AutoCloseable {
                                                             .orElseThrow(
                                                                     () ->
                                                                             new IllegalArgumentException(
-                                                                                    "Choose an earlier sketch"));
+                                                                                    translations
+                                                                                            .text(
+                                                                                                    "gui.choose_an_earlier_sketch")));
                                     var ref = new Feature.ProfileRef(s.id(), s.profileId());
                                     controller.replaceFeature(
                                             feature instanceof Feature.Extrude e
@@ -1009,7 +1071,8 @@ public final class Workbench extends BorderPane implements AutoCloseable {
                                                             new Feature.BodyRef(
                                                                     Objects.requireNonNull(
                                                                             bodies.getValue(),
-                                                                            "Choose an earlier body"),
+                                                                            translations.text(
+                                                                                    "gui.choose_an_earlier_body")),
                                                                     output.evaluatedText())));
                                 }));
     }
@@ -1023,7 +1086,9 @@ public final class Workbench extends BorderPane implements AutoCloseable {
     }
 
     private FormulaField field(String id, String label, double initial, ParameterUnit unit) {
-        var text = FormulaField.number(Double.toString(initial), this::formulaParameters, unit);
+        var text =
+                FormulaField.number(Double.toString(initial), this::formulaParameters, unit)
+                        .localized(translations);
         text.setId(id);
         fields.put(id, text);
         form.getChildren().addAll(new Label(label), text);
@@ -1055,15 +1120,24 @@ public final class Workbench extends BorderPane implements AutoCloseable {
         firstPoint = null;
         form.getChildren().clear();
         fields.clear();
-        selectionLabel.setText(isCircle ? "New circle" : "New rectangle");
-        field("sketch-x", isCircle ? "Center X (mm)" : "X (mm)", isCircle ? 10 : 0);
-        field("sketch-y", isCircle ? "Center Y (mm)" : "Y (mm)", isCircle ? 10 : 0);
-        if (isCircle) field("sketch-diameter", "Diameter (mm)", 4);
+        selectionLabel.setText(
+                isCircle
+                        ? translations.text("gui.new_circle")
+                        : translations.text("gui.new_rectangle"));
+        field(
+                "sketch-x",
+                isCircle ? translations.text("gui.center_x_mm") : translations.text("gui.x_mm"),
+                isCircle ? 10 : 0);
+        field(
+                "sketch-y",
+                isCircle ? translations.text("gui.center_y_mm") : translations.text("gui.y_mm"),
+                isCircle ? 10 : 0);
+        if (isCircle) field("sketch-diameter", translations.text("gui.diameter_mm"), 4);
         else {
-            field("sketch-width", "Width (mm)", 60);
-            field("sketch-height", "Height (mm)", 40);
+            field("sketch-width", translations.text("gui.width_mm"), 60);
+            field("sketch-height", translations.text("gui.height_mm"), 40);
         }
-        var offset = field("sketch-offset", "Plane offset Z (mm)", 0);
+        var offset = field("sketch-offset", translations.text("gui.plane_offset_z_mm"), 0);
         offset.textProperty()
                 .addListener(
                         (o, a, b) ->
@@ -1076,7 +1150,7 @@ public final class Workbench extends BorderPane implements AutoCloseable {
                 .forEach(field -> field.textProperty().addListener((o, a, b) -> sketchPreview()));
         finish =
                 button(
-                        "Finish sketch",
+                        translations.text("gui.finish_sketch"),
                         "finish-sketch",
                         () -> {
                             double z = value("sketch-offset");
@@ -1120,8 +1194,15 @@ public final class Workbench extends BorderPane implements AutoCloseable {
                             refresh();
                         });
         finish.getStyleClass().add("primary");
-        toolActions.getChildren().setAll(finish, button("Cancel", "cancel-tool", this::cancelTool));
-        var hint = new Label("Click two points, or enter exact dimensions.");
+        toolActions
+                .getChildren()
+                .setAll(
+                        finish,
+                        button(
+                                translations.text("action.cancel"),
+                                "cancel-tool",
+                                this::cancelTool));
+        var hint = new Label(translations.text("gui.click_two_points_or_enter_exact_dimensions"));
         hint.setWrapText(true);
         form.getChildren().add(hint);
         views.setValue("Top");
@@ -1163,7 +1244,10 @@ public final class Workbench extends BorderPane implements AutoCloseable {
             firstPoint = point;
             fields.get("sketch-x").setText(format(point.getX()));
             fields.get("sketch-y").setText(format(point.getY()));
-            status.setText(tool == Tool.CIRCLE ? "Choose circle radius" : "Choose opposite corner");
+            status.setText(
+                    tool == Tool.CIRCLE
+                            ? translations.text("gui.choose_circle_radius")
+                            : translations.text("gui.choose_opposite_corner"));
         } else {
             if (tool == Tool.CIRCLE)
                 fields.get("sketch-diameter")
@@ -1182,7 +1266,7 @@ public final class Workbench extends BorderPane implements AutoCloseable {
                         .setText(format(Math.abs(point.getY() - firstPoint.getY())));
             }
             firstPoint = null;
-            status.setText("Dimensions captured — Finish sketch to commit");
+            status.setText(translations.text("gui.dimensions_captured_finish_sketch_to_commit"));
         }
     }
 
@@ -1194,19 +1278,22 @@ public final class Workbench extends BorderPane implements AutoCloseable {
         cancelTool();
         var before = controller.snapshot();
         if (controller.ioBusy() || controller.rebuilding())
-            throw new IllegalArgumentException("Wait for the current rebuild or file operation");
+            throw new IllegalArgumentException(
+                    translations.text("gui.wait_for_the_current_rebuild_or_file_operation"));
         SketchEditor.show(
                 stage,
                 sketches,
                 sketch,
                 controller.effectiveFeatures(),
                 before.document().parameters(),
+                translations,
                 (result, parameters) -> {
                     var current = controller.snapshot();
                     if (!before.document().id().equals(current.document().id())
                             || before.revision() != current.revision())
                         throw new IllegalStateException(
-                                "The document changed while editing. Cancel and reopen the sketch.");
+                                translations.text(
+                                        "gui.the_document_changed_while_editing_cancel_and_reopen_the_sketch"));
                     controller.sketch(result, parameters, sketch == null);
                     selectedFeature = result.id();
                     selectedBody = null;
@@ -1218,20 +1305,29 @@ public final class Workbench extends BorderPane implements AutoCloseable {
     private void beginExtrusion() {
         var feature = selected();
         if (!(feature instanceof Feature.Sketch sketch))
-            throw new IllegalArgumentException("Select a closed sketch profile first");
+            throw new IllegalArgumentException(
+                    translations.text("gui.select_a_closed_sketch_profile_first"));
         cancelTool();
         extrusionSketch = sketch;
         tool = Tool.EXTRUDE;
-        selectionLabel.setText("Extrude profile");
+        selectionLabel.setText(translations.text("gui.extrude_profile"));
         form.getChildren().clear();
         fields.clear();
-        var distance = field("extrude-distance", "Signed distance (mm)", 5);
-        finish = button("Commit", "commit-extrusion", this::commitExtrusion);
+        var distance = field("extrude-distance", translations.text("gui.signed_distance_mm"), 5);
+        finish = button(translations.text("gui.commit"), "commit-extrusion", this::commitExtrusion);
         finish.getStyleClass().add("primary");
-        toolActions.getChildren().setAll(finish, button("Cancel", "cancel-tool", this::cancelTool));
+        toolActions
+                .getChildren()
+                .setAll(
+                        finish,
+                        button(
+                                translations.text("action.cancel"),
+                                "cancel-tool",
+                                this::cancelTool));
         var hint =
                 new Label(
-                        "Drag the gold handle, or type a distance.\nEnter commits; Escape cancels.");
+                        translations.text(
+                                "gui.drag_the_gold_handle_or_type_a_distance_enter_commits_escape_cancels"));
         hint.setWrapText(true);
         form.getChildren().add(hint);
         distance.textProperty()
@@ -1260,6 +1356,10 @@ public final class Workbench extends BorderPane implements AutoCloseable {
                 e -> {
                     if (!finish.isDisabled()) finish.fire();
                 });
+        UiText.choices(views, name -> UiText.view(translations, name));
+        UiText.choices(
+                configuration,
+                name -> name.equals("Default") ? translations.text("configuration.default") : name);
         views.setValue("Isometric");
         viewport.standardView("Isometric");
         controller.previewExtrusion(sketch, 5);
@@ -1289,17 +1389,19 @@ public final class Workbench extends BorderPane implements AutoCloseable {
         if (!(selected() instanceof Feature.Sketch sketch)
                 || !(sketch.profile() instanceof Feature.Circle
                         || sketch.profile() instanceof Feature.Constrained))
-            throw new IllegalArgumentException("Select a closed sketch profile");
+            throw new IllegalArgumentException(
+                    translations.text("gui.select_a_closed_sketch_profile"));
         var choices = controller.build().bodies();
-        if (choices.isEmpty()) throw new IllegalArgumentException("A target body is required");
+        if (choices.isEmpty())
+            throw new IllegalArgumentException(translations.text("gui.a_target_body_is_required"));
         var dialog =
                 new ChoiceDialog<>(
                         choices.getFirst().id(),
                         choices.stream().map(DocumentController.Body::id).toList());
-        dialog.setTitle("Through-all cut");
-        dialog.setHeaderText("Choose the target body");
+        dialog.setTitle(translations.text("gui.through_all_cut"));
+        dialog.setHeaderText(translations.text("gui.choose_the_target_body"));
         dialog.getDialogPane().lookupButton(ButtonType.OK).setId("cut-confirm");
-        Dialogs.show(dialog, stage)
+        Dialogs.show(dialog, stage, translations)
                 .ifPresent(
                         id -> {
                             var target =
@@ -1346,7 +1448,9 @@ public final class Workbench extends BorderPane implements AutoCloseable {
         axis.setId("split-axis");
         axis.getItems().setAll("X", "Y", "Z");
         axis.setValue("X");
-        var offset = FormulaField.number("30", this::formulaParameters, ParameterUnit.MM);
+        var offset =
+                FormulaField.number("30", this::formulaParameters, ParameterUnit.MM)
+                        .localized(translations);
         offset.setId("split-offset");
         var error = new Label();
         error.setWrapText(true);
@@ -1355,14 +1459,14 @@ public final class Workbench extends BorderPane implements AutoCloseable {
                 .setContent(
                         new VBox(
                                 8,
-                                new Label("Input body"),
+                                new Label(translations.text("gui.input_body")),
                                 body,
-                                new Label("Plane normal"),
+                                new Label(translations.text("gui.plane_normal")),
                                 axis,
-                                new Label("Offset (mm)"),
+                                new Label(translations.text("gui.offset_mm")),
                                 offset,
                                 error));
-        var commit = new ButtonType("Split", ButtonBar.ButtonData.OK_DONE);
+        var commit = new ButtonType(translations.text("gui.split"), ButtonBar.ButtonData.OK_DONE);
         dialog.getDialogPane().getButtonTypes().addAll(commit, ButtonType.CANCEL);
         var button = dialog.getDialogPane().lookupButton(commit);
         button.setId("split-confirm");
@@ -1374,7 +1478,9 @@ public final class Workbench extends BorderPane implements AutoCloseable {
                         var feature =
                                 new Feature.SplitBody(
                                         id,
-                                        Objects.requireNonNull(body.getValue(), "Choose a body")
+                                        Objects.requireNonNull(
+                                                        body.getValue(),
+                                                        translations.text("gui.choose_a_body"))
                                                 .output(),
                                         new Feature.SplitPlane(
                                                 axis.getValue().equals("X") ? 1 : 0,
@@ -1394,7 +1500,7 @@ public final class Workbench extends BorderPane implements AutoCloseable {
                         event.consume();
                     }
                 });
-        Dialogs.show(dialog, stage);
+        Dialogs.show(dialog, stage, translations);
     }
 
     private void cancelTool() {
@@ -1409,7 +1515,7 @@ public final class Workbench extends BorderPane implements AutoCloseable {
     }
 
     private void open() {
-        FileDialog.choose(stage, false, controller.path(), formulaParameters())
+        FileDialog.choose(stage, false, controller.path(), formulaParameters(), translations)
                 .ifPresent(
                         path -> {
                             cancelTool();
@@ -1420,11 +1526,12 @@ public final class Workbench extends BorderPane implements AutoCloseable {
     private CompletableFuture<Void> save(boolean saveAs) {
         if (controller.ioBusy())
             return CompletableFuture.failedFuture(
-                    new IllegalStateException("File operation in progress"));
+                    new IllegalStateException(translations.text("gui.file_operation_in_progress")));
         Optional<Path> chosen =
                 !saveAs && controller.path() != null
                         ? Optional.of(controller.path())
-                        : FileDialog.choose(stage, true, controller.path(), formulaParameters());
+                        : FileDialog.choose(
+                                stage, true, controller.path(), formulaParameters(), translations);
         if (chosen.isEmpty())
             return CompletableFuture.failedFuture(new java.util.concurrent.CancellationException());
         Path path = chosen.get();
@@ -1440,10 +1547,10 @@ public final class Workbench extends BorderPane implements AutoCloseable {
         var alert =
                 new Alert(
                         Alert.AlertType.CONFIRMATION,
-                        "Replace " + path + "?",
+                        translations.text("file.replace", path),
                         ButtonType.YES,
                         ButtonType.NO);
-        return Dialogs.show(alert, stage).orElse(ButtonType.NO) == ButtonType.YES;
+        return Dialogs.show(alert, stage, translations).orElse(ButtonType.NO) == ButtonType.YES;
     }
 
     private void updates() {
@@ -1456,7 +1563,7 @@ public final class Workbench extends BorderPane implements AutoCloseable {
 
     private void requestChange(Runnable action) {
         if (controller.ioBusy()) {
-            error.setText("Wait for the current file operation");
+            error.setText(translations.text("gui.wait_for_the_current_file_operation"));
             return;
         }
         if (!controller.dirty()) {
@@ -1464,19 +1571,19 @@ public final class Workbench extends BorderPane implements AutoCloseable {
             return;
         }
         var save = new ButtonType(translations.text("action.save"), ButtonBar.ButtonData.YES);
-        var discard = new ButtonType("Discard", ButtonBar.ButtonData.NO);
+        var discard = new ButtonType(translations.text("gui.discard"), ButtonBar.ButtonData.NO);
         var alert =
                 new Alert(
                         Alert.AlertType.CONFIRMATION,
-                        "Save changes to this design?",
+                        translations.text("gui.save_changes_to_this_design"),
                         save,
                         discard,
                         ButtonType.CANCEL);
-        alert.setHeaderText("Unsaved changes");
+        alert.setHeaderText(translations.text("gui.unsaved_changes"));
         alert.getDialogPane().lookupButton(save).setId("unsaved-save");
         alert.getDialogPane().lookupButton(discard).setId("unsaved-discard");
         alert.getDialogPane().lookupButton(ButtonType.CANCEL).setId("unsaved-cancel");
-        var choice = Dialogs.show(alert, stage).orElse(ButtonType.CANCEL);
+        var choice = Dialogs.show(alert, stage, translations).orElse(ButtonType.CANCEL);
         if (choice == discard) action.run();
         else if (choice == save)
             save(false).thenRun(() -> requestChange(action)).exceptionally(failure -> null);

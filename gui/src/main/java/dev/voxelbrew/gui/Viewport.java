@@ -51,6 +51,10 @@ public final class Viewport extends StackPane {
     private double handleDistance, handlePlane;
 
     public Viewport() {
+        this(new dev.voxelbrew.util.i18n.Translations(java.util.Locale.ENGLISH));
+    }
+
+    public Viewport(dev.voxelbrew.util.i18n.Translations translations) {
         setId("viewport");
         setMinSize(300, 250);
         world.getChildren().addAll(aids, bodies, sketches, handle);
@@ -73,7 +77,11 @@ public final class Viewport extends StackPane {
         getChildren().add(scene);
         viewCube =
                 new ViewCube(
-                        this::setOrientation, this::orbitBy, this::home, () -> fit(currentMeshes));
+                        this::setOrientation,
+                        this::orbitBy,
+                        this::home,
+                        () -> fit(currentMeshes),
+                        translations);
         StackPane.setAlignment(viewCube, Pos.TOP_RIGHT);
         StackPane.setMargin(viewCube, new Insets(8));
         getChildren().add(viewCube);

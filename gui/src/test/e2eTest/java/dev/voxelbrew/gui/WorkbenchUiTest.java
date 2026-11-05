@@ -33,6 +33,7 @@ class WorkbenchUiTest {
     private static Robot robot;
     private static Appearance.Choice originalAppearance;
     private UpdateFixture updates;
+    private dev.voxelbrew.util.config.UserConfiguration configuration;
 
     @BeforeAll
     static void toolkit() throws Exception {
@@ -62,8 +63,15 @@ class WorkbenchUiTest {
     }
 
     @BeforeEach
-    void window() throws Exception {
+    void window(TestInfo info) throws Exception {
         updates = new UpdateFixture(directory.resolve("update fixture"));
+        configuration =
+                new dev.voxelbrew.util.config.UserConfiguration(
+                        directory.resolve("preferences.properties"));
+        configuration.set(
+                "language",
+                info.getTestMethod().orElseThrow().getName().startsWith("polish") ? "pl" : "en");
+        configuration.set("external.setting", "preserve me");
         Path plugins = Files.createDirectory(directory.resolve("plugins with spaces"));
         Files.copy(
                 Path.of(System.getProperty("voxelbrew.test.plugin")),
@@ -73,7 +81,13 @@ class WorkbenchUiTest {
                     stage = new Stage();
                     if (System.getProperty("os.name").startsWith("Windows"))
                         stage.setAlwaysOnTop(true);
-                    workbench = Workbench.create(stage, plugins, updates::service);
+                    workbench =
+                            Workbench.create(
+                                    stage,
+                                    plugins,
+                                    new dev.voxelbrew.util.di.ApplicationModule(
+                                            configuration, updates::service),
+                                    new dev.voxelbrew.exporter.di.FileIoModule());
                     var screen = Screen.getPrimary().getVisualBounds();
                     // Match the hosted Windows runner so clipped inspector fields require
                     // scrolling.
@@ -129,6 +143,131 @@ class WorkbenchUiTest {
         var task = new FutureTask<>(action);
         Platform.runLater(task);
         return task.get(20, TimeUnit.SECONDS);
+    }
+
+    @Test
+    void polishWorkbenchDialogsSketchPrintingAndLanguagePreferenceUseRealControls()
+            throws Exception {
+        ready();
+        assertEquals("Zapisz", fx(() -> ((Button) node("#save")).getText()));
+        assertEquals("Widok: Góra", fx(() -> node("#view-cube-top").getAccessibleText()));
+        choice("appearance", 1);
+        click("constrained-sketch");
+        sketchReady();
+        assertEquals("Prostokąt", fx(() -> ((Button) node("#sketch-tool-rectangle")).getText()));
+        assertEquals("Zakończ szkic", fx(() -> ((Button) node("#constraint-finish")).getText()));
+        assertTrue(
+                fx(
+                        () ->
+                                ((Button) node("#constraint-horizontal"))
+                                        .getTooltip()
+                                        .getText()
+                                        .contains("Wybierz linię")));
+        choice("sketch-create-type", SketchTools.Tool.ELLIPSE.ordinal());
+        assertEquals(
+                "Elipsa",
+                fx(
+                        () -> {
+                            @SuppressWarnings("unchecked")
+                            var combo = (ComboBox<SketchTools.Tool>) node("#sketch-create-type");
+                            return combo.getConverter().toString(combo.getValue());
+                        }));
+        click("constraint-cancel");
+        click("parameters");
+        assertEquals("Zastosuj", fx(() -> ((Button) node("#parameters-apply")).getText()));
+        click("parameters-cancel");
+        rectangle(0);
+        click("extrude");
+        text("extrude-distance", "=1+2/3");
+        assertTrue(
+                fx(
+                        () ->
+                                ((TextField) node("#extrude-distance"))
+                                        .getPromptText()
+                                        .startsWith("Liczba")));
+        assertTrue(
+                fx(
+                        () ->
+                                ((TextField) node("#extrude-distance"))
+                                        .getTooltip()
+                                        .getText()
+                                        .startsWith("ƒx  Wynik:")));
+        click("commit-extrusion");
+        ready();
+        var part = document();
+        Path file = directory.resolve("polish-model.jcad");
+        save(file);
+        click("open");
+        text("file-path", file.toString());
+        click("file-confirm");
+        ready();
+        assertEquals(part, document());
+        click("export");
+        assertEquals("Eksportuj", fx(() -> ((Button) node("#export-confirm")).getText()));
+        assertEquals(
+                "PROJEKT",
+                fx(
+                        () -> {
+                            @SuppressWarnings("unchecked")
+                            var combo =
+                                    (ComboBox<dev.voxelbrew.engine.export.ExportSelection.Space>)
+                                            node("#export-space");
+                            return combo.getConverter().toString(combo.getValue());
+                        }));
+        key(KeyCode.ESCAPE);
+        click("workspace-print");
+        click("print-tab-process");
+        assertEquals(
+                "Podpory automatyczne",
+                fx(() -> ((CheckBox) node("#print-auto-supports")).getText()));
+        click("workspace-design");
+        for (int palette : new int[] {1, 2}) {
+            choice("appearance", palette);
+            fx(
+                    () -> {
+                        Screenshot.save(
+                                stage.getScene(),
+                                Path.of(
+                                        System.getProperty("voxelbrew.ui.artifacts"),
+                                        "polish-" + (palette == 1 ? "light" : "dark") + ".png"));
+                        return null;
+                    });
+        }
+        click("language");
+        choice("language-choice", 1);
+        click("language-save");
+        long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
+        while (!fx(() -> ((Label) node("#language-status")).getText().startsWith("Zapisano"))) {
+            assertTrue(System.nanoTime() < deadline, "Language preference saved");
+            Thread.sleep(30);
+        }
+        assertEquals("en", configuration.get("language", ""));
+        assertEquals("preserve me", configuration.get("external.setting", ""));
+        click("language-close");
+        assertEquals(part, document());
+        assertFalse(fx(() -> workbench.controller().dirty()));
+        assertEquals("Zapisz", fx(() -> ((Button) node("#save")).getText()));
+        // A new window reads the saved preference; the existing one retains its own catalog.
+        fx(
+                () -> {
+                    var reopenedStage = new Stage();
+                    var reopened =
+                            Workbench.create(
+                                    reopenedStage,
+                                    directory.resolve("plugins with spaces"),
+                                    new dev.voxelbrew.util.di.ApplicationModule(
+                                            configuration, updates::service),
+                                    new dev.voxelbrew.exporter.di.FileIoModule());
+                    try {
+                        reopenedStage.setScene(new Scene(reopened, 964, 648));
+                        reopenedStage.show();
+                        assertEquals("Save", ((Button) reopened.lookup("#save")).getText());
+                    } finally {
+                        reopened.close();
+                        reopenedStage.hide();
+                    }
+                    return null;
+                });
     }
 
     @Test
@@ -574,6 +713,7 @@ class WorkbenchUiTest {
 
     private void rectangle(double offset) throws Exception {
         click("rectangle");
+        assertNotNull(fx(() -> workbench.lookup("#sketch-width")), "Rectangle tool opened");
         modelClick(0, 0, 0);
         modelClick(60, 40, 0);
         assertEquals(

@@ -18,13 +18,38 @@ public final class Translations {
     private final ResourceBundle messages;
 
     public Translations(Locale locale) {
-        this.locale = Objects.requireNonNull(locale);
-        messages =
+        Objects.requireNonNull(locale);
+        this.locale =
+                locale.getLanguage().equals("pl") ? Locale.forLanguageTag("pl") : Locale.ENGLISH;
+        var control =
+                ResourceBundle.Control.getNoFallbackControl(
+                        ResourceBundle.Control.FORMAT_PROPERTIES);
+        var english =
                 ResourceBundle.getBundle(
-                        "dev.voxelbrew.util.i18n.messages",
-                        locale,
-                        ResourceBundle.Control.getNoFallbackControl(
-                                ResourceBundle.Control.FORMAT_PROPERTIES));
+                        "dev.voxelbrew.util.i18n.messages", Locale.ENGLISH, control);
+        var selected =
+                ResourceBundle.getBundle("dev.voxelbrew.util.i18n.messages", this.locale, control);
+        messages =
+                new ResourceBundle() {
+                    @Override
+                    public Locale getLocale() {
+                        return Translations.this.locale;
+                    }
+
+                    @Override
+                    protected Object handleGetObject(String key) {
+                        return selected.containsKey(key)
+                                ? selected.getObject(key)
+                                : english.getObject(key);
+                    }
+
+                    @Override
+                    public Enumeration<String> getKeys() {
+                        var keys = new HashSet<>(english.keySet());
+                        keys.addAll(selected.keySet());
+                        return Collections.enumeration(keys);
+                    }
+                };
     }
 
     public ResourceBundle bundle() {
@@ -36,6 +61,11 @@ public final class Translations {
         return arguments.length == 0
                 ? pattern
                 : new MessageFormat(pattern, locale).format(arguments);
+    }
+
+    /** Provider descriptions without a bundled translation retain their original text. */
+    public String textOrDefault(String key, String fallback) {
+        return messages.containsKey(key) ? text(key) : fallback;
     }
 
     public static Translations configured(UserConfiguration configuration) {

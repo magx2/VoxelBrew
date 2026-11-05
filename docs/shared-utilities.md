@@ -44,8 +44,15 @@ file. Tests use temporary/isolated locations. Explicit `--plugin-dir` still wins
 
 ## Translations
 
-UTF-8 catalogs are in `util/src/main/resources/dev/voxelbrew/util/i18n/`.
-`Translations.current()` reads `language` once at process startup: `en` (default),
+UTF-8 catalogs `messages_en.properties` and `messages_pl.properties` are in
+`util/src/main/resources/dev/voxelbrew/util/i18n/`. The GUI's **Language… / Język…**
+dialog selects System, English or Polski and saves through `UserConfiguration`.
+Restart the application to apply the choice; an open window keeps its language
+and unsaved edits. This preference never enters a `.jcad` file.
+
+Dagger supplies an immutable `Translations` instance to each window.
+`Translations.current()` is also available to process-level callers. Both read
+`language` when created: `en` (default),
 `pl`, a BCP 47 language tag, or `system` for the desktop locale. Restart after
 changing it. Unsupported languages fall back to English, independently of the
 host locale; missing keys raise a diagnostic rather than silently displaying a key.
@@ -54,11 +61,21 @@ works consistently with the development JDK.
 Create `new Translations(locale)` for an explicit locale and use `text(key, args)`
 for locale-aware `MessageFormat` substitution.
 
-The initial English/Polish catalogs cover common workbench actions, appearance
-choices, the updater controls and the CLI summary. CAD-specific dialogs, provider
-messages and command data remain English; this is not a claim of complete UI
-translation. Stable CLI command names, numeric output and document values do not
-depend on the display language.
+The English/Polish catalogs cover the workbench, view cube, property captions,
+sketch tools and constraint hints, parameter/configuration editor, file/export
+dialogs, printing controls, updater controls, and formula help. Standard dialog
+buttons follow the selected application language. Native OS file pickers follow
+the OS language. Provider descriptions and raw kernel, parser, slicer and update
+service diagnostics retain their original text. Stable CLI command names,
+numeric input/output (decimal point), formulas, parameter names, document values
+and plugin identifiers do not depend on the display language.
+
+Use `text(key, args)` with complete messages instead of concatenating translated
+fragments. Add matching keys and argument placeholders to both catalogs. GUI
+choice converters translate enum captions without changing underlying values.
+Catalog and enum coverage tests run headlessly; a Polish Robot workflow checks
+editing, dialogs, both palettes, save/reopen and preference persistence alongside
+the existing English workflow on Windows and Ubuntu.
 
 ## Logging and concurrency
 

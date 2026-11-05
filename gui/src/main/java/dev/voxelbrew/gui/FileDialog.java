@@ -14,19 +14,27 @@ final class FileDialog {
     private FileDialog() {}
 
     static Optional<Path> choose(
-            Window owner, boolean save, Path current, ParameterSet parameters) {
+            Window owner,
+            boolean save,
+            Path current,
+            ParameterSet parameters,
+            dev.voxelbrew.util.i18n.Translations translations) {
         var dialog = new Dialog<Path>();
-        dialog.setTitle(save ? "Save editable design" : "Open editable design");
+        dialog.setTitle(
+                save
+                        ? translations.text("gui.save_editable_design")
+                        : translations.text("gui.open_editable_design"));
         var path =
                 FormulaField.text(
-                        current == null
-                                ? Path.of(System.getProperty("user.home"), "Untitled.jcad")
-                                        .toString()
-                                : current.toString(),
-                        () -> parameters);
+                                current == null
+                                        ? Path.of(System.getProperty("user.home"), "Untitled.jcad")
+                                                .toString()
+                                        : current.toString(),
+                                () -> parameters)
+                        .localized(translations);
         path.setId("file-path");
         path.setPrefColumnCount(48);
-        var browse = new Button("Browse…");
+        var browse = new Button(translations.text("gui.browse"));
         browse.setOnAction(
                 e -> {
                     var chooser = new FileChooser();
@@ -34,7 +42,8 @@ final class FileDialog {
                     chooser.getExtensionFilters()
                             .add(
                                     new FileChooser.ExtensionFilter(
-                                            "VoxelBrew design (*.jcad)", "*.jcad"));
+                                            translations.text("gui.voxelbrew_design_jcad"),
+                                            "*.jcad"));
                     var file = save ? chooser.showSaveDialog(owner) : chooser.showOpenDialog(owner);
                     if (file != null) path.setText(file.toString());
                 });
@@ -43,11 +52,14 @@ final class FileDialog {
         var box =
                 new VBox(
                         10,
-                        new Label("Editable design location"),
+                        new Label(translations.text("gui.editable_design_location")),
                         new HBox(8, path, browse),
                         error);
         dialog.getDialogPane().setContent(box);
-        var confirm = new ButtonType(save ? "Save" : "Open", ButtonBar.ButtonData.OK_DONE);
+        var confirm =
+                new ButtonType(
+                        save ? translations.text("action.save") : translations.text("gui.open"),
+                        ButtonBar.ButtonData.OK_DONE);
         dialog.getDialogPane().getButtonTypes().addAll(confirm, ButtonType.CANCEL);
         var button = dialog.getDialogPane().lookupButton(confirm);
         button.setId("file-confirm");
@@ -56,7 +68,8 @@ final class FileDialog {
                 e -> {
                     try {
                         if (path.evaluatedText().isBlank())
-                            throw new IllegalArgumentException("Choose a file path");
+                            throw new IllegalArgumentException(
+                                    translations.text("gui.choose_a_file_path"));
                         Path.of(path.evaluatedText());
                     } catch (IllegalArgumentException failure) {
                         error.setText(failure.getMessage());
@@ -65,6 +78,6 @@ final class FileDialog {
                 });
         dialog.setResultConverter(
                 b -> b == confirm ? Path.of(path.evaluatedText()).toAbsolutePath() : null);
-        return Dialogs.show(dialog, owner);
+        return Dialogs.show(dialog, owner, translations);
     }
 }

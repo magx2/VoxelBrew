@@ -15,6 +15,8 @@ final class FormulaField extends TextField {
     private final Supplier<ParameterSet> parameters;
     private final Supplier<ParameterUnit> unit;
     private final Tooltip preview = new Tooltip();
+    private dev.voxelbrew.util.i18n.Translations translations =
+            new dev.voxelbrew.util.i18n.Translations(java.util.Locale.ENGLISH);
 
     private FormulaField(
             String text, Supplier<ParameterSet> parameters, Supplier<ParameterUnit> unit) {
@@ -23,8 +25,7 @@ final class FormulaField extends TextField {
         this.unit = unit;
         getStyleClass().add("formula-field");
         setTooltip(preview);
-        setPromptText(unit == null ? "Text or =\"Width: \" + $width" : "Number or =$width / 2");
-        setAccessibleHelp("Formula-enabled field. Start with equals; use $name for a parameter.");
+        localizeHelp();
         textProperty().addListener((o, a, b) -> refreshFormula());
         focusedProperty().addListener((o, a, b) -> refreshFormula());
         sceneProperty()
@@ -46,6 +47,19 @@ final class FormulaField extends TextField {
 
     static FormulaField text(String text, Supplier<ParameterSet> parameters) {
         return new FormulaField(text, parameters, null);
+    }
+
+    FormulaField localized(dev.voxelbrew.util.i18n.Translations translations) {
+        this.translations = Objects.requireNonNull(translations);
+        localizeHelp();
+        refreshFormula();
+        return this;
+    }
+
+    private void localizeHelp() {
+        setPromptText(
+                translations.text(unit == null ? "formula.textPrompt" : "formula.numberPrompt"));
+        setAccessibleHelp(translations.text("formula.help"));
     }
 
     static ParameterUnit unit(String label) {
@@ -71,7 +85,8 @@ final class FormulaField extends TextField {
     int integer() {
         double result = value();
         if (result != Math.rint(result) || result < Integer.MIN_VALUE || result > Integer.MAX_VALUE)
-            throw new IllegalArgumentException("Expected a whole number in the supported range");
+            throw new IllegalArgumentException(
+                    translations.text("gui.expected_a_whole_number_in_the_supported_range"));
         return (int) result;
     }
 
@@ -98,8 +113,8 @@ final class FormulaField extends TextField {
             preview.setText(
                     "ƒx  "
                             + (formula
-                                    ? "Result: " + result + suffix
-                                    : "Supports = formulas and $parameters"));
+                                    ? translations.text("formula.result", result, suffix)
+                                    : translations.text("gui.supports_formulas_and_parameters")));
             pseudoClassStateChanged(INVALID, false);
         } catch (RuntimeException failure) {
             preview.setText("ƒx  " + failure.getMessage());

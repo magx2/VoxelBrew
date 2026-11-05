@@ -32,6 +32,7 @@ final class ViewCube extends Pane {
     private final Group surface = new Group(), axes = new Group(), labels = new Group();
     private final List<Patch> patches = new ArrayList<>();
     private final Consumer<ViewOrientation> navigate;
+    private final dev.voxelbrew.util.i18n.Translations translations;
     private ViewOrientation orientation = ViewOrientation.HOME;
     private boolean dark;
     private double lastX, lastY;
@@ -50,8 +51,10 @@ final class ViewCube extends Pane {
             Consumer<ViewOrientation> navigate,
             BiConsumer<Double, Double> orbit,
             Runnable home,
-            Runnable fit) {
+            Runnable fit,
+            dev.voxelbrew.util.i18n.Translations translations) {
         this.navigate = navigate;
+        this.translations = translations;
         setId("view-cube");
         setMinSize(SIZE, SIZE);
         setPrefSize(SIZE, SIZE);
@@ -87,22 +90,22 @@ final class ViewCube extends Pane {
         var homeButton = new Button("", homeIcon);
         homeButton.setId("view-cube-home");
         homeButton.getStyleClass().add("view-cube-control");
-        homeButton.setAccessibleText("Home view and fit model");
-        homeButton.setTooltip(new Tooltip("Home view · fit model"));
+        homeButton.setAccessibleText(translations.text("gui.home_view_and_fit_model"));
+        homeButton.setTooltip(new Tooltip(translations.text("gui.home_view_fit_model")));
         homeButton.setOnAction(e -> home.run());
         homeButton.relocate(14, 4);
         var menu = new MenuButton();
         menu.setId("view-cube-menu");
         menu.getStyleClass().add("view-cube-control");
-        menu.setAccessibleText("Standard views");
-        menu.setTooltip(new Tooltip("Standard views"));
+        menu.setAccessibleText(translations.text("gui.standard_views"));
+        menu.setTooltip(new Tooltip(translations.text("gui.standard_views")));
         for (String name :
                 new String[] {"Isometric", "Top", "Front", "Right", "Back", "Left", "Bottom"}) {
-            var item = new MenuItem(name);
+            var item = new MenuItem(UiText.view(translations, name));
             item.setOnAction(e -> navigate.accept(ViewOrientation.named(name)));
             menu.getItems().add(item);
         }
-        var fitItem = new MenuItem("Fit model");
+        var fitItem = new MenuItem(translations.text("gui.fit_model"));
         fitItem.setOnAction(e -> fit.run());
         menu.getItems().add(fitItem);
         menu.relocate(142, 143);
@@ -159,9 +162,16 @@ final class ViewCube extends Pane {
         polygon.setCursor(Cursor.HAND);
         polygon.setFocusTraversable(true);
         polygon.setAccessibleRole(AccessibleRole.BUTTON);
-        polygon.setAccessibleText(name + " view");
-        Tooltip.install(polygon, new Tooltip(name + " view · drag to orbit"));
-        Text label = fixed.size() == 1 ? new Text(name.toUpperCase(Locale.ROOT)) : null;
+        polygon.setAccessibleText(
+                translations.text("view.accessible", UiText.view(translations, name)));
+        Tooltip.install(
+                polygon,
+                new Tooltip(translations.text("view.orbit", UiText.view(translations, name))));
+        Text label =
+                fixed.size() == 1
+                        ? new Text(
+                                UiText.view(translations, name).toUpperCase(translations.locale()))
+                        : null;
         if (label != null) {
             label.setFont(Font.font("SansSerif", FontWeight.BOLD, 11));
             labels.getChildren().add(label);

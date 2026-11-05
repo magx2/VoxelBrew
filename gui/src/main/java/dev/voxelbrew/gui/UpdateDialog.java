@@ -107,7 +107,7 @@ final class UpdateDialog {
     static boolean show(Window owner, Factory factory, Consumer<Runnable> beforeInstall) {
         var updates = factory.create(beforeInstall);
         try {
-            Dialogs.show(updates.dialog, owner);
+            Dialogs.show(updates.dialog, owner, updates.translations);
             return updates.scheduled;
         } finally {
             updates.closed = true;
@@ -198,7 +198,8 @@ final class UpdateDialog {
                                     }
                                     prepared = ready;
                                     status.setText(
-                                            "Verified and ready. Install and quit will close this application and retain the previous installation as a backup. Close other instances too.");
+                                            translations.text(
+                                                    "gui.verified_and_ready_install_and_quit_will_close_this_application_and_retain_the_previous_install"));
                                     busy(false);
                                 });
                     } catch (Exception failure) {
@@ -236,8 +237,8 @@ final class UpdateDialog {
                     if (closed) return;
                     status.setText(
                             failure instanceof CancellationException
-                                    ? "Update cancelled"
-                                    : "Update failed: " + failure.getMessage());
+                                    ? translations.text("gui.update_cancelled")
+                                    : translations.text("update.failed", failure.getMessage()));
                     cancel.setDisable(false);
                     busy(false);
                 });

@@ -38,10 +38,12 @@
   -fx-font-weight: bold;
   -fx-opacity: 0.72;
 }
-.tool-bar {
+.command-strip {
   -fx-padding: 8 12;
-  -fx-spacing: 5;
   -fx-background-color: -fx-base;
+}
+.command-strip .separator {
+  -fx-pref-height: 24;
 }
 .button {
   -fx-background-radius: 5;

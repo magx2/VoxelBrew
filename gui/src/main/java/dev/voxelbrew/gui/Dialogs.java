@@ -22,7 +22,8 @@ final class Dialogs {
     private Dialogs() {}
 
     @SuppressWarnings("unchecked") // Dialog's default result type is ButtonType, matching Alert.
-    static <T> Optional<T> show(Dialog<T> dialog, Window owner) {
+    static <T> Optional<T> show(
+            Dialog<T> dialog, Window owner, dev.voxelbrew.util.i18n.Translations translations) {
         var scene = owner.getScene();
         var content = scene.getRoot();
         var previousFocus = scene.getFocusOwner();
@@ -31,8 +32,24 @@ final class Dialogs {
         var pane = dialog.getDialogPane();
         var converter = dialog.getResultConverter();
         var buttons = new LinkedHashMap<ButtonType, ButtonBase>();
-        for (var type : pane.getButtonTypes())
+        for (var type : pane.getButtonTypes()) {
             buttons.put(type, (ButtonBase) pane.lookupButton(type));
+            String key =
+                    type == ButtonType.OK
+                            ? "dialog.ok"
+                            : type == ButtonType.CANCEL
+                                    ? "action.cancel"
+                                    : type == ButtonType.APPLY
+                                            ? "dialog.apply"
+                                            : type == ButtonType.CLOSE
+                                                    ? "dialog.close"
+                                                    : type == ButtonType.YES
+                                                            ? "dialog.yes"
+                                                            : type == ButtonType.NO
+                                                                    ? "dialog.no"
+                                                                    : null;
+            if (key != null) buttons.get(type).setText(translations.text(key));
+        }
         Node body = pane.getContent();
         pane.setContent(null);
         pane.getButtonTypes().clear();

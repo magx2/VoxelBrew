@@ -18,11 +18,15 @@ import javafx.util.StringConverter;
 final class ExportDialog {
     private ExportDialog() {}
 
-    static void show(Window owner, DocumentController controller, ExporterRegistry registry) {
+    static void show(
+            Window owner,
+            DocumentController controller,
+            ExporterRegistry registry,
+            dev.voxelbrew.util.i18n.Translations translations) {
         java.util.function.Supplier<ParameterSet> parameters =
                 () -> controller.snapshot().document().parameters();
         var dialog = new Dialog<Void>();
-        dialog.setTitle("Export model");
+        dialog.setTitle(translations.text("gui.export_model"));
         dialog.setResizable(true);
         var format = new ComboBox<ExporterDescriptor>();
         format.setId("export-format");
@@ -39,19 +43,31 @@ final class ExportDialog {
                 });
         var body = new ComboBox<String>();
         body.setId("export-body");
+        UiText.choices(
+                body,
+                value ->
+                        value.equals("All bodies") ? translations.text("export.allBodies") : value);
         body.getItems().add("All bodies");
         controller.build().bodies().forEach(b -> body.getItems().add(b.id()));
         body.setValue(body.getItems().size() == 2 ? body.getItems().get(1) : "All bodies");
         var space = new ComboBox<ExportSelection.Space>();
         space.setId("export-space");
+        UiText.enums(space, translations, "export.space.");
         space.getItems().setAll(ExportSelection.Space.values());
         space.setValue(ExportSelection.Space.DESIGN);
         var contents = new ComboBox<ManufacturingModel.Selection>();
         contents.setId("export-contents");
+        UiText.enums(contents, translations, "export.contents.");
         contents.getItems().setAll(ManufacturingModel.Selection.values());
         contents.setValue(ManufacturingModel.Selection.MODEL);
         var instance = new ComboBox<String>();
         instance.setId("export-instance");
+        UiText.choices(
+                instance,
+                value ->
+                        value.equals("All instances")
+                                ? translations.text("export.allInstances")
+                                : value);
         instance.getItems().add("All instances");
         controller
                 .snapshot()
@@ -73,10 +89,10 @@ final class ExportDialog {
                         contents.setValue(ManufacturingModel.Selection.MODEL);
                     }
                 });
-        var path = FormulaField.text("", parameters);
+        var path = FormulaField.text("", parameters).localized(translations);
         path.setId("export-path");
         path.setPrefColumnCount(40);
-        var browse = new Button("Browse…");
+        var browse = new Button(translations.text("gui.browse"));
         browse.setOnAction(
                 e -> {
                     var chooser = new FileChooser();
@@ -89,11 +105,12 @@ final class ExportDialog {
                     var selected = chooser.showSaveDialog(owner);
                     if (selected != null) path.setText(selected.toString());
                 });
-        var chord = FormulaField.number("0.02", parameters, ParameterUnit.MM);
+        var chord =
+                FormulaField.number("0.02", parameters, ParameterUnit.MM).localized(translations);
         chord.setId("export-chord");
-        var angle = FormulaField.number("5", parameters, ParameterUnit.DEG);
+        var angle = FormulaField.number("5", parameters, ParameterUnit.DEG).localized(translations);
         angle.setId("export-angle");
-        var overwrite = new CheckBox("Replace existing file");
+        var overwrite = new CheckBox(translations.text("gui.replace_existing_file"));
         overwrite.setId("export-overwrite");
         var options = new VBox(8);
         Map<String, Node> editors = new LinkedHashMap<>();
@@ -129,6 +146,8 @@ final class ExportDialog {
                                                             option.defaultValue(),
                                                             parameters,
                                                             ParameterUnit.NUMBER);
+                                if (editor instanceof FormulaField field)
+                                    field.localized(translations);
                                 editor.setId("export-option-" + option.key());
                                 editors.put(option.key(), editor);
                                 options.getChildren().addAll(new Label(option.label()), editor);
@@ -142,21 +161,21 @@ final class ExportDialog {
         var content =
                 new VBox(
                         8,
-                        new Label("Format"),
+                        new Label(translations.text("gui.format")),
                         format,
-                        new Label("Body"),
+                        new Label(translations.text("gui.body")),
                         body,
-                        new Label("Coordinate space (millimeters)"),
+                        new Label(translations.text("gui.coordinate_space_millimeters")),
                         space,
-                        new Label("Build instance"),
+                        new Label(translations.text("gui.build_instance")),
                         instance,
-                        new Label("Contents (model-only by default)"),
+                        new Label(translations.text("gui.contents_model_only_by_default")),
                         contents,
-                        new Label("Destination"),
+                        new Label(translations.text("gui.destination")),
                         new HBox(8, path, browse),
-                        new Label("Chordal tolerance (mm)"),
+                        new Label(translations.text("gui.chordal_tolerance_mm")),
                         chord,
-                        new Label("Angular tolerance (degrees)"),
+                        new Label(translations.text("gui.angular_tolerance_degrees")),
                         angle,
                         options,
                         overwrite,
@@ -166,7 +185,7 @@ final class ExportDialog {
         scroll.setPrefViewportWidth(500);
         scroll.setPrefViewportHeight(Math.min(550, owner.getHeight() - 180));
         dialog.getDialogPane().setContent(scroll);
-        var export = new ButtonType("Export", ButtonBar.ButtonData.OK_DONE);
+        var export = new ButtonType(translations.text("gui.export"), ButtonBar.ButtonData.OK_DONE);
         dialog.getDialogPane().getButtonTypes().addAll(export, ButtonType.CANCEL);
         var button = dialog.getDialogPane().lookupButton(export);
         button.setId("export-confirm");
@@ -175,7 +194,9 @@ final class ExportDialog {
                 e -> {
                     try {
                         var descriptor =
-                                Objects.requireNonNull(format.getValue(), "Choose an exporter");
+                                Objects.requireNonNull(
+                                        format.getValue(),
+                                        translations.text("gui.choose_an_exporter"));
                         var values = new LinkedHashMap<String, String>();
                         for (var option : descriptor.options()) {
                             Node editor = editors.get(option.key());
@@ -190,12 +211,14 @@ final class ExportDialog {
                             values.put(option.key(), value);
                         }
                         if (path.evaluatedText().isBlank())
-                            throw new IllegalArgumentException("Choose a destination");
+                            throw new IllegalArgumentException(
+                                    translations.text("gui.choose_a_destination"));
                         if (space.getValue() == ExportSelection.Space.DESIGN
                                 && !descriptor.multipleInstances()
                                 && body.getValue().equals("All bodies")
                                 && controller.build().bodies().size() > 1)
-                            throw new IllegalArgumentException("Choose one body for this exporter");
+                            throw new IllegalArgumentException(
+                                    translations.text("gui.choose_one_body_for_this_exporter"));
                         controller
                                 .export(
                                         registry,
@@ -225,6 +248,6 @@ final class ExportDialog {
                         e.consume();
                     }
                 });
-        Dialogs.show(dialog, owner);
+        Dialogs.show(dialog, owner, translations);
     }
 }

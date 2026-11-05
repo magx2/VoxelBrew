@@ -323,13 +323,17 @@ public final class SketchConstraints {
                     if (entity.kind() == Kind.ELLIPSE || entity.kind() == Kind.TEXT) {
                         double delta =
                                 entity.value(entity.kind() == Kind.ELLIPSE ? 4 : 3)
-                                        - Math.toRadians(values.getFirst());
+                                        - dev.voxelbrew.engine.units.Measurements.radians(
+                                                values.getFirst());
                         return new double[] {10 * Math.atan2(Math.sin(delta), Math.cos(delta))};
                     }
                 }
                 var a = n == 1 ? new Vec(1, 0) : direction(line(g, refs.get(0)));
                 var b = direction(line(g, refs.getLast()));
-                double delta = Math.atan2(a.cross(b), a.dot(b)) - Math.toRadians(values.getFirst());
+                double delta =
+                        Math.atan2(a.cross(b), a.dot(b))
+                                - dev.voxelbrew.engine.units.Measurements.radians(
+                                        values.getFirst());
                 return new double[] {10 * Math.atan2(Math.sin(delta), Math.cos(delta))};
             }
             case MAJOR_RADIUS, MINOR_RADIUS, RHO, TEXT_HEIGHT, TEXT_SPACING -> {

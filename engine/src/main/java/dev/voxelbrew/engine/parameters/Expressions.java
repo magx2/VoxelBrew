@@ -1,8 +1,12 @@
 package dev.voxelbrew.engine.parameters;
 
+import static dev.voxelbrew.engine.units.Measurements.*;
+
 import java.util.*;
 import java.util.function.Function;
 import java.util.regex.Pattern;
+import javax.measure.Quantity;
+import javax.measure.Unit;
 
 /** Bounded arithmetic parser. No scripting engine, reflection or external evaluation. */
 public final class Expressions {
@@ -15,48 +19,36 @@ public final class Expressions {
     private static final Pattern TOKEN =
             Pattern.compile("(?<![A-Za-z_0-9.])[A-Za-z_][A-Za-z_0-9]*");
 
-    public record Quantity(double value, int length, int angle) {
-        public Quantity {
-            if (!Double.isFinite(value) || Math.abs(length) > 8 || Math.abs(angle) > 8)
-                throw new IllegalArgumentException(
-                        "Expression is nonfinite or has unsupported dimensions");
-        }
+    private static boolean scalar(Quantity<?> q) {
+        return sameKind(q.getUnit(), ONE);
+    }
 
-        boolean scalar() {
-            return length == 0 && angle == 0;
-        }
+    private static double number(Quantity<?> q) {
+        return q.getValue().doubleValue();
+    }
 
-        boolean same(Quantity b) {
-            return length == b.length && angle == b.angle;
-        }
+    private static Quantity<?> implicit(
+            Quantity<?> q, Quantity<?> dimensional, ParameterUnit unit) {
+        Unit<?> target =
+                sameKind(unit.unit(), dimensional.getUnit())
+                        ? unit.unit()
+                        : canonical(dimensional.getUnit());
+        return normalized(quantity(value(q, ONE), target));
+    }
 
-        Quantity times(Quantity b, boolean divide) {
-            if (divide && b.value == 0) throw new IllegalArgumentException("Division by zero");
-            return new Quantity(
-                    divide ? value / b.value : value * b.value,
-                    length + (divide ? -b.length : b.length),
-                    angle + (divide ? -b.angle : b.angle));
-        }
+    private static <Q extends Quantity<Q>> Quantity<Q> sum(Quantity<Q> a, Quantity<?> b) {
+        return a.add(to(b, a.getUnit()));
+    }
 
-        Quantity negated() {
-            return new Quantity(-value, length, angle);
-        }
+    private static Quantity<?> add(Quantity<?> a, Quantity<?> b, ParameterUnit unit) {
+        if (scalar(a) && !scalar(b)) a = implicit(a, b, unit);
+        if (scalar(b) && !scalar(a)) b = implicit(b, a, unit);
+        return normalized(sum(a, b));
+    }
 
-        Quantity implicit(Quantity dimensional, ParameterUnit unit) {
-            double scale =
-                    unit.length() == dimensional.length && unit.angle() == dimensional.angle
-                            ? unit.scale()
-                            : 1;
-            return new Quantity(value * scale, dimensional.length, dimensional.angle);
-        }
-
-        Quantity add(Quantity b, ParameterUnit unit) {
-            Quantity a = this;
-            if (a.scalar() && !b.scalar()) a = a.implicit(b, unit);
-            if (b.scalar() && !a.scalar()) b = b.implicit(a, unit);
-            if (!a.same(b)) throw new IllegalArgumentException("Cannot add incompatible units");
-            return new Quantity(a.value + b.value, a.length, a.angle);
-        }
+    private static Quantity<?> times(Quantity<?> a, Quantity<?> b, boolean divide) {
+        if (divide && number(b) == 0) throw new IllegalArgumentException("Division by zero");
+        return normalized(divide ? a.divide(b) : a.multiply(b));
     }
 
     public static boolean reserved(String name) {
@@ -73,28 +65,24 @@ public final class Expressions {
                 .replaceAll(m -> m.group().equals(oldName) ? newName : m.group());
     }
 
-    public static Quantity evaluate(
-            String expression, ParameterUnit unit, Function<String, Quantity> names) {
+    public static Quantity<?> evaluate(
+            String expression, ParameterUnit unit, Function<String, Quantity<?>> names) {
         var value = new Parser(expression, names, unit).parse();
-        if (value.scalar())
-            return new Quantity(value.value * unit.scale(), unit.length(), unit.angle());
-        if (value.length != unit.length() || value.angle != unit.angle())
-            throw new IllegalArgumentException(
-                    "Expression has incompatible units; expected " + unit);
-        return value;
+        if (scalar(value)) value = unit.quantity(value(value, ONE));
+        return to(value, unit.canonicalUnit());
     }
 
-    public static Quantity evaluateRaw(String expression, Function<String, Quantity> names) {
+    public static Quantity<?> evaluateRaw(String expression, Function<String, Quantity<?>> names) {
         return new Parser(expression, names, ParameterUnit.MM).parse();
     }
 
     private static final class Parser {
         final String input;
-        final Function<String, Quantity> names;
+        final Function<String, Quantity<?>> names;
         final ParameterUnit unit;
         int index, tokens, depth;
 
-        Parser(String input, Function<String, Quantity> names, ParameterUnit unit) {
+        Parser(String input, Function<String, Quantity<?>> names, ParameterUnit unit) {
             if (input == null || input.isBlank() || input.length() > 512)
                 throw new IllegalArgumentException("Expression must contain 1–512 characters");
             this.input = input;
@@ -102,7 +90,7 @@ public final class Expressions {
             this.unit = unit;
         }
 
-        Quantity parse() {
+        Quantity<?> parse() {
             var result = sum();
             skip();
             if (index != input.length()) throw error("Unexpected input");
@@ -126,51 +114,49 @@ public final class Expressions {
             return new IllegalArgumentException(message + " at character " + (index + 1));
         }
 
-        Quantity sum() {
+        Quantity<?> sum() {
             var q = product();
             while (true) {
-                if (take('+')) q = q.add(product(), unit);
-                else if (take('-')) q = q.add(product().negated(), unit);
+                if (take('+')) q = add(q, product(), unit);
+                else if (take('-')) q = add(q, product().negate(), unit);
                 else return q;
             }
         }
 
-        Quantity product() {
+        Quantity<?> product() {
             var q = unary();
             while (true) {
-                if (take('*')) q = q.times(unary(), false);
-                else if (take('/')) q = q.times(unary(), true);
+                if (take('*')) q = times(q, unary(), false);
+                else if (take('/')) q = times(q, unary(), true);
                 else {
                     skip();
                     int begin = index;
                     String word = word();
-                    boolean unit =
+                    var suffix =
                             Arrays.stream(ParameterUnit.values())
-                                    .anyMatch(u -> u.toString().equals(word));
+                                    .filter(u -> u.toString().equals(word))
+                                    .findFirst();
                     index = begin;
-                    if (unit) q = q.times(unary(), false);
+                    if (suffix.isPresent()) q = times(q, unary(), false);
                     else return q;
                 }
             }
         }
 
-        Quantity unary() {
+        Quantity<?> unary() {
             if (++depth > 32) throw error("Expression is too deeply nested");
             try {
                 if (take('+')) return unary();
-                if (take('-')) return unary().negated();
+                if (take('-')) return unary().negate();
                 var q = atom();
                 if (take('^')) {
                     var exponent = unary();
-                    if (!exponent.scalar()) throw error("Exponent must be unitless");
-                    double p = exponent.value;
-                    if (!q.scalar() && (p != Math.rint(p) || Math.abs(p) > 8))
+                    if (!scalar(exponent)) throw error("Exponent must be unitless");
+                    double p = value(exponent, ONE);
+                    if (!scalar(q) && (p != Math.rint(p) || Math.abs(p) > 8))
                         throw error("Dimensional powers must be integers between -8 and 8");
-                    q =
-                            new Quantity(
-                                    Math.pow(q.value, p),
-                                    (int) (q.length * p),
-                                    (int) (q.angle * p));
+                    Unit<?> target = scalar(q) ? ONE : q.getUnit().pow((int) p);
+                    q = normalized(quantity(Math.pow(number(q), p), target));
                 }
                 return q;
             } finally {
@@ -191,7 +177,7 @@ public final class Expressions {
             return input.substring(start, index);
         }
 
-        Quantity atom() {
+        Quantity<?> atom() {
             if (++tokens > 256) throw error("Expression is too complex");
             if (take('(')) {
                 var q = sum();
@@ -215,7 +201,7 @@ public final class Expressions {
                         index++;
                 }
                 try {
-                    return new Quantity(Double.parseDouble(input.substring(begin, index)), 0, 0);
+                    return quantity(Double.parseDouble(input.substring(begin, index)), ONE);
                 } catch (NumberFormatException failure) {
                     throw error("Invalid number");
                 }
@@ -225,23 +211,22 @@ public final class Expressions {
             if (name.equals("NaN") || name.equals("Infinity"))
                 throw error("Expression must be finite");
             if (take('(')) {
-                var arguments = new ArrayList<Quantity>();
+                var arguments = new ArrayList<Quantity<?>>();
                 arguments.add(sum());
                 while (take(',')) arguments.add(sum());
                 if (!take(')')) throw error("Expected closing parenthesis");
                 return function(name, arguments);
             }
-            if (name.equals("pi")) return new Quantity(Math.PI, 0, 0);
-            if (name.equals("e")) return new Quantity(Math.E, 0, 0);
+            if (name.equals("pi")) return quantity(Math.PI, ONE);
+            if (name.equals("e")) return quantity(Math.E, ONE);
             for (var u : ParameterUnit.values())
-                if (u.toString().equals(name))
-                    return new Quantity(u.scale(), u.length(), u.angle());
+                if (u.toString().equals(name)) return normalized(u.quantity(1));
             var q = names.apply(name);
             if (q == null) throw error("Unknown parameter '" + name + "'");
-            return q;
+            return normalized(q);
         }
 
-        Quantity function(String name, List<Quantity> args) {
+        Quantity<?> function(String name, List<Quantity<?>> args) {
             if (!FUNCTIONS.contains(name)) throw error("Unknown function '" + name + "'");
             if (args.size() != (name.equals("min") || name.equals("max") ? 2 : 1))
                 throw error("Wrong argument count for " + name);
@@ -249,53 +234,49 @@ public final class Expressions {
             return switch (name) {
                 case "min", "max" -> {
                     var b = args.get(1);
-                    if (q.scalar() && !b.scalar()) q = q.implicit(b, unit);
-                    if (b.scalar() && !q.scalar()) b = b.implicit(q, unit);
-                    if (!q.same(b)) throw error("Function arguments have incompatible units");
-                    yield new Quantity(
+                    if (scalar(q) && !scalar(b)) q = implicit(q, b, unit);
+                    if (scalar(b) && !scalar(q)) b = implicit(b, q, unit);
+                    double other = value(b, q.getUnit());
+                    yield quantity(
                             name.equals("min")
-                                    ? Math.min(q.value, b.value)
-                                    : Math.max(q.value, b.value),
-                            q.length,
-                            q.angle);
+                                    ? Math.min(number(q), other)
+                                    : Math.max(number(q), other),
+                            q.getUnit());
                 }
                 case "abs", "floor", "ceil", "round" ->
-                        new Quantity(
+                        quantity(
                                 switch (name) {
-                                    case "abs" -> Math.abs(q.value);
-                                    case "floor" -> Math.floor(q.value);
-                                    case "ceil" -> Math.ceil(q.value);
-                                    default -> Math.rint(q.value);
+                                    case "abs" -> Math.abs(number(q));
+                                    case "floor" -> Math.floor(number(q));
+                                    case "ceil" -> Math.ceil(number(q));
+                                    default -> Math.rint(number(q));
                                 },
-                                q.length,
-                                q.angle);
+                                q.getUnit());
                 case "sqrt" -> {
-                    if (q.length % 2 != 0 || q.angle % 2 != 0)
+                    if (powers(q.getUnit()).values().stream().anyMatch(p -> p % 2 != 0))
                         throw error("Square root requires even unit powers");
-                    yield new Quantity(Math.sqrt(q.value), q.length / 2, q.angle / 2);
+                    yield normalized(quantity(Math.sqrt(number(q)), q.getUnit().root(2)));
                 }
                 case "sin", "cos", "tan" -> {
-                    if (!(q.scalar() || q.length == 0 && q.angle == 1))
+                    if (!(scalar(q) || sameKind(q.getUnit(), RADIAN)))
                         throw error("Trigonometry needs an angle");
-                    double radians = Math.toRadians(q.value);
-                    yield new Quantity(
+                    double radians = scalar(q) ? radians(value(q, ONE)) : value(q, RADIAN);
+                    yield quantity(
                             name.equals("sin")
                                     ? Math.sin(radians)
                                     : name.equals("cos") ? Math.cos(radians) : Math.tan(radians),
-                            0,
-                            0);
+                            ONE);
                 }
                 default -> {
-                    if (!q.scalar()) throw error("Inverse trigonometry needs a unitless number");
-                    yield new Quantity(
-                            Math.toDegrees(
+                    if (!scalar(q)) throw error("Inverse trigonometry needs a unitless number");
+                    yield normalized(
+                            quantity(
                                     name.equals("asin")
-                                            ? Math.asin(q.value)
+                                            ? Math.asin(value(q, ONE))
                                             : name.equals("acos")
-                                                    ? Math.acos(q.value)
-                                                    : Math.atan(q.value)),
-                            0,
-                            1);
+                                                    ? Math.acos(value(q, ONE))
+                                                    : Math.atan(value(q, ONE)),
+                                    RADIAN));
                 }
             };
         }

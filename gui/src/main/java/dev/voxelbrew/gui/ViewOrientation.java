@@ -18,8 +18,11 @@ record ViewOrientation(double tilt, double orbit) {
         if (direction.magnitude() == 0)
             throw new IllegalArgumentException("Missing view direction");
         return new ViewOrientation(
-                Math.toDegrees(Math.asin(z / direction.magnitude())),
-                x == 0 && y == 0 ? 0 : Math.toDegrees(Math.atan2(x, -y)));
+                dev.voxelbrew.engine.units.Measurements.degrees(
+                        Math.asin(z / direction.magnitude())),
+                x == 0 && y == 0
+                        ? 0
+                        : dev.voxelbrew.engine.units.Measurements.degrees(Math.atan2(x, -y)));
     }
 
     static ViewOrientation named(String name) {
@@ -47,7 +50,8 @@ record ViewOrientation(double tilt, double orbit) {
 
     /** Same Ry then Rx transform as the main viewport, including CAD (x,y,z) to FX (x,-z,y). */
     Point3D project(Point3D cad) {
-        double yaw = Math.toRadians(orbit), pitch = Math.toRadians(tilt);
+        double yaw = dev.voxelbrew.engine.units.Measurements.radians(orbit),
+                pitch = dev.voxelbrew.engine.units.Measurements.radians(tilt);
         double x = cad.getX() * Math.cos(yaw) + cad.getY() * Math.sin(yaw);
         double z = -cad.getX() * Math.sin(yaw) + cad.getY() * Math.cos(yaw);
         return new Point3D(

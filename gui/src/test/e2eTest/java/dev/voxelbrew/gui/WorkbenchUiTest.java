@@ -563,7 +563,9 @@ class WorkbenchUiTest {
         click("constrained-sketch");
         sketchReady();
         click("sketch-parameters");
-        parameter("width", "60");
+        choice("parameter-unit", 1); // centimeters, converted to model millimeters by JSR 385
+        parameter("width", "6");
+        choice("parameter-unit", 0);
         parameter("thickness", "5");
         click("parameters-apply");
         sketchReady();
@@ -612,7 +614,7 @@ class WorkbenchUiTest {
         click("configuration-add");
         tableRow("configuration-table", 1);
         choice("configuration-parameter", 0);
-        text("configuration-expression", "80");
+        text("configuration-expression", "8");
         click("configuration-set");
         choice("configuration-parameter", 1);
         text("configuration-expression", "8");
@@ -692,6 +694,16 @@ class WorkbenchUiTest {
                                 ((Label) node("#parameters-error"))
                                         .getText()
                                         .contains("Unknown parameter")));
+        text("parameter-expression", "60");
+        choice("parameter-unit", 5); // reject an angle parameter bound to a length
+        click("parameter-save");
+        assertTrue(
+                fx(
+                        () ->
+                                ((Label) node("#parameters-error"))
+                                        .getText()
+                                        .toLowerCase(java.util.Locale.ROOT)
+                                        .contains("incompatible")));
         click("parameters-cancel");
         assertEquals(before, fx(() -> workbench.controller().snapshot()));
         click("parameters");

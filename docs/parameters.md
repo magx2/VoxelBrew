@@ -53,6 +53,10 @@ in application preferences. Save/reopen starts a fresh undo history as usual.
 
 ## Expressions and units
 
+Units, quantity arithmetic and conversions use JSR 385 (`javax.measure`) with
+Indriya. The parser implements the expression grammar below; it does not define
+its own dimensional exponents or conversion factors. See [typed unit APIs](units.md).
+
 | Kind          | Supported values                                                                                   |
 | ------------- | -------------------------------------------------------------------------------------------------- |
 | Length units  | `mm`, `cm`, `m`, `in`, `ft`                                                                        |

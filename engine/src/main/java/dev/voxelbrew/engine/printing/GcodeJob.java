@@ -53,6 +53,11 @@ public record GcodeJob(
             return Math.hypot(Math.hypot(x1 - x0, y1 - y0), z1 - z0);
         }
 
+        public javax.measure.Quantity<javax.measure.quantity.Length> lengthQuantity() {
+            return dev.voxelbrew.engine.units.Measurements.quantity(
+                    length(), dev.voxelbrew.engine.units.Measurements.MILLIMETRE);
+        }
+
         public boolean deposits() {
             return extrusion > 1e-8 && role != Role.TRAVEL && length() > 1e-8;
         }

@@ -48,9 +48,9 @@ public final class Transform {
     }
 
     public static Transform rotation(double xDegrees, double yDegrees, double zDegrees) {
-        double x = Math.toRadians(xDegrees),
-                y = Math.toRadians(yDegrees),
-                z = Math.toRadians(zDegrees);
+        double x = dev.voxelbrew.engine.units.Measurements.radians(xDegrees),
+                y = dev.voxelbrew.engine.units.Measurements.radians(yDegrees),
+                z = dev.voxelbrew.engine.units.Measurements.radians(zDegrees);
         var rx =
                 new Transform(
                         1,

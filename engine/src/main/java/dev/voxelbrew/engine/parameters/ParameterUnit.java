@@ -1,37 +1,48 @@
 package dev.voxelbrew.engine.parameters;
 
-/** Display units; quantities are evaluated in millimeters and degrees. */
+import static dev.voxelbrew.engine.units.Measurements.*;
+
+import dev.voxelbrew.engine.units.Measurements;
+import javax.measure.Quantity;
+import javax.measure.Unit;
+
+/** Stable persisted names and UI labels for standard JSR 385 units. */
 public enum ParameterUnit {
-    MM("mm", 1, 1, 0),
-    CM("cm", 10, 1, 0),
-    M("m", 1000, 1, 0),
-    IN("in", 25.4, 1, 0),
-    FT("ft", 304.8, 1, 0),
-    DEG("deg", 1, 0, 1),
-    RAD("rad", 180 / Math.PI, 0, 1),
-    NUMBER("unitless", 1, 0, 0);
+    MM("mm", MILLIMETRE),
+    CM("cm", CENTIMETRE),
+    M("m", METRE),
+    IN("in", INCH),
+    FT("ft", FOOT),
+    DEG("deg", DEGREE),
+    RAD("rad", RADIAN),
+    NUMBER("unitless", ONE);
 
     private final String symbol;
-    private final double scale;
-    private final int length, angle;
+    private final Unit<?> unit;
 
-    ParameterUnit(String symbol, double scale, int length, int angle) {
+    ParameterUnit(String symbol, Unit<?> unit) {
         this.symbol = symbol;
-        this.scale = scale;
-        this.length = length;
-        this.angle = angle;
+        this.unit = unit;
     }
 
-    public double scale() {
-        return scale;
+    public Unit<?> unit() {
+        return unit;
     }
 
-    public int length() {
-        return length;
+    public Unit<?> canonicalUnit() {
+        return canonical(unit);
     }
 
-    public int angle() {
-        return angle;
+    public Quantity<?> quantity(double value) {
+        return Measurements.quantity(value, unit);
+    }
+
+    public double displayValue(Quantity<?> value) {
+        return Measurements.value(value, unit);
+    }
+
+    public double modelValue(Quantity<?> value) {
+        return Measurements.value(value, canonicalUnit());
     }
 
     @Override

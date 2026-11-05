@@ -1,5 +1,11 @@
 package dev.voxelbrew.engine.geometry;
 
+import static dev.voxelbrew.engine.units.Measurements.*;
+
+import javax.measure.Quantity;
+import javax.measure.quantity.Length;
+import javax.measure.quantity.Volume;
+
 /**
  * An immutable OCCT solid. The caller owns each returned Solid and must close it, preferably with
  * try-with-resources. Operations create independent owned results; closing the source never
@@ -17,6 +23,59 @@ public final class Solid implements AutoCloseable {
 
     public static String kernelVersion() {
         return NativeKernel.version();
+    }
+
+    public static Solid profilePrism(
+            PlanarProfile profile, Quantity<Length> z, Quantity<Length> distance) {
+        return profilePrism(profile, value(z, MILLIMETRE), value(distance, MILLIMETRE));
+    }
+
+    public static Solid circlePrism(
+            Quantity<Length> x,
+            Quantity<Length> y,
+            Quantity<Length> z,
+            Quantity<Length> diameter,
+            Quantity<Length> distance) {
+        return circlePrism(
+                value(x, MILLIMETRE),
+                value(y, MILLIMETRE),
+                value(z, MILLIMETRE),
+                value(diameter, MILLIMETRE),
+                value(distance, MILLIMETRE));
+    }
+
+    public static Solid rectanglePrism(
+            Quantity<Length> x,
+            Quantity<Length> y,
+            Quantity<Length> z,
+            Quantity<Length> width,
+            Quantity<Length> height,
+            Quantity<Length> distance) {
+        return rectanglePrism(
+                value(x, MILLIMETRE),
+                value(y, MILLIMETRE),
+                value(z, MILLIMETRE),
+                value(width, MILLIMETRE),
+                value(height, MILLIMETRE),
+                value(distance, MILLIMETRE));
+    }
+
+    public Solid cutThroughCircle(
+            Quantity<Length> x, Quantity<Length> y, Quantity<Length> diameter) {
+        return cutThroughCircle(
+                value(x, MILLIMETRE), value(y, MILLIMETRE), value(diameter, MILLIMETRE));
+    }
+
+    public Quantity<Volume> volumeQuantity() {
+        return quantity(volume(), CUBIC_MILLIMETRE);
+    }
+
+    public Split split(double nx, double ny, double nz, Quantity<Length> offset) {
+        return split(nx, ny, nz, value(offset, MILLIMETRE));
+    }
+
+    public boolean contains(Quantity<Length> x, Quantity<Length> y, Quantity<Length> z) {
+        return contains(value(x, MILLIMETRE), value(y, MILLIMETRE), value(z, MILLIMETRE));
     }
 
     /** Extrudes exact line, circle, arc, and cubic Bezier boundaries, with optional holes. */
@@ -117,9 +176,7 @@ public final class Solid implements AutoCloseable {
             dev.voxelbrew.engine.mesh.MeshOptions options) {
         requireOpen();
         return NativeKernel.tessellate(
-                token,
-                options.chordToleranceMm(),
-                Math.toRadians(options.angularToleranceDegrees()));
+                token, options.chordToleranceMm(), value(options.angularTolerance(), RADIAN));
     }
 
     public synchronized Bounds bounds() {

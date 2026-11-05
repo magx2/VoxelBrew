@@ -15,8 +15,8 @@ class ParametersTest {
                         .put("height", ParameterUnit.CM, "width / 2", "")
                         .put("diagonal", ParameterUnit.MM, "sqrt(width^2 + height^2)", "");
         p.validate();
-        assertEquals(50.8, p.values().get("width").value(), 1e-10);
-        assertEquals(25.4, p.values().get("height").value(), 1e-10);
+        assertEquals(50.8, p.values().get("width").getValue().doubleValue(), 1e-10);
+        assertEquals(25.4, p.values().get("height").getValue().doubleValue(), 1e-10);
         assertEquals(Math.hypot(50.8, 25.4), p.value("diagonal", ParameterUnit.MM), 1e-10);
         assertEquals(14, p.value("2 + 3 * 4", ParameterUnit.NUMBER));
         assertEquals(-4, p.value("-2^2", ParameterUnit.NUMBER));
@@ -51,17 +51,17 @@ class ParametersTest {
                         .override("width", "Large", "80")
                         .bind(new ParameterSet.Target("plate", "width"), "width");
         var id = p.parameter("width").id();
-        assertEquals(30, p.values().get("half").value());
+        assertEquals(30, p.values().get("half").getValue().doubleValue());
         p = p.select("Large");
-        assertEquals(40, p.values().get("half").value());
+        assertEquals(40, p.values().get("half").getValue().doubleValue());
         p = p.addConfiguration("Copy", true).override("width", "Large", "100");
-        assertEquals(80, p.select("Copy").values().get("width").value());
+        assertEquals(80, p.select("Copy").values().get("width").getValue().doubleValue());
         p = p.rename("width", "plateWidth");
         p.validate();
         assertEquals(id, p.parameter("plateWidth").id());
         assertEquals("plateWidth/2", p.parameter("half").expression());
         assertEquals("plateWidth", p.bindings().getFirst().expression());
-        assertEquals(50, p.values().get("half").value());
+        assertEquals(50, p.values().get("half").getValue().doubleValue());
         var finalSet = p;
         assertThrows(IllegalArgumentException.class, () -> finalSet.remove("plateWidth"));
         assertEquals("Default", p.removeConfiguration("Large").activeName());

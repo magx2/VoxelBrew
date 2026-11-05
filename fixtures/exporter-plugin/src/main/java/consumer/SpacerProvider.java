@@ -1,9 +1,13 @@
 package consumer;
 
+import static dev.voxelbrew.engine.units.Measurements.*;
+
 import dev.voxelbrew.engine.feature.*;
 import dev.voxelbrew.engine.geometry.Solid;
 import java.nio.ByteBuffer;
 import java.util.*;
+import javax.measure.Quantity;
+import javax.measure.quantity.Length;
 
 /** Independent API consumer. Version 1 payload: three big-endian doubles in millimeters. */
 public class SpacerProvider implements FeatureProvider {
@@ -55,8 +59,16 @@ public class SpacerProvider implements FeatureProvider {
 
     public Solid evaluate(int version, byte[] payload) {
         var p = decode(version, payload);
-        try (var cylinder = Solid.circlePrism(0, 0, 0, p.get("outerDiameter"), p.get("height"))) {
-            return cylinder.cutThroughCircle(0, 0, p.get("innerDiameter"));
+        Quantity<Length> origin = quantity(0, MILLIMETRE);
+        try (var cylinder =
+                Solid.circlePrism(
+                        origin,
+                        origin,
+                        origin,
+                        quantity(p.get("outerDiameter"), MILLIMETRE),
+                        quantity(p.get("height"), MILLIMETRE))) {
+            return cylinder.cutThroughCircle(
+                    origin, origin, quantity(p.get("innerDiameter"), MILLIMETRE));
         }
     }
 

@@ -1,5 +1,10 @@
 package dev.voxelbrew.engine.model;
 
+import static dev.voxelbrew.engine.units.Measurements.*;
+
+import javax.measure.Quantity;
+import javax.measure.quantity.Length;
+
 /** Persistent definitions only: no UI objects, protobuf messages or native handles. */
 public sealed interface Feature
         permits Feature.Sketch,
@@ -9,7 +14,11 @@ public sealed interface Feature
                 Feature.Custom {
     String id();
 
-    record Plane(String id, double offsetZ) {}
+    record Plane(String id, double offsetZ) {
+        public Plane(String id, Quantity<Length> offset) {
+            this(id, value(offset, MILLIMETRE));
+        }
+    }
 
     record ProfileRef(String sketchId, String profileId) {}
 
@@ -17,9 +26,29 @@ public sealed interface Feature
 
     sealed interface Profile permits Rectangle, Circle, Constrained {}
 
-    record Rectangle(double x, double y, double width, double height) implements Profile {}
+    record Rectangle(double x, double y, double width, double height) implements Profile {
+        public Rectangle(
+                Quantity<Length> x,
+                Quantity<Length> y,
+                Quantity<Length> width,
+                Quantity<Length> height) {
+            this(
+                    value(x, MILLIMETRE),
+                    value(y, MILLIMETRE),
+                    value(width, MILLIMETRE),
+                    value(height, MILLIMETRE));
+        }
+    }
 
-    record Circle(double centerX, double centerY, double diameter) implements Profile {}
+    record Circle(double centerX, double centerY, double diameter) implements Profile {
+        public Circle(
+                Quantity<Length> centerX, Quantity<Length> centerY, Quantity<Length> diameter) {
+            this(
+                    value(centerX, MILLIMETRE),
+                    value(centerY, MILLIMETRE),
+                    value(diameter, MILLIMETRE));
+        }
+    }
 
     record Constrained(dev.voxelbrew.engine.sketch.SketchGeometry geometry) implements Profile {
         public Constrained {
@@ -29,12 +58,20 @@ public sealed interface Feature
 
     record Sketch(String id, String profileId, Plane plane, Profile profile) implements Feature {}
 
-    record Extrude(String id, ProfileRef profile, double distance) implements Feature {}
+    record Extrude(String id, ProfileRef profile, double distance) implements Feature {
+        public Extrude(String id, ProfileRef profile, Quantity<Length> distance) {
+            this(id, profile, value(distance, MILLIMETRE));
+        }
+    }
 
     record ThroughCut(String id, ProfileRef profile, BodyRef body) implements Feature {}
 
     /** Plane equation normal dot position = offset, with a unit normal and mm offset. */
-    record SplitPlane(double normalX, double normalY, double normalZ, double offset) {}
+    record SplitPlane(double normalX, double normalY, double normalZ, double offset) {
+        public SplitPlane(double normalX, double normalY, double normalZ, Quantity<Length> offset) {
+            this(normalX, normalY, normalZ, value(offset, MILLIMETRE));
+        }
+    }
 
     record SplitBody(String id, BodyRef body, SplitPlane plane) implements Feature {}
 

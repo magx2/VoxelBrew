@@ -115,8 +115,9 @@ final class ParameterDialog {
                                         return String.format(
                                                 Locale.ROOT,
                                                 "%.6g",
-                                                draft.values().get(p.name()).value()
-                                                        / p.unit().scale());
+                                                p.unit()
+                                                        .displayValue(
+                                                                draft.values().get(p.name())));
                                     } catch (RuntimeException failure) {
                                         return "Error";
                                     }

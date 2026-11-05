@@ -22,6 +22,20 @@
   images under `third_party/commons-math/`.
 - **Protocol Buffers 4.30.2**, BSD-3-Clause, https://github.com/protocolbuffers/protobuf/tree/v30.2.
   Generated document messages are engine implementation details.
+- **Units of Measurement API 2.2** and **Indriya 2.2.4**, BSD-3-Clause,
+  https://github.com/unitsofmeasurement/unit-api/tree/2.2 and
+  https://github.com/unitsofmeasurement/indriya/tree/2.2.4.
+  JSR 385 defines the public units/quantity API; Indriya supplies the implementation.
+  Original license texts accompany distributions in `third_party/unit-api/` and
+  `third_party/indriya/`.
+- **Units of Measurement common library 2.2**, BSD-3-Clause,
+  https://github.com/unitsofmeasurement/uom-lib/tree/2.2.
+  Indriya runtime dependency; license in `third_party/uom-lib-common/`.
+- **Jakarta Dependency Injection API 2.0.1**, Apache-2.0,
+  https://github.com/jakartaee/inject/tree/2.0.1.
+  Indriya runtime dependency; upstream LICENSE and NOTICE in `third_party/jakarta-inject/`.
+- **API Guardian 1.1.2**, Apache-2.0, https://github.com/apiguardian-team/apiguardian/tree/r1.1.2.
+  Compile-only annotations for Indriya; not added to application runtime dependencies.
 - **Protobuf Gradle plugin 0.9.5**, BSD-3-Clause, build dependency only,
   https://github.com/google/protobuf-gradle-plugin/tree/v0.9.5.
 - **picocli 4.7.7**, Apache-2.0, https://github.com/remkop/picocli/tree/v4.7.7.

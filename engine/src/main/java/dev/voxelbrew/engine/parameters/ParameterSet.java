@@ -2,6 +2,7 @@ package dev.voxelbrew.engine.parameters;
 
 import dev.voxelbrew.engine.model.CadDocument;
 import java.util.*;
+import javax.measure.Quantity;
 
 /** Persistent named dimensions, formula bindings and independently editable variant overrides. */
 public record ParameterSet(
@@ -321,18 +322,18 @@ public record ParameterSet(
                 bindings);
     }
 
-    public Map<String, Expressions.Quantity> values() {
+    public Map<String, Quantity<?>> values() {
         return values(active);
     }
 
-    public Map<String, Expressions.Quantity> values(String configuration) {
+    public Map<String, Quantity<?>> values(String configuration) {
         String id = configurationId(configuration);
         var byName = new LinkedHashMap<String, Parameter>();
         parameters.forEach(p -> byName.put(p.name(), p));
-        var resolved = new LinkedHashMap<String, Expressions.Quantity>();
+        var resolved = new LinkedHashMap<String, Quantity<?>>();
         var visiting = new LinkedHashSet<String>();
         class Resolver {
-            Expressions.Quantity get(String name) {
+            Quantity<?> get(String name) {
                 if (resolved.containsKey(name)) return resolved.get(name);
                 var p = byName.get(name);
                 if (p == null) throw new IllegalArgumentException("Unknown parameter: " + name);
@@ -363,7 +364,7 @@ public record ParameterSet(
 
     public double value(String expression, ParameterUnit unit) {
         var values = values();
-        return Expressions.evaluate(expression, unit, values::get).value();
+        return unit.modelValue(Expressions.evaluate(expression, unit, values::get));
     }
 
     public void validate() {

@@ -1,7 +1,12 @@
 package dev.voxelbrew.engine.printing;
 
+import static dev.voxelbrew.engine.units.Measurements.*;
+
 import java.util.List;
 import java.util.Objects;
+import javax.measure.Quantity;
+import javax.measure.quantity.Length;
+import javax.measure.quantity.Temperature;
 
 /** Fully resolved, frontend-neutral printer/nozzle/material/process contract. */
 public record PrintProfile(Printer printer, Material material, ProcessSettings process) {
@@ -21,6 +26,14 @@ public record PrintProfile(Printer printer, Material material, ProcessSettings p
             double usableHeight,
             String firmware,
             String outputFormat) {
+        public Quantity<Length> nozzleDiameterQuantity() {
+            return quantity(nozzleMm, MILLIMETRE);
+        }
+
+        public Quantity<Length> usableHeightQuantity() {
+            return quantity(usableHeight, MILLIMETRE);
+        }
+
         public Printer {
             Objects.requireNonNull(id);
             Objects.requireNonNull(name);
@@ -41,6 +54,26 @@ public record PrintProfile(Printer printer, Material material, ProcessSettings p
 
     public record Material(
             String id, double filamentDiameter, double nozzleTemperature, double bedTemperature) {
+        public Material(
+                String id,
+                Quantity<Length> diameter,
+                Quantity<Temperature> nozzle,
+                Quantity<Temperature> bed) {
+            this(id, value(diameter, MILLIMETRE), value(nozzle, CELSIUS), value(bed, CELSIUS));
+        }
+
+        public Quantity<Length> filamentDiameterQuantity() {
+            return quantity(filamentDiameter, MILLIMETRE);
+        }
+
+        public Quantity<Temperature> nozzleTemperatureQuantity() {
+            return quantity(nozzleTemperature, CELSIUS);
+        }
+
+        public Quantity<Temperature> bedTemperatureQuantity() {
+            return quantity(bedTemperature, CELSIUS);
+        }
+
         public Material {
             Objects.requireNonNull(id);
             if (id.isBlank()
@@ -79,8 +112,18 @@ public record PrintProfile(Printer printer, Material material, ProcessSettings p
                         "gcode");
         var material =
                 switch (setup.materialId()) {
-                    case "PLA" -> new Material("PLA", 1.75, 210, 60);
-                    case "PETG" -> new Material("PETG", 1.75, 240, 80);
+                    case "PLA" ->
+                            new Material(
+                                    "PLA",
+                                    quantity(1.75, MILLIMETRE),
+                                    quantity(210, CELSIUS),
+                                    quantity(60, CELSIUS));
+                    case "PETG" ->
+                            new Material(
+                                    "PETG",
+                                    quantity(1.75, MILLIMETRE),
+                                    quantity(240, CELSIUS),
+                                    quantity(80, CELSIUS));
                     default ->
                             throw new IllegalArgumentException(
                                     "Missing material profile: " + setup.materialId());

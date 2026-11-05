@@ -1,5 +1,10 @@
 package dev.voxelbrew.engine.printing;
 
+import static dev.voxelbrew.engine.units.Measurements.*;
+
+import javax.measure.Quantity;
+import javax.measure.quantity.*;
+
 /** Explicit FDM process settings, in millimeters, degrees from horizontal, and percent. */
 public record ProcessSettings(
         double layerHeight,
@@ -13,7 +18,61 @@ public record ProcessSettings(
         double brimWidth,
         int raftLayers) {
     public static final ProcessSettings DEFAULT =
-            new ProcessSettings(0.2, 2, 20, false, false, 45, 0.2, 3, 0, 0);
+            new ProcessSettings(
+                    quantity(0.2, MILLIMETRE),
+                    2,
+                    quantity(20, PERCENT),
+                    false,
+                    false,
+                    quantity(45, DEGREE),
+                    quantity(0.2, MILLIMETRE),
+                    3,
+                    quantity(0, MILLIMETRE),
+                    0);
+
+    public ProcessSettings(
+            Quantity<Length> layerHeight,
+            int walls,
+            Quantity<Dimensionless> infill,
+            boolean automaticSupports,
+            boolean supportsOnBedOnly,
+            Quantity<Angle> supportThreshold,
+            Quantity<Length> contactGap,
+            int interfaceLayers,
+            Quantity<Length> brimWidth,
+            int raftLayers) {
+        this(
+                value(layerHeight, MILLIMETRE),
+                walls,
+                value(infill, PERCENT),
+                automaticSupports,
+                supportsOnBedOnly,
+                value(supportThreshold, DEGREE),
+                value(contactGap, MILLIMETRE),
+                interfaceLayers,
+                value(brimWidth, MILLIMETRE),
+                raftLayers);
+    }
+
+    public Quantity<Length> layerHeightQuantity() {
+        return quantity(layerHeight, MILLIMETRE);
+    }
+
+    public Quantity<Dimensionless> infillQuantity() {
+        return quantity(infillPercent, PERCENT);
+    }
+
+    public Quantity<Angle> supportThresholdQuantity() {
+        return quantity(supportThreshold, DEGREE);
+    }
+
+    public Quantity<Length> supportContactGapQuantity() {
+        return quantity(supportContactGap, MILLIMETRE);
+    }
+
+    public Quantity<Length> brimWidthQuantity() {
+        return quantity(brimWidth, MILLIMETRE);
+    }
 
     public ProcessSettings {
         range("layer height", layerHeight, 0.05, 0.3);

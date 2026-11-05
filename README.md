@@ -26,10 +26,13 @@ ellipses, conics, slots, fit/control splines, text and text on a path. See
 M9 adds named parameters, unit-aware formulas, and parameter configurations in
 one design. Create them from the workbench or a sketch, then use their names in
 driving dimensions and extrusion distances. See [parameters and configurations](docs/parameters.md).
+M10 uses JSR 385 quantities and units throughout parameter evaluation, CAD
+measurement boundaries and print settings. See [units and typed APIs](docs/units.md).
 
 ## Prerequisites and locked dependencies
 
 - JDK **21**, with `JAVA_HOME` set to a full JDK (including JNI headers).
+- Units of Measurement API **2.2** and Indriya **2.2.4**, resolved by Gradle.
 - Gradle **9.1.0**, through the committed, SHA-256-verified wrapper.
 - CMake **3.31.6** and OCCT **7.9.0**, downloaded and checksum-verified by the bootstrap.
 - Windows x86-64: Visual Studio 2019 C++ tools **14.29.30133**, v142. The bootstrap

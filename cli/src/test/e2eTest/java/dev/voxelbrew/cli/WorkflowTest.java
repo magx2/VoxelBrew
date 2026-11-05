@@ -28,7 +28,7 @@ class WorkflowTest {
         run(0, "new", file);
         run(0, "rectangle", file, "--id", "plate", "--width", "60", "--height", "40");
         run(0, "extrude", file, "--id", "solid", "--sketch", "plate", "--distance", "5");
-        run(0, "parameters", "set", file, "--name", "width", "--expression", "60");
+        run(0, "parameters", "set", file, "--name", "width", "--unit", "cm", "--expression", "6");
         run(0, "parameters", "set", file, "--name", "thickness", "--expression", "5");
         run(
                 0,
@@ -62,7 +62,7 @@ class WorkflowTest {
                 "--parameter",
                 "width",
                 "--expression",
-                "80");
+                "8");
         run(
                 0,
                 "configurations",
@@ -75,6 +75,7 @@ class WorkflowTest {
                 "--expression",
                 "8");
         run(0, "configurations", "activate", file, "--name", "Large");
+        assertTrue(run(0, "parameters", "list", file).contains("width\tcm\texpression=8"));
         assertVolume(25600, run(0, "inspect", file));
         var ids = DocumentStore.load(Path.of(file)).features().stream().map(Feature::id).toList();
         run(0, "sketch", "convert", file, "--sketch", "plate");

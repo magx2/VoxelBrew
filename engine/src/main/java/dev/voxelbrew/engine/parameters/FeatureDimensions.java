@@ -3,6 +3,7 @@ package dev.voxelbrew.engine.parameters;
 import dev.voxelbrew.engine.model.*;
 import dev.voxelbrew.engine.sketch.*;
 import java.util.*;
+import javax.measure.Quantity;
 
 /**
  * Shared field metadata and simultaneous dimension edits; solving is performed by the caller's
@@ -12,6 +13,14 @@ public final class FeatureDimensions {
     private FeatureDimensions() {}
 
     public record Dimension(ParameterSet.Target target, ParameterUnit unit, double value) {
+        public javax.measure.Unit<?> measurementUnit() {
+            return unit.unit();
+        }
+
+        public Quantity<?> quantity() {
+            return dev.voxelbrew.engine.units.Measurements.quantity(value, unit.canonicalUnit());
+        }
+
         @Override
         public String toString() {
             return target + " (" + unit + ")";
@@ -132,7 +141,7 @@ public final class FeatureDimensions {
             Feature feature,
             List<Feature> all,
             ParameterSet parameters,
-            Map<String, Expressions.Quantity> values) {
+            Map<String, Quantity<?>> values) {
         var changes = new LinkedHashMap<String, Double>();
         for (var binding : parameters.bindings()) {
             boolean own = binding.target().featureId().equals(feature.id());
@@ -152,8 +161,11 @@ public final class FeatureDimensions {
             if (!own && !sharedPlane) continue;
             var descriptor = dimension(feature, binding.target().field());
             double value =
-                    Expressions.evaluate(binding.expression(), descriptor.unit(), values::get)
-                            .value();
+                    descriptor
+                            .unit()
+                            .modelValue(
+                                    Expressions.evaluate(
+                                            binding.expression(), descriptor.unit(), values::get));
             var previous = changes.put(descriptor.target().field(), value);
             if (previous != null && Math.abs(previous - value) > 1e-9)
                 throw new IllegalArgumentException(
@@ -259,7 +271,10 @@ public final class FeatureDimensions {
                                                         "Missing bound sketch dimension: " + id));
                 changes.put(
                         id,
-                        Expressions.evaluate(b.expression(), unit(c.type()), values::get).value());
+                        unit(c.type())
+                                .modelValue(
+                                        Expressions.evaluate(
+                                                b.expression(), unit(c.type()), values::get)));
             }
         return geometry.withConstraints(
                 geometry.constraints().stream()

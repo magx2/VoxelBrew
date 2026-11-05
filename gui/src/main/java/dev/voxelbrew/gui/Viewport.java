@@ -150,7 +150,11 @@ public final class Viewport extends StackPane {
 
     public Point3D pointOnPlane(double x, double y, double z) {
         double scale =
-                2 * Math.tan(Math.toRadians(camera.getFieldOfView() / 2)) / scene.getHeight();
+                2
+                        * Math.tan(
+                                dev.voxelbrew.engine.units.Measurements.radians(
+                                        camera.getFieldOfView() / 2))
+                        / scene.getHeight();
         Point3D a = toModel(world.parentToLocal(new Point3D(0, 0, -distance)));
         Point3D b =
                 toModel(

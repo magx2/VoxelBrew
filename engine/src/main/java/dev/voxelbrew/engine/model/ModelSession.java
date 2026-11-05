@@ -108,6 +108,25 @@ public final class ModelSession {
                 dev.voxelbrew.engine.feature.FeatureRegistry.defaultDirectory());
     }
 
+    /** Converts a JSR 385 quantity before the existing validated numeric edit transaction. */
+    public synchronized void editDimension(
+            String featureId, String field, javax.measure.Quantity<?> value) {
+        var feature = features.get(index(featureId));
+        String target =
+                feature instanceof Feature.Sketch s
+                                && s.profile() instanceof Feature.Constrained
+                                && !field.equals("offsetZ")
+                                && !field.startsWith("constraint:")
+                        ? "constraint:" + field
+                        : field;
+        var dimension =
+                dev.voxelbrew.engine.parameters.FeatureDimensions.dimension(feature, target);
+        editDimension(
+                featureId,
+                field,
+                dev.voxelbrew.engine.units.Measurements.value(value, dimension.measurementUnit()));
+    }
+
     public synchronized void editDimension(
             String featureId, String field, double value, java.nio.file.Path pluginDirectory) {
         Feature feature = features.get(index(featureId));

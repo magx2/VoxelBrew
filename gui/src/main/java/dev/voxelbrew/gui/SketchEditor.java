@@ -680,7 +680,7 @@ final class SketchEditor extends BorderPane implements AutoCloseable {
                 textFont.getText().strip(),
                 textStyle.getSelectionModel().getSelectedIndex(),
                 value(textHeight, "Text height"),
-                Math.toRadians(value(textAngle, "Text angle")),
+                dev.voxelbrew.engine.units.Measurements.radians(value(textAngle, "Text angle")),
                 value(textSpacing, "Text spacing"));
     }
 

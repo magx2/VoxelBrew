@@ -54,7 +54,7 @@ public final class Evaluator {
         Map<String, Evaluation.Body> active = new LinkedHashMap<>();
         Map<String, Evaluation.State> states = new LinkedHashMap<>();
         var resolved = new ArrayList<>(document.features());
-        Map<String, dev.voxelbrew.engine.parameters.Expressions.Quantity> parameterValues;
+        Map<String, javax.measure.Quantity<?>> parameterValues;
         try {
             parameterValues = document.parameters().values();
             for (var binding : document.parameters().bindings())

@@ -131,7 +131,7 @@ final class SketchCommands implements Runnable {
                                     font,
                                     style,
                                     height,
-                                    Math.toRadians(angle),
+                                    dev.voxelbrew.engine.units.Measurements.radians(angle),
                                     spacing)));
         }
     }

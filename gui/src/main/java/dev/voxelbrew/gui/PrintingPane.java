@@ -473,7 +473,12 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
         }
         String[] names = {"x", "y", "z", "rotate-x", "rotate-y", "rotate-z"};
         double[] values = {
-            m[3], m[7], m[11], Math.toDegrees(rx), Math.toDegrees(ry), Math.toDegrees(rz)
+            m[3],
+            m[7],
+            m[11],
+            dev.voxelbrew.engine.units.Measurements.degrees(rx),
+            dev.voxelbrew.engine.units.Measurements.degrees(ry),
+            dev.voxelbrew.engine.units.Measurements.degrees(rz)
         };
         for (int i = 0; i < names.length; i++)
             fields.get("print-" + names[i]).setText(Double.toString(values[i]));

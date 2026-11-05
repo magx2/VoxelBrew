@@ -70,7 +70,7 @@ final class ParameterCommands {
                         parameter.name(),
                         parameter.unit(),
                         p.expression(parameter, p.active()),
-                        values.get(parameter.name()).value() / parameter.unit().scale(),
+                        parameter.unit().displayValue(values.get(parameter.name())),
                         parameter.id(),
                         parameter.comment());
             for (var binding : p.bindings())

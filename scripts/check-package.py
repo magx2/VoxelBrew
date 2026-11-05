@@ -1,5 +1,6 @@
 """Public packaged-launcher acceptance; stdlib only, no Java installation in child PATH."""
 import json
+import hashlib
 import math
 import os
 from pathlib import Path
@@ -15,22 +16,82 @@ import zipfile
 kind, image_arg, root_arg, artifacts_arg = sys.argv[1:]
 image, root, artifacts = map(Path, (image_arg, root_arg, artifacts_arg))
 artifacts.mkdir(parents=True, exist_ok=True)
+for report in ("result.json", "commands.json"):
+    (artifacts / report).unlink(missing_ok=True)
 workspace = Path(tempfile.mkdtemp(prefix="package with spaces ", dir=artifacts))
 name = "VoxelBrew" if kind == "gui" else "VoxelBrewCLI"
 if sys.platform == "win32":
     launcher = image / (name + ".exe")
     app = image / "app"
+    runtime = image / "runtime"
 elif sys.platform == "darwin":
     launcher = image / "Contents/MacOS" / name
     app = image / "Contents/app"
+    runtime = image / "Contents/runtime/Contents/Home"
 else:
     launcher = image / "bin" / name
     app = image / "lib/app"
+    runtime = image / "lib/runtime"
 assert launcher.is_file(), launcher
-assert (app / "native").is_dir()
-assert (app / "third_party/occt/LICENSE_LGPL_21.txt").is_file()
+
+
+def digest(path):
+    checksum = hashlib.sha256()
+    with path.open("rb") as source:
+        for chunk in iter(lambda: source.read(1024 * 1024), b""):
+            checksum.update(chunk)
+    return checksum.hexdigest()
+
+
+def properties(path):
+    return dict(line.split("=", 1) for line in path.read_text(encoding="utf-8").splitlines()
+                if "=" in line and not line.lstrip().startswith("#"))
+
+
+def architecture(value):
+    return {"amd64": "x64", "x86_64": "x64", "aarch64": "arm64", "arm64": "arm64"}[value.lower()]
+
+
+version = properties(root / "gradle.properties")["projectVersion"]
+installation = properties(app / "voxelbrew-install.properties")
+expected_platform = {"win32": "windows", "darwin": "macos", "linux": "linux"}[sys.platform]
+expected_platform += "-" + architecture(platform.machine())
+assert installation["format"] == "1" and installation["component"] == kind.upper(), installation
+assert installation["version"] == version and installation["platform"] == expected_platform, installation
+assert installation["engineJar"] == f"engine-{version}.jar", installation
+assert installation["mainJar"] == f"{kind}-{version}.jar", installation
+for jar in (f"engine-{version}.jar", f"{kind}-{version}.jar"):
+    assert (app / jar).is_file(), "Missing application dependency: " + jar
+
+notices = [root / "LICENSE", root / "THIRD_PARTY_NOTICES.md"]
+notices += sorted(path for path in (root / "third_party").rglob("*") if path.is_file())
+for source in notices:
+    relative = source.relative_to(root)
+    assert (app / relative).is_file(), "Missing bundled notice: " + str(relative)
+    assert digest(app / relative) == digest(source), "Changed bundled notice: " + str(relative)
+for notice in ("LICENSE", "ASSEMBLY_EXCEPTION", "ADDITIONAL_LICENSE_INFO"):
+    assert (runtime / "legal/java.base" / notice).is_file(), "Missing Java runtime notice: " + notice
+
+native_source = root / "engine/build/native/runtime"
+native_libraries = {}
+built_app = root / kind / "build/app-image" / image.name / app.relative_to(image)
+for source in sorted(path for path in native_source.rglob("*") if path.is_file()):
+    relative = source.relative_to(native_source)
+    bundled = app / "native" / relative
+    assert bundled.is_file(), "Missing native dependency: " + str(relative)
+    checksum = digest(source)
+    if sys.platform == "darwin":
+        # jpackage signs Mach-O libraries. Verify its input and compare relocated
+        # signed libraries with the original app image, not the unsigned build.
+        prepared = root / kind / "build/package-input/native" / relative
+        assert digest(prepared) == checksum, "Mismatched packaging input: " + str(relative)
+        checksum = digest(built_app / "native" / relative)
+    assert digest(bundled) == checksum, "Mismatched native dependency: " + str(relative)
+    native_libraries[str(relative)] = checksum
+assert native_libraries, "No built native dependencies to qualify"
 env = dict(os.environ)
-for key in ("JAVA_HOME", "JDK_HOME", "JAVA_OPTS", "JDK_JAVA_OPTIONS", "JAVA_TOOL_OPTIONS", "_JAVA_OPTIONS", "CLASSPATH"):
+for key in ("JAVA_HOME", "JDK_HOME", "JAVA_OPTS", "JDK_JAVA_OPTIONS", "JAVA_TOOL_OPTIONS", "_JAVA_OPTIONS", "CLASSPATH",
+            "LD_LIBRARY_PATH", "DYLD_LIBRARY_PATH", "DYLD_FALLBACK_LIBRARY_PATH"):
     env.pop(key, None)
 env["PATH"] = str(workspace)
 env["_JAVA_OPTIONS"] = '-Djava.util.prefs.userRoot="' + str(workspace / "preferences") + '"'
@@ -42,13 +103,27 @@ if sys.platform in ("linux", "darwin") and kind == "gui":
 transcript = []
 
 
-def run(*args):
-    command = [str(launcher), *map(str, args)]
+def execute(command):
     result = subprocess.run(command, cwd=workspace, env=env, capture_output=True, text=True, timeout=90)
     transcript.append({"command": command, "exit": result.returncode, "stdout": result.stdout, "stderr": result.stderr})
     (artifacts / "commands.json").write_text(json.dumps(transcript, indent=2), encoding="utf-8")
     assert result.returncode == 0, transcript[-1]
-    return result.stdout
+    return result.stdout, result.stderr
+
+
+def run(*args):
+    return execute([str(launcher), *map(str, args)])[0]
+
+
+java = runtime / "bin" / ("java.exe" if sys.platform == "win32" else "java")
+assert java.is_file(), "Missing bundled Java launcher: " + str(java)
+stdout, stderr = execute([str(java), "-XshowSettings:properties", "-version"])
+(workspace / "runtime.txt").write_text(stdout + stderr, encoding="utf-8")
+settings = dict(tuple(part.strip() for part in line.split(" = ", 1))
+                for line in stderr.splitlines() if " = " in line)
+assert settings["java.specification.version"] == "21", settings
+assert Path(settings["java.home"]).resolve() == runtime.resolve(), settings
+assert architecture(settings["os.arch"]) == architecture(platform.machine()), settings
 
 
 plugins = workspace / "trusted plugins with spaces"
@@ -60,8 +135,6 @@ if kind == "gui":
     assert screenshot.is_file() and screenshot.stat().st_size > 10000
     assert screenshot.with_suffix(".txt").read_text().startswith("GUI_SMOKE_PASS")
 else:
-    version = next(line.split("=", 1)[1] for line in (root / "gradle.properties").read_text().splitlines()
-                   if line.startswith("projectVersion="))
     assert run("--version").strip() == f"VoxelBrew {version} / jcad schema 6"
     document = workspace / "reference.jcad"
     shutil.copy2(root / "fixtures/reference-8mm.jcad", document)
@@ -104,5 +177,7 @@ else:
         assert model.find(".//{*}object").attrib["name"] == "spacer.body"
 (artifacts / "result.json").write_text(json.dumps({"result": "PASS", "platform": platform.platform(),
     "architecture": platform.machine(), "image": str(image), "artifacts": str(workspace),
+    "installation": installation, "native_libraries": native_libraries, "notices_verified": len(notices),
+    "runtime": {key: settings[key] for key in ("java.version", "java.vendor", "java.home", "os.arch")},
     "java_on_path": False, "headless": kind == "cli"}, indent=2), encoding="utf-8")
 print("PACKAGE_PASS", kind, platform.platform(), workspace)

@@ -102,16 +102,6 @@ jobs:
         if: inputs.archive
         shell: bash
         run: ./gradlew ${{ inputs.release-candidate && runner.os == 'macOS' && ':cli:packageZip' || ':cli:packageZip :gui:packageZip' }} ${{ runner.os == 'Windows' && '''-PvsGenerator=Visual Studio 17 2022''' || '' }}
-      - name: Test extracted release archives (Ubuntu)
-        if: inputs.release-candidate && runner.os == 'Linux'
-        run: xvfb-run -a -s '-screen 0 1600x1000x24' env LIBGL_ALWAYS_SOFTWARE=1 ./gradlew :cli:releaseArchiveCheck :gui:releaseArchiveCheck
-      - name: Test extracted release archives (Windows)
-        if: inputs.release-candidate && runner.os == 'Windows'
-        shell: pwsh
-        run: ./gradlew.bat :cli:releaseArchiveCheck :gui:releaseArchiveCheck '-PvsGenerator=Visual Studio 17 2022'
-      - name: Test extracted release archive (macOS CLI)
-        if: inputs.release-candidate && runner.os == 'macOS'
-        run: ./gradlew :cli:releaseArchiveCheck
       - name: Collect qualified release archives and provenance
         if: inputs.release-candidate
         run: node .github/scripts/release.cjs collect .tools/release-plan .tools/release-assets

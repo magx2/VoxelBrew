@@ -50,8 +50,17 @@ PrusaSlicer remains an external installation. Use `scripts/bootstrap-slicer.ps1`
 The macOS path is `.tools/PrusaSlicer-2.7.2/PrusaSlicer.app/Contents/MacOS/PrusaSlicer`.
 The supported version remains 2.7.2; the backend probes it before slicing.
 
-`check` includes `:cli:packageCheck` and `:gui:packageCheck`. Their subprocesses
-have no `JAVA_HOME` or Java on `PATH`; the CLI also has no display variables.
+`check` includes `:cli:packageCheck`, `:gui:packageCheck` and both frontends'
+`releaseArchiveCheck` tasks. The latter extract the actual ZIPs into paths with
+spaces and repeat the launcher checks, including Unix executable permissions.
+`platformCheck` runs the same archive gates; `headlessPlatformCheck` qualifies
+only the CLI archive on macOS. The release workflow reuses these checks.
+
+Their subprocesses have no `JAVA_HOME`, Java on `PATH`, or external native-library
+search overrides; the CLI also has no display variables. They verify the bundled
+Java 21 version/architecture, installation metadata, matching native-library
+hashes, and project/third-party/runtime notices. Archive evidence records the ZIP
+SHA-256 and size in `build/package-artifacts/archive/archive-result.json`.
 They exercise fresh-process edit/reopen, independent STL/3MF inspection and an
 external exporter from a path containing spaces. The packaged GUI's explicit
 `--smoke-test --smoke-output screenshot.png` command builds an unsaved reference

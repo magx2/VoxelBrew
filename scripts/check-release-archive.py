@@ -1,5 +1,7 @@
 """Qualify the archive users download, relocated to a path containing spaces."""
 from pathlib import Path
+import hashlib
+import json
 import os
 import stat
 import subprocess
@@ -10,6 +12,11 @@ import zipfile
 kind, archive_arg, root_arg, artifacts_arg = sys.argv[1:]
 archive, root, artifacts = map(Path, (archive_arg, root_arg, artifacts_arg))
 artifacts.mkdir(parents=True, exist_ok=True)
+(artifacts / "archive-result.json").unlink(missing_ok=True)
+checksum = hashlib.sha256()
+with archive.open("rb") as source:
+    for chunk in iter(lambda: source.read(1024 * 1024), b""):
+        checksum.update(chunk)
 extracted_images = root / ".tools/release-extracted"
 extracted_images.mkdir(parents=True, exist_ok=True)
 destination = Path(tempfile.mkdtemp(prefix="release archive with spaces ", dir=extracted_images)).resolve()
@@ -30,4 +37,10 @@ with zipfile.ZipFile(archive) as contents:
             target.chmod((member.external_attr >> 16) & 0o777)
 subprocess.run([sys.executable, str(root / "scripts/check-package.py"), kind,
                 str(destination / image_name), str(root), str(artifacts)], check=True)
+(artifacts / "archive-result.json").write_text(json.dumps({
+    "result": "PASS", "archive": str(archive.resolve()), "sha256": checksum.hexdigest(),
+    "size_bytes": archive.stat().st_size, "image": str(destination / image_name),
+    "package_result": str((artifacts / "result.json").resolve()),
+    "unix_launcher_permissions_verified": sys.platform != "win32",
+}, indent=2), encoding="utf-8")
 print("RELEASE_ARCHIVE_PASS", archive.name)

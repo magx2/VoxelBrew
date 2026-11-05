@@ -90,6 +90,12 @@ Implement one external slicer adapter first. Choose and pin a tested executable 
 
 ### M5 — Package and validate on each supported platform
 
+**Status: done for Windows/Ubuntu desktop and macOS Intel CLI.** Bundled app
+images, relocated archive checks and the CI platform matrix are implemented.
+The user-deferred macOS GUI qualification remains an explicit outstanding gate;
+it is not a supported desktop release target. See [M5 acceptance](acceptance/M5.md)
+and [packaging](packaging.md) for the tested scope and reproduction commands.
+
 Build installers or app images and a headless CLI distribution on Windows, Linux and macOS. Include the matching JVM, architecture-specific native dependencies and required notices. Document supported OS/CPU pairs, plugin directory and external slicer installation. Add a CI matrix early enough to catch native loading issues.
 
 **Exit test:** On each declared platform, run the packaged CLI on the fixture, edit, export, and load an external plugin from a path containing spaces. Launch the packaged GUI and verify rendering and picking. Publish an explicit tested-platform matrix. Qualify additional Unix variants individually if they become targets.

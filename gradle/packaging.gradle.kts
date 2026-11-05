@@ -187,8 +187,9 @@ val packageZip by
 
 tasks.register<Exec>("releaseArchiveCheck") {
     group = "verification"
-    description = "Extract and exercise the exact release ZIP, including Unix launcher permissions."
+    description = "Extract and exercise the distributable ZIP, including Unix launcher permissions."
     dependsOn(packageZip, ":engine:buildExporterFixture")
+    mustRunAfter("e2eTest", packageCheck, updatePackageCheck)
     commandLine(
         if (packageWindows) "python" else "python3",
         rootProject.file("scripts/check-release-archive.py").absolutePath,
@@ -198,3 +199,5 @@ tasks.register<Exec>("releaseArchiveCheck") {
         layout.buildDirectory.dir("package-artifacts/archive").get().asFile.absolutePath,
     )
 }
+
+tasks.named("platformCheck") { dependsOn("releaseArchiveCheck") }

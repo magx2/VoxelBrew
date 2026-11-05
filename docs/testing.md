@@ -37,7 +37,10 @@ env -u DISPLAY -u WAYLAND_DISPLAY ./gradlew integrationTest
 xvfb-run -a -s '-screen 0 1600x1000x24' env LIBGL_ALWAYS_SOFTWARE=1 ./gradlew check
 ```
 
-`platformCheck` runs `e2eTest` plus both packaged-launcher checks. `e2eTest`
+`platformCheck` runs `e2eTest`, packaged-launcher and updater checks, and
+`releaseArchiveCheck` for the actual distributable ZIPs. Archive checks repeat
+the packaged workflow from paths containing spaces and record the tested ZIP
+checksum, runtime identity, native dependency hashes and notices. `e2eTest`
 alone does not build the bundled JVM images. GUI Robot and packaged GUI checks
 run sequentially to avoid competing for desktop input. `check` remains the full
 local gate: formatting, unit, integration, end-to-end and packaged-app checks,

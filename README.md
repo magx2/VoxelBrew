@@ -13,7 +13,11 @@ first-party subprojects. M4 adds editable splitting, build placement, persisted
 PLA/PETG process settings, supports and real PrusaSlicer jobs. See the
 [printing workflow](docs/printing-workflow.md) and [qualification record](docs/acceptance/M4.md).
 The complete backlog is in [the implementation plan](docs/implementation-plan.md).
-M5 adds bundled-JVM app images and packaged CLI/GUI checks. See
+M4 is complete for the first-printable scope; advanced support capabilities and
+hardware validation remain tracked separately in its acceptance record.
+M5 is complete for Windows/Ubuntu desktop and macOS Intel CLI, with bundled-JVM
+app images and checks of both original images and extracted distribution ZIPs.
+macOS GUI qualification remains explicitly deferred. See
 [packaging and platform qualification](docs/packaging.md).
 M6 adds persistent custom feature providers, with a consumer-built spacer plugin
 and shared CLI/GUI parameter editing. See [feature plugins](docs/feature-plugins.md).

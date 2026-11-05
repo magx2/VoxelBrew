@@ -18,6 +18,12 @@ final class UpdateCommands {
 
     abstract static class Options implements Callable<Integer> {
         @Option(
+                names = {"-h", "--help"},
+                usageHelp = true,
+                description = "Show this help message and exit")
+        boolean help;
+
+        @Option(
                 names = "--version",
                 description = "Select a published A.B.C release (allows downgrade)")
         String version;
@@ -57,7 +63,6 @@ final class UpdateCommands {
 
     @Command(
             name = "update",
-            mixinStandardHelpOptions = true,
             subcommands = Check.class,
             description =
                     "Download and install a verified application update after exit (requires gh authentication)")
@@ -68,10 +73,7 @@ final class UpdateCommands {
         }
     }
 
-    @Command(
-            name = "check",
-            mixinStandardHelpOptions = true,
-            description = "Check releases without downloading or replacing files")
+    @Command(name = "check", description = "Check releases without downloading or replacing files")
     static final class Check extends Options {
         @Override
         public Integer call() throws Exception {

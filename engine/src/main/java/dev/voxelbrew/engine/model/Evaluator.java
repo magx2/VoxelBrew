@@ -112,6 +112,13 @@ public final class Evaluator {
                                             sketch.plane().offsetZ(),
                                             c.diameter(),
                                             e.distance());
+                        } else if (sketch.profile() instanceof Feature.Constrained c) {
+                            solid =
+                                    Solid.profilePrism(
+                                            dev.voxelbrew.engine.sketch.SketchProfiles.profile(
+                                                    c.geometry()),
+                                            sketch.plane().offsetZ(),
+                                            e.distance());
                         } else {
                             throw new ModelException(e.id(), "unsupported extrusion profile");
                         }
@@ -152,7 +159,8 @@ public final class Evaluator {
                         }
                     } else if (feature instanceof Feature.ThroughCut cut) {
                         Feature.Sketch sketch = profile(cut.id(), cut.profile(), sketches);
-                        if (!(sketch.profile() instanceof Feature.Circle circle)) {
+                        if (!(sketch.profile() instanceof Feature.Circle)
+                                && !(sketch.profile() instanceof Feature.Constrained)) {
                             throw new ModelException(
                                     cut.id(), "through-all cut requires a circle profile");
                         }
@@ -164,12 +172,22 @@ public final class Evaluator {
                             throw new ModelException(
                                     cut.id(), "body input has been superseded by a later feature");
                         // M1 through-all is the complete Z extent normal to any XY-parallel plane.
-                        Solid solid =
-                                input.solid()
-                                        .cutThroughCircle(
-                                                circle.centerX(),
-                                                circle.centerY(),
-                                                circle.diameter());
+                        Solid solid;
+                        if (sketch.profile() instanceof Feature.Circle circle) {
+                            solid =
+                                    input.solid()
+                                            .cutThroughCircle(
+                                                    circle.centerX(),
+                                                    circle.centerY(),
+                                                    circle.diameter());
+                        } else {
+                            var constrained = (Feature.Constrained) sketch.profile();
+                            solid =
+                                    input.solid()
+                                            .cutThroughProfile(
+                                                    dev.voxelbrew.engine.sketch.SketchProfiles
+                                                            .profile(constrained.geometry()));
+                        }
                         owned.add(solid);
                         var body =
                                 new Evaluation.Body(

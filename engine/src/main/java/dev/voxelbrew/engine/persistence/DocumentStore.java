@@ -23,7 +23,7 @@ import java.util.List;
  * Versioned protobuf persistence with a complete-file integrity envelope and atomic publication.
  */
 public final class DocumentStore {
-    public static final int SCHEMA_VERSION = 3;
+    public static final int SCHEMA_VERSION = 4;
     private static final byte[] MAGIC = {'J', 'C', 'A', 'D', 13, 10, 26, 10};
     private static final int HEADER = 44;
     private static final int MAX_PAYLOAD = 16 * 1024 * 1024;
@@ -163,6 +163,9 @@ public final class DocumentStore {
                                 yield new Feature.Circle(
                                         c.getCenterX(), c.getCenterY(), c.getDiameter());
                             }
+                            case CONSTRAINED ->
+                                    new Feature.Constrained(
+                                            SketchCodec.fromProto(sketch.getConstrained()));
                             case PROFILE_NOT_SET ->
                                     throw new IllegalArgumentException(
                                             "Feature '" + id + "': missing sketch profile");
@@ -351,6 +354,8 @@ public final class DocumentStore {
                                 .setCenterX(c.centerX())
                                 .setCenterY(c.centerY())
                                 .setDiameter(c.diameter()));
+            } else if (s.profile() instanceof Feature.Constrained c) {
+                sketch.setConstrained(SketchCodec.toProto(c.geometry()));
             } else {
                 throw new IllegalArgumentException("Feature '" + s.id() + "': unsupported profile");
             }

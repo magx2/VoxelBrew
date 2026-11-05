@@ -15,11 +15,17 @@ public sealed interface Feature
 
     record BodyRef(String featureId, String outputName) {}
 
-    sealed interface Profile permits Rectangle, Circle {}
+    sealed interface Profile permits Rectangle, Circle, Constrained {}
 
     record Rectangle(double x, double y, double width, double height) implements Profile {}
 
     record Circle(double centerX, double centerY, double diameter) implements Profile {}
+
+    record Constrained(dev.voxelbrew.engine.sketch.SketchGeometry geometry) implements Profile {
+        public Constrained {
+            java.util.Objects.requireNonNull(geometry);
+        }
+    }
 
     record Sketch(String id, String profileId, Plane plane, Profile profile) implements Feature {}
 

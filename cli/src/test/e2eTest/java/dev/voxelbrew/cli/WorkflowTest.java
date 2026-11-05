@@ -17,6 +17,187 @@ class WorkflowTest {
     @TempDir Path directory;
 
     @Test
+    void constrainedProfilesPersistAndRejectConflictsAcrossFreshProcesses() throws Exception {
+        String file = directory.resolve("CLI constrained plate.jcad").toString();
+        run(0, "new", file);
+        run(0, "rectangle", file, "--id", "plate", "--width", "60", "--height", "40");
+        var before = DocumentStore.load(Path.of(file));
+        run(0, "extrude", file, "--id", "thickness", "--sketch", "plate", "--distance", "8");
+        run(0, "sketch", "convert", file, "--sketch", "plate");
+        var converted = (Feature.Sketch) DocumentStore.load(Path.of(file)).features().getFirst();
+        assertEquals(
+                ((Feature.Sketch) before.features().getFirst()).profileId(), converted.profileId());
+        run(
+                0,
+                "sketch",
+                "entity",
+                file,
+                "--sketch",
+                "plate",
+                "--id",
+                "hole",
+                "--kind",
+                "CIRCLE",
+                "--values",
+                "10,10,2");
+        run(
+                0,
+                "sketch",
+                "constrain",
+                file,
+                "--sketch",
+                "plate",
+                "--id",
+                "hole-fixed",
+                "--type",
+                "FIX",
+                "--refs",
+                "hole");
+        assertTrue(
+                run(0, "sketch", "list", file, "--sketch", "plate").contains("Fully constrained"));
+        assertTrue(run(0, "inspect", file, "--point", "10,10,4").contains("contains=false"));
+        var session =
+                new dev.voxelbrew.engine.model.ModelSession(DocumentStore.load(Path.of(file)));
+        try (var result = session.evaluate()) {
+            assertEquals(
+                    19099.469035085127,
+                    result.requireCompleteDocument().getFirst().solid().volume(),
+                    0.01);
+        }
+        byte[] original = Files.readAllBytes(Path.of(file));
+        assertTrue(
+                run(
+                                1,
+                                "sketch",
+                                "constrain",
+                                file,
+                                "--sketch",
+                                "plate",
+                                "--id",
+                                "bad-width",
+                                "--type",
+                                "LENGTH",
+                                "--refs",
+                                "rectangle-bottom",
+                                "--value",
+                                "80")
+                        .contains("cannot satisfy"));
+        assertArrayEquals(original, Files.readAllBytes(Path.of(file)));
+        run(0, "edit", file, "--feature", "plate", "--field", "constraint:width", "--value", "80");
+        original = Files.readAllBytes(Path.of(file));
+        run(
+                1,
+                "sketch",
+                "move",
+                file,
+                "--sketch",
+                "plate",
+                "--point",
+                "rectangle-bottom.start",
+                "--x",
+                "4",
+                "--y",
+                "5");
+        assertArrayEquals(original, Files.readAllBytes(Path.of(file)));
+        run(0, "sketch", "remove-constraint", file, "--sketch", "plate", "--id", "anchor");
+        run(
+                0,
+                "sketch",
+                "move",
+                file,
+                "--sketch",
+                "plate",
+                "--point",
+                "rectangle-bottom.start",
+                "--x",
+                "4",
+                "--y",
+                "5");
+        var profile =
+                (Feature.Constrained)
+                        ((Feature.Sketch) DocumentStore.load(Path.of(file)).features().getFirst())
+                                .profile();
+        assertEquals(4, profile.geometry().entity("rectangle-bottom").at(0).x(), 1e-6);
+        assertEquals(5, profile.geometry().entity("rectangle-bottom").at(0).y(), 1e-6);
+        run(0, "sketch", "solve", file, "--sketch", "plate");
+        run(
+                0,
+                "export",
+                file,
+                "--format",
+                "3mf",
+                "--output",
+                directory.resolve("constrained plate.3mf").toString());
+    }
+
+    @Test
+    void polygonAndExactSplineSketchesAreAvailableHeadlessly() throws Exception {
+        String polygon = directory.resolve("polygon.jcad").toString();
+        run(0, "new", polygon);
+        run(0, "sketch", "new", polygon, "--id", "hex");
+        run(
+                0,
+                "sketch",
+                "polygon",
+                polygon,
+                "--sketch",
+                "hex",
+                "--id",
+                "boundary",
+                "--radius",
+                "10",
+                "--sides",
+                "6");
+        assertTrue(run(0, "sketch", "list", polygon, "--sketch", "hex").contains("POLYGON"));
+        run(0, "extrude", polygon, "--id", "body", "--sketch", "hex", "--distance", "3");
+        try (var evaluation =
+                dev.voxelbrew.engine.model.Evaluator.evaluate(
+                        DocumentStore.load(Path.of(polygon)))) {
+            assertEquals(
+                    3 * Math.sqrt(3) / 2 * 100 * 3,
+                    evaluation.requireCompleteDocument().getFirst().solid().volume(),
+                    0.001);
+        }
+        String spline = directory.resolve("spline.jcad").toString();
+        run(0, "new", spline);
+        run(0, "sketch", "new", spline, "--id", "curve");
+        run(
+                0,
+                "sketch",
+                "entity",
+                spline,
+                "--sketch",
+                "curve",
+                "--id",
+                "spline",
+                "--kind",
+                "SPLINE",
+                "--values",
+                "0,0,0,10,10,10,10,0");
+        run(
+                0,
+                "sketch",
+                "entity",
+                spline,
+                "--sketch",
+                "curve",
+                "--id",
+                "chord",
+                "--kind",
+                "LINE",
+                "--values",
+                "10,0,0,0");
+        run(0, "sketch", "profile", spline, "--sketch", "curve", "--entities", "spline,chord");
+        run(0, "extrude", spline, "--id", "body", "--sketch", "curve", "--distance", "2");
+        try (var evaluation =
+                dev.voxelbrew.engine.model.Evaluator.evaluate(
+                        DocumentStore.load(Path.of(spline)))) {
+            assertEquals(
+                    120, evaluation.requireCompleteDocument().getFirst().solid().volume(), 1e-6);
+        }
+    }
+
+    @Test
     void customProviderSurvivesFreshProcessesMissingPluginAndPrinting() throws Exception {
         Path plugins = Files.createDirectory(directory.resolve("feature plugins"));
         Path jar = plugins.resolve("provider.jar"),

@@ -101,6 +101,20 @@
 .error {
   -fx-text-fill: #d65c46;
 }
+.sketch-editor {
+  -fx-background-color: -fx-base;
+  -fx-padding: 14;
+  -fx-border-color: -fx-accent;
+  -fx-border-radius: 5;
+  -fx-background-radius: 5;
+}
+.constraint-icon {
+  -fx-text-fill: #d15d55;
+  -fx-font-size: 16px;
+  -fx-font-weight: bold;
+  -fx-padding: 2 8;
+  -fx-min-width: 32;
+}
 .text-field.invalid {
   -fx-border-color: #d65c46;
   -fx-border-radius: 4;

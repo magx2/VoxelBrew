@@ -140,6 +140,12 @@ public final class ModelSession {
                                     throw new ModelException(
                                             featureId, "unknown circle dimension '" + field + "'");
                         };
+            } else if (profile instanceof Feature.Constrained c) {
+                String constraintId = field.startsWith("constraint:") ? field.substring(11) : field;
+                profile =
+                        new Feature.Constrained(
+                                dev.voxelbrew.engine.sketch.Sketches.editDimension(
+                                        c.geometry(), constraintId, value));
             } else {
                 throw new ModelException(featureId, "unsupported profile");
             }

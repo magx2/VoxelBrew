@@ -262,9 +262,9 @@ class EditableEngineTest {
     }
 
     @Test
-    void schemaOneAndTwoDocumentsRemainReadableAndEditable() throws Exception {
+    void schemaOneTwoAndThreeDocumentsRemainReadableAndEditable() throws Exception {
         var original = reference().document();
-        for (int version : new int[] {1, 2}) {
+        for (int version : new int[] {1, 2, 3}) {
             Path file = directory.resolve("legacy-" + version + ".jcad");
             DocumentStore.save(original, file, false);
             byte[] bytes = Files.readAllBytes(file);

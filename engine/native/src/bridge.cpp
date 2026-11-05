@@ -3,6 +3,13 @@
 #include <BRepAlgoAPI_Splitter.hxx>
 #include <BRepBndLib.hxx>
 #include <BRepBuilderAPI_MakeFace.hxx>
+#include <BRepBuilderAPI_MakeEdge.hxx>
+#include <BRepBuilderAPI_MakeWire.hxx>
+#include <Geom_BezierCurve.hxx>
+#include <TColgp_Array1OfPnt.hxx>
+#include <TopoDS_Edge.hxx>
+#include <TopoDS_Wire.hxx>
+#include <gp_Circ.hxx>
 #include <BRepBuilderAPI_Copy.hxx>
 #include <BRepMesh_IncrementalMesh.hxx>
 #include <BRep_Tool.hxx>
@@ -98,6 +105,93 @@ Bnd_Box exactBounds(const TopoDS_Shape& shape) {
     if (box.IsVoid() || box.IsOpen()) throw std::runtime_error("solid has no finite bounds");
     return box;
 }
+
+TopoDS_Shape profilePrism(JNIEnv* env, jintArray typeArray, jintArray loopArray,
+                          jdoubleArray parameterArray, double z, double distance) {
+    requireFinite(z);
+    requirePositive(std::abs(distance));
+    requireFinite(z + distance);
+    if (!typeArray || !loopArray || !parameterArray)
+        throw std::invalid_argument("profile arrays are required");
+    const int count = env->GetArrayLength(typeArray), loopCount = env->GetArrayLength(loopArray);
+    if (count < 1 || count > 64 || loopCount < 1 || loopCount > 64 ||
+        env->GetArrayLength(parameterArray) != count * 8)
+        throw std::invalid_argument("invalid profile array sizes");
+    std::vector<jint> types(count), loops(loopCount);
+    std::vector<jdouble> parameters(count * 8);
+    env->GetIntArrayRegion(typeArray, 0, count, types.data());
+    env->GetIntArrayRegion(loopArray, 0, loopCount, loops.data());
+    env->GetDoubleArrayRegion(parameterArray, 0, count * 8, parameters.data());
+    if (env->ExceptionCheck()) throw std::runtime_error("could not read profile arrays");
+    int total = 0;
+    for (int n : loops) {
+        if (n < 1 || n > count) throw std::invalid_argument("invalid profile loop size");
+        total += n;
+    }
+    if (total != count) throw std::invalid_argument("profile loop counts do not match curves");
+    for (double value : parameters) requireFinite(value);
+    std::vector<TopoDS_Wire> wires;
+    int index = 0;
+    for (int size : loops) {
+        BRepBuilderAPI_MakeWire wire;
+        for (int n = 0; n < size; ++n, ++index) {
+            const int code = types[index];
+            if (code == 0 || code < -4 || code > 4)
+                throw std::invalid_argument("unknown profile curve type");
+            const double* p = parameters.data() + index * 8;
+            TopoDS_Edge edge;
+            if (std::abs(code) == 1) {
+                BRepBuilderAPI_MakeEdge builder(gp_Pnt(p[0], p[1], z), gp_Pnt(p[2], p[3], z));
+                if (!builder.IsDone()) throw std::runtime_error("line edge construction failed");
+                edge = builder.Edge();
+            } else if (std::abs(code) == 2 || std::abs(code) == 3) {
+                requirePositive(p[2]);
+                gp_Circ circle(gp_Ax2(gp_Pnt(p[0], p[1], z), gp_Dir(0, 0, 1)), p[2]);
+                if (std::abs(code) == 2) {
+                    BRepBuilderAPI_MakeEdge builder(circle);
+                    if (!builder.IsDone())
+                        throw std::runtime_error("circle edge construction failed");
+                    edge = builder.Edge();
+                } else {
+                    if (std::abs(p[4]) < 1e-6 || std::abs(p[4]) >= 2 * std::acos(-1.0))
+                        throw std::invalid_argument("invalid arc sweep");
+                    BRepBuilderAPI_MakeEdge builder(circle, std::min(p[3], p[3] + p[4]),
+                                                    std::max(p[3], p[3] + p[4]));
+                    if (!builder.IsDone()) throw std::runtime_error("arc edge construction failed");
+                    edge = builder.Edge();
+                    if (p[4] < 0) edge.Reverse();
+                }
+            } else {
+                TColgp_Array1OfPnt poles(1, 4);
+                for (int i = 0; i < 4; ++i)
+                    poles.SetValue(i + 1, gp_Pnt(p[2 * i], p[2 * i + 1], z));
+                Handle(Geom_BezierCurve) curve = new Geom_BezierCurve(poles);
+                BRepBuilderAPI_MakeEdge builder(curve);
+                if (!builder.IsDone()) throw std::runtime_error("spline edge construction failed");
+                edge = builder.Edge();
+            }
+            if (code < 0) edge.Reverse();
+            wire.Add(edge);
+            if (!wire.IsDone())
+                throw std::runtime_error(
+                    "disconnected profile; constrain adjacent endpoints to be coincident");
+        }
+        auto result = wire.Wire();
+        if (!BRep_Tool::IsClosed(result))
+            throw std::runtime_error("profile boundary must be closed");
+        wires.push_back(result);
+    }
+    BRepBuilderAPI_MakeFace face(gp_Pln(gp_Pnt(0, 0, z), gp_Dir(0, 0, 1)), wires.front(), true);
+    for (size_t i = 1; i < wires.size(); ++i) face.Add(wires[i]);
+    face.Build();
+    if (!face.IsDone() || !BRepCheck_Analyzer(face.Face()).IsValid())
+        throw std::runtime_error(
+            "profile must be a valid non-self-intersecting region with interior holes");
+    BRepPrimAPI_MakePrism prism(face.Face(), gp_Vec(0, 0, distance));
+    prism.Build();
+    if (!prism.IsDone()) throw std::runtime_error("profile extrusion failed");
+    return prism.Shape();
+}
 }  // namespace
 
 extern "C" {
@@ -178,6 +272,35 @@ JNIEXPORT jlong JNICALL Java_dev_voxelbrew_engine_geometry_NativeKernel_circlePr
         cylinder.Build();
         if (!cylinder.IsDone()) throw std::runtime_error("cylinder construction failed");
         return own(cylinder.Shape());
+    });
+}
+
+JNIEXPORT jlong JNICALL Java_dev_voxelbrew_engine_geometry_NativeKernel_profilePrism(
+    JNIEnv* env, jclass, jintArray types, jintArray loops, jdoubleArray parameters, jdouble z,
+    jdouble distance) {
+    return guarded<jlong>(env, "constrained profile extrusion", 0, [&] {
+        return own(profilePrism(env, types, loops, parameters, z, distance));
+    });
+}
+
+JNIEXPORT jlong JNICALL Java_dev_voxelbrew_engine_geometry_NativeKernel_cutThroughProfile(
+    JNIEnv* env, jclass, jlong id, jintArray types, jintArray loops, jdoubleArray parameters) {
+    return guarded<jlong>(env, "through-all profile cut", 0, [&] {
+        const auto source = lookup(id);
+        double xmin, ymin, zmin, xmax, ymax, zmax;
+        exactBounds(*source).Get(xmin, ymin, zmin, xmax, ymax, zmax);
+        auto tool = profilePrism(env, types, loops, parameters, zmin - 1, zmax - zmin + 2);
+        BRepAlgoAPI_Cut cut;
+        TopTools_ListOfShape arguments, tools;
+        arguments.Append(*source);
+        tools.Append(tool);
+        cut.SetArguments(arguments);
+        cut.SetTools(tools);
+        cut.SetNonDestructive(true);
+        cut.Build();
+        if (!cut.IsDone() || cut.HasErrors())
+            throw std::runtime_error("profile subtraction failed");
+        return own(cut.Shape());
     });
 }
 

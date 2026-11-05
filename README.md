@@ -17,6 +17,9 @@ M5 adds bundled-JVM app images and packaged CLI/GUI checks. See
 [packaging and platform qualification](docs/packaging.md).
 M6 adds persistent custom feature providers, with a consumer-built spacer plugin
 and shared CLI/GUI parameter editing. See [feature plugins](docs/feature-plugins.md).
+M7 adds a 2D sketch constraint workspace: lines, circles, arcs, cubic splines,
+regular polygons, driving dimensions and geometric constraints. See
+[sketch constraints](docs/sketch-constraints.md).
 
 ## Prerequisites and locked dependencies
 

@@ -4,7 +4,10 @@ plugins {
     id("com.google.protobuf") version "0.9.5"
 }
 
-dependencies { implementation("com.google.protobuf:protobuf-java:4.30.2") }
+dependencies {
+    implementation("com.google.protobuf:protobuf-java:4.30.2")
+    implementation("org.apache.commons:commons-math3:3.6.1")
+}
 
 protobuf { protoc { artifact = "com.google.protobuf:protoc:4.30.2" } }
 

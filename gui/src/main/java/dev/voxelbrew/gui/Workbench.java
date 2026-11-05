@@ -71,6 +71,8 @@ public final class Workbench extends BorderPane implements AutoCloseable {
     private final Button export =
             button("Export…", "export", () -> ExportDialog.show(stage(), controller(), registry()));
     private final Button customFeature = button("Features…", "custom-feature", this::customFeature);
+    private final Button constrainedSketch =
+            button("New sketch…", "constrained-sketch", () -> editSketch(null));
     private final Button rectangle = button("▭  Rectangle", "rectangle", () -> beginSketch(false));
     private final Button circle = button("○  Circle", "circle", () -> beginSketch(true));
     private final Button extrude = button("↑  Extrude", "extrude", this::beginExtrusion);
@@ -199,7 +201,7 @@ public final class Workbench extends BorderPane implements AutoCloseable {
                             if (entry.body()) selectBody(entry.id(), -1);
                             else selectFeature(entry.id());
                         });
-        var left = new VBox(10, heading("MODEL"), customFeature, tree);
+        var left = new VBox(10, heading("MODEL"), customFeature, constrainedSketch, tree);
         left.getStyleClass().add("side-panel");
         left.setPrefWidth(220);
         left.setMinWidth(185);
@@ -451,13 +453,22 @@ public final class Workbench extends BorderPane implements AutoCloseable {
             printing.documentChanged();
             boolean atEnd = document.cursor() == document.features().size() && !controller.ioBusy();
             customFeature.setDisable(!atEnd || tool != Tool.NONE || controller.rebuilding());
+            constrainedSketch.setDisable(!atEnd || tool != Tool.NONE || controller.rebuilding());
             rectangle.setDisable(!atEnd);
             circle.setDisable(!atEnd);
-            extrude.setDisable(!atEnd || !(selected() instanceof Feature.Sketch));
+            extrude.setDisable(
+                    !atEnd
+                            || !(selected() instanceof Feature.Sketch s
+                                    && (!(s.profile() instanceof Feature.Constrained c)
+                                            || dev.voxelbrew.engine.sketch.SketchProfiles
+                                                    .hasProfile(c.geometry()))));
             cut.setDisable(
                     !atEnd
                             || !(selected() instanceof Feature.Sketch s
-                                    && s.profile() instanceof Feature.Circle)
+                                    && (s.profile() instanceof Feature.Circle
+                                            || s.profile() instanceof Feature.Constrained c
+                                                    && dev.voxelbrew.engine.sketch.SketchProfiles
+                                                            .hasProfile(c.geometry())))
                             || controller.rebuilding()
                             || controller.build().bodies().isEmpty());
             cursor.setDisable(controller.ioBusy() || tool != Tool.NONE);
@@ -510,7 +521,9 @@ public final class Workbench extends BorderPane implements AutoCloseable {
     private static String shortName(Feature feature) {
         if (feature instanceof Feature.Custom custom) return "Custom · " + custom.type();
         return feature instanceof Feature.Sketch s
-                ? (s.profile() instanceof Feature.Circle ? "Circle" : "Rectangle")
+                ? (s.profile() instanceof Feature.Circle
+                        ? "Circle"
+                        : s.profile() instanceof Feature.Constrained ? "Sketch" : "Rectangle")
                 : feature instanceof Feature.Extrude
                         ? "Extrude"
                         : feature instanceof Feature.SplitBody ? "Split" : "Through cut";
@@ -628,12 +641,31 @@ public final class Workbench extends BorderPane implements AutoCloseable {
                 dimension(feature, "y", r.y());
                 dimension(feature, "width", r.width());
                 dimension(feature, "height", r.height());
-            } else {
-                var c = (Feature.Circle) s.profile();
+            } else if (s.profile() instanceof Feature.Circle c) {
                 dimension(feature, "centerX", c.centerX());
                 dimension(feature, "centerY", c.centerY());
                 dimension(feature, "diameter", c.diameter());
+            } else if (s.profile() instanceof Feature.Constrained c) {
+                var info =
+                        new Label(
+                                c.geometry().entities().size()
+                                        + " entities · "
+                                        + c.geometry().constraints().size()
+                                        + " constraints");
+                info.setWrapText(true);
+                form.getChildren().add(info);
+                var hint =
+                        new Label(
+                                "Edit sketch to change driving dimensions, constraints, or the profile boundary.");
+                hint.setWrapText(true);
+                form.getChildren().add(hint);
             }
+            form.getChildren()
+                    .add(
+                            button(
+                                    "Edit sketch / constraints…",
+                                    "edit-sketch-constraints",
+                                    () -> editSketch(s)));
             dimension(feature, "offsetZ", s.plane().offsetZ());
             form.getChildren().add(new Label("Plane: " + s.plane().id()));
         } else if (feature instanceof Feature.Extrude e) {
@@ -966,6 +998,29 @@ public final class Workbench extends BorderPane implements AutoCloseable {
         return String.format(Locale.ROOT, "%.3f", value);
     }
 
+    private void editSketch(Feature.Sketch sketch) {
+        cancelTool();
+        var before = controller.snapshot();
+        if (controller.ioBusy() || controller.rebuilding())
+            throw new IllegalArgumentException("Wait for the current rebuild or file operation");
+        SketchEditor.show(
+                stage,
+                sketch,
+                result -> {
+                    var current = controller.snapshot();
+                    if (!before.document().id().equals(current.document().id())
+                            || before.revision() != current.revision())
+                        throw new IllegalStateException(
+                                "The document changed while editing. Cancel and reopen the sketch.");
+                    if (sketch == null) controller.add(result);
+                    else controller.replaceFeature(result);
+                    selectedFeature = result.id();
+                    selectedBody = null;
+                    inspect();
+                    refresh();
+                });
+    }
+
     private void beginExtrusion() {
         var feature = selected();
         if (!(feature instanceof Feature.Sketch sketch))
@@ -1030,8 +1085,9 @@ public final class Workbench extends BorderPane implements AutoCloseable {
 
     private void beginCut() {
         if (!(selected() instanceof Feature.Sketch sketch)
-                || !(sketch.profile() instanceof Feature.Circle))
-            throw new IllegalArgumentException("Select a circle sketch");
+                || !(sketch.profile() instanceof Feature.Circle
+                        || sketch.profile() instanceof Feature.Constrained))
+            throw new IllegalArgumentException("Select a closed sketch profile");
         var choices = controller.build().bodies();
         if (choices.isEmpty()) throw new IllegalArgumentException("A target body is required");
         var dialog =

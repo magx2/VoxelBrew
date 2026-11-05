@@ -36,8 +36,10 @@ Rectangles accept `--x`, `--y`, `--width`, `--height`; circles accept center and
 diameter. Both accept `--offset-z`, `--plane-id`, `--profile-id` and `--id`.
 Both profiles can be extruded as new bodies, with signed distances. The M1 cut
 operation is a circular through-all subtraction across the complete current Z
-extent, normal to the XY-parallel sketch plane. Arbitrary planes, arbitrary
-sketch constraints and generated-face supports are not implemented.
+extent, normal to the XY-parallel sketch plane. M7 extends sketches with
+[geometric constraints and general closed profiles](sketch-constraints.md),
+including through cuts. Arbitrary planes and generated-face supports remain
+outside the current sketch workflow.
 
 Dimension fields: `width`, `height`, `x`, `y`, `centerX`, `centerY`, `diameter`,
 `distance`, `offsetZ`. A shared offset-plane edit updates all sketches with that
@@ -79,7 +81,7 @@ cli inspect broken.jcad
 
 ## .jcad schema and safe writes
 
-`engine/src/main/proto/document.proto` is schema version 3 (versions 1 and 2 remain readable). The binary envelope
+`engine/src/main/proto/document.proto` is schema version 4 (versions 1, 2 and 3 remain readable). The binary envelope
 contains eight magic bytes (`JCAD`, CR, LF, 0x1A, LF), a big-endian 32-bit payload
 length, a SHA-256 digest and the Protobuf message. The 16 MiB payload limit, exact
 length check and digest distinguish truncated/corrupt documents from an empty

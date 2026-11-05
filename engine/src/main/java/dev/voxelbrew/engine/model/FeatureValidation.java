@@ -24,6 +24,12 @@ final class FeatureValidation {
                 finite(feature.id(), "centerX", c.centerX());
                 finite(feature.id(), "centerY", c.centerY());
                 positive(feature.id(), "diameter", c.diameter());
+            } else if (sketch.profile() instanceof Feature.Constrained c) {
+                try {
+                    dev.voxelbrew.engine.sketch.SketchConstraints.requireSatisfied(c.geometry());
+                } catch (IllegalArgumentException failure) {
+                    throw new ModelException(feature.id(), failure.getMessage());
+                }
             } else {
                 throw new ModelException(feature.id(), "profile is missing or unsupported");
             }

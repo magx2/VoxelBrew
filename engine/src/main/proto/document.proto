@@ -42,12 +42,77 @@ message Circle {
   double center_y = 2;
   double diameter = 3;
 }
+message SketchEntity {
+  enum Kind {
+    KIND_UNSPECIFIED = 0;
+    POINT = 1;
+    LINE = 2;
+    CIRCLE = 3;
+    ARC = 4;
+    SPLINE = 5;
+  }
+  string id = 1;
+  Kind kind = 2;
+  repeated double values = 3;
+  bool construction = 4;
+}
+message SketchReference {
+  enum Part {
+    PART_UNSPECIFIED = 0;
+    OBJECT = 1;
+    POINT = 2;
+    START = 3;
+    END = 4;
+    CENTER = 5;
+    CONTROL1 = 6;
+    CONTROL2 = 7;
+  }
+  string entity_id = 1;
+  Part part = 2;
+}
+message SketchConstraint {
+  enum Type {
+    TYPE_UNSPECIFIED = 0;
+    HORIZONTAL = 1;
+    VERTICAL = 2;
+    COINCIDENT = 3;
+    TANGENT = 4;
+    EQUAL = 5;
+    PARALLEL = 6;
+    PERPENDICULAR = 7;
+    FIX = 8;
+    MIDPOINT = 9;
+    CONCENTRIC = 10;
+    COLLINEAR = 11;
+    SYMMETRY = 12;
+    CURVATURE = 13;
+    POLYGON = 14;
+    LENGTH = 15;
+    DISTANCE = 16;
+    DISTANCE_X = 17;
+    DISTANCE_Y = 18;
+    RADIUS = 19;
+    DIAMETER = 20;
+    ANGLE = 21;
+  }
+  string id = 1;
+  Type type = 2;
+  repeated SketchReference refs = 3;
+  repeated double values = 4;
+}
+message ConstrainedSketch {
+  repeated SketchEntity entities = 1;
+  repeated SketchConstraint constraints = 2;
+  repeated string boundary = 3;
+  reserved 4 to 15;
+}
 message Sketch {
   string profile_id = 1;
   Plane plane = 2;
   oneof profile {
     Rectangle rectangle = 3;
     Circle circle = 4;
+    ConstrainedSketch constrained = 16;
   }
   reserved 5 to 15;
 }

@@ -170,6 +170,11 @@ public final class Viewport extends StackPane {
         sketches.setDepthTest(planeClick == null ? DepthTest.INHERIT : DepthTest.DISABLE);
         for (var feature : features)
             if (feature instanceof Feature.Sketch sketch) {
+                if (sketch.profile() instanceof Feature.Constrained constrained) {
+                    showConstrainedSketch(
+                            sketch, constrained.geometry(), sketch.id().equals(selectedSketch));
+                    continue;
+                }
                 double[] xy;
                 if (sketch.profile() instanceof Feature.Rectangle r)
                     xy =
@@ -243,6 +248,42 @@ public final class Viewport extends StackPane {
             }
     }
 
+    private void showConstrainedSketch(
+            Feature.Sketch sketch,
+            dev.voxelbrew.engine.sketch.SketchGeometry geometry,
+            boolean chosen) {
+        var group = new Group();
+        for (var entity : geometry.entities()) {
+            var points = entity.sample();
+            for (int i = 1; i < points.size(); i++) {
+                if (entity.construction() && i % 4 >= 2) continue;
+                var a = points.get(i - 1);
+                var b = points.get(i);
+                if (a.distance(b) < 1e-9) continue;
+                group.getChildren()
+                        .add(
+                                line(
+                                        toView(a.x(), a.y(), sketch.plane().offsetZ() + .04),
+                                        toView(b.x(), b.y(), sketch.plane().offsetZ() + .04),
+                                        chosen ? .14 : .075,
+                                        Color.web(
+                                                chosen
+                                                        ? "#dc8d18"
+                                                        : entity.construction()
+                                                                ? "#8795a3"
+                                                                : "#2d839f")));
+            }
+        }
+        group.setOnMouseClicked(
+                e -> {
+                    if (e.getButton() == MouseButton.PRIMARY && e.isStillSincePress()) {
+                        selection.accept(sketch.id(), -1);
+                        e.consume();
+                    }
+                });
+        sketches.getChildren().add(group);
+    }
+
     private static Cylinder line(Point3D a, Point3D b, double radius, Color color) {
         Point3D delta = b.subtract(a), middle = a.midpoint(b);
         var line = new Cylinder(radius, delta.magnitude(), 6);
@@ -278,10 +319,22 @@ public final class Viewport extends StackPane {
         if (sketch.profile() instanceof Feature.Rectangle r) {
             x = r.x() + r.width() / 2;
             y = r.y() + r.height() / 2;
-        } else {
-            var c = (Feature.Circle) sketch.profile();
+        } else if (sketch.profile() instanceof Feature.Circle c) {
             x = c.centerX();
             y = c.centerY();
+        } else {
+            var geometry = ((Feature.Constrained) sketch.profile()).geometry();
+            var points = geometry.entities().stream().flatMap(e -> e.sample().stream()).toList();
+            x =
+                    points.stream()
+                            .mapToDouble(dev.voxelbrew.engine.sketch.SketchGeometry.Vec::x)
+                            .average()
+                            .orElse(0);
+            y =
+                    points.stream()
+                            .mapToDouble(dev.voxelbrew.engine.sketch.SketchGeometry.Vec::y)
+                            .average()
+                            .orElse(0);
         }
         var anchor = toView(x, y, sketch.plane().offsetZ());
         var tip = new Sphere(1.5, 12);

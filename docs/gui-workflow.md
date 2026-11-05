@@ -12,6 +12,13 @@ Only use a distribution built for the destination OS and architecture.
 
 ## Reference-part demo
 
+For the constraint workspace, choose **New sketch…** or select an existing sketch
+and choose **Edit sketch / constraints…** in Properties. The workspace supports
+geometric constraints, driving dimensions, point dragging and local undo/redo.
+See [the constrained sketch workflow](sketch-constraints.md) for selection rules
+and an equivalent headless workflow. The quick rectangle/circle tools below
+remain available.
+
 1. Choose **Rectangle**. Click (0,0) and (60,40) in the top viewport, or set
    X=0, Y=0, Width=60, Height=40, Plane offset Z=0. Choose **Finish sketch**.
 2. With that profile selected, choose **Extrude**. Enter 5 and press Enter.

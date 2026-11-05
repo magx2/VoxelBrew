@@ -19,6 +19,23 @@ public final class Solid implements AutoCloseable {
         return NativeKernel.version();
     }
 
+    /** Extrudes exact line, circle, arc, and cubic Bezier boundaries, with optional holes. */
+    public static Solid profilePrism(PlanarProfile profile, double z, double distance) {
+        finite("offsetZ", z);
+        finite("distance", distance);
+        positive("absolute distance", Math.abs(distance));
+        return new Solid(
+                NativeKernel.profilePrism(
+                        profile.types(), profile.sizes(), profile.parameters(), z, distance));
+    }
+
+    public synchronized Solid cutThroughProfile(PlanarProfile profile) {
+        requireOpen();
+        return new Solid(
+                NativeKernel.cutThroughProfile(
+                        token, profile.types(), profile.sizes(), profile.parameters()));
+    }
+
     public static Solid circlePrism(
             double x, double y, double z, double diameter, double distance) {
         finite("centerX", x);

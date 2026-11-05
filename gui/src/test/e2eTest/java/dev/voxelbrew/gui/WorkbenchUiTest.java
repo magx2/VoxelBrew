@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import dev.voxelbrew.engine.model.*;
 import dev.voxelbrew.engine.persistence.DocumentStore;
 import dev.voxelbrew.engine.printing.*;
+import dev.voxelbrew.engine.sketch.SketchGeometry;
 import java.nio.file.*;
 import java.util.*;
 import java.util.concurrent.*;
@@ -437,6 +438,373 @@ class WorkbenchUiTest {
         click("file-confirm");
         ready();
         assertTrue(Files.exists(path));
+    }
+
+    private void sketchReady() throws Exception {
+        long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(20);
+        while (fx(() -> ((SketchEditor) node("#sketch-editor")).controller().busy())
+                && System.nanoTime() < deadline) Thread.sleep(25);
+        assertFalse(fx(() -> ((SketchEditor) node("#sketch-editor")).controller().busy()));
+        Thread.sleep(100);
+    }
+
+    private void sketchClick(double x, double y, boolean shift) throws Exception {
+        fx(
+                () -> {
+                    var point =
+                            ((SketchEditor) node("#sketch-editor"))
+                                    .modelToScreen(new SketchGeometry.Vec(x, y));
+                    assertNotNull(point);
+                    robot.mouseMove(point);
+                    if (shift) robot.keyPress(KeyCode.SHIFT);
+                    return null;
+                });
+        Thread.sleep(100);
+        fx(
+                () -> {
+                    robot.mousePress(MouseButton.PRIMARY);
+                    return null;
+                });
+        Thread.sleep(60);
+        fx(
+                () -> {
+                    robot.mouseRelease(MouseButton.PRIMARY);
+                    if (shift) robot.keyRelease(KeyCode.SHIFT);
+                    return null;
+                });
+        Thread.sleep(150);
+    }
+
+    private void sketchDimension(int type, String value) throws Exception {
+        choice("sketch-dimension-type", type);
+        text("sketch-dimension-value", value);
+        click("sketch-apply-dimension");
+        sketchReady();
+    }
+
+    @Test
+    void constrainedSketchDimensionsConflictsHistoryAndFilesUseRealControls() throws Exception {
+        choice("appearance", 1);
+        click("constrained-sketch");
+        sketchReady();
+        click("sketch-tool-rectangle");
+        sketchClick(0, 0, false);
+        sketchClick(60, 40, false);
+        sketchReady();
+        sketchClick(0, 0, false);
+        click("constraint-fix");
+        sketchReady();
+        sketchClick(30, 0, false);
+        sketchDimension(0, "60");
+        sketchClick(0, 20, false);
+        sketchDimension(0, "40");
+        assertEquals(
+                "Fully constrained", fx(() -> ((Label) node("#sketch-solve-status")).getText()));
+        sketchClick(30, 0, false);
+        sketchDimension(0, "80");
+        assertTrue(fx(() -> node("#constraint-finish").isDisabled()));
+        assertTrue(fx(() -> ((Label) node("#sketch-error")).getText().contains("cannot satisfy")));
+        click("sketch-undo");
+        sketchReady();
+        assertFalse(fx(() -> node("#constraint-finish").isDisabled()));
+        click("sketch-redo");
+        sketchReady();
+        assertTrue(fx(() -> node("#constraint-finish").isDisabled()));
+        click("sketch-undo");
+        sketchReady();
+        click("sketch-tool-circle");
+        sketchClick(10, 10, false);
+        sketchClick(12, 10, false);
+        sketchReady();
+        sketchClick(12, 10, false);
+        sketchDimension(5, "4");
+        sketchClick(10, 10, false);
+        sketchClick(0, 0, true);
+        sketchDimension(2, "-10");
+        sketchDimension(3, "-10");
+        assertEquals(
+                "Fully constrained", fx(() -> ((Label) node("#sketch-solve-status")).getText()));
+        assertEquals(
+                0, document().features().size(), "Sketch editing stays transient until Finish");
+        Path artifacts = Path.of(System.getProperty("voxelbrew.ui.artifacts"));
+        fx(
+                () -> {
+                    Screenshot.save(
+                            stage.getScene(), artifacts.resolve("sketch-constraints-light.png"));
+                    return null;
+                });
+        click("constraint-finish");
+        ready();
+        assertEquals(1, document().features().size());
+        assertInstanceOf(
+                Feature.Constrained.class,
+                ((Feature.Sketch) document().features().getFirst()).profile());
+        click("extrude");
+        ready();
+        text("extrude-distance", "8");
+        key(KeyCode.ENTER);
+        ready();
+        assertEquals(19099.469035085127, volume(), 0.01);
+        Path file = directory.resolve("GUI constrained plate.jcad");
+        save(file);
+        var saved = DocumentStore.load(file);
+        click("open");
+        text("file-path", file.toString());
+        click("file-confirm");
+        ready();
+        assertEquals(saved, document());
+        String inspection = cli("inspect", file.toString(), "--point", "10,10,4");
+        assertTrue(inspection.contains("contains=false"));
+        assertTrue(cli("inspect", file.toString(), "--point", "30,20,4").contains("contains=true"));
+        choice("appearance", 2);
+        click("history-0");
+        click("edit-sketch-constraints");
+        sketchReady();
+        int widthIndex =
+                fx(
+                        () -> {
+                            var values =
+                                    ((SketchEditor) node("#sketch-editor"))
+                                            .controller()
+                                            .definition()
+                                            .constraints();
+                            for (int i = 0; i < values.size(); i++)
+                                if (values.get(i).type() == SketchGeometry.Type.LENGTH
+                                        && values.get(i)
+                                                .refs()
+                                                .getFirst()
+                                                .entityId()
+                                                .endsWith("bottom")) return i;
+                            throw new AssertionError("Missing width dimension");
+                        });
+        click("sketch-constraints");
+        key(KeyCode.HOME);
+        for (int i = 0; i < widthIndex; i++) key(KeyCode.DOWN);
+        text("sketch-dimension-value", "80");
+        click("sketch-apply-dimension");
+        sketchReady();
+        assertEquals(
+                "Fully constrained", fx(() -> ((Label) node("#sketch-solve-status")).getText()));
+        fx(
+                () -> {
+                    Screenshot.save(
+                            stage.getScene(), artifacts.resolve("sketch-constraints-dark.png"));
+                    return null;
+                });
+        click("constraint-finish");
+        ready();
+        assertEquals((80 * 40 - 4 * Math.PI) * 8, volume(), 0.01);
+        assertEquals(saved.features().getFirst().id(), document().features().getFirst().id());
+        click("undo");
+        ready();
+        assertEquals(saved, document());
+        click("redo");
+        ready();
+        assertEquals((80 * 40 - 4 * Math.PI) * 8, volume(), 0.01);
+        var beforeCancel = fx(() -> workbench.controller().snapshot());
+        click("constrained-sketch");
+        sketchReady();
+        click("sketch-tool-line");
+        sketchClick(10, 10, false);
+        key(KeyCode.ESCAPE);
+        assertTrue(
+                fx(
+                        () ->
+                                ((SketchEditor) node("#sketch-editor"))
+                                        .controller()
+                                        .definition()
+                                        .entities()
+                                        .isEmpty()));
+        click("constraint-cancel");
+        assertEquals(beforeCancel, fx(() -> workbench.controller().snapshot()));
+        Files.copy(
+                file,
+                artifacts.resolve("gui-constrained-plate.jcad"),
+                StandardCopyOption.REPLACE_EXISTING);
+        Files.writeString(artifacts.resolve("constrained-cli-inspection.txt"), inspection);
+    }
+
+    private void sketchReference(String ref) throws Exception {
+        int index =
+                fx(
+                        () -> {
+                            var items = ((ComboBox<?>) node("#sketch-reference")).getItems();
+                            for (int i = 0; i < items.size(); i++)
+                                if (items.get(i).toString().equals(ref)) return i;
+                            throw new AssertionError("Missing sketch reference " + ref);
+                        });
+        choice("sketch-reference", index);
+        click("sketch-select-ref");
+    }
+
+    private void sketchDrag(double x, double y, double toX, double toY, boolean cancel)
+            throws Exception {
+        var positions =
+                fx(
+                        () -> {
+                            var editor = (SketchEditor) node("#sketch-editor");
+                            return new javafx.geometry.Point2D[] {
+                                editor.modelToScreen(new SketchGeometry.Vec(x, y)),
+                                editor.modelToScreen(new SketchGeometry.Vec(toX, toY))
+                            };
+                        });
+        fx(
+                () -> {
+                    robot.mouseMove(positions[0]);
+                    return null;
+                });
+        Thread.sleep(100);
+        fx(
+                () -> {
+                    robot.mousePress(MouseButton.PRIMARY);
+                    return null;
+                });
+        Thread.sleep(100);
+        fx(
+                () -> {
+                    robot.mouseMove(positions[1]);
+                    return null;
+                });
+        Thread.sleep(180);
+        if (cancel) key(KeyCode.ESCAPE);
+        fx(
+                () -> {
+                    robot.mouseRelease(MouseButton.PRIMARY);
+                    return null;
+                });
+        sketchReady();
+    }
+
+    @Test
+    void sketchPointDragsCurvatureAndRegularPolygonsUseRealControls() throws Exception {
+        choice("appearance", 1);
+        click("constrained-sketch");
+        sketchReady();
+        click("sketch-tool-line");
+        sketchClick(10, 10, false);
+        sketchClick(30, 10, false);
+        sketchReady();
+        var before = fx(() -> ((SketchEditor) node("#sketch-editor")).controller().definition());
+        sketchDrag(30, 10, 35, 15, true);
+        assertEquals(
+                before,
+                fx(() -> ((SketchEditor) node("#sketch-editor")).controller().definition()));
+        sketchDrag(30, 10, 35, 15, false);
+        var moved = fx(() -> ((SketchEditor) node("#sketch-editor")).controller().definition());
+        assertEquals(35, moved.entities().getFirst().at(1).x(), 0.3);
+        assertEquals(15, moved.entities().getFirst().at(1).y(), 0.3);
+        assertEquals(
+                moved.entities().getFirst().at(0).y(), moved.entities().getFirst().at(1).y(), 1e-6);
+        click("sketch-undo");
+        sketchReady();
+        assertEquals(
+                before,
+                fx(() -> ((SketchEditor) node("#sketch-editor")).controller().definition()));
+        click("sketch-redo");
+        sketchReady();
+        click("constraint-cancel");
+        assertTrue(document().features().isEmpty());
+        click("constrained-sketch");
+        sketchReady();
+        click("sketch-tool-arc");
+        sketchClick(0, 0, false);
+        sketchClick(10, 0, false);
+        sketchClick(0, 10, false);
+        sketchReady();
+        click("sketch-tool-spline");
+        sketchClick(0, 10, false);
+        sketchClick(-3, 10, false);
+        sketchClick(-8, 6, false);
+        sketchClick(-10, 0, false);
+        sketchReady();
+        String arcId =
+                fx(
+                        () ->
+                                ((SketchEditor) node("#sketch-editor"))
+                                        .controller().definition().entities().stream()
+                                                .filter(e -> e.kind() == SketchGeometry.Kind.ARC)
+                                                .findFirst()
+                                                .orElseThrow()
+                                                .id());
+        String splineId =
+                fx(
+                        () ->
+                                ((SketchEditor) node("#sketch-editor"))
+                                        .controller().definition().entities().stream()
+                                                .filter(e -> e.kind() == SketchGeometry.Kind.SPLINE)
+                                                .findFirst()
+                                                .orElseThrow()
+                                                .id());
+        sketchReference(arcId);
+        click("constraint-fix");
+        sketchReady();
+        click("sketch-clear-selection");
+        sketchReference(arcId + ".end");
+        sketchReference(splineId + ".start");
+        click("constraint-curvature");
+        sketchReady();
+        var geometry = fx(() -> ((SketchEditor) node("#sketch-editor")).controller().definition());
+        assertTrue(
+                fx(() -> ((SketchEditor) node("#sketch-editor")).controller().canFinish()),
+                fx(() -> ((Label) node("#sketch-error")).getText()));
+        assertTrue(
+                geometry.constraints().stream()
+                        .anyMatch(c -> c.type() == SketchGeometry.Type.CURVATURE));
+        assertEquals(
+                0, geometry.entity(arcId).at(1).distance(geometry.entity(splineId).at(0)), 1e-6);
+        assertEquals(
+                geometry.entity(arcId).curvature(1), geometry.entity(splineId).curvature(0), 1e-8);
+        click("sketch-tool-line");
+        sketchClick(-10, 0, false);
+        sketchClick(10, 0, false);
+        sketchReady();
+        Path artifacts = Path.of(System.getProperty("voxelbrew.ui.artifacts"));
+        fx(
+                () -> {
+                    Screenshot.save(
+                            stage.getScene(), artifacts.resolve("sketch-spline-curvature.png"));
+                    return null;
+                });
+        click("constraint-finish");
+        ready();
+        click("extrude");
+        ready();
+        key(KeyCode.ENTER);
+        ready();
+        assertTrue(volume() > 100);
+        choice("appearance", 2);
+        click("constrained-sketch");
+        sketchReady();
+        click("sketch-tool-polygon");
+        sketchClick(30, 20, false);
+        sketchClick(45, 20, false);
+        sketchReady();
+        geometry = fx(() -> ((SketchEditor) node("#sketch-editor")).controller().definition());
+        assertEquals(6, geometry.entities().size());
+        assertEquals(SketchGeometry.Type.POLYGON, geometry.constraints().getFirst().type());
+        assertEquals(
+                4,
+                fx(
+                        () ->
+                                ((SketchEditor) node("#sketch-editor"))
+                                        .controller()
+                                        .result()
+                                        .degreesOfFreedom()));
+        fx(
+                () -> {
+                    Screenshot.save(
+                            stage.getScene(), artifacts.resolve("sketch-regular-polygon.png"));
+                    return null;
+                });
+        click("constraint-finish");
+        ready();
+        assertEquals(3, document().features().size());
+        click("undo");
+        ready();
+        assertEquals(2, document().features().size());
+        click("redo");
+        ready();
+        assertEquals(3, document().features().size());
     }
 
     private void cubeClick(String region, ViewOrientation expected) throws Exception {

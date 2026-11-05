@@ -74,6 +74,14 @@ Add a timeline with an editable cursor, a dimension inspector, undo/redo and fea
 
 ### M4 — Split bodies and produce a printer job
 
+**Status: done for the first-printable release.** The real-kernel, real-slicer,
+GUI/CLI and independent viewer checks passed; implementation was committed as
+`af09202`. See [M4 acceptance](acceptance/M4.md). The accepted reference is the
+generic 0.4 mm Marlin 2 profile with PLA and PETG. Adaptive layers (PRT-08),
+generated automatic support meshes (SUP-07) and advanced supports (SUP-08)
+remain additional-capability backlog. Bambu Studio and physical printer
+verification remain pending; this status does not claim either.
+
 Implement SplitBody(bodyId, plane) as an editable modeling feature with two addressable outputs. Keep placement on the print bed separate from the CAD part coordinates. Introduce a SlicerBackend SPI that accepts a manufacturing model, explicit printer/nozzle/material/process profiles, output location, cancellation and a progress/diagnostic sink.
 
 Implement one external slicer adapter first. Choose and pin a tested executable version with a documented headless workflow for one target printer. Probe its capabilities before invocation. Use ProcessBuilder argument lists, collect diagnostics, and publish job output only after successful completion. Let both GUI and CLI select the backend and profile. Treat the required printer-specific output format as part of that profile. Use a real profile for hardware acceptance.

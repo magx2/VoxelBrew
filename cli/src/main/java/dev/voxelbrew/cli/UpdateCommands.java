@@ -1,6 +1,6 @@
 package dev.voxelbrew.cli;
 
-import dev.voxelbrew.engine.update.*;
+import dev.voxelbrew.util.update.*;
 import java.util.concurrent.Callable;
 import picocli.CommandLine;
 import picocli.CommandLine.Command;

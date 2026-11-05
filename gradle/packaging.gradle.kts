@@ -59,7 +59,7 @@ val generateInstallationMetadata by
             val destination = installationMetadata.get().file("voxelbrew-install.properties").asFile
             destination.parentFile.mkdirs()
             destination.writeText(
-                "format=1\ncomponent=$component\nversion=$productVersion\nplatform=$packagePlatform-$packageArchitecture\nengineJar=engine-$productVersion.jar\nmainJar=$module-$productVersion.jar\n"
+                "format=1\ncomponent=$component\nversion=$productVersion\nplatform=$packagePlatform-$packageArchitecture\nengineJar=engine-$productVersion.jar\nutilJar=util-$productVersion.jar\nmainJar=$module-$productVersion.jar\n"
             )
         }
     }
@@ -115,7 +115,7 @@ val appImage by
                 "--main-class",
                 mainType,
                 "--add-modules",
-                "java.se,jdk.unsupported,jdk.crypto.ec",
+                "java.se,jdk.unsupported,jdk.crypto.ec,jdk.localedata",
                 "--jlink-options",
                 "--strip-debug --no-man-pages --no-header-files",
             ) +

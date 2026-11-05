@@ -1,5 +1,6 @@
 package dev.voxelbrew.gui;
 
+import dev.voxelbrew.util.config.UserConfiguration;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -7,6 +8,8 @@ import java.nio.file.Path;
 import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.TimeUnit;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import java.util.prefs.Preferences;
 
 final class Appearance {
@@ -16,18 +19,48 @@ final class Appearance {
         DARK
     }
 
-    private final Preferences preferences = Preferences.userNodeForPackage(Appearance.class);
+    private static final Logger LOG = Logger.getLogger(Appearance.class.getName());
+    private final UserConfiguration configuration;
+    private final java.util.function.Supplier<String> legacyAppearance;
+
+    Appearance() {
+        this(
+                UserConfiguration.user(),
+                () -> Preferences.userNodeForPackage(Appearance.class).get("appearance", null));
+    }
+
+    Appearance(
+            UserConfiguration configuration, java.util.function.Supplier<String> legacyAppearance) {
+        this.configuration = configuration;
+        this.legacyAppearance = legacyAppearance;
+    }
 
     Choice load() {
         try {
-            return Choice.valueOf(preferences.get("appearance", "SYSTEM"));
+            String value = configuration.get("appearance", null);
+            if (value == null) {
+                String legacy = legacyAppearance.get();
+                if (legacy != null) {
+                    Choice.valueOf(legacy);
+                    configuration.setIfAbsent("appearance", legacy);
+                    value = configuration.get("appearance", legacy);
+                }
+            }
+            return Choice.valueOf(value == null ? "SYSTEM" : value);
         } catch (IllegalArgumentException ignored) {
+            return Choice.SYSTEM;
+        } catch (IOException | SecurityException failure) {
+            LOG.log(Level.WARNING, "Cannot load appearance preference", failure);
             return Choice.SYSTEM;
         }
     }
 
     void save(Choice choice) {
-        preferences.put("appearance", choice.name());
+        try {
+            configuration.set("appearance", choice.name());
+        } catch (IOException failure) {
+            LOG.log(Level.WARNING, "Cannot save appearance preference", failure);
+        }
     }
 
     static boolean systemDark() {

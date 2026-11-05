@@ -60,7 +60,8 @@ assert installation["format"] == "1" and installation["component"] == kind.upper
 assert installation["version"] == version and installation["platform"] == expected_platform, installation
 assert installation["engineJar"] == f"engine-{version}.jar", installation
 assert installation["mainJar"] == f"{kind}-{version}.jar", installation
-for jar in (f"engine-{version}.jar", f"{kind}-{version}.jar"):
+assert installation["utilJar"] == f"util-{version}.jar", installation
+for jar in (f"engine-{version}.jar", f"util-{version}.jar", f"{kind}-{version}.jar"):
     assert (app / jar).is_file(), "Missing application dependency: " + jar
 
 notices = [root / "LICENSE", root / "THIRD_PARTY_NOTICES.md"]
@@ -94,7 +95,7 @@ for key in ("JAVA_HOME", "JDK_HOME", "JAVA_OPTS", "JDK_JAVA_OPTIONS", "JAVA_TOOL
             "LD_LIBRARY_PATH", "DYLD_LIBRARY_PATH", "DYLD_FALLBACK_LIBRARY_PATH"):
     env.pop(key, None)
 env["PATH"] = str(workspace)
-env["_JAVA_OPTIONS"] = '-Djava.util.prefs.userRoot="' + str(workspace / "preferences") + '"'
+env["_JAVA_OPTIONS"] = '-Djava.util.prefs.userRoot="' + str(workspace / "preferences") + '" -Dvoxelbrew.home="' + str(workspace / "settings") + '"'
 if kind == "cli":
     env.pop("DISPLAY", None)
     env.pop("WAYLAND_DISPLAY", None)

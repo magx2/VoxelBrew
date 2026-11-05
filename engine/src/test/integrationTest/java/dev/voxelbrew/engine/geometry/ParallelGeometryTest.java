@@ -2,11 +2,11 @@ package dev.voxelbrew.engine.geometry;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-import dev.voxelbrew.engine.concurrent.CpuWork;
 import dev.voxelbrew.engine.mesh.*;
 import dev.voxelbrew.engine.model.*;
 import dev.voxelbrew.engine.performance.ComputeBenchmark;
 import dev.voxelbrew.engine.printing.*;
+import dev.voxelbrew.util.concurrent.CpuWork;
 import java.util.*;
 import org.junit.jupiter.api.Test;
 

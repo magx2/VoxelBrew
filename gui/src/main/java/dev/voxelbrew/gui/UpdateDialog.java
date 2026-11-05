@@ -1,6 +1,7 @@
 package dev.voxelbrew.gui;
 
-import dev.voxelbrew.engine.update.*;
+import dev.voxelbrew.util.i18n.Translations;
+import dev.voxelbrew.util.update.*;
 import java.io.IOException;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.ExecutorService;
@@ -27,14 +28,15 @@ final class UpdateDialog {
     private final UpdateCancellation cancellation = new UpdateCancellation();
     private final Dialog<ButtonType> dialog = new Dialog<>();
     private final TextField version = new TextField();
-    private final CheckBox force = new CheckBox("Reinstall if already current");
-    private final Label status =
-            new Label("Check for a published release. GitHub CLI (gh) authentication is required.");
+    private final CheckBox force = new CheckBox(Translations.current().text("update.reinstall"));
+    private final Label status = new Label(Translations.current().text("update.intro"));
     private final ProgressIndicator progress = new ProgressIndicator();
-    private final Button check = new Button("Check"), download = new Button("Download");
+    private final Button check = new Button(Translations.current().text("update.check")),
+            download = new Button(Translations.current().text("update.download"));
     private final Button install, cancel;
     private final ButtonType installType =
-            new ButtonType("Install and quit", ButtonBar.ButtonData.OK_DONE);
+            new ButtonType(
+                    Translations.current().text("update.install"), ButtonBar.ButtonData.OK_DONE);
     private UpdateService service;
     private UpdateService.Check selected;
     private UpdateService.Prepared prepared;
@@ -43,19 +45,20 @@ final class UpdateDialog {
     private UpdateDialog(Factory factory, Consumer<Runnable> beforeInstall) {
         this.factory = factory;
         this.beforeInstall = beforeInstall;
-        dialog.setTitle("VoxelBrew updates");
-        dialog.setHeaderText("Application updates");
+        dialog.setTitle(Translations.current().text("update.title"));
+        dialog.setHeaderText(Translations.current().text("update.heading"));
         dialog.getDialogPane().getButtonTypes().setAll(installType, ButtonType.CANCEL);
         install = (Button) dialog.getDialogPane().lookupButton(installType);
         cancel = (Button) dialog.getDialogPane().lookupButton(ButtonType.CANCEL);
         install.setId("update-install");
         cancel.setId("update-cancel");
+        cancel.setText(Translations.current().text("action.cancel"));
         check.setId("update-check");
         download.setId("update-download");
         version.setId("update-version");
         force.setId("update-force");
         status.setId("update-status");
-        version.setPromptText("Latest stable release (or A.B.C)");
+        version.setPromptText(Translations.current().text("update.versionPrompt"));
         status.setWrapText(true);
         progress.setMaxSize(26, 26);
         progress.setVisible(false);
@@ -63,8 +66,10 @@ final class UpdateDialog {
         var content =
                 new VBox(
                         12,
-                        new Label("Installed: " + BuildVersion.current()),
-                        new Label("Release version"),
+                        new Label(
+                                Translations.current()
+                                        .text("update.installed", BuildVersion.current())),
+                        new Label(Translations.current().text("update.version")),
                         version,
                         force,
                         check,
@@ -141,7 +146,7 @@ final class UpdateDialog {
         }
         selected = null;
         busy(true);
-        status.setText("Checking GitHub releases…");
+        status.setText(Translations.current().text("update.checking"));
         worker.execute(
                 () -> {
                     try {
@@ -197,7 +202,7 @@ final class UpdateDialog {
     private void handOff() {
         busy(true);
         cancel.setDisable(true);
-        status.setText("Starting the update helper…");
+        status.setText(Translations.current().text("update.starting"));
         worker.execute(
                 () -> {
                     try {
@@ -234,7 +239,8 @@ final class UpdateDialog {
         try {
             prepared.close();
         } catch (IOException failure) {
-            System.err.println("Update staging cleanup failed: " + failure.getMessage());
+            java.util.logging.Logger.getLogger(UpdateDialog.class.getName())
+                    .log(java.util.logging.Level.WARNING, "Update staging cleanup failed", failure);
         }
     }
 }

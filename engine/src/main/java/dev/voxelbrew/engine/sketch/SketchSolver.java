@@ -169,7 +169,7 @@ public final class SketchSolver {
                 };
         // Tiny sketches cost less than scheduling work. Columns write disjoint matrix entries.
         if (parallel && x.length >= 128 && (long) rows * x.length >= 16384)
-            dev.voxelbrew.engine.concurrent.CpuWork.forEach(x.length, column);
+            dev.voxelbrew.util.concurrent.CpuWork.forEach(x.length, column);
         else for (int col = 0; col < x.length; col++) column.accept(col);
         return result;
     }

@@ -5,12 +5,12 @@ plugins {
 }
 
 dependencies {
+    implementation(project(":util"))
     api("javax.measure:unit-api:2.2")
     implementation("tech.units:indriya:2.2.4")
     compileOnly("org.apiguardian:apiguardian-api:1.1.2")
     implementation("com.google.protobuf:protobuf-java:4.30.2")
     implementation("org.apache.commons:commons-math3:3.6.1")
-    implementation("org.apache.commons:commons-compress:1.28.0")
 }
 
 val buildVersion = project.version.toString()
@@ -238,7 +238,10 @@ publishing {
 
 val buildExporterFixture by
     tasks.registering(GradleBuild::class) {
-        dependsOn("publishEnginePublicationToFixtureRepository")
+        dependsOn(
+            "publishEnginePublicationToFixtureRepository",
+            ":util:publishUtilPublicationToFixtureRepository",
+        )
         dir = rootProject.file("fixtures/exporter-plugin")
         tasks = listOf("jar")
         startParameter.projectProperties = mapOf("engineVersion" to project.version.toString())

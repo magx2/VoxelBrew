@@ -14,13 +14,14 @@
 ## Architecture
 
 - Use Java 21, the committed Gradle wrapper, and `dev.voxelbrew` packages.
-- Keep exactly three first-party subprojects: `engine`, `cli`, and `gui`.
-  Engine owns modeling and services; both frontends submit the same operations.
+- Keep four first-party subprojects: `util`, `engine`, `cli`, and `gui`.
+  Engine owns CAD/modeling and manufacturing services; both frontends submit the same operations.
+  Util owns CAD-independent application services and depends on none of the other projects.
 - Keep the GUI a JavaFX desktop application. Headless engine and CLI workflows
   must not require JavaFX, a display server, or a GPU.
 - Keep JavaFX, CLI parsing, generated Protobuf classes, and native pointers out
   of public plugin contracts. Put example plugins in independent consumer builds
-  or test fixtures, rather than adding a fourth application subproject.
+  or test fixtures, rather than adding another application subproject.
 - Respect the dependency pins in the build and `scripts/native-versions.properties`.
   Keep native redistribution notices with redistributed libraries.
 

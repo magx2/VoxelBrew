@@ -1,6 +1,6 @@
 package dev.voxelbrew.gui;
 
-import dev.voxelbrew.engine.update.*;
+import dev.voxelbrew.util.update.*;
 import java.io.IOException;
 import java.nio.file.*;
 import java.security.MessageDigest;
@@ -113,7 +113,11 @@ final class UpdateFixture implements ReleaseSource {
                         + platform
                         + "\nversion="
                         + version
-                        + "\nengineJar=engine.jar\nmainJar=gui.jar\n");
+                        + "\nengineJar=engine.jar\nutilJar=util.jar\nmainJar=gui.jar\n");
+        jar(
+                image.appDirectory().resolve("util.jar"),
+                "voxelbrew-util-version.properties",
+                "version=" + version);
         jar(
                 image.appDirectory().resolve("engine.jar"),
                 "voxelbrew-engine-version.properties",

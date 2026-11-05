@@ -404,7 +404,7 @@ class WorkbenchUiTest {
             waitForUpdate("Update available");
             assertTrue(updates.requests > request);
             assertEquals(
-                    dev.voxelbrew.engine.update.ReleaseVersion.release("1.1.0"), updates.requested);
+                    dev.voxelbrew.util.update.ReleaseVersion.release("1.1.0"), updates.requested);
             fx(
                     () -> {
                         Screenshot.save(
@@ -2134,6 +2134,7 @@ class WorkbenchUiTest {
         var command = new ArrayList<String>();
         command.add(Path.of(System.getProperty("java.home"), "bin", "java").toString());
         command.add("-Dvoxelbrew.native.path=" + System.getProperty("voxelbrew.native.path"));
+        command.add("-Dvoxelbrew.home=" + directory.resolve("cli-settings"));
         command.add("-cp");
         command.add(
                 Path.of(System.getProperty("voxelbrew.cli.distribution"), "lib")

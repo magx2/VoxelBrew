@@ -4,6 +4,7 @@ import dev.voxelbrew.engine.export.*;
 import dev.voxelbrew.engine.feature.FeatureRegistry;
 import dev.voxelbrew.engine.mesh.MeshData;
 import dev.voxelbrew.engine.model.*;
+import dev.voxelbrew.util.i18n.Translations;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -44,9 +45,9 @@ public final class Workbench extends BorderPane implements AutoCloseable {
     private final VBox inspector = new VBox(12), form = new VBox(9);
     private final VBox featureDiagnostics = new VBox(6);
     private final HBox toolActions = new HBox(8);
-    private final Label status = new Label("Ready"),
+    private final Label status = new Label(Translations.current().text("status.ready")),
             error = new Label(),
-            selectionLabel = new Label("No selection"),
+            selectionLabel = new Label(Translations.current().text("status.noSelection")),
             cursorLabel = new Label();
     private final Slider cursor = new Slider();
     private final ComboBox<String> views = new ComboBox<>();
@@ -54,7 +55,7 @@ public final class Workbench extends BorderPane implements AutoCloseable {
     private final Button
             undo =
                     button(
-                            "Undo",
+                            Translations.current().text("action.undo"),
                             "undo",
                             () -> {
                                 cancelTool();
@@ -62,26 +63,48 @@ public final class Workbench extends BorderPane implements AutoCloseable {
                             }),
             redo =
                     button(
-                            "Redo",
+                            Translations.current().text("action.redo"),
                             "redo",
                             () -> {
                                 cancelTool();
                                 controller().redo();
                             });
     private final Button export =
-            button("Export…", "export", () -> ExportDialog.show(stage(), controller(), registry()));
-    private final Button customFeature = button("Features…", "custom-feature", this::customFeature);
-    private final Button parameters = button("Parameters…", "parameters", this::parameters);
+            button(
+                    Translations.current().text("action.export"),
+                    "export",
+                    () -> ExportDialog.show(stage(), controller(), registry()));
+    private final Button customFeature =
+            button(
+                    Translations.current().text("action.features"),
+                    "custom-feature",
+                    this::customFeature);
+    private final Button parameters =
+            button(
+                    Translations.current().text("action.parameters"),
+                    "parameters",
+                    this::parameters);
     private final ComboBox<String> configuration = new ComboBox<>();
     private dev.voxelbrew.engine.parameters.ParameterSet lastParameters =
             dev.voxelbrew.engine.parameters.ParameterSet.empty();
     private final Button constrainedSketch =
-            button("New sketch…", "constrained-sketch", () -> editSketch(null));
-    private final Button rectangle = button("▭  Rectangle", "rectangle", () -> beginSketch(false));
-    private final Button circle = button("○  Circle", "circle", () -> beginSketch(true));
-    private final Button extrude = button("↑  Extrude", "extrude", this::beginExtrusion);
-    private final Button cut = button("Through cut", "cut", this::beginCut);
-    private final Button splitBody = button("Split body", "split-body", this::beginSplit);
+            button(
+                    Translations.current().text("action.sketch"),
+                    "constrained-sketch",
+                    () -> editSketch(null));
+    private final Button rectangle =
+            button(
+                    Translations.current().text("action.rectangle"),
+                    "rectangle",
+                    () -> beginSketch(false));
+    private final Button circle =
+            button(Translations.current().text("action.circle"), "circle", () -> beginSketch(true));
+    private final Button extrude =
+            button(Translations.current().text("action.extrude"), "extrude", this::beginExtrusion);
+    private final Button cut =
+            button(Translations.current().text("action.cut"), "cut", this::beginCut);
+    private final Button splitBody =
+            button(Translations.current().text("action.split"), "split-body", this::beginSplit);
     private final ProgressIndicator progress = new ProgressIndicator();
     private final Appearance appearance = new Appearance();
     private final ExecutorService preferencesWorker =
@@ -107,8 +130,8 @@ public final class Workbench extends BorderPane implements AutoCloseable {
                 stage,
                 pluginDirectory,
                 () ->
-                        dev.voxelbrew.engine.update.UpdateService.system(
-                                dev.voxelbrew.engine.update.ApplicationImage.Component.GUI));
+                        dev.voxelbrew.util.update.UpdateService.system(
+                                dev.voxelbrew.util.update.ApplicationImage.Component.GUI));
     }
 
     Workbench(Stage stage, Path pluginDirectory, UpdateDialog.Factory updates) throws IOException {
@@ -132,7 +155,15 @@ public final class Workbench extends BorderPane implements AutoCloseable {
         var spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
         var title =
-                new HBox(12, brand, caption, spacer, button("Updates…", "updates", this::updates));
+                new HBox(
+                        12,
+                        brand,
+                        caption,
+                        spacer,
+                        button(
+                                Translations.current().text("action.updates"),
+                                "updates",
+                                this::updates));
         title.getStyleClass().add("title-strip");
         views.setId("standard-view");
         views.getItems().setAll("Isometric", "Top", "Front", "Right", "Back", "Left", "Bottom");
@@ -153,7 +184,11 @@ public final class Workbench extends BorderPane implements AutoCloseable {
                         });
         var themes = new ComboBox<String>();
         themes.setId("appearance");
-        themes.getItems().setAll("System", "Light", "Dark");
+        themes.getItems()
+                .setAll(
+                        Translations.current().text("appearance.system"),
+                        Translations.current().text("appearance.light"),
+                        Translations.current().text("appearance.dark"));
         themes.getSelectionModel().select(appearanceChoice.ordinal());
         themes.setOnAction(
                 e -> {
@@ -166,7 +201,7 @@ public final class Workbench extends BorderPane implements AutoCloseable {
         var toolbar =
                 new ToolBar(
                         button(
-                                "New",
+                                Translations.current().text("action.new"),
                                 "new",
                                 () ->
                                         requestChange(
@@ -177,9 +212,18 @@ public final class Workbench extends BorderPane implements AutoCloseable {
                                                     fitNext = true;
                                                     controller.newDocument();
                                                 })),
-                        button("Open…", "open", () -> requestChange(this::open)),
-                        button("Save", "save", () -> save(false)),
-                        button("Save as…", "save-as", () -> save(true)),
+                        button(
+                                Translations.current().text("action.open"),
+                                "open",
+                                () -> requestChange(this::open)),
+                        button(
+                                Translations.current().text("action.save"),
+                                "save",
+                                () -> save(false)),
+                        button(
+                                Translations.current().text("action.saveAs"),
+                                "save-as",
+                                () -> save(true)),
                         new Separator(),
                         undo,
                         redo,
@@ -193,12 +237,15 @@ public final class Workbench extends BorderPane implements AutoCloseable {
         var viewbar =
                 new HBox(
                         9,
-                        new Label("VIEW"),
+                        new Label(Translations.current().text("view.label")),
                         views,
-                        button("Fit", "fit", () -> viewport.fit(meshes())),
+                        button(
+                                Translations.current().text("action.fit"),
+                                "fit",
+                                () -> viewport.fit(meshes())),
                         new Region(),
                         splitBody,
-                        new Label("Appearance"),
+                        new Label(Translations.current().text("appearance.label")),
                         themes);
         viewbar.getStyleClass().add("view-strip");
         HBox.setHgrow(viewbar.getChildren().get(3), Priority.ALWAYS);
@@ -567,7 +614,9 @@ public final class Workbench extends BorderPane implements AutoCloseable {
                         : s.profile() instanceof Feature.Constrained ? "Sketch" : "Rectangle")
                 : feature instanceof Feature.Extrude
                         ? "Extrude"
-                        : feature instanceof Feature.SplitBody ? "Split" : "Through cut";
+                        : feature instanceof Feature.SplitBody
+                                ? "Split"
+                                : Translations.current().text("action.cut");
     }
 
     private void rebuildTree(CadDocument document) {
@@ -1193,7 +1242,7 @@ public final class Workbench extends BorderPane implements AutoCloseable {
     private void beginSplit() {
         cancelTool();
         var dialog = new Dialog<Void>();
-        dialog.setTitle("Split body");
+        dialog.setTitle(Translations.current().text("action.split"));
         var body = new ComboBox<DocumentController.Body>();
         body.setId("split-input");
         body.getItems().setAll(controller.build().bodies());
@@ -1326,7 +1375,9 @@ public final class Workbench extends BorderPane implements AutoCloseable {
             action.run();
             return;
         }
-        var save = new ButtonType("Save", ButtonBar.ButtonData.YES);
+        var save =
+                new ButtonType(
+                        Translations.current().text("action.save"), ButtonBar.ButtonData.YES);
         var discard = new ButtonType("Discard", ButtonBar.ButtonData.NO);
         var alert =
                 new Alert(

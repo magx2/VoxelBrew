@@ -17,7 +17,7 @@ public final class FeatureRegistry implements AutoCloseable {
     private final URLClassLoader loader;
 
     public static Path defaultDirectory() {
-        return Path.of(System.getProperty("user.home"), ".voxelbrew", "plugins");
+        return dev.voxelbrew.util.config.ApplicationPaths.plugins();
     }
 
     public FeatureRegistry(Path directory) throws IOException {

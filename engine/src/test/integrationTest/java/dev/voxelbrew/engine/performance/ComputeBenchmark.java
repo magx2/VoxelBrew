@@ -2,12 +2,12 @@ package dev.voxelbrew.engine.performance;
 
 import static dev.voxelbrew.engine.sketch.SketchGeometry.*;
 
-import dev.voxelbrew.engine.concurrent.CpuWork;
 import dev.voxelbrew.engine.export.*;
 import dev.voxelbrew.engine.mesh.*;
 import dev.voxelbrew.engine.model.*;
 import dev.voxelbrew.engine.printing.*;
 import dev.voxelbrew.engine.sketch.*;
+import dev.voxelbrew.util.concurrent.CpuWork;
 import java.util.*;
 import java.util.function.Supplier;
 

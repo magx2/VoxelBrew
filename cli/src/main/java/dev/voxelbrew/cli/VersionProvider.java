@@ -1,7 +1,7 @@
 package dev.voxelbrew.cli;
 
 import dev.voxelbrew.engine.persistence.DocumentStore;
-import dev.voxelbrew.engine.update.BuildVersion;
+import dev.voxelbrew.util.update.BuildVersion;
 import picocli.CommandLine;
 
 /** Product version generated from the same Gradle property as the release archives. */

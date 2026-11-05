@@ -84,8 +84,10 @@ the view selector synchronized and never creates a feature or undo entry.
 
 ## Appearance and exporters
 
-System/Light/Dark is a local user preference, stored through Java Preferences,
-outside the document. System appearance is checked on launch and window focus.
+System/Light/Dark is a local user preference, stored as `appearance` in
+`~/.voxelbrew/config.properties`, outside the document. The previous Java Preferences
+value is migrated when the configuration has no appearance value. System appearance
+is checked on launch and window focus. See [shared configuration](shared-utilities.md).
 Windows uses AppsUseLightTheme; Linux uses GNOME color-scheme/GTK preferences.
 WSL falls back to the Windows preference when Linux has no explicit choice.
 Unavailable detection falls back to light. Dialogs use the workbench palette.

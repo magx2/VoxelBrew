@@ -9,6 +9,7 @@ val javafxPlatform =
     else "linux"
 
 dependencies {
+    implementation(project(":util"))
     implementation(project(":engine"))
     testImplementation("org.apache.commons:commons-compress:1.28.0")
     for (module in listOf("base", "graphics", "controls")) {

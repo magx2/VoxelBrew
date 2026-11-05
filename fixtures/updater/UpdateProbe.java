@@ -1,7 +1,7 @@
-import dev.voxelbrew.engine.update.*;
+import dev.voxelbrew.util.update.*;
 import java.nio.file.*;
 
-/** Fresh-process package acceptance: uses the installed engine and its bundled JVM. */
+/** Fresh-process package acceptance: uses installed utilities and the bundled JVM. */
 public final class UpdateProbe {
     private UpdateProbe() {}
 
@@ -9,7 +9,9 @@ public final class UpdateProbe {
     public static void main(String[] args) throws Exception {
         var component = ApplicationImage.Component.valueOf(args[0]);
         try (var running = ApplicationImage.running(component)) {
-            if (args[1].equals("hold")) {
+            if (args[1].equals("utilities")) {
+                verifyUtilities(component);
+            } else if (args[1].equals("hold")) {
                 Files.writeString(Path.of(args[2]), "LOCKED");
                 long deadline = System.nanoTime() + java.time.Duration.ofMinutes(3).toNanos();
                 while (!Files.exists(Path.of(args[3]))) {
@@ -31,5 +33,35 @@ public final class UpdateProbe {
                 }
             }
         }
+    }
+
+    private static void verifyUtilities(ApplicationImage.Component component) throws Exception {
+        var polish = java.util.Locale.forLanguageTag("pl-PL");
+        if (!"1,5".equals(java.text.NumberFormat.getInstance(polish).format(1.5)))
+            throw new IllegalStateException("Bundled runtime is missing Polish locale data");
+        var messages = new dev.voxelbrew.util.i18n.Translations(polish);
+        if (!"Otwórz…".equals(messages.text("action.open")))
+            throw new IllegalStateException(
+                    "Bundled translations are missing or incorrectly encoded");
+        var configuration = dev.voxelbrew.util.config.UserConfiguration.user();
+        configuration.set("verification.text", "Zażółć ☕");
+        if (!"Zażółć ☕"
+                .equals(
+                        dev.voxelbrew.util.config.UserConfiguration.user()
+                                .get("verification.text", "")))
+            throw new IllegalStateException("Bundled configuration did not round-trip UTF-8");
+        configuration.remove("verification.text");
+        dev.voxelbrew.util.logging.Logging.initialize(
+                component.name().toLowerCase(java.util.Locale.ROOT));
+        java.util.logging.Logger.getLogger("dev.voxelbrew.verification")
+                .info("UTILITY_RUNTIME_LOG");
+        dev.voxelbrew.util.logging.Logging.close();
+        boolean logged = false;
+        try (var entries = Files.list(dev.voxelbrew.util.config.ApplicationPaths.logs())) {
+            for (var file : entries.filter(path -> path.toString().endsWith(".log")).toList())
+                logged |= Files.readString(file).contains("UTILITY_RUNTIME_LOG");
+        }
+        if (!logged) throw new IllegalStateException("Bundled file logging is unavailable");
+        System.out.println("PACKAGE_UTIL_PASS " + component);
     }
 }

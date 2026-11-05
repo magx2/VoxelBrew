@@ -49,14 +49,15 @@ else:
 new_version = ".".join(map(str, numeric))
 marker = payload / app_relative / "voxelbrew-install.properties"
 marker.write_text(marker.read_text().replace("version=" + old_version, "version=" + new_version), encoding="utf-8")
-engine_name = next(line.split("=", 1)[1] for line in marker.read_text().splitlines() if line.startswith("engineJar="))
-engine = payload / app_relative / engine_name
-temporary = engine.with_suffix(".new")
-with zipfile.ZipFile(engine) as original, zipfile.ZipFile(temporary, "w") as changed:
-    for entry in original.infolist():
-        content = ("version=" + new_version + "\n").encode() if entry.filename == "voxelbrew-engine-version.properties" else original.read(entry)
-        changed.writestr(entry, content)
-temporary.replace(engine)
+metadata = dict(line.split("=", 1) for line in marker.read_text().splitlines() if "=" in line)
+for module in ("engine", "util"):
+    jar_path = payload / app_relative / metadata[module + "Jar"]
+    temporary = jar_path.with_suffix(".new")
+    with zipfile.ZipFile(jar_path) as original, zipfile.ZipFile(temporary, "w") as changed:
+        for entry in original.infolist():
+            content = ("version=" + new_version + "\n").encode() if entry.filename == "voxelbrew-" + module + "-version.properties" else original.read(entry)
+            changed.writestr(entry, content)
+    temporary.replace(jar_path)
 release_dir = workspace / "downloads"
 release_dir.mkdir()
 asset = image.stem + "-" + new_version + "-" + platform + ".zip"
@@ -97,12 +98,13 @@ else:
 env = dict(os.environ)
 for key in ("JAVA_HOME", "JDK_HOME", "JAVA_OPTS", "JDK_JAVA_OPTIONS", "JAVA_TOOL_OPTIONS", "_JAVA_OPTIONS", "CLASSPATH"):
     env.pop(key, None)
+env["_JAVA_OPTIONS"] = '-Dvoxelbrew.home="' + str(workspace / "settings") + '"'
 env["VOXELBREW_GH"] = str(gh)
 env["PATH"] = str(workspace)
 classes = workspace / "probe classes"
 classes.mkdir()
 javac = Path(os.environ["VOXELBREW_TEST_JDK"]) / "bin" / ("javac.exe" if os.name == "nt" else "javac")
-subprocess.run([str(javac), "--release", "21", "-cp", str(install / app_relative / "*"), "-d", str(classes), str(root / "fixtures/updater/UpdateProbe.java")], check=True)
+subprocess.run([str(javac), "--release", "21", "-encoding", "UTF-8", "-cp", str(install / app_relative / "*"), "-d", str(classes), str(root / "fixtures/updater/UpdateProbe.java")], check=True)
 java = install / runtime_relative / "bin" / ("java.exe" if os.name == "nt" else "java")
 probe = [str(java), "-cp", str(classes) + os.pathsep + str(install / app_relative / "*"), "UpdateProbe", kind.upper()]
 commands = []
@@ -124,6 +126,8 @@ def wait_for(predicate, timeout=40):
         time.sleep(.1)
     raise AssertionError("Timed out waiting for update; evidence: " + str(workspace))
 
+
+assert "PACKAGE_UTIL_PASS" in run(probe + ["utilities"])
 
 if kind == "cli":
     cli = install / launcher_relative

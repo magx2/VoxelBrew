@@ -8,7 +8,7 @@ Start by inspecting the repository and its build instructions. If it is empty, u
 
 ## Project identity
 
-Use `voxelbrew.dev` as the project domain and `dev.voxelbrew` as the Gradle group and Java package root. Place module code under `dev.voxelbrew.engine`, `dev.voxelbrew.gui` and `dev.voxelbrew.cli`.
+Use `voxelbrew.dev` as the project domain and `dev.voxelbrew` as the Gradle group and Java package root. Place module code under `dev.voxelbrew.util`, `dev.voxelbrew.engine`, `dev.voxelbrew.gui` and `dev.voxelbrew.cli`.
 
 ## Mandatory milestone completion rule
 
@@ -18,13 +18,14 @@ Once the check passes, review and stage the milestone changes and create a Git c
 
 ## Project boundaries
 
-| Gradle project | Responsibilities                                                                                                                                            | Dependencies                                                             |
-| -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
-| engine         | Document, units, sketch math, feature evaluation, native geometry adapter, persistence, tessellation, export and slicing services, public plugin interfaces | Java, Protobuf, a pinned OCCT build and a narrow JNI bridge under engine |
-| gui            | JavaFX desktop, sketch tools, viewport, property editor, timeline, export and print dialogs                                                                 | engine                                                                   |
-| cli            | picocli commands for modeling, editing, inspection, export, plugin listing and slicing                                                                      | engine                                                                   |
+| Gradle project | Responsibilities                                                                                                                                            | Dependencies                                                                   |
+| -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| util           | Translations, user properties, logging, application updates, generic concurrency and application paths                                                      | Java and archive support; no dependency on other projects                      |
+| engine         | Document, units, sketch math, feature evaluation, native geometry adapter, persistence, tessellation, export and slicing services, public plugin interfaces | util, Java, Protobuf, a pinned OCCT build and a narrow JNI bridge under engine |
+| gui            | JavaFX desktop, sketch tools, viewport, property editor, timeline, export and print dialogs                                                                 | engine, util                                                                   |
+| cli            | picocli commands for modeling, editing, inspection, export, plugin listing and slicing                                                                      | engine, util                                                                   |
 
-Keep exactly these three first-party subprojects. Example plugins belong in test fixtures or a separate consumer build. Publish the versioned plugin API from engine. Keep JavaFX, CLI parsing, generated Protobuf classes and native pointers out of plugin contracts. Both frontends submit the same engine operations.
+Keep these four first-party subprojects. The user-requested utility extraction supersedes the original three-project boundary. Example plugins belong in test fixtures or a separate consumer build. Publish the versioned plugin API from engine. Keep JavaFX, CLI parsing, generated Protobuf classes and native pointers out of plugin contracts. Both frontends submit the same engine operations. Util must remain independent of CAD, JNI and frontend frameworks.
 
 ## Reference part
 
@@ -219,7 +220,7 @@ a real release. See [release steps](releases.md) and [M12 evidence](acceptance/M
 
 Adapt Bigboy's authenticated `gh` release update workflow to complete VoxelBrew
 app images. Share release/version selection, mandatory checksums, bounded safe
-extraction and after-exit replacement in engine. Add CLI check/install commands
+extraction and after-exit replacement in util. Add CLI check/install commands
 and a responsive GUI Updates dialog with cancellation and unsaved-work handling.
 Retain a backup, protect other running instances, and document manual recovery.
 Keep development distributions and unsupported platforms out of replacement.

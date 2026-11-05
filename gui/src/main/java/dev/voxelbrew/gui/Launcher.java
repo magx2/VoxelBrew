@@ -10,12 +10,12 @@ public final class Launcher {
 
     @SuppressWarnings("try") // The update helper waits until all app instances release this lease.
     public static void main(String[] args) throws java.io.IOException {
+        dev.voxelbrew.util.logging.Logging.initialize("gui");
         try (var lease =
-                dev.voxelbrew.engine.update.ApplicationImage.running(
-                        dev.voxelbrew.engine.update.ApplicationImage.Component.GUI)) {
+                dev.voxelbrew.util.update.ApplicationImage.running(
+                        dev.voxelbrew.util.update.ApplicationImage.Component.GUI)) {
             if (args.length == 1 && args[0].equals("--version")) {
-                System.out.println(
-                        "VoxelBrew " + dev.voxelbrew.engine.update.BuildVersion.current());
+                System.out.println("VoxelBrew " + dev.voxelbrew.util.update.BuildVersion.current());
                 return;
             }
             launch(args);

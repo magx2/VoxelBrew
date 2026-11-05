@@ -1,3 +1,3 @@
 rootProject.name = "voxelbrew"
 
-include("engine", "gui", "cli")
+include("util", "engine", "gui", "cli")

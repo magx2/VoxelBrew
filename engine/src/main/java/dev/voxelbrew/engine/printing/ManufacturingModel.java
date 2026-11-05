@@ -49,7 +49,7 @@ public final class ManufacturingModel implements ModelView {
         var meshes = new LinkedHashMap<String, MeshData>();
         var bodies = evaluation.requireCompleteDocument();
         var detached =
-                dev.voxelbrew.engine.concurrent.CpuWork.map(
+                dev.voxelbrew.util.concurrent.CpuWork.map(
                         bodies, body -> body.solid().tessellate(options));
         for (int i = 0; i < bodies.size(); i++) meshes.put(bodies.get(i).id(), detached.get(i));
         return new ManufacturingModel(

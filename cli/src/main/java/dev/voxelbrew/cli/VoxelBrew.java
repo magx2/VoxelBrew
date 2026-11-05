@@ -46,11 +46,12 @@ public final class VoxelBrew implements Runnable {
 
     @SuppressWarnings("try") // Keep the app image in place until the process has finished.
     public static void main(String[] args) {
+        dev.voxelbrew.util.logging.Logging.initialize("cli");
         configureInstalledRuntime();
         int result;
         try (var lease =
-                dev.voxelbrew.engine.update.ApplicationImage.running(
-                        dev.voxelbrew.engine.update.ApplicationImage.Component.CLI)) {
+                dev.voxelbrew.util.update.ApplicationImage.running(
+                        dev.voxelbrew.util.update.ApplicationImage.Component.CLI)) {
             result = commandLine().execute(args);
         } catch (java.io.IOException failure) {
             System.err.println("ERROR: " + failure.getMessage());
@@ -66,9 +67,19 @@ public final class VoxelBrew implements Runnable {
                         .addSubcommand("export", new Export())
                         .setExecutionExceptionHandler(
                                 (failure, command, parsed) -> {
+                                    java.util.logging.Logger.getLogger(VoxelBrew.class.getName())
+                                            .log(
+                                                    java.util.logging.Level.FINE,
+                                                    "Command failed",
+                                                    failure);
                                     command.getErr().println("ERROR: " + failure.getMessage());
                                     return 1;
                                 });
+        cliCommand
+                .getCommandSpec()
+                .usageMessage()
+                .description(
+                        dev.voxelbrew.util.i18n.Translations.current().text("app.description"));
         PrintingCommands.register(cliCommand);
         FeatureCommands.register(cliCommand);
         SketchCommands.register(cliCommand);

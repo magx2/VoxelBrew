@@ -22,7 +22,7 @@ public final class ExporterRegistry implements AutoCloseable {
     private final URLClassLoader loader;
 
     public static Path defaultDirectory() {
-        return Path.of(System.getProperty("user.home"), ".voxelbrew", "plugins");
+        return dev.voxelbrew.util.config.ApplicationPaths.plugins();
     }
 
     public ExporterRegistry(Path directory) throws IOException {

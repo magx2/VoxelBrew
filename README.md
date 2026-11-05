@@ -8,8 +8,11 @@ and an editable headless CAD workflow. `engine` owns modeling, history and
 versioned Protobuf `.jcad` persistence; `cli` exposes the same engine operations;
 `gui` provides the JavaFX CAD workbench. M2 adds tessellation, binary STL,
 portable 3MF and external exporter plugins; M3 adds interactive sketching,
-extrusion, picking, editable history and export. There are exactly these three
-first-party subprojects. M4 adds editable splitting, build placement, persisted
+extrusion, picking, editable history and export. The fourth first-party subproject,
+`util`, owns translations, user configuration, logging, application updates and
+generic CPU workers. It has no CAD or frontend dependencies; engine and both
+frontends depend on it. See [shared utilities and configuration](docs/shared-utilities.md).
+M4 adds editable splitting, build placement, persisted
 PLA/PETG process settings, supports and real PrusaSlicer jobs. See the
 [printing workflow](docs/printing-workflow.md) and [qualification record](docs/acceptance/M4.md).
 The complete backlog is in [the implementation plan](docs/implementation-plan.md).

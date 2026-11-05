@@ -793,6 +793,7 @@ class WorkflowTest {
         var command = new ArrayList<String>();
         command.add(Path.of(System.getProperty("java.home"), "bin", "java").toString());
         command.add("-Dvoxelbrew.native.path=" + System.getProperty("voxelbrew.native.path"));
+        command.add("-Dvoxelbrew.home=" + directory.resolve("settings"));
         command.add("-cp");
         command.add(System.getProperty("voxelbrew.test.classpath"));
         command.add(VoxelBrew.class.getName());

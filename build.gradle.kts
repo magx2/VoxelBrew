@@ -6,7 +6,7 @@ plugins {
 }
 
 // Root-owned targets include the independent consumer build without making it a subproject.
-val sourceProjects = listOf("engine", "cli", "gui", "fixtures/exporter-plugin")
+val sourceProjects = listOf("util", "engine", "cli", "gui", "fixtures/exporter-plugin")
 val formatterWindows = System.getProperty("os.name").startsWith("Windows")
 val formatterEnvironment = layout.projectDirectory.dir(".tools/formatters")
 val formatterBin = formatterEnvironment.dir(if (formatterWindows) "Scripts" else "bin")
@@ -98,6 +98,7 @@ spotless {
             "scripts/*.py",
             "engine/native/CMakeLists.txt",
             "*/src/main/resources/META-INF/services/*",
+            "*/src/main/resources/**/*.properties",
             "engine/src/main/resources/**/*.ini",
             "fixtures/exporter-plugin/src/main/resources/META-INF/services/*",
         )
@@ -169,6 +170,10 @@ subprojects {
     tasks.withType<Test>().configureEach {
         useJUnitPlatform()
         systemProperty(
+            "voxelbrew.home",
+            layout.buildDirectory.dir("test-home/$name").get().asFile.absolutePath,
+        )
+        systemProperty(
             "voxelbrew.slicer",
             providers
                 .gradleProperty("slicerExecutable")
@@ -194,7 +199,7 @@ subprojects {
 for (suite in listOf("test", "integrationTest", "e2eTest", "platformCheck")) {
     tasks.register(suite) {
         group = "verification"
-        description = "Run $suite across all three modules."
+        description = "Run $suite across all modules."
         dependsOn(subprojects.map { "${it.path}:$suite" })
     }
 }

@@ -6,6 +6,12 @@ CLI, verify it, and replace the installed application after exit. The reference
 is [`SelfUpdate.java` at Bigboy b8eff5c](https://github.com/magx2/bigboy/blob/b8eff5cf67fb2f02e54dbd2783eebde00a4fff5c/cli/src/main/java/pl/grzeslowski/commandcenter/cli/SelfUpdate.java).
 There are no network checks at application startup.
 
+Shared update services and the standalone helper live in `dev.voxelbrew.util.update`.
+CLI commands and the JavaFX dialog stay in their respective frontend modules.
+New app images declare `utilJar` alongside `engineJar` and `mainJar`; all declared
+build identities are checked. Format-1 metadata without `utilJar` remains readable
+for older images and recovery. The helper is staged from the running utility JAR.
+
 Install [GitHub CLI](https://cli.github.com/) and run `gh auth login` with access
 to `magx2/VoxelBrew`. `gh` must be on PATH; alternatively set `VOXELBREW_GH` to
 its executable path. VoxelBrew uses the existing credentials and does not store

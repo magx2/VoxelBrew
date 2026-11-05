@@ -466,7 +466,7 @@ public final class DocumentController implements AutoCloseable {
                 return new Build(
                         List.of(), evaluation.diagnostics(), false, evaluation.resolvedFeatures());
             var bodies =
-                    dev.voxelbrew.engine.concurrent.CpuWork.map(
+                    dev.voxelbrew.util.concurrent.CpuWork.map(
                             evaluation.bodies(),
                             b ->
                                     new Body(

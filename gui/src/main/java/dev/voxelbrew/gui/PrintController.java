@@ -2,8 +2,9 @@ package dev.voxelbrew.gui;
 
 import dev.voxelbrew.engine.mesh.MeshOptions;
 import dev.voxelbrew.engine.model.CadDocument;
-import dev.voxelbrew.engine.persistence.DocumentStore;
+import dev.voxelbrew.engine.persistence.DocumentCodec;
 import dev.voxelbrew.engine.printing.*;
+import dev.voxelbrew.exporter.printing.SliceService;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.*;
@@ -72,7 +73,7 @@ public final class PrintController implements AutoCloseable {
     }
 
     public void documentChanged(CadDocument document) {
-        if (revision.isEmpty() || revision.equals(DocumentStore.fingerprint(document))) return;
+        if (revision.isEmpty() || revision.equals(DocumentCodec.fingerprint(document))) return;
         outdated("Model or print settings changed. Slice again to update the job.");
     }
 
@@ -102,7 +103,7 @@ public final class PrintController implements AutoCloseable {
         state = State.SLICING;
         result = null;
         diagnostics.clear();
-        revision = DocumentStore.fingerprint(document);
+        revision = DocumentCodec.fingerprint(document);
         message = "Validating print setup";
         var token = new Cancellation();
         cancellation = token;
@@ -148,7 +149,7 @@ public final class PrintController implements AutoCloseable {
                                     running = false;
                                     if (state == State.OUTDATED
                                             || !revision.equals(
-                                                    DocumentStore.fingerprint(current.get()))) {
+                                                    DocumentCodec.fingerprint(current.get()))) {
                                         state = State.OUTDATED;
                                         message =
                                                 "Job is outdated; slice the current revision again.";
@@ -203,7 +204,7 @@ public final class PrintController implements AutoCloseable {
                     try {
                         if (closed
                                 || ticket != generation
-                                || !captured.equals(DocumentStore.fingerprint(current.get())))
+                                || !captured.equals(DocumentCodec.fingerprint(current.get())))
                             throw new SliceService.OutdatedException();
                         token.check();
                         commit.run();

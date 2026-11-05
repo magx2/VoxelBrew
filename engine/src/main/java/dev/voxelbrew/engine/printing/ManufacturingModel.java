@@ -3,7 +3,7 @@ package dev.voxelbrew.engine.printing;
 import dev.voxelbrew.engine.export.*;
 import dev.voxelbrew.engine.mesh.*;
 import dev.voxelbrew.engine.model.*;
-import dev.voxelbrew.engine.persistence.DocumentStore;
+import dev.voxelbrew.engine.persistence.DocumentCodec;
 import java.util.*;
 
 /** Detached immutable revision shared by validators, exporters, slicers and preview. */
@@ -54,7 +54,7 @@ public final class ManufacturingModel implements ModelView {
         for (int i = 0; i < bodies.size(); i++) meshes.put(bodies.get(i).id(), detached.get(i));
         return new ManufacturingModel(
                 document.id(),
-                DocumentStore.fingerprint(document),
+                DocumentCodec.fingerprint(document),
                 document.printSetup(),
                 PrintProfile.resolve(document.printSetup()),
                 meshes);

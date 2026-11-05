@@ -13,9 +13,11 @@
   results, registry-token handles, close safety, and translated OCCT/C++ failures.
 - Keep JNI narrow and validate actual kernel results. Changes to native binaries
   must invalidate relevant Gradle tests, even when Java sources are unchanged.
-- Evolve `src/main/proto/document.proto` compatibly: reserve retired field numbers,
+- Keep production code independent of the import/export modules. Cross-module integration
+  tests may use their public readers and writers; export-specific tests belong in export.
+- Evolve `src/main/proto/document.proto` and the in-memory `DocumentCodec` compatibly: reserve retired field numbers,
   never hand-edit generated code, and protect newer/unknown documents from
-  destructive writes. Failed saves must leave the prior complete file intact.
+  destructive writes. File access and atomic publication belong to import/export.
 - For export/plugins, follow the plan's versioned engine API, dedicated class
   loader, ServiceLoader registry, compatibility diagnostics, and independent
   consumer fixture. Keep tessellation tolerance an explicit option.

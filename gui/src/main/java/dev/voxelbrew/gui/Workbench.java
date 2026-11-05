@@ -4,6 +4,7 @@ import dev.voxelbrew.engine.export.*;
 import dev.voxelbrew.engine.feature.FeatureRegistry;
 import dev.voxelbrew.engine.mesh.MeshData;
 import dev.voxelbrew.engine.model.*;
+import dev.voxelbrew.exporter.ExporterRegistry;
 import dev.voxelbrew.util.i18n.Translations;
 import java.io.IOException;
 import java.nio.file.Files;

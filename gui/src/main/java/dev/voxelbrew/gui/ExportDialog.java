@@ -3,6 +3,7 @@ package dev.voxelbrew.gui;
 import dev.voxelbrew.engine.export.*;
 import dev.voxelbrew.engine.mesh.MeshOptions;
 import dev.voxelbrew.engine.printing.ManufacturingModel;
+import dev.voxelbrew.exporter.ExporterRegistry;
 import java.nio.file.Path;
 import java.util.*;
 import javafx.event.ActionEvent;

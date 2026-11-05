@@ -3,7 +3,10 @@ package dev.voxelbrew.gui;
 import dev.voxelbrew.engine.export.*;
 import dev.voxelbrew.engine.mesh.*;
 import dev.voxelbrew.engine.model.*;
-import dev.voxelbrew.engine.persistence.DocumentStore;
+import dev.voxelbrew.exporter.DocumentWriter;
+import dev.voxelbrew.exporter.ExportService;
+import dev.voxelbrew.exporter.ExporterRegistry;
+import dev.voxelbrew.importer.DocumentReader;
 import java.nio.file.Path;
 import java.util.*;
 import java.util.concurrent.*;
@@ -283,7 +286,7 @@ public final class DocumentController implements AutoCloseable {
         io.execute(
                 () -> {
                     try {
-                        var document = DocumentStore.load(source);
+                        var document = DocumentReader.load(source);
                         dispatch.accept(
                                 () -> {
                                     if (closed) {
@@ -311,7 +314,7 @@ public final class DocumentController implements AutoCloseable {
         io.execute(
                 () -> {
                     try {
-                        DocumentStore.save(captured, destination, overwrite);
+                        DocumentWriter.save(captured, destination, overwrite);
                         dispatch.accept(
                                 () -> {
                                     if (closed) {

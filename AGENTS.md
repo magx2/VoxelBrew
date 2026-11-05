@@ -14,8 +14,10 @@
 ## Architecture
 
 - Use Java 21, the committed Gradle wrapper, and `dev.voxelbrew` packages.
-- Keep four first-party subprojects: `util`, `engine`, `cli`, and `gui`.
-  Engine owns CAD/modeling and manufacturing services; both frontends submit the same operations.
+- Keep six first-party subprojects: `util`, `engine`, `import`, `export`, `cli`, and `gui`.
+  Engine owns CAD/modeling, manufacturing models, the in-memory document schema and plugin contracts.
+  Import/export own file readers, writers, provider discovery and slicer file pipelines.
+  Production dependencies point from file I/O to engine, never from engine to file I/O.
   Util owns CAD-independent application services and depends on none of the other projects.
 - Keep the GUI a JavaFX desktop application. Headless engine and CLI workflows
   must not require JavaFX, a display server, or a GPU.

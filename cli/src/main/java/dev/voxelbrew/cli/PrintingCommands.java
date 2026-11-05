@@ -4,6 +4,11 @@ import dev.voxelbrew.engine.export.*;
 import dev.voxelbrew.engine.mesh.MeshOptions;
 import dev.voxelbrew.engine.model.*;
 import dev.voxelbrew.engine.printing.*;
+import dev.voxelbrew.exporter.ExporterRegistry;
+import dev.voxelbrew.exporter.printing.PrusaSlicerBackend;
+import dev.voxelbrew.exporter.printing.SliceService;
+import dev.voxelbrew.exporter.printing.SlicerRegistry;
+import dev.voxelbrew.importer.GcodeReader;
 import java.nio.file.Path;
 import java.util.*;
 import java.util.concurrent.*;
@@ -513,7 +518,7 @@ final class PrintingCommands {
 
         @Override
         public Integer call() throws Exception {
-            describe(GcodeJob.read(file), spec.commandLine().getOut());
+            describe(GcodeReader.read(file), spec.commandLine().getOut());
             return 0;
         }
     }

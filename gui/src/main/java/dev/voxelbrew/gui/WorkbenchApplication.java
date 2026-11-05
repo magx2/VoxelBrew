@@ -1,7 +1,7 @@
 package dev.voxelbrew.gui;
 
-import dev.voxelbrew.engine.export.ExporterRegistry;
 import dev.voxelbrew.engine.model.Feature;
+import dev.voxelbrew.exporter.ExporterRegistry;
 import java.nio.file.Path;
 import javafx.application.Application;
 import javafx.application.ConditionalFeature;

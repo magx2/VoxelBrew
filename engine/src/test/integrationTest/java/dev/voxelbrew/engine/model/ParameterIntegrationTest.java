@@ -3,8 +3,10 @@ package dev.voxelbrew.engine.model;
 import static org.junit.jupiter.api.Assertions.*;
 
 import dev.voxelbrew.engine.parameters.*;
-import dev.voxelbrew.engine.persistence.DocumentStore;
+import dev.voxelbrew.engine.persistence.DocumentCodec;
 import dev.voxelbrew.engine.sketch.*;
+import dev.voxelbrew.exporter.DocumentWriter;
+import dev.voxelbrew.importer.DocumentReader;
 import java.nio.file.*;
 import java.util.*;
 import org.junit.jupiter.api.Test;
@@ -160,13 +162,13 @@ class ParameterIntegrationTest {
             assertEquals((2400 - Math.PI * 4) * 5, e.bodies().getFirst().solid().volume(), 1e-6);
         }
         var ids = s.document().features().stream().map(Feature::id).toList();
-        String before = DocumentStore.fingerprint(s.document());
+        String before = DocumentCodec.fingerprint(s.document());
         s.selectConfiguration("Thick");
-        assertNotEquals(before, DocumentStore.fingerprint(s.document()));
+        assertNotEquals(before, DocumentCodec.fingerprint(s.document()));
         var file = directory.resolve("parameter versions.jcad");
-        DocumentStore.save(s.document(), file, false);
-        assertEquals(s.document(), DocumentStore.load(file));
-        try (var e = new ModelSession(DocumentStore.load(file)).evaluate()) {
+        DocumentWriter.save(s.document(), file, false);
+        assertEquals(s.document(), DocumentReader.load(file));
+        try (var e = new ModelSession(DocumentReader.load(file)).evaluate()) {
             e.requireCompleteDocument();
             var body = e.bodies().getFirst();
             assertEquals("thickness.body", body.id());

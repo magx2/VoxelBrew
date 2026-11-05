@@ -4,8 +4,9 @@ import static dev.voxelbrew.engine.sketch.SketchGeometry.*;
 import static org.junit.jupiter.api.Assertions.*;
 
 import dev.voxelbrew.engine.model.*;
-import dev.voxelbrew.engine.persistence.DocumentStore;
 import dev.voxelbrew.engine.sketch.*;
+import dev.voxelbrew.exporter.DocumentWriter;
+import dev.voxelbrew.importer.DocumentReader;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
@@ -46,9 +47,9 @@ class ConstrainedSketchTest {
                 new Feature.Extrude("thickness", new Feature.ProfileRef("sketch", "profile"), 8));
         assertEquals(19099.469035085127, volume(session), 0.01);
         var file = directory.resolve("constrained plate.jcad");
-        DocumentStore.save(session.document(), file, false);
-        assertEquals(session.document(), DocumentStore.load(file));
-        session = new ModelSession(DocumentStore.load(file));
+        DocumentWriter.save(session.document(), file, false);
+        assertEquals(session.document(), DocumentReader.load(file));
+        session = new ModelSession(DocumentReader.load(file));
         session.editDimension("sketch", "width", 80);
         assertEquals((80 * 40 - 4 * Math.PI) * 8, volume(session), 0.01);
         assertEquals(
@@ -120,9 +121,9 @@ class ConstrainedSketchTest {
                                         "extrude", new Feature.ProfileRef("sketch", "profile"), 5)),
                         2);
         var file = directory.resolve("repairable constraints.jcad");
-        DocumentStore.save(broken, file, false);
-        assertEquals(broken, DocumentStore.load(file));
-        try (var result = Evaluator.evaluate(DocumentStore.load(file))) {
+        DocumentWriter.save(broken, file, false);
+        assertEquals(broken, DocumentReader.load(file));
+        try (var result = Evaluator.evaluate(DocumentReader.load(file))) {
             assertThrows(IllegalStateException.class, result::requireCompleteDocument);
             assertTrue(
                     result.diagnostics().stream()

@@ -4,7 +4,10 @@ import dev.voxelbrew.engine.export.*;
 import dev.voxelbrew.engine.geometry.Solid;
 import dev.voxelbrew.engine.mesh.MeshOptions;
 import dev.voxelbrew.engine.model.*;
-import dev.voxelbrew.engine.persistence.DocumentStore;
+import dev.voxelbrew.exporter.DocumentWriter;
+import dev.voxelbrew.exporter.ExportService;
+import dev.voxelbrew.exporter.ExporterRegistry;
+import dev.voxelbrew.importer.DocumentReader;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Locale;
@@ -179,7 +182,7 @@ public final class VoxelBrew implements Runnable {
 
         @Override
         public Integer call() throws Exception {
-            var document = DocumentStore.load(file);
+            var document = DocumentReader.load(file);
             try (var evaluation = Evaluator.evaluate(document, pluginDirectory);
                     var registry = new ExporterRegistry(pluginDirectory)) {
                 registry.diagnostics().forEach(spec.commandLine().getErr()::println);
@@ -235,11 +238,11 @@ public final class VoxelBrew implements Runnable {
         @Spec CommandSpec spec;
 
         ModelSession session() throws java.io.IOException {
-            return new ModelSession(DocumentStore.load(file));
+            return new ModelSession(DocumentReader.load(file));
         }
 
         int save(ModelSession session) throws java.io.IOException {
-            DocumentStore.save(session.document(), file, true);
+            DocumentWriter.save(session.document(), file, true);
             try (Evaluation evaluation = session.evaluate(pluginDirectory)) {
                 if (!evaluation.valid()) {
                     evaluation.diagnostics().stream()
@@ -321,7 +324,7 @@ public final class VoxelBrew implements Runnable {
 
         @Override
         public Integer call() throws Exception {
-            DocumentStore.save(CadDocument.empty(), file, overwrite);
+            DocumentWriter.save(CadDocument.empty(), file, overwrite);
             return 0;
         }
     }

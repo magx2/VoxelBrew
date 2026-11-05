@@ -1,8 +1,9 @@
 # Shared application utilities
 
 `util` is a Java 21 library with no dependency on engine, JavaFX, picocli, Protobuf
-or native libraries. Engine, CLI and GUI depend on it. Engine keeps CAD units,
-sketches, documents, geometry, exporters, plugin contracts and manufacturing services.
+or native libraries. Engine, export, CLI and GUI depend on it. Engine keeps CAD units,
+sketches, documents, geometry, plugin contracts and manufacturing models; import/export
+own file readers, writers and format-specific pipelines. See [file I/O](file-io.md).
 
 | Package under `dev.voxelbrew.util` | Responsibility                                                       |
 | ---------------------------------- | -------------------------------------------------------------------- |

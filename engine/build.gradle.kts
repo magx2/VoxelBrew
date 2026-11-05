@@ -5,6 +5,8 @@ plugins {
 }
 
 dependencies {
+    add("integrationTestImplementation", project(":import"))
+    add("integrationTestImplementation", project(":export"))
     implementation(project(":util"))
     api("javax.measure:unit-api:2.2")
     implementation("tech.units:indriya:2.2.4")

@@ -162,20 +162,22 @@ public record ApplicationImage(
             }
             if (!Files.isDirectory(result.appDirectory().resolve("native")))
                 throw new IOException("App image has no native libraries");
-            if (p.containsKey("utilJar")) {
-                Path utility = result.appDirectory().resolve(fileName(p.getProperty("utilJar")));
+            for (String module : List.of("util", "import", "export")) {
+                if (!p.containsKey(module + "Jar")) continue; // Older format-1 installations.
+                Path utility =
+                        result.appDirectory().resolve(fileName(p.getProperty(module + "Jar")));
                 if (!Files.isRegularFile(utility, LinkOption.NOFOLLOW_LINKS)
                         || !utility.toRealPath().startsWith(root.toRealPath()))
-                    throw new IOException("Incomplete or linked utility JAR: " + utility);
+                    throw new IOException("Incomplete or linked " + module + " JAR: " + utility);
                 try (var jar = new JarFile(utility.toFile())) {
-                    var entry = jar.getJarEntry("voxelbrew-util-version.properties");
-                    if (entry == null) throw new IOException("Utilities have no build identity");
+                    var entry = jar.getJarEntry("voxelbrew-" + module + "-version.properties");
+                    if (entry == null) throw new IOException(module + " has no build identity");
                     var build = new Properties();
                     try (var in = jar.getInputStream(entry)) {
                         build.load(in);
                     }
                     if (!result.version.toString().equals(build.getProperty("version")))
-                        throw new IOException("Utilities/installation version mismatch");
+                        throw new IOException(module + "/installation version mismatch");
                 }
             }
             try (var jar = new JarFile(result.appDirectory().resolve(engine).toFile())) {

@@ -3,7 +3,8 @@ package dev.voxelbrew.gui;
 import static org.junit.jupiter.api.Assertions.*;
 
 import dev.voxelbrew.engine.model.*;
-import dev.voxelbrew.engine.persistence.DocumentStore;
+import dev.voxelbrew.exporter.DocumentWriter;
+import dev.voxelbrew.importer.DocumentReader;
 import java.nio.file.*;
 import java.util.List;
 import java.util.concurrent.*;
@@ -113,7 +114,7 @@ class DocumentControllerTest {
             Path file = directory.resolve("missing plugin.jcad");
             controller.save(file, false);
             await(() -> !controller.ioBusy());
-            assertEquals(before.document(), DocumentStore.load(file));
+            assertEquals(before.document(), DocumentReader.load(file));
             Files.copy(Path.of(System.getProperty("voxelbrew.test.plugin")), jar);
             controller.rebuild();
             await(() -> !controller.rebuilding());
@@ -234,7 +235,7 @@ class DocumentControllerTest {
             await(failed::isDone);
             assertTrue(failed.isCompletedExceptionally());
             assertEquals(original, controller.snapshot().document());
-            assertEquals(original, DocumentStore.load(file));
+            assertEquals(original, DocumentReader.load(file));
         }
     }
 
@@ -245,7 +246,7 @@ class DocumentControllerTest {
                 new Feature.Extrude(
                         "solid", new Feature.ProfileRef("missing", "missing.profile"), 8);
         Path file = directory.resolve("broken.jcad");
-        DocumentStore.save(new CadDocument("broken", List.of(s, invalid), 2), file, false);
+        DocumentWriter.save(new CadDocument("broken", List.of(s, invalid), 2), file, false);
         try (var controller = new DocumentController(callbacks::add)) {
             var opening = controller.open(file);
             await(() -> opening.isDone() && !controller.rebuilding());
@@ -270,7 +271,7 @@ class DocumentControllerTest {
             var saving = controller.save(file, false);
             controller.edit("plate", "width", 61);
             await(() -> saving.isDone() && !controller.rebuilding());
-            assertEquals(captured, DocumentStore.load(file));
+            assertEquals(captured, DocumentReader.load(file));
             assertTrue(controller.dirty());
             assertEquals(
                     61,

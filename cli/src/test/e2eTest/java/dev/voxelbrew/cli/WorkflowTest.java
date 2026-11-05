@@ -3,7 +3,8 @@ package dev.voxelbrew.cli;
 import static org.junit.jupiter.api.Assertions.*;
 
 import dev.voxelbrew.engine.model.Feature;
-import dev.voxelbrew.engine.persistence.DocumentStore;
+import dev.voxelbrew.exporter.DocumentWriter;
+import dev.voxelbrew.importer.DocumentReader;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -77,7 +78,7 @@ class WorkflowTest {
         run(0, "configurations", "activate", file, "--name", "Large");
         assertTrue(run(0, "parameters", "list", file).contains("width\tcm\texpression=8"));
         assertVolume(25600, run(0, "inspect", file));
-        var ids = DocumentStore.load(Path.of(file)).features().stream().map(Feature::id).toList();
+        var ids = DocumentReader.load(Path.of(file)).features().stream().map(Feature::id).toList();
         run(0, "sketch", "convert", file, "--sketch", "plate");
         assertVolume(25600, run(0, "inspect", file));
         run(0, "parameters", "rename", file, "--name", "width", "--to", "plateWidth");
@@ -92,7 +93,7 @@ class WorkflowTest {
         run(0, "configurations", "activate", file, "--name", "Large");
         assertEquals(
                 ids,
-                DocumentStore.load(Path.of(file)).features().stream().map(Feature::id).toList());
+                DocumentReader.load(Path.of(file)).features().stream().map(Feature::id).toList());
         Path output = directory.resolve("large variant.3mf");
         run(0, "export", file, "--format", "3mf", "--output", output.toString());
         assertTrue(Files.size(output) > 1000);
@@ -195,9 +196,9 @@ class WorkflowTest {
                 "8");
         run(0, "extrude", file, "--id", "letters", "--sketch", "label", "--distance", "2");
         assertTrue(run(0, "inspect", file).contains("bodyCount=5"));
-        var before = DocumentStore.load(Path.of(file));
+        var before = DocumentReader.load(Path.of(file));
         run(0, "sketch", "text-edit", file, "--sketch", "label", "--id", "text", "--text", "OC");
-        var after = DocumentStore.load(Path.of(file));
+        var after = DocumentReader.load(Path.of(file));
         assertEquals(before.id(), after.id());
         assertEquals(
                 before.features().stream().map(Feature::id).toList(),
@@ -234,10 +235,10 @@ class WorkflowTest {
         String file = directory.resolve("CLI constrained plate.jcad").toString();
         run(0, "new", file);
         run(0, "rectangle", file, "--id", "plate", "--width", "60", "--height", "40");
-        var before = DocumentStore.load(Path.of(file));
+        var before = DocumentReader.load(Path.of(file));
         run(0, "extrude", file, "--id", "thickness", "--sketch", "plate", "--distance", "8");
         run(0, "sketch", "convert", file, "--sketch", "plate");
-        var converted = (Feature.Sketch) DocumentStore.load(Path.of(file)).features().getFirst();
+        var converted = (Feature.Sketch) DocumentReader.load(Path.of(file)).features().getFirst();
         assertEquals(
                 ((Feature.Sketch) before.features().getFirst()).profileId(), converted.profileId());
         run(
@@ -270,7 +271,7 @@ class WorkflowTest {
                 run(0, "sketch", "list", file, "--sketch", "plate").contains("Fully constrained"));
         assertTrue(run(0, "inspect", file, "--point", "10,10,4").contains("contains=false"));
         var session =
-                new dev.voxelbrew.engine.model.ModelSession(DocumentStore.load(Path.of(file)));
+                new dev.voxelbrew.engine.model.ModelSession(DocumentReader.load(Path.of(file)));
         try (var result = session.evaluate()) {
             assertEquals(
                     19099.469035085127,
@@ -328,7 +329,7 @@ class WorkflowTest {
                 "5");
         var profile =
                 (Feature.Constrained)
-                        ((Feature.Sketch) DocumentStore.load(Path.of(file)).features().getFirst())
+                        ((Feature.Sketch) DocumentReader.load(Path.of(file)).features().getFirst())
                                 .profile();
         assertEquals(4, profile.geometry().entity("rectangle-bottom").at(0).x(), 1e-6);
         assertEquals(5, profile.geometry().entity("rectangle-bottom").at(0).y(), 1e-6);
@@ -365,7 +366,7 @@ class WorkflowTest {
         run(0, "extrude", polygon, "--id", "body", "--sketch", "hex", "--distance", "3");
         try (var evaluation =
                 dev.voxelbrew.engine.model.Evaluator.evaluate(
-                        DocumentStore.load(Path.of(polygon)))) {
+                        DocumentReader.load(Path.of(polygon)))) {
             assertEquals(
                     3 * Math.sqrt(3) / 2 * 100 * 3,
                     evaluation.requireCompleteDocument().getFirst().solid().volume(),
@@ -404,7 +405,7 @@ class WorkflowTest {
         run(0, "extrude", spline, "--id", "body", "--sketch", "curve", "--distance", "2");
         try (var evaluation =
                 dev.voxelbrew.engine.model.Evaluator.evaluate(
-                        DocumentStore.load(Path.of(spline)))) {
+                        DocumentReader.load(Path.of(spline)))) {
             assertEquals(
                     120, evaluation.requireCompleteDocument().getFirst().solid().volume(), 1e-6);
         }
@@ -446,7 +447,7 @@ class WorkflowTest {
                 "8",
                 "--plugin-dir",
                 plugin);
-        var before = DocumentStore.load(Path.of(file));
+        var before = DocumentReader.load(Path.of(file));
         byte[] bytes = Files.readAllBytes(Path.of(file));
         assertTrue(
                 run(
@@ -484,7 +485,7 @@ class WorkflowTest {
                 run(1, "history", file, "--plugin-dir", plugin)
                         .contains("Missing feature provider"));
         run(1, "cursor", file, "--position", "1", "--plugin-dir", plugin);
-        assertEquals(before, DocumentStore.load(Path.of(file)));
+        assertEquals(before, DocumentReader.load(Path.of(file)));
         run(
                 1,
                 "export",
@@ -523,7 +524,8 @@ class WorkflowTest {
                                 "--output",
                                 job,
                                 "--slicer",
-                                dev.voxelbrew.engine.printing.PrusaSlicerBackend.defaultExecutable()
+                                dev.voxelbrew.exporter.printing.PrusaSlicerBackend
+                                        .defaultExecutable()
                                         .toString(),
                                 "--plugin-dir",
                                 plugin)
@@ -610,7 +612,7 @@ class WorkflowTest {
                 "hole",
                 "--body-feature",
                 "thickness");
-        var before = DocumentStore.load(file);
+        var before = DocumentReader.load(file);
         var ids = before.features().stream().map(Feature::id).toList();
         assertEquals(Arrays.asList("plate", "thickness", "hole", "cut"), ids);
         assertTrue(run(0, "inspect", file.toString()).contains("volume=11937.168146928205"));
@@ -624,7 +626,7 @@ class WorkflowTest {
                 "distance",
                 "--value",
                 "8");
-        var reopened = DocumentStore.load(file);
+        var reopened = DocumentReader.load(file);
         assertEquals(before.id(), reopened.id());
         assertEquals(ids, reopened.features().stream().map(Feature::id).toList());
         String measurements = run(0, "inspect", file.toString(), "--point", "10,10,4");
@@ -674,17 +676,17 @@ class WorkflowTest {
                 "plate",
                 "--distance",
                 "8");
-        var document = DocumentStore.load(file);
+        var document = DocumentReader.load(file);
         var features = new ArrayList<>(document.features());
         features.set(
                 1,
                 new Feature.Extrude("thickness", new Feature.ProfileRef("missing", "profile"), 8));
-        DocumentStore.save(
+        DocumentWriter.save(
                 new dev.voxelbrew.engine.model.CadDocument(document.id(), features, 2), file, true);
         assertTrue(run(1, "history", file.toString()).contains("FAILED"));
         run(0, "repair", file.toString(), "--feature", "thickness", "--sketch", "plate");
         assertTrue(run(0, "inspect", file.toString()).contains("volume=19200.000000000000"));
-        assertEquals(2, DocumentStore.load(file).features().size());
+        assertEquals(2, DocumentReader.load(file).features().size());
     }
 
     @Test
@@ -773,7 +775,7 @@ class WorkflowTest {
         assertTrue(run(0, "validate", file).contains("VALID"));
         String output = directory.resolve("CLI real job.gcode").toString();
         String slicer =
-                dev.voxelbrew.engine.printing.PrusaSlicerBackend.defaultExecutable().toString();
+                dev.voxelbrew.exporter.printing.PrusaSlicerBackend.defaultExecutable().toString();
         assertTrue(
                 run(0, "slice", file, "--output", output, "--slicer", slicer)
                         .contains("model_layers=40"));

@@ -2,7 +2,8 @@ package dev.voxelbrew.engine.model;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-import dev.voxelbrew.engine.persistence.DocumentStore;
+import dev.voxelbrew.exporter.DocumentWriter;
+import dev.voxelbrew.importer.DocumentReader;
 import java.nio.file.Path;
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -21,8 +22,8 @@ class SplitBodyTest {
                         new Feature.BodyRef("cut", "body"),
                         new Feature.SplitPlane(1, 0, 0, 30)));
         var file = directory.resolve("split.jcad");
-        DocumentStore.save(session.document(), file, false);
-        session = new ModelSession(DocumentStore.load(file));
+        DocumentWriter.save(session.document(), file, false);
+        session = new ModelSession(DocumentReader.load(file));
         try (var evaluated = session.evaluate()) {
             var bodies = evaluated.requireCompleteDocument();
             assertEquals(

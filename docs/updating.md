@@ -8,7 +8,7 @@ There are no network checks at application startup.
 
 Shared update services and the standalone helper live in `dev.voxelbrew.util.update`.
 CLI commands and the JavaFX dialog stay in their respective frontend modules.
-New app images declare `utilJar` alongside `engineJar` and `mainJar`; all declared
+New app images declare `utilJar`, `importJar` and `exportJar` alongside `engineJar` and `mainJar`; all declared
 build identities are checked. Format-1 metadata without `utilJar` remains readable
 for older images and recovery. The helper is staged from the running utility JAR.
 

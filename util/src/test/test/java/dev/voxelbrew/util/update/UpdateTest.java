@@ -17,6 +17,29 @@ class UpdateTest {
     private final ReleaseVersion current = ReleaseVersion.release("1.2.3");
 
     @Test
+    void declaredFileIoModulesMustExistAndMatchTheInstallationVersion() throws Exception {
+        for (String module : List.of("import", "export")) {
+            var image = image(directory.resolve(module), current);
+            Path marker = image.appDirectory().resolve(ApplicationImage.MARKER);
+            Files.writeString(
+                    marker, Files.readString(marker) + module + "Jar=" + module + ".jar\n");
+            assertThrows(
+                    IOException.class,
+                    () -> ApplicationImage.open(image.root(), image.component(), image.platform()));
+            Path artifact = image.appDirectory().resolve(module + ".jar");
+            jar(artifact, "voxelbrew-" + module + "-version.properties", "version=9.9.9");
+            assertThrows(
+                    IOException.class,
+                    () -> ApplicationImage.open(image.root(), image.component(), image.platform()));
+            jar(artifact, "voxelbrew-" + module + "-version.properties", "version=" + current);
+            assertEquals(
+                    current,
+                    ApplicationImage.open(image.root(), image.component(), image.platform())
+                            .version());
+        }
+    }
+
+    @Test
     void utilityIdentityIsRequiredWhenDeclaredAndLegacyMetadataStillOpens() throws Exception {
         var image = image(directory.resolve("installation"), current);
         assertEquals("util.jar", image.updaterJar());

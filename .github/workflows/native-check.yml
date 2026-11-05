@@ -131,7 +131,7 @@ jobs:
             **/build/reports/
             **/build/test-results/
             gui/build/ui-artifacts/
-            engine/build/printing-artifacts/
+            export/build/printing-artifacts/
             cli/build/package-artifacts/
             gui/build/package-artifacts/
       - uses: actions/upload-artifact@v4

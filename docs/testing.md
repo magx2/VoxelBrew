@@ -9,7 +9,7 @@ resources for a suite belong alongside its `java` directory under `resources`.
 | `integrationTest` | `src/test/integrationTest/java` | Real OCCT, persistence, exporters, external plugin loading, real slicer and UI-neutral controllers     |
 | `e2eTest`         | `src/test/e2eTest/java`         | CLI workflows across fresh JVMs and JavaFX Robot interactions                                          |
 
-The root tasks aggregate all four modules, including `util`. Suites have separate compilation,
+The root tasks aggregate all six modules, including `util`, `import` and `export`. Suites have separate compilation,
 runtime classpaths, XML results and HTML reports. They depend on production code,
 not another suite's output. Currently engine owns the unit tests; CLI workflows
 are end-to-end tests and GUI controllers are integration tests. An empty suite
@@ -49,7 +49,7 @@ real-kernel subset from the integration source set.
 
 Reports are under each module's `build/test-results/{test,integrationTest,e2eTest}`
 and `build/reports/tests/{test,integrationTest,e2eTest}`. Screenshots remain in
-`gui/build/ui-artifacts`, slicer evidence in `engine/build/printing-artifacts`,
+`gui/build/ui-artifacts`, slicer evidence in `export/build/printing-artifacts`,
 and packaged-app evidence in each frontend's `build/package-artifacts`.
 
 GitHub Actions splits the complete gate into independent jobs:

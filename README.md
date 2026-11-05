@@ -5,13 +5,17 @@ Desktop parametric CAD for mechanical parts and FDM preparation. Project domain:
 
 **M0 through M3** provide a real Java → JNI → Open CASCADE Technology (OCCT) kernel
 and an editable headless CAD workflow. `engine` owns modeling, history and
-versioned Protobuf `.jcad` persistence; `cli` exposes the same engine operations;
+the versioned Protobuf `.jcad` schema; `cli` exposes the same engine operations;
 `gui` provides the JavaFX CAD workbench. M2 adds tessellation, binary STL,
 portable 3MF and external exporter plugins; M3 adds interactive sketching,
-extrusion, picking, editable history and export. The fourth first-party subproject,
+extrusion, picking, editable history and export. The shared subproject
 `util`, owns translations, user configuration, logging, application updates and
 generic CPU workers. It has no CAD or frontend dependencies; engine and both
 frontends depend on it. See [shared utilities and configuration](docs/shared-utilities.md).
+The `import` and `export` projects own document/G-code reading, document writing,
+STL/3MF exporters and the slicer file pipeline. Both depend on engine; engine has
+no production dependency on them. There are six first-party projects. See
+[file import/export boundaries and API migration](docs/file-io.md).
 M4 adds editable splitting, build placement, persisted
 PLA/PETG process settings, supports and real PrusaSlicer jobs. See the
 [printing workflow](docs/printing-workflow.md) and [qualification record](docs/acceptance/M4.md).

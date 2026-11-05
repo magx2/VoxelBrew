@@ -72,7 +72,7 @@ rollback, IO or a transient extrusion preview.
 One document lives in each window. A dot in its title means unsaved changes.
 New, Open and Close offer Save/Discard/Cancel. Workbench dialogs are modal
 overlays inside the document window, keeping keyboard focus stable under WSLg.
-File dialogs accept an editable path and offer native browsing. Saving and exporting use engine-owned atomic
+File dialogs accept an editable path and offer native browsing. Saving and exporting use the export module's atomic
 publication. Existing export files require the explicit replacement checkbox.
 Camera and selection are transient and are not saved into `.jcad`.
 

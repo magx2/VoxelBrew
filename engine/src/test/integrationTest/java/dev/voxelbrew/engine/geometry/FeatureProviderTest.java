@@ -4,7 +4,8 @@ import static org.junit.jupiter.api.Assertions.*;
 
 import dev.voxelbrew.engine.feature.*;
 import dev.voxelbrew.engine.model.*;
-import dev.voxelbrew.engine.persistence.DocumentStore;
+import dev.voxelbrew.exporter.DocumentWriter;
+import dev.voxelbrew.importer.DocumentReader;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
 import java.util.*;
@@ -127,11 +128,11 @@ class FeatureProviderTest {
                     assertThrows(IllegalStateException.class, result::requireCompleteDocument);
                 }
                 Path file = directory.resolve(provider + ".jcad");
-                DocumentStore.save(document, file, false);
-                assertEquals(document, DocumentStore.load(file));
+                DocumentWriter.save(document, file, false);
+                assertEquals(document, DocumentReader.load(file));
                 assertArrayEquals(
                         good.payload(),
-                        ((Feature.Custom) DocumentStore.load(file).features().get(1)).payload());
+                        ((Feature.Custom) DocumentReader.load(file).features().get(1)).payload());
                 assertEquals(handles, NativeKernel.liveHandles());
             }
         }
@@ -155,8 +156,8 @@ class FeatureProviderTest {
             assertTrue(body.solid().contains(5, 0, 4));
         }
         Path file = directory.resolve("spacer.jcad");
-        DocumentStore.save(session.document(), file, false);
-        session = new ModelSession(DocumentStore.load(file));
+        DocumentWriter.save(session.document(), file, false);
+        session = new ModelSession(DocumentReader.load(file));
         var original = session.document();
         session.editDimension("spacer", "height", 12, plugins);
         try (var result = session.evaluate(plugins)) {
@@ -203,9 +204,9 @@ class FeatureProviderTest {
                         new Feature.SplitPlane(1, 0, 0, 0)));
         var before = session.document();
         Path file = directory.resolve("repairable.jcad");
-        DocumentStore.save(before, file, false);
+        DocumentWriter.save(before, file, false);
         Files.move(jar, hidden);
-        var missing = DocumentStore.load(file);
+        var missing = DocumentReader.load(file);
         try (var result = Evaluator.evaluate(missing, plugins)) {
             assertEquals(
                     List.of(Evaluation.State.FAILED, Evaluation.State.BLOCKED),
@@ -215,8 +216,8 @@ class FeatureProviderTest {
             assertThrows(IllegalStateException.class, result::bodies);
             assertThrows(IllegalStateException.class, result::requireCompleteDocument);
         }
-        DocumentStore.save(missing, file, true);
-        var preserved = DocumentStore.load(file);
+        DocumentWriter.save(missing, file, true);
+        var preserved = DocumentReader.load(file);
         assertEquals(before, preserved);
         assertArrayEquals(
                 ((Feature.Custom) before.features().getFirst()).payload(),
@@ -274,12 +275,12 @@ class FeatureProviderTest {
                             new byte[] {0, -1, 13, 10});
             var document = new CadDocument("future", List.of(custom), 1);
             Path file = directory.resolve("payload-" + version + ".jcad");
-            DocumentStore.save(document, file, false);
-            try (var result = Evaluator.evaluate(DocumentStore.load(file), plugins)) {
+            DocumentWriter.save(document, file, false);
+            try (var result = Evaluator.evaluate(DocumentReader.load(file), plugins)) {
                 assertFalse(result.valid());
             }
-            DocumentStore.save(DocumentStore.load(file), file, true);
-            assertEquals(document, DocumentStore.load(file));
+            DocumentWriter.save(DocumentReader.load(file), file, true);
+            assertEquals(document, DocumentReader.load(file));
         }
         assertEquals(handles, NativeKernel.liveHandles());
     }

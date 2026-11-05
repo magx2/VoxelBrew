@@ -2,8 +2,12 @@ package dev.voxelbrew.gui;
 
 import dev.voxelbrew.engine.export.*;
 import dev.voxelbrew.engine.mesh.*;
-import dev.voxelbrew.engine.persistence.DocumentStore;
+import dev.voxelbrew.engine.persistence.DocumentCodec;
 import dev.voxelbrew.engine.printing.*;
+import dev.voxelbrew.exporter.ExporterRegistry;
+import dev.voxelbrew.exporter.printing.PrusaSlicerBackend;
+import dev.voxelbrew.exporter.printing.SliceService;
+import dev.voxelbrew.exporter.printing.SlicerRegistry;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.*;
@@ -640,7 +644,7 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
         } finally {
             updating = false;
         }
-        String revision = DocumentStore.fingerprint(snapshot);
+        String revision = DocumentCodec.fingerprint(snapshot);
         if (!document.canExport()) {
             model = null;
             validation = null;

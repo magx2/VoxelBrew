@@ -4,8 +4,9 @@ import static dev.voxelbrew.engine.sketch.SketchGeometry.*;
 import static org.junit.jupiter.api.Assertions.*;
 
 import dev.voxelbrew.engine.model.*;
-import dev.voxelbrew.engine.persistence.DocumentStore;
 import dev.voxelbrew.engine.sketch.*;
+import dev.voxelbrew.exporter.DocumentWriter;
+import dev.voxelbrew.importer.DocumentReader;
 import java.nio.file.Path;
 import java.util.*;
 import org.junit.jupiter.api.Test;
@@ -130,9 +131,9 @@ class SketchCurveTypesIntegrationTest {
                         new Feature.Constrained(g)));
         session.add(new Feature.Extrude("extrude", new Feature.ProfileRef("sketch", "profile"), 2));
         var file = directory.resolve("text and curves.jcad");
-        DocumentStore.save(session.document(), file, false);
-        assertEquals(session.document(), DocumentStore.load(file));
-        try (var evaluation = new ModelSession(DocumentStore.load(file)).evaluate()) {
+        DocumentWriter.save(session.document(), file, false);
+        assertEquals(session.document(), DocumentReader.load(file));
+        try (var evaluation = new ModelSession(DocumentReader.load(file)).evaluate()) {
             evaluation.requireCompleteDocument();
             assertEquals(2, evaluation.bodies().size());
             assertEquals("extrude.body", evaluation.bodies().getFirst().id());

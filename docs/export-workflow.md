@@ -1,5 +1,9 @@
 # M2 mesh export and external providers
 
+Format implementations and exporter discovery live in the `export` project.
+The versioned SPI and read-only CAD view remain in engine for existing provider
+compatibility. See [file-I/O APIs and boundaries](file-io.md).
+
 The installed `cli`/`cli.bat` supports:
 
 ```text

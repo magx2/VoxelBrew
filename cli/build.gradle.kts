@@ -3,6 +3,8 @@ plugins { application }
 apply(from = rootProject.file("gradle/packaging.gradle.kts"))
 
 dependencies {
+    implementation(project(":import"))
+    implementation(project(":export"))
     implementation(project(":util"))
     implementation(project(":engine"))
     implementation("info.picocli:picocli:4.7.7")

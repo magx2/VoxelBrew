@@ -1,6 +1,6 @@
 package dev.voxelbrew.cli;
 
-import dev.voxelbrew.engine.persistence.DocumentStore;
+import dev.voxelbrew.engine.persistence.DocumentCodec;
 import dev.voxelbrew.util.update.BuildVersion;
 import picocli.CommandLine;
 
@@ -9,7 +9,7 @@ public final class VersionProvider implements CommandLine.IVersionProvider {
     @Override
     public String[] getVersion() {
         return new String[] {
-            "VoxelBrew " + BuildVersion.current() + " / jcad schema " + DocumentStore.SCHEMA_VERSION
+            "VoxelBrew " + BuildVersion.current() + " / jcad schema " + DocumentCodec.SCHEMA_VERSION
         };
     }
 }

@@ -4,6 +4,11 @@ import java.util.concurrent.CancellationException;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public final class Cancellation {
+    @FunctionalInterface
+    public interface Publication {
+        void run() throws java.io.IOException;
+    }
+
     private final AtomicBoolean cancelled = new AtomicBoolean();
     private boolean published;
     private final java.util.List<Runnable> listeners = new java.util.ArrayList<>();
@@ -23,13 +28,13 @@ public final class Cancellation {
         if (cancelled()) throw new CancellationException("Slicing cancelled");
     }
 
-    synchronized void publish(SliceService.Commit action) throws java.io.IOException {
+    public synchronized void publish(Publication action) throws java.io.IOException {
         check();
         action.run();
         published = true;
     }
 
-    synchronized Runnable onCancel(Runnable listener) {
+    public synchronized Runnable onCancel(Runnable listener) {
         if (cancelled()) listener.run();
         else listeners.add(listener);
         return () -> {

@@ -61,7 +61,9 @@ assert installation["version"] == version and installation["platform"] == expect
 assert installation["engineJar"] == f"engine-{version}.jar", installation
 assert installation["mainJar"] == f"{kind}-{version}.jar", installation
 assert installation["utilJar"] == f"util-{version}.jar", installation
-for jar in (f"engine-{version}.jar", f"util-{version}.jar", f"{kind}-{version}.jar"):
+assert installation["importJar"] == f"import-{version}.jar", installation
+assert installation["exportJar"] == f"export-{version}.jar", installation
+for jar in (f"engine-{version}.jar", f"util-{version}.jar", f"import-{version}.jar", f"export-{version}.jar", f"{kind}-{version}.jar"):
     assert (app / jar).is_file(), "Missing application dependency: " + jar
 
 notices = [root / "LICENSE", root / "THIRD_PARTY_NOTICES.md"]

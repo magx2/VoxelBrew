@@ -2,9 +2,11 @@ package dev.voxelbrew.engine.model;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+import dev.voxelbrew.engine.persistence.DocumentCodec;
 import dev.voxelbrew.engine.persistence.DocumentFormatException;
-import dev.voxelbrew.engine.persistence.DocumentStore;
 import dev.voxelbrew.engine.persistence.proto.DocumentProto;
+import dev.voxelbrew.exporter.DocumentWriter;
+import dev.voxelbrew.importer.DocumentReader;
 import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -40,12 +42,12 @@ class EditableEngineTest {
     void reopenEditAndRollbackPreserveStableIdsAndThroughHole() throws Exception {
         var session = reference();
         Path file = directory.resolve("reference.jcad");
-        DocumentStore.save(session.document(), file, false);
-        var reopened = new ModelSession(DocumentStore.load(file));
+        DocumentWriter.save(session.document(), file, false);
+        var reopened = new ModelSession(DocumentReader.load(file));
         var ids = reopened.document().features().stream().map(Feature::id).toList();
         reopened.editDimension("thickness", "distance", 8);
-        DocumentStore.save(reopened.document(), file, true);
-        var edited = DocumentStore.load(file);
+        DocumentWriter.save(reopened.document(), file, true);
+        var edited = DocumentReader.load(file);
         assertEquals(ids, edited.features().stream().map(Feature::id).toList());
         assertEquals(session.document().id(), edited.id());
         assertReference(reopened, 8, 4);
@@ -98,8 +100,8 @@ class EditableEngineTest {
                 new Feature.Extrude(
                         "thickness", new Feature.ProfileRef("missing", "missing.profile"), 5));
         Path file = directory.resolve("broken.jcad");
-        DocumentStore.save(session.document(), file, false);
-        var reopened = new ModelSession(DocumentStore.load(file));
+        DocumentWriter.save(session.document(), file, false);
+        var reopened = new ModelSession(DocumentReader.load(file));
         try (var result = reopened.evaluate()) {
             assertEquals(Evaluation.State.FAILED, result.diagnostics().get(1).state());
             assertTrue(result.diagnostics().get(1).message().contains("missing"));
@@ -149,8 +151,8 @@ class EditableEngineTest {
                     new Feature.Extrude(
                             "extrude", new Feature.ProfileRef("rectangle", "profile"), 5));
             Path file = directory.resolve("offset-" + z + ".jcad");
-            DocumentStore.save(session.document(), file, false);
-            var reopened = DocumentStore.load(file);
+            DocumentWriter.save(session.document(), file, false);
+            var reopened = DocumentReader.load(file);
             assertEquals(session.document(), reopened);
             try (var result = Evaluator.evaluate(reopened)) {
                 var bounds = result.bodies().getFirst().solid().bounds();
@@ -195,25 +197,26 @@ class EditableEngineTest {
             throws Exception {
         Path file = directory.resolve("part.jcad");
         var document = reference().document();
-        DocumentStore.save(document, file, false);
+        DocumentWriter.save(document, file, false);
         byte[] valid = Files.readAllBytes(file);
         assertThrows(
                 java.io.IOException.class,
-                () -> DocumentStore.save(CadDocument.empty(), file, false));
+                () -> DocumentWriter.save(CadDocument.empty(), file, false));
         assertArrayEquals(valid, Files.readAllBytes(file));
         for (int length : new int[] {0, 10, 43, valid.length - 1}) {
             Files.write(file, Arrays.copyOf(valid, length));
             var failure =
-                    assertThrows(DocumentFormatException.class, () -> DocumentStore.load(file));
+                    assertThrows(DocumentFormatException.class, () -> DocumentReader.load(file));
             assertTrue(failure.getMessage().toLowerCase().contains("truncated"));
         }
         valid[valid.length - 1] ^= 1;
         Files.write(file, valid);
         assertTrue(
-                assertThrows(DocumentFormatException.class, () -> DocumentStore.load(file))
+                assertThrows(DocumentFormatException.class, () -> DocumentReader.load(file))
                         .getMessage()
                         .contains("checksum"));
-        assertThrows(DocumentFormatException.class, () -> DocumentStore.save(document, file, true));
+        assertThrows(
+                DocumentFormatException.class, () -> DocumentWriter.save(document, file, true));
         assertArrayEquals(valid, Files.readAllBytes(file));
         try (var files = Files.list(directory)) {
             assertEquals(1, files.count());
@@ -224,13 +227,13 @@ class EditableEngineTest {
     void newerSchemasAndUnknownFieldsCannotBeDestructivelyWritten() throws Exception {
         for (boolean newerVersion : new boolean[] {true, false}) {
             Path file = directory.resolve("future-" + newerVersion + ".jcad");
-            DocumentStore.save(reference().document(), file, false);
+            DocumentWriter.save(reference().document(), file, false);
             byte[] bytes = Files.readAllBytes(file);
             var message =
                     DocumentProto.Document.parseFrom(Arrays.copyOfRange(bytes, 44, bytes.length))
                             .toBuilder();
             if (newerVersion) {
-                message.setSchemaVersion(DocumentStore.SCHEMA_VERSION + 1);
+                message.setSchemaVersion(DocumentCodec.SCHEMA_VERSION + 1);
             } else {
                 message.setUnknownFields(
                         com.google.protobuf.UnknownFieldSet.newBuilder()
@@ -251,12 +254,12 @@ class EditableEngineTest {
                             .array();
             Files.write(file, future);
             assertTrue(
-                    assertThrows(DocumentFormatException.class, () -> DocumentStore.load(file))
+                    assertThrows(DocumentFormatException.class, () -> DocumentReader.load(file))
                             .getMessage()
                             .contains("read-only"));
             assertThrows(
                     DocumentFormatException.class,
-                    () -> DocumentStore.save(CadDocument.empty(), file, true));
+                    () -> DocumentWriter.save(CadDocument.empty(), file, true));
             assertArrayEquals(future, Files.readAllBytes(file));
         }
     }
@@ -266,7 +269,7 @@ class EditableEngineTest {
         var original = reference().document();
         for (int version : new int[] {1, 2, 3, 4, 5}) {
             Path file = directory.resolve("legacy-" + version + ".jcad");
-            DocumentStore.save(original, file, false);
+            DocumentWriter.save(original, file, false);
             byte[] bytes = Files.readAllBytes(file);
             var message =
                     DocumentProto.Document.parseFrom(Arrays.copyOfRange(bytes, 44, bytes.length))
@@ -282,11 +285,11 @@ class EditableEngineTest {
                             .put(MessageDigest.getInstance("SHA-256").digest(payload))
                             .put(payload)
                             .array());
-            var reopened = new ModelSession(DocumentStore.load(file));
+            var reopened = new ModelSession(DocumentReader.load(file));
             assertEquals(original, reopened.document());
             reopened.editDimension("thickness", "distance", 8);
-            DocumentStore.save(reopened.document(), file, true);
-            assertEquals(reopened.document(), DocumentStore.load(file));
+            DocumentWriter.save(reopened.document(), file, true);
+            assertEquals(reopened.document(), DocumentReader.load(file));
             try (var evaluation = reopened.evaluate()) {
                 assertEquals(
                         19099.469035085127, evaluation.bodies().getFirst().solid().volume(), 0.01);
@@ -308,7 +311,7 @@ class EditableEngineTest {
                                 () -> {
                                     start.await();
                                     try {
-                                        DocumentStore.save(document, file, false);
+                                        DocumentWriter.save(document, file, false);
                                         return true;
                                     } catch (java.io.IOException expectedConflict) {
                                         return false;
@@ -324,7 +327,7 @@ class EditableEngineTest {
             }
             assertEquals(1, successes);
         }
-        assertTrue(List.of(first.id(), second.id()).contains(DocumentStore.load(file).id()));
+        assertTrue(List.of(first.id(), second.id()).contains(DocumentReader.load(file).id()));
         try (var files = Files.list(directory)) {
             assertEquals(1, files.count());
         }

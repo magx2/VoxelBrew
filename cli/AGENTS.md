@@ -1,8 +1,8 @@
 # CLI instructions
 
 - Read `docs/editable-workflow.md` and the public reference scripts under `scripts/`.
-- Use picocli under `dev.voxelbrew.cli`. Delegate modeling, history, persistence,
-  export, and slicing to engine services instead of duplicating their logic.
+- Use picocli under `dev.voxelbrew.cli`. Delegate modeling/history to engine and
+  file reading/writing, export and slicing to import/export services.
 - Preserve useful diagnostics and nonzero failure exit codes. Reject invalid
   inputs before publishing output; failed commands must not corrupt documents.
 - Keep output usable in scripts. Check save/reopen/edit workflows across fresh

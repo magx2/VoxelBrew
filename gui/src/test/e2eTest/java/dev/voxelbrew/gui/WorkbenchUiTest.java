@@ -3,10 +3,13 @@ package dev.voxelbrew.gui;
 import static org.junit.jupiter.api.Assertions.*;
 
 import dev.voxelbrew.engine.model.*;
-import dev.voxelbrew.engine.persistence.DocumentStore;
 import dev.voxelbrew.engine.printing.*;
 import dev.voxelbrew.engine.sketch.SketchGeometry;
 import dev.voxelbrew.engine.sketch.SketchTools;
+import dev.voxelbrew.exporter.DocumentWriter;
+import dev.voxelbrew.exporter.printing.PrusaSlicerBackend;
+import dev.voxelbrew.importer.DocumentReader;
+import dev.voxelbrew.importer.GcodeReader;
 import java.nio.file.*;
 import java.util.*;
 import java.util.concurrent.*;
@@ -1147,7 +1150,7 @@ class WorkbenchUiTest {
         assertEquals(19099.469035085127, volume(), 0.01);
         Path file = directory.resolve("GUI constrained plate.jcad");
         save(file);
-        var saved = DocumentStore.load(file);
+        var saved = DocumentReader.load(file);
         click("open");
         text("file-path", file.toString());
         click("file-confirm");
@@ -1587,7 +1590,7 @@ class WorkbenchUiTest {
         assertEquals(11937.168146928205, volume(), 0.01);
         Path file = directory.resolve("GUI reference.jcad");
         save(file);
-        var before = DocumentStore.load(file);
+        var before = DocumentReader.load(file);
         Path cliFile = directory.resolve("CLI reference.jcad");
         Files.copy(file, cliFile);
         click("open");
@@ -1646,7 +1649,7 @@ class WorkbenchUiTest {
                 "distance",
                 "--value",
                 "8");
-        assertEquals(DocumentStore.load(cliFile), DocumentStore.load(file));
+        assertEquals(DocumentReader.load(cliFile), DocumentReader.load(file));
         String inspection = cli("inspect", file.toString(), "--point", "10,10,4");
         assertTrue(inspection.contains("volume=19099.469035085127"));
         assertTrue(inspection.contains("contains=false"));
@@ -1756,7 +1759,7 @@ class WorkbenchUiTest {
         ready();
         Path file = directory.resolve("GUI spacer.jcad");
         save(file);
-        var before = DocumentStore.load(file);
+        var before = DocumentReader.load(file);
         Path plugins = directory.resolve("plugins with spaces"),
                 jar = plugins.resolve("provider.jar");
         fx(
@@ -1783,7 +1786,7 @@ class WorkbenchUiTest {
         assertTrue(fx(() -> node("#export").isDisabled()));
         click("save");
         ready();
-        assertEquals(before, DocumentStore.load(file));
+        assertEquals(before, DocumentReader.load(file));
         Files.copy(Path.of(System.getProperty("voxelbrew.test.plugin")), jar);
         click("history-0");
         click("custom-rebuild");
@@ -1936,7 +1939,7 @@ class WorkbenchUiTest {
                                         "bad", new Feature.ProfileRef("missing", "none"), 8)),
                         2);
         Path file = directory.resolve("broken.jcad");
-        DocumentStore.save(broken, file, false);
+        DocumentWriter.save(broken, file, false);
         // Open through the actual file action after saving the current document to avoid an
         // unrelated prompt.
         save(directory.resolve("scratch.jcad"));
@@ -1991,7 +1994,7 @@ class WorkbenchUiTest {
         assertEquals(
                 61,
                 ((Feature.Rectangle)
-                                ((Feature.Sketch) DocumentStore.load(file).features().getFirst())
+                                ((Feature.Sketch) DocumentReader.load(file).features().getFirst())
                                         .profile())
                         .width());
         shortcut(KeyCode.O, false);
@@ -2009,7 +2012,7 @@ class WorkbenchUiTest {
         assertEquals(
                 40,
                 ((Feature.Rectangle)
-                                ((Feature.Sketch) DocumentStore.load(file).features().getFirst())
+                                ((Feature.Sketch) DocumentReader.load(file).features().getFirst())
                                         .profile())
                         .height());
     }
@@ -2066,7 +2069,7 @@ class WorkbenchUiTest {
         text("file-path", file.toString());
         click("file-confirm");
         ready();
-        assertEquals(DocumentStore.load(file), document());
+        assertEquals(DocumentReader.load(file), document());
         click("print-tab-job");
         Path job = directory.resolve("GUI printer job.gcode");
         text("print-output", job.toString());
@@ -2081,7 +2084,7 @@ class WorkbenchUiTest {
                 PrintController.State.SUCCEEDED,
                 fx(() -> ((PrintingPane) node("#printing-workspace")).jobs().state()),
                 fx(() -> ((Label) node("#print-status")).getText()));
-        var actual = GcodeJob.read(job);
+        var actual = GcodeReader.read(job);
         assertEquals(40, actual.modelLayers().size());
         assertEquals("PETG", actual.report().get("material"));
         click("print-layer");
@@ -2111,7 +2114,7 @@ class WorkbenchUiTest {
                 cliJob.toString(),
                 "--slicer",
                 PrusaSlicerBackend.defaultExecutable().toString());
-        assertEquals(actual.segments(), GcodeJob.read(cliJob).segments());
+        assertEquals(actual.segments(), GcodeReader.read(cliJob).segments());
         Files.copy(
                 file,
                 evidence.resolve("GUI print setup.jcad"),

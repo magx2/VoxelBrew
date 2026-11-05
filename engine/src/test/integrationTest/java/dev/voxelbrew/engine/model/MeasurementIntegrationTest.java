@@ -5,7 +5,8 @@ import static org.junit.jupiter.api.Assertions.*;
 
 import dev.voxelbrew.engine.geometry.Solid;
 import dev.voxelbrew.engine.mesh.MeshOptions;
-import dev.voxelbrew.engine.persistence.DocumentStore;
+import dev.voxelbrew.exporter.DocumentWriter;
+import dev.voxelbrew.importer.DocumentReader;
 import java.nio.file.*;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -96,13 +97,13 @@ class MeasurementIntegrationTest {
         }
         var file = directory.resolve("old parameter versions.jcad");
         Files.write(file, original);
-        var document = DocumentStore.load(file);
+        var document = DocumentReader.load(file);
         assertEquals("Large", document.parameters().activeName());
         var session = new ModelSession(document);
         try (var e = session.evaluate()) {
             assertEquals(25600, e.bodies().getFirst().solid().volume(), .02);
         }
-        DocumentStore.save(document, file, true);
+        DocumentWriter.save(document, file, true);
         assertArrayEquals(original, Files.readAllBytes(file));
         session.selectConfiguration("Default");
         try (var e = session.evaluate()) {

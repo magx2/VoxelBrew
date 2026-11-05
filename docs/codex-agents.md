@@ -2,12 +2,12 @@
 
 The repository provides four custom Codex roles in `.codex/agents/`:
 
-| Agent            | Assigned work                                                         |
-| ---------------- | --------------------------------------------------------------------- |
-| `cad_engine`     | Engine model, OCCT/JNI, history, persistence, export and plugin API   |
-| `cad_cli`        | picocli commands, public headless workflows, scripts and distribution |
-| `cad_gui`        | JavaFX viewport, sketch interaction, timeline, properties and dialogs |
-| `cad_validation` | Code review, acceptance evidence, Windows and Ubuntu WSL checks       |
+| Agent            | Assigned work                                                          |
+| ---------------- | ---------------------------------------------------------------------- |
+| `cad_engine`     | Engine model, OCCT/JNI, history, import/export projects and plugin API |
+| `cad_cli`        | picocli commands, public headless workflows, scripts and distribution  |
+| `cad_gui`        | JavaFX viewport, sketch interaction, timeline, properties and dialogs  |
+| `cad_validation` | Code review, acceptance evidence, Windows and Ubuntu WSL checks        |
 
 Each definition uses the official `name`, `description`, and
 `developer_instructions` TOML fields. Models and reasoning effort inherit the

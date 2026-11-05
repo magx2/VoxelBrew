@@ -46,9 +46,28 @@ val packageInput = layout.buildDirectory.dir("package-input")
 val imageRoot = layout.buildDirectory.dir("app-image")
 val image = imageRoot.map { it.dir(applicationName + if (packageMac) ".app" else "") }
 
+val installationMetadata = layout.buildDirectory.dir("installation-metadata")
+val generateInstallationMetadata by
+    tasks.registering {
+        inputs.property("version", productVersion)
+        inputs.property("platform", "$packagePlatform-$packageArchitecture")
+        inputs.property("component", project.name)
+        outputs.dir(installationMetadata)
+        val component = if (project.name == "gui") "GUI" else "CLI"
+        val module = project.name
+        doLast {
+            val destination = installationMetadata.get().file("voxelbrew-install.properties").asFile
+            destination.parentFile.mkdirs()
+            destination.writeText(
+                "format=1\ncomponent=$component\nversion=$productVersion\nplatform=$packagePlatform-$packageArchitecture\nengineJar=engine-$productVersion.jar\nmainJar=$module-$productVersion.jar\n"
+            )
+        }
+    }
+
 val preparePackage by
     tasks.registering(Sync::class) {
-        dependsOn("jar", ":engine:buildNative")
+        dependsOn("jar", ":engine:buildNative", generateInstallationMetadata)
+        from(installationMetadata)
         from(tasks.named("jar"))
         from(configurations.named("runtimeClasspath"))
         from(project(":engine").layout.buildDirectory.dir("native/runtime")) { into("native") }
@@ -122,6 +141,27 @@ val packageCheck by
     }
 
 tasks.named("platformCheck") { dependsOn(packageCheck) }
+
+val updatePackageCheck by
+    tasks.registering(Exec::class) {
+        group = "verification"
+        description =
+            "Update a relocated app image with a verified offline release fixture and real bundled JVM."
+        dependsOn(appImage)
+        mustRunAfter(packageCheck)
+        environment("VOXELBREW_TEST_JDK", packageJdk.absolutePath)
+        commandLine(
+            if (packageWindows) "python" else "python3",
+            rootProject.file("scripts/check-update.py").absolutePath,
+            project.name,
+            image.get().asFile.absolutePath,
+            rootProject.projectDir.absolutePath,
+            layout.buildDirectory.dir("package-artifacts").get().asFile.absolutePath,
+        )
+        doFirst { layout.buildDirectory.dir("package-artifacts").get().asFile.mkdirs() }
+    }
+
+tasks.named("platformCheck") { dependsOn(updatePackageCheck) }
 
 val packageZip by
     tasks.registering(Zip::class) {

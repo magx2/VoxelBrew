@@ -100,8 +100,19 @@ public final class Workbench extends BorderPane implements AutoCloseable {
     private Point3D firstPoint;
     private Feature.Sketch extrusionSketch;
     private Button finish;
+    private final UpdateDialog.Factory updates;
 
     public Workbench(Stage stage, Path pluginDirectory) throws IOException {
+        this(
+                stage,
+                pluginDirectory,
+                () ->
+                        dev.voxelbrew.engine.update.UpdateService.system(
+                                dev.voxelbrew.engine.update.ApplicationImage.Component.GUI));
+    }
+
+    Workbench(Stage stage, Path pluginDirectory, UpdateDialog.Factory updates) throws IOException {
+        this.updates = updates;
         this.stage = stage;
         this.pluginDirectory = pluginDirectory;
         this.controller = new DocumentController(Platform::runLater, pluginDirectory);
@@ -120,7 +131,8 @@ public final class Workbench extends BorderPane implements AutoCloseable {
         caption.getStyleClass().add("eyebrow");
         var spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
-        var title = new HBox(12, brand, caption, spacer, new Label("Design workspace"));
+        var title =
+                new HBox(12, brand, caption, spacer, button("Updates…", "updates", this::updates));
         title.getStyleClass().add("title-strip");
         views.setId("standard-view");
         views.getItems().setAll("Isometric", "Top", "Front", "Right", "Back", "Left", "Bottom");
@@ -1295,6 +1307,14 @@ public final class Workbench extends BorderPane implements AutoCloseable {
                         ButtonType.YES,
                         ButtonType.NO);
         return Dialogs.show(alert, stage).orElse(ButtonType.NO) == ButtonType.YES;
+    }
+
+    private void updates() {
+        if (UpdateDialog.show(stage, updates, this::requestChange)) {
+            close();
+            stage.hide();
+            Platform.exit();
+        }
     }
 
     private void requestChange(Runnable action) {

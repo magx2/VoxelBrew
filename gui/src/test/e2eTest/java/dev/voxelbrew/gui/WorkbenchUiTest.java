@@ -28,6 +28,7 @@ class WorkbenchUiTest {
     private Workbench workbench;
     private static Robot robot;
     private static Appearance.Choice originalAppearance;
+    private UpdateFixture updates;
 
     @BeforeAll
     static void toolkit() throws Exception {
@@ -58,6 +59,7 @@ class WorkbenchUiTest {
 
     @BeforeEach
     void window() throws Exception {
+        updates = new UpdateFixture(directory.resolve("update fixture"));
         Path plugins = Files.createDirectory(directory.resolve("plugins with spaces"));
         Files.copy(
                 Path.of(System.getProperty("voxelbrew.test.plugin")),
@@ -67,7 +69,7 @@ class WorkbenchUiTest {
                     stage = new Stage();
                     if (System.getProperty("os.name").startsWith("Windows"))
                         stage.setAlwaysOnTop(true);
-                    workbench = new Workbench(stage, plugins);
+                    workbench = new Workbench(stage, plugins, updates::service);
                     var screen = Screen.getPrimary().getVisualBounds();
                     // Match the hosted Windows runner so clipped inspector fields require
                     // scrolling.
@@ -383,6 +385,88 @@ class WorkbenchUiTest {
 
     private CadDocument document() throws Exception {
         return fx(() -> workbench.controller().snapshot().document());
+    }
+
+    @Test
+    void updatesCheckCancelAndProtectUnsavedDocument() throws Exception {
+        for (int palette : List.of(1, 2)) {
+            choice("appearance", palette);
+            updates.slow = true;
+            click("updates");
+            click("update-check");
+            int request = updates.requests;
+            click("update-cancel");
+            updates.slow = false;
+            click("updates");
+            text("update-version", "1.1.0");
+            click("update-force");
+            click("update-check");
+            waitForUpdate("Update available");
+            assertTrue(updates.requests > request);
+            assertEquals(
+                    dev.voxelbrew.engine.update.ReleaseVersion.release("1.1.0"), updates.requested);
+            fx(
+                    () -> {
+                        Screenshot.save(
+                                stage.getScene(),
+                                Path.of(
+                                        System.getProperty("voxelbrew.ui.artifacts"),
+                                        "updates-" + palette + ".png"));
+                        return null;
+                    });
+            click("update-cancel");
+        }
+        fx(
+                () -> {
+                    workbench
+                            .controller()
+                            .add(
+                                    new Feature.Sketch(
+                                            "update-sketch",
+                                            "profile",
+                                            new Feature.Plane("xy", 0),
+                                            new Feature.Rectangle(0, 0, 20, 10)));
+                    return null;
+                });
+        ready();
+        var before = document();
+        click("updates");
+        click("update-check");
+        waitForUpdate("Update available");
+        click("update-download");
+        waitForUpdate("Verified and ready");
+        click("update-install");
+        click("unsaved-cancel");
+        assertEquals(before, document());
+        assertTrue(fx(() -> stage.isShowing()));
+        assertFalse(fx(() -> node("#update-install").isDisabled()));
+        click("update-cancel");
+        ready();
+        assertEquals(before, document());
+        // Cancel removes staging after background work has stopped.
+        long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
+        boolean exists;
+        do {
+            try (var files = Files.walk(directory.resolve("update fixture"))) {
+                exists =
+                        files.anyMatch(
+                                path ->
+                                        path.getFileName()
+                                                .toString()
+                                                .startsWith(".VoxelBrew-update-"));
+            }
+            if (exists) Thread.sleep(50);
+        } while (exists && System.nanoTime() < deadline);
+        assertFalse(exists);
+    }
+
+    private void waitForUpdate(String message) throws Exception {
+        long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(15);
+        while (System.nanoTime() < deadline) {
+            if (fx(() -> ((Label) node("#update-status")).getText().contains(message))) return;
+            Thread.sleep(30);
+        }
+        fail(fx(() -> ((Label) node("#update-status")).getText()));
     }
 
     private double volume() throws Exception {

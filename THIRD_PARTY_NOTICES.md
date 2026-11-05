@@ -22,6 +22,12 @@
   images under `third_party/commons-math/`.
 - **Protocol Buffers 4.30.2**, BSD-3-Clause, https://github.com/protocolbuffers/protobuf/tree/v30.2.
   Generated document messages are engine implementation details.
+- **Apache Commons Compress 1.28.0**, **Commons IO 2.20.0**, **Commons Lang 3.18.0**,
+  and **Commons Codec 1.19.0**, Apache-2.0, https://commons.apache.org/.
+  Used by the updater's ZIP reader (including Unix permissions and link detection).
+  Unmodified upstream LICENSE and NOTICE files extracted from the resolved JARs
+  accompany distributions under `third_party/commons-compress/`, `commons-io/`,
+  `commons-lang3/`, and `commons-codec/`.
 - **Units of Measurement API 2.2** and **Indriya 2.2.4**, BSD-3-Clause,
   https://github.com/unitsofmeasurement/unit-api/tree/2.2 and
   https://github.com/unitsofmeasurement/indriya/tree/2.2.4.

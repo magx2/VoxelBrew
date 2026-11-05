@@ -32,6 +32,9 @@ M11 parallelizes independent body meshing, larger sketch Jacobians and print
 preflight using a bounded CPU pool. See [computation and performance](docs/computation.md).
 M12 adds release branches, versioned native application downloads, checksums and
 release rehearsals. See [release steps and recovery](docs/releases.md).
+M13 adds explicit CLI `update` / `update check` commands and a GUI **Updates…**
+dialog, with verified app-image replacement and recovery backups. See
+[updating VoxelBrew](docs/updating.md).
 
 ## Prerequisites and locked dependencies
 

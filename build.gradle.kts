@@ -45,7 +45,7 @@ spotless {
     encoding("UTF-8")
     lineEndings = LineEnding.UNIX
     java {
-        target(sourceProjects.map { "$it/src/**/java/**/*.java" })
+        target(sourceProjects.map { "$it/src/**/java/**/*.java" } + "fixtures/updater/*.java")
         googleJavaFormat("1.28.0").aosp()
         trimTrailingWhitespace()
         endWithNewline()

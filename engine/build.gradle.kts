@@ -10,6 +10,14 @@ dependencies {
     compileOnly("org.apiguardian:apiguardian-api:1.1.2")
     implementation("com.google.protobuf:protobuf-java:4.30.2")
     implementation("org.apache.commons:commons-math3:3.6.1")
+    implementation("org.apache.commons:commons-compress:1.28.0")
+}
+
+val buildVersion = project.version.toString()
+
+tasks.processResources {
+    inputs.property("version", buildVersion)
+    filesMatching("voxelbrew-engine-version.properties") { expand("version" to buildVersion) }
 }
 
 protobuf { protoc { artifact = "com.google.protobuf:protoc:4.30.2" } }

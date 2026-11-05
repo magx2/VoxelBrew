@@ -44,9 +44,19 @@ public final class VoxelBrew implements Runnable {
         spec.commandLine().usage(spec.commandLine().getOut());
     }
 
+    @SuppressWarnings("try") // Keep the app image in place until the process has finished.
     public static void main(String[] args) {
         configureInstalledRuntime();
-        System.exit(commandLine().execute(args));
+        int result;
+        try (var lease =
+                dev.voxelbrew.engine.update.ApplicationImage.running(
+                        dev.voxelbrew.engine.update.ApplicationImage.Component.CLI)) {
+            result = commandLine().execute(args);
+        } catch (java.io.IOException failure) {
+            System.err.println("ERROR: " + failure.getMessage());
+            result = 1;
+        }
+        System.exit(result);
     }
 
     public static CommandLine commandLine() {
@@ -63,6 +73,7 @@ public final class VoxelBrew implements Runnable {
         FeatureCommands.register(cliCommand);
         SketchCommands.register(cliCommand);
         ParameterCommands.register(cliCommand);
+        UpdateCommands.register(cliCommand);
         return cliCommand;
     }
 

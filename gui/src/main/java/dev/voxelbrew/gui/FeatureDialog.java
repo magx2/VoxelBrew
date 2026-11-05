@@ -14,8 +14,9 @@ import javafx.stage.Window;
 final class FeatureDialog {
     private FeatureDialog() {}
 
-    static Optional<Feature.Custom> show(Window owner, Path directory) throws IOException {
-        try (var registry = new FeatureRegistry(directory)) {
+    static Optional<Feature.Custom> show(
+            Window owner, Path directory, FeatureRegistry.Factory features) throws IOException {
+        try (var registry = features.open(directory)) {
             var dialog = new Dialog<Feature.Custom>();
             dialog.setTitle("Add feature");
             var type = new ComboBox<FeatureDescriptor>();

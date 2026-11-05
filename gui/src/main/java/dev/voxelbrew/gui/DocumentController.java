@@ -14,6 +14,7 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 
 /** UI-neutral document controller. UI dispatch confines all state changes to its owner thread. */
+@javax.inject.Singleton
 public final class DocumentController implements AutoCloseable {
     public record Body(String id, Feature.BodyRef output, MeshData mesh, double volume) {}
 
@@ -36,12 +37,10 @@ public final class DocumentController implements AutoCloseable {
     private record Request(
             long sequence, long generation, long revision, CadDocument document, boolean preview) {}
 
-    private final ExecutorService worker =
-            Executors.newSingleThreadExecutor(
-                    Thread.ofPlatform().daemon().name("voxelbrew-rebuild").factory());
-    private final ExecutorService io =
-            Executors.newSingleThreadExecutor(
-                    Thread.ofPlatform().daemon().name("voxelbrew-file-io").factory());
+    private final ExecutorService worker;
+    private final ExecutorService io;
+    private final dev.voxelbrew.importer.DocumentSource documents;
+    private final dev.voxelbrew.exporter.DocumentSink documentWriter;
     private final Consumer<Runnable> dispatch;
     private final Function<CadDocument, Build> evaluator;
     private final Path pluginDirectory;
@@ -77,9 +76,49 @@ public final class DocumentController implements AutoCloseable {
             Consumer<Runnable> dispatch,
             Function<CadDocument, Build> evaluator,
             Path pluginDirectory) {
-        this.dispatch = dispatch;
-        this.evaluator = evaluator;
-        this.pluginDirectory = pluginDirectory;
+        this(
+                dispatch,
+                evaluator,
+                pluginDirectory,
+                WindowResources.worker("rebuild"),
+                WindowResources.worker("file-io"),
+                DocumentReader::load,
+                DocumentWriter::save);
+    }
+
+    @javax.inject.Inject
+    DocumentController(
+            @javax.inject.Named("ui") Consumer<Runnable> dispatch,
+            @javax.inject.Named("plugins") Path pluginDirectory,
+            @javax.inject.Named("rebuild") ExecutorService worker,
+            @javax.inject.Named("files") ExecutorService io,
+            dev.voxelbrew.importer.DocumentSource documents,
+            dev.voxelbrew.exporter.DocumentSink documentWriter) {
+        this(
+                dispatch,
+                document -> evaluate(document, pluginDirectory),
+                pluginDirectory,
+                worker,
+                io,
+                documents,
+                documentWriter);
+    }
+
+    DocumentController(
+            Consumer<Runnable> dispatch,
+            Function<CadDocument, Build> evaluator,
+            Path pluginDirectory,
+            ExecutorService worker,
+            ExecutorService io,
+            dev.voxelbrew.importer.DocumentSource documents,
+            dev.voxelbrew.exporter.DocumentSink documentWriter) {
+        this.dispatch = Objects.requireNonNull(dispatch);
+        this.evaluator = Objects.requireNonNull(evaluator);
+        this.pluginDirectory = Objects.requireNonNull(pluginDirectory);
+        this.worker = Objects.requireNonNull(worker);
+        this.io = Objects.requireNonNull(io);
+        this.documents = Objects.requireNonNull(documents);
+        this.documentWriter = Objects.requireNonNull(documentWriter);
     }
 
     public void onChanged(Runnable listener) {
@@ -286,7 +325,7 @@ public final class DocumentController implements AutoCloseable {
         io.execute(
                 () -> {
                     try {
-                        var document = DocumentReader.load(source);
+                        var document = documents.load(source);
                         dispatch.accept(
                                 () -> {
                                     if (closed) {
@@ -314,7 +353,7 @@ public final class DocumentController implements AutoCloseable {
         io.execute(
                 () -> {
                     try {
-                        DocumentWriter.save(captured, destination, overwrite);
+                        documentWriter.save(captured, destination, overwrite);
                         dispatch.accept(
                                 () -> {
                                     if (closed) {

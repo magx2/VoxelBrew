@@ -16,6 +16,14 @@
 - **CMake 3.31.6**, BSD-3-Clause, https://github.com/Kitware/CMake/tree/v3.31.6.
   Its downloaded distribution retains the upstream notices.
 - **JUnit 5.12.1**, EPL-2.0, test dependency only, https://junit.org/junit5/.
+- **Dagger 2.60.1**, Apache-2.0, https://github.com/google/dagger/tree/dagger-2.60.1.
+  Compile-time dependency injection; the runtime and generated component classes
+  ship with the applications. The annotation processor and its compiler-only
+  dependencies do not. Upstream license: `third_party/dagger/LICENSE.txt`.
+- **JSR-330 javax.inject 1**, Apache-2.0, https://github.com/javax-inject/javax-inject.
+  Injection annotations and provider interfaces; license in `third_party/javax-inject/`.
+- **JSpecify 1.0.0**, Apache-2.0, https://github.com/jspecify/jspecify/tree/v1.0.0.
+  Dagger runtime dependency; upstream license in `third_party/jspecify/`.
 - **Apache Commons Math 3.6.1**, Apache-2.0,
   https://commons.apache.org/proper/commons-math/. The sketch solver uses its
   singular-value decomposition. Upstream LICENSE and NOTICE accompany app

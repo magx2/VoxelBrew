@@ -29,6 +29,13 @@ final class Appearance {
                 () -> Preferences.userNodeForPackage(Appearance.class).get("appearance", null));
     }
 
+    @javax.inject.Inject
+    Appearance(UserConfiguration configuration) {
+        this(
+                configuration,
+                () -> Preferences.userNodeForPackage(Appearance.class).get("appearance", null));
+    }
+
     Appearance(
             UserConfiguration configuration, java.util.function.Supplier<String> legacyAppearance) {
         this.configuration = configuration;

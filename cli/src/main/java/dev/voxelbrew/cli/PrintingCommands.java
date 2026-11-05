@@ -4,11 +4,12 @@ import dev.voxelbrew.engine.export.*;
 import dev.voxelbrew.engine.mesh.MeshOptions;
 import dev.voxelbrew.engine.model.*;
 import dev.voxelbrew.engine.printing.*;
+import dev.voxelbrew.exporter.DocumentSink;
 import dev.voxelbrew.exporter.ExporterRegistry;
 import dev.voxelbrew.exporter.printing.PrusaSlicerBackend;
 import dev.voxelbrew.exporter.printing.SliceService;
 import dev.voxelbrew.exporter.printing.SlicerRegistry;
-import dev.voxelbrew.importer.GcodeReader;
+import dev.voxelbrew.importer.DocumentSource;
 import java.nio.file.Path;
 import java.util.*;
 import java.util.concurrent.*;
@@ -19,19 +20,19 @@ final class PrintingCommands {
     private PrintingCommands() {}
 
     static void register(CommandLine cli) {
-        cli.addSubcommand("split", new Split());
-        cli.addSubcommand("place", new Place());
-        cli.addSubcommand("duplicate", new Duplicate());
-        cli.addSubcommand("lay-on-face", new LayOnFace());
-        cli.addSubcommand("print-settings", new Settings());
-        cli.addSubcommand("support", new Support());
-        cli.addSubcommand("remove-instance", new RemoveInstance());
-        cli.addSubcommand("remove-support", new RemoveSupport());
-        cli.addSubcommand("print-setup", new Setup());
-        cli.addSubcommand("validate", new Validate());
-        cli.addSubcommand("slicers", new Slicers());
-        cli.addSubcommand("slice", new Slice());
-        cli.addSubcommand("inspect-job", new InspectJob());
+        cli.addSubcommand("split", Split.class);
+        cli.addSubcommand("place", Place.class);
+        cli.addSubcommand("duplicate", Duplicate.class);
+        cli.addSubcommand("lay-on-face", LayOnFace.class);
+        cli.addSubcommand("print-settings", Settings.class);
+        cli.addSubcommand("support", Support.class);
+        cli.addSubcommand("remove-instance", RemoveInstance.class);
+        cli.addSubcommand("remove-support", RemoveSupport.class);
+        cli.addSubcommand("print-setup", Setup.class);
+        cli.addSubcommand("validate", Validate.class);
+        cli.addSubcommand("slicers", Slicers.class);
+        cli.addSubcommand("slice", Slice.class);
+        cli.addSubcommand("inspect-job", InspectJob.class);
     }
 
     @Command(
@@ -39,6 +40,12 @@ final class PrintingCommands {
             mixinStandardHelpOptions = true,
             description = "Split an earlier body with a plane; outputs are negative and positive.")
     static final class Split extends VoxelBrew.AddFeature {
+
+        @javax.inject.Inject
+        Split(DocumentSource documents, DocumentSink documentWriter) {
+            super(documents, documentWriter);
+        }
+
         @Option(names = "--body-feature", required = true)
         String body;
 
@@ -82,6 +89,12 @@ final class PrintingCommands {
             description =
                     "Add or replace a build instance; rigid placement is separate from design coordinates. Units: mm/degrees.")
     static final class Place extends VoxelBrew.FileCommand {
+
+        @javax.inject.Inject
+        Place(DocumentSource documents, DocumentSink documentWriter) {
+            super(documents, documentWriter);
+        }
+
         @Option(names = "--instance", required = true)
         String id;
 
@@ -128,6 +141,12 @@ final class PrintingCommands {
             mixinStandardHelpOptions = true,
             description = "Duplicate a build instance and its attached support instructions.")
     static final class Duplicate extends VoxelBrew.FileCommand {
+
+        @javax.inject.Inject
+        Duplicate(DocumentSource documents, DocumentSink documentWriter) {
+            super(documents, documentWriter);
+        }
+
         @Option(names = "--instance", required = true)
         String source;
 
@@ -182,6 +201,12 @@ final class PrintingCommands {
             description =
                     "Lay an evaluated planar face on bed Z=0. Face IDs belong only to the current revision.")
     static final class LayOnFace extends VoxelBrew.FileCommand {
+
+        @javax.inject.Inject
+        LayOnFace(DocumentSource documents, DocumentSink documentWriter) {
+            super(documents, documentWriter);
+        }
+
         @Option(names = "--instance", required = true)
         String id;
 
@@ -221,6 +246,12 @@ final class PrintingCommands {
             description =
                     "Edit the persisted generic 0.4 mm printer, material and process. Unspecified values are retained.")
     static final class Settings extends VoxelBrew.FileCommand {
+
+        @javax.inject.Inject
+        Settings(DocumentSource documents, DocumentSink documentWriter) {
+            super(documents, documentWriter);
+        }
+
         @Option(names = "--backend")
         String backend;
 
@@ -296,6 +327,12 @@ final class PrintingCommands {
             description =
                     "Add or replace a body-coordinate blocker, enforcer or explicit support pillar attached to a build instance.")
     static final class Support extends VoxelBrew.FileCommand {
+
+        @javax.inject.Inject
+        Support(DocumentSource documents, DocumentSink documentWriter) {
+            super(documents, documentWriter);
+        }
+
         @Option(names = "--id", required = true)
         String id;
 
@@ -344,6 +381,12 @@ final class PrintingCommands {
             description =
                     "Remove a build instance; keep attached instructions available for repair.")
     static final class RemoveInstance extends VoxelBrew.FileCommand {
+
+        @javax.inject.Inject
+        RemoveInstance(DocumentSource documents, DocumentSink documentWriter) {
+            super(documents, documentWriter);
+        }
+
         @Option(names = "--instance", required = true)
         String id;
 
@@ -364,6 +407,12 @@ final class PrintingCommands {
             mixinStandardHelpOptions = true,
             description = "Remove a support instruction or explicit pillar.")
     static final class RemoveSupport extends VoxelBrew.FileCommand {
+
+        @javax.inject.Inject
+        RemoveSupport(DocumentSource documents, DocumentSink documentWriter) {
+            super(documents, documentWriter);
+        }
+
         @Option(names = "--id", required = true)
         String id;
 
@@ -385,6 +434,12 @@ final class PrintingCommands {
             mixinStandardHelpOptions = true,
             description = "List persisted build placements, profiles and support instructions.")
     static final class Setup extends VoxelBrew.FileCommand {
+
+        @javax.inject.Inject
+        Setup(DocumentSource documents, DocumentSink documentWriter) {
+            super(documents, documentWriter);
+        }
+
         @Override
         public Integer call() throws Exception {
             var setup = session().document().printSetup();
@@ -409,6 +464,12 @@ final class PrintingCommands {
             description =
                     "Validate build-space meshes, bed polygon, overlap, height and support attachments.")
     static final class Validate extends VoxelBrew.FileCommand {
+
+        @javax.inject.Inject
+        Validate(DocumentSource documents, DocumentSink documentWriter) {
+            super(documents, documentWriter);
+        }
+
         @Override
         public Integer call() throws Exception {
             var result =
@@ -430,6 +491,13 @@ final class PrintingCommands {
             description =
                     "List versioned backend capabilities; unsupported features are not silently substituted.")
     static final class Slicers implements Callable<Integer> {
+        private final SlicerRegistry.Factory slicers;
+
+        @javax.inject.Inject
+        Slicers(SlicerRegistry.Factory slicers) {
+            this.slicers = slicers;
+        }
+
         @Option(names = "--plugin-dir")
         Path plugins = ExporterRegistry.defaultDirectory();
 
@@ -437,7 +505,7 @@ final class PrintingCommands {
 
         @Override
         public Integer call() throws Exception {
-            try (var registry = new SlicerRegistry(plugins)) {
+            try (var registry = slicers.open(plugins)) {
                 registry.descriptors().forEach(spec.commandLine().getOut()::println);
                 registry.diagnostics().forEach(spec.commandLine().getErr()::println);
             }
@@ -451,6 +519,17 @@ final class PrintingCommands {
             description =
                     "Slice the complete persisted build setup with its explicit profiles; publish text G-code atomically.")
     static final class Slice extends VoxelBrew.FileCommand {
+        private final SlicerRegistry.Factory slicers;
+
+        @javax.inject.Inject
+        Slice(
+                DocumentSource documents,
+                DocumentSink documentWriter,
+                SlicerRegistry.Factory slicers) {
+            super(documents, documentWriter);
+            this.slicers = slicers;
+        }
+
         @Option(names = "--output", required = true)
         Path output;
 
@@ -476,7 +555,7 @@ final class PrintingCommands {
                             },
                             "voxelbrew-slice-cancel");
             Runtime.getRuntime().addShutdownHook(shutdown);
-            try (var registry = new SlicerRegistry(pluginDirectory)) {
+            try (var registry = slicers.open(pluginDirectory)) {
                 var model =
                         ManufacturingModel.evaluate(
                                 session().document(), MeshOptions.DEFAULT, pluginDirectory);
@@ -511,6 +590,13 @@ final class PrintingCommands {
             description =
                     "Independently inspect actual G-code deposition layers, roles, estimates and job provenance.")
     static final class InspectJob implements Callable<Integer> {
+        private final dev.voxelbrew.importer.GcodeSource gcode;
+
+        @javax.inject.Inject
+        InspectJob(dev.voxelbrew.importer.GcodeSource gcode) {
+            this.gcode = gcode;
+        }
+
         @Parameters(index = "0")
         Path file;
 
@@ -518,7 +604,7 @@ final class PrintingCommands {
 
         @Override
         public Integer call() throws Exception {
-            describe(GcodeReader.read(file), spec.commandLine().getOut());
+            describe(gcode.read(file), spec.commandLine().getOut());
             return 0;
         }
     }

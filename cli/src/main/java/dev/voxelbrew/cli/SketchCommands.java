@@ -4,6 +4,8 @@ import static dev.voxelbrew.engine.sketch.SketchGeometry.*;
 
 import dev.voxelbrew.engine.model.*;
 import dev.voxelbrew.engine.sketch.*;
+import dev.voxelbrew.exporter.DocumentSink;
+import dev.voxelbrew.importer.DocumentSource;
 import java.util.*;
 import picocli.CommandLine;
 import picocli.CommandLine.*;
@@ -29,6 +31,10 @@ import picocli.CommandLine.*;
             SketchCommands.EditText.class
         })
 final class SketchCommands implements Runnable {
+
+    @javax.inject.Inject
+    SketchCommands() {}
+
     @Spec CommandLine.Model.CommandSpec spec;
 
     public void run() {
@@ -36,7 +42,7 @@ final class SketchCommands implements Runnable {
     }
 
     static void register(CommandLine cli) {
-        cli.addSubcommand("sketch", new SketchCommands());
+        cli.addSubcommand("sketch", SketchCommands.class);
     }
 
     @Command(
@@ -44,6 +50,12 @@ final class SketchCommands implements Runnable {
             mixinStandardHelpOptions = true,
             description = "Create a sketch type/variant; use --help for tools and numeric options")
     static final class Draw extends EditSketch {
+
+        @javax.inject.Inject
+        Draw(DocumentSource documents, DocumentSink documentWriter) {
+            super(documents, documentWriter);
+        }
+
         @Option(names = "--id", required = true)
         String id;
 
@@ -142,6 +154,12 @@ final class SketchCommands implements Runnable {
             description =
                     "Change persisted sketch text while preserving its identity and dimensions")
     static final class EditText extends EditSketch {
+
+        @javax.inject.Inject
+        EditText(DocumentSource documents, DocumentSink documentWriter) {
+            super(documents, documentWriter);
+        }
+
         @Option(names = "--id", required = true)
         String id;
 
@@ -180,6 +198,11 @@ final class SketchCommands implements Runnable {
     }
 
     abstract static class EditSketch extends VoxelBrew.FileCommand {
+
+        EditSketch(DocumentSource documents, DocumentSink documentWriter) {
+            super(documents, documentWriter);
+        }
+
         @Option(names = "--sketch", required = true, description = "Stable sketch feature ID")
         String sketchId;
 
@@ -236,6 +259,12 @@ final class SketchCommands implements Runnable {
             mixinStandardHelpOptions = true,
             description = "Add an empty constrained sketch")
     static final class Create extends VoxelBrew.AddSketch {
+
+        @javax.inject.Inject
+        Create(DocumentSource documents, DocumentSink documentWriter) {
+            super(documents, documentWriter);
+        }
+
         public Integer call() throws Exception {
             return sketch(new Feature.Constrained(SketchGeometry.empty()));
         }
@@ -246,6 +275,12 @@ final class SketchCommands implements Runnable {
             mixinStandardHelpOptions = true,
             description = "Convert a rectangle/circle without changing its feature or profile IDs")
     static final class Convert extends EditSketch {
+
+        @javax.inject.Inject
+        Convert(DocumentSource documents, DocumentSink documentWriter) {
+            super(documents, documentWriter);
+        }
+
         public Integer call() throws Exception {
             var session = session();
             return publish(session, geometry(session));
@@ -258,6 +293,12 @@ final class SketchCommands implements Runnable {
             description =
                     "Add POINT x,y; LINE x1,y1,x2,y2; CIRCLE cx,cy,r; ARC cx,cy,r,start,sweep; ELLIPSE cx,cy,r1,r2,angle; CONIC startX,startY,vertexX,vertexY,endX,endY,rho; SPLINE four x,y pairs; FIT_SPLINE / CONTROL_SPLINE variable x,y pairs. Angles are radians. Use sketch draw for text.")
     static final class PutEntity extends EditSketch {
+
+        @javax.inject.Inject
+        PutEntity(DocumentSource documents, DocumentSink documentWriter) {
+            super(documents, documentWriter);
+        }
+
         @Option(names = "--id", required = true)
         String id;
 
@@ -323,6 +364,12 @@ final class SketchCommands implements Runnable {
             description =
                     "Add a geometric constraint or driving dimension; refs use entity.start/end/center/control1/control2 or origin.point")
     static final class Constrain extends EditSketch {
+
+        @javax.inject.Inject
+        Constrain(DocumentSource documents, DocumentSink documentWriter) {
+            super(documents, documentWriter);
+        }
+
         enum Tangency {
             EXTERNAL,
             INTERNAL
@@ -374,6 +421,12 @@ final class SketchCommands implements Runnable {
             mixinStandardHelpOptions = true,
             description = "Remove a constraint or unfix geometry by constraint ID")
     static final class RemoveConstraint extends EditSketch {
+
+        @javax.inject.Inject
+        RemoveConstraint(DocumentSource documents, DocumentSink documentWriter) {
+            super(documents, documentWriter);
+        }
+
         @Option(names = "--id", required = true)
         String id;
 
@@ -394,6 +447,12 @@ final class SketchCommands implements Runnable {
             mixinStandardHelpOptions = true,
             description = "Remove an entity and its dependent constraints")
     static final class RemoveEntity extends EditSketch {
+
+        @javax.inject.Inject
+        RemoveEntity(DocumentSource documents, DocumentSink documentWriter) {
+            super(documents, documentWriter);
+        }
+
         @Option(names = "--id", required = true)
         String id;
 
@@ -409,6 +468,12 @@ final class SketchCommands implements Runnable {
             description =
                     "Select one closed exterior and optional interior holes for extrusion/cutting")
     static final class Profile extends EditSketch {
+
+        @javax.inject.Inject
+        Profile(DocumentSource documents, DocumentSink documentWriter) {
+            super(documents, documentWriter);
+        }
+
         @Option(names = "--entities", required = true, split = ",")
         List<String> entities;
 
@@ -425,6 +490,12 @@ final class SketchCommands implements Runnable {
             mixinStandardHelpOptions = true,
             description = "Solve and save a repairable sketch; conflicts leave the file unchanged")
     static final class Solve extends EditSketch {
+
+        @javax.inject.Inject
+        Solve(DocumentSource documents, DocumentSink documentWriter) {
+            super(documents, documentWriter);
+        }
+
         public Integer call() throws Exception {
             var session = session();
             return publish(session, geometry(session));
@@ -437,6 +508,12 @@ final class SketchCommands implements Runnable {
             description =
                     "List entity IDs, constraints, profile selection, degrees of freedom and conflicts")
     static final class Listing extends EditSketch {
+
+        @javax.inject.Inject
+        Listing(DocumentSource documents, DocumentSink documentWriter) {
+            super(documents, documentWriter);
+        }
+
         public Integer call() throws Exception {
             var g = geometry(session());
             var output = spec.commandLine().getOut();
@@ -477,6 +554,12 @@ final class SketchCommands implements Runnable {
             mixinStandardHelpOptions = true,
             description = "Move a point while satisfying its constraints")
     static final class Move extends EditSketch {
+
+        @javax.inject.Inject
+        Move(DocumentSource documents, DocumentSink documentWriter) {
+            super(documents, documentWriter);
+        }
+
         @Option(names = "--point", required = true)
         String point;
 
@@ -500,6 +583,12 @@ final class SketchCommands implements Runnable {
             mixinStandardHelpOptions = true,
             description = "Add a regular polygon with its persistent polygon constraint")
     static final class Polygon extends EditSketch {
+
+        @javax.inject.Inject
+        Polygon(DocumentSource documents, DocumentSink documentWriter) {
+            super(documents, documentWriter);
+        }
+
         @Option(names = "--id", required = true)
         String id;
 

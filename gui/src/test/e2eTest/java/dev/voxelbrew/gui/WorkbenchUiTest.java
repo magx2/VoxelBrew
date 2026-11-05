@@ -72,7 +72,7 @@ class WorkbenchUiTest {
                     stage = new Stage();
                     if (System.getProperty("os.name").startsWith("Windows"))
                         stage.setAlwaysOnTop(true);
-                    workbench = new Workbench(stage, plugins, updates::service);
+                    workbench = Workbench.create(stage, plugins, updates::service);
                     var screen = Screen.getPrimary().getVisualBounds();
                     // Match the hosted Windows runner so clipped inspector fields require
                     // scrolling.
@@ -120,6 +120,7 @@ class WorkbenchUiTest {
                     stage.hide();
                     return null;
                 });
+        workbench.whenClosed().toCompletableFuture().get(20, TimeUnit.SECONDS);
     }
 
     private static <T> T fx(Callable<T> action) throws Exception {
@@ -127,6 +128,66 @@ class WorkbenchUiTest {
         var task = new FutureTask<>(action);
         Platform.runLater(task);
         return task.get(20, TimeUnit.SECONDS);
+    }
+
+    @Test
+    void daggerGraphsIsolateWindowsPreferencesAndWorkerLifetimes() throws Exception {
+        fx(
+                () -> {
+                    var config =
+                            new dev.voxelbrew.util.config.UserConfiguration(
+                                    directory.resolve("isolated.properties"));
+                    config.set("language", "pl");
+                    config.set("appearance", "DARK");
+                    var secondStage = new Stage();
+                    var graph =
+                            DaggerGuiComponent.factory()
+                                    .create(
+                                            secondStage,
+                                            directory.resolve("isolated plugins"),
+                                            new dev.voxelbrew.util.di.ApplicationModule(
+                                                    config,
+                                                    () -> {
+                                                        throw new AssertionError(
+                                                                "Startup must not create an updater");
+                                                    }),
+                                            new dev.voxelbrew.exporter.di.FileIoModule());
+                    var second = graph.workbench();
+                    try {
+                        secondStage.setScene(new Scene(second, 964, 648));
+                        secondStage.show();
+                        assertSame(second, graph.workbench());
+                        assertNotSame(workbench.controller(), second.controller());
+                        assertNotEquals(
+                                workbench.controller().snapshot().document().id(),
+                                second.controller().snapshot().document().id());
+                        assertEquals(
+                                new dev.voxelbrew.util.i18n.Translations(
+                                                Locale.forLanguageTag("pl"))
+                                        .text("action.save"),
+                                ((Button) second.lookup("#save")).getText());
+                        assertTrue(second.getStyleClass().contains("dark"));
+                        second.close();
+                        second.close();
+                        var resources = graph.resources();
+                        assertTrue(
+                                List.of(
+                                                resources.rebuild,
+                                                resources.files,
+                                                resources.slicing,
+                                                resources.validation,
+                                                resources.appearance)
+                                        .stream()
+                                        .allMatch(ExecutorService::isShutdown));
+                        workbench.controller().newDocument();
+                        assertFalse(workbench.controller().ioBusy());
+                    } finally {
+                        second.close();
+                        secondStage.hide();
+                    }
+                    return null;
+                });
+        ready();
     }
 
     private Node node(String selector) {
@@ -1270,11 +1331,30 @@ class WorkbenchUiTest {
                 });
         Thread.sleep(180);
         if (cancel) key(KeyCode.ESCAPE);
-        fx(
-                () -> {
-                    robot.mouseRelease(MouseButton.PRIMARY);
-                    return null;
-                });
+        var released = new CountDownLatch(1);
+        javafx.event.EventHandler<MouseEvent> releaseObserved =
+                event -> {
+                    if (event.getButton() == MouseButton.PRIMARY) released.countDown();
+                };
+        var canvas = fx(() -> node("#sketch-canvas"));
+        try {
+            fx(
+                    () -> {
+                        canvas.addEventFilter(MouseEvent.MOUSE_RELEASED, releaseObserved);
+                        robot.mouseRelease(MouseButton.PRIMARY);
+                        return null;
+                    });
+            assertTrue(
+                    released.await(10, TimeUnit.SECONDS),
+                    "Native sketch mouse release was not delivered");
+        } finally {
+            // This FX dispatch also waits until the release handler has submitted its solve.
+            fx(
+                    () -> {
+                        canvas.removeEventFilter(MouseEvent.MOUSE_RELEASED, releaseObserved);
+                        return null;
+                    });
+        }
         sketchReady();
     }
 
@@ -1767,10 +1847,11 @@ class WorkbenchUiTest {
                     workbench.close();
                     return null;
                 });
+        workbench.whenClosed().toCompletableFuture().get(20, TimeUnit.SECONDS);
         Files.delete(jar);
         fx(
                 () -> {
-                    workbench = new Workbench(stage, plugins);
+                    workbench = Workbench.create(stage, plugins);
                     stage.setScene(new Scene(workbench, 964, 648));
                     stage.toFront();
                     stage.requestFocus();

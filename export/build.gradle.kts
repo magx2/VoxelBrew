@@ -3,6 +3,8 @@ plugins {
     `maven-publish`
 }
 
+apply(from = rootProject.file("gradle/di.gradle.kts"))
+
 dependencies {
     api(project(":engine"))
     implementation(project(":import"))

@@ -19,6 +19,11 @@
   Import/export own file readers, writers, provider discovery and slicer file pipelines.
   Production dependencies point from file I/O to engine, never from engine to file I/O.
   Util owns CAD-independent application services and depends on none of the other projects.
+- Use Dagger at CLI/window composition roots and constructor injection for service
+  dependencies. Keep mutable command instances unscoped, window state isolated,
+  and resource shutdown explicit. Do not inject components as service locators or
+  put DI annotations into CAD value objects or plugin contracts. Follow
+  `docs/dependency-injection.md` when adding bindings.
 - Keep the GUI a JavaFX desktop application. Headless engine and CLI workflows
   must not require JavaFX, a display server, or a GPU.
 - Keep JavaFX, CLI parsing, generated Protobuf classes, and native pointers out

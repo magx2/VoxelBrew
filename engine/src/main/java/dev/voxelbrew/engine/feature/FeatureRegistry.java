@@ -10,6 +10,11 @@ import java.util.*;
 
 /** Isolated class loader for trusted feature JARs; a broken provider does not disable others. */
 public final class FeatureRegistry implements AutoCloseable {
+    @FunctionalInterface
+    public interface Factory {
+        FeatureRegistry open(Path directory) throws IOException;
+    }
+
     private record Entry(FeatureDescriptor descriptor, FeatureProvider provider) {}
 
     private final Map<String, Entry> entries = new LinkedHashMap<>();

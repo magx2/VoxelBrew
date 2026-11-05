@@ -16,6 +16,9 @@ The `import` and `export` projects own document/G-code reading, document writing
 STL/3MF exporters and the slicer file pipeline. Both depend on engine; engine has
 no production dependency on them. There are six first-party projects. See
 [file import/export boundaries and API migration](docs/file-io.md).
+CLI commands and each desktop window are assembled by Dagger with constructor
+injection, scoped services and explicit resource ownership. See
+[dependency injection and application composition](docs/dependency-injection.md).
 M4 adds editable splitting, build placement, persisted
 PLA/PETG process settings, supports and real PrusaSlicer jobs. See the
 [printing workflow](docs/printing-workflow.md) and [qualification record](docs/acceptance/M4.md).
@@ -52,6 +55,7 @@ dialog, with verified app-image replacement and recovery backups. See
 ## Prerequisites and locked dependencies
 
 - JDK **21**, with `JAVA_HOME` set to a full JDK (including JNI headers).
+- Dagger **2.60.1**, pinned in `gradle/di.gradle.kts`; its compiler is build-only.
 - Units of Measurement API **2.2** and Indriya **2.2.4**, resolved by Gradle.
 - Gradle **9.1.0**, through the committed, SHA-256-verified wrapper.
 - CMake **3.31.6** and OCCT **7.9.0**, downloaded and checksum-verified by the bootstrap.

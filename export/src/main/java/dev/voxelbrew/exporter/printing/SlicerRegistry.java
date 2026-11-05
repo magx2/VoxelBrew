@@ -8,6 +8,11 @@ import java.util.*;
 
 /** Trusted provider JARs use a dedicated loader; one bad provider does not disable its peers. */
 public final class SlicerRegistry implements AutoCloseable {
+    @FunctionalInterface
+    public interface Factory {
+        SlicerRegistry open(Path directory) throws IOException;
+    }
+
     private final URLClassLoader loader;
 
     private record Entry(SlicerBackend provider, SlicerBackend.Descriptor descriptor) {}

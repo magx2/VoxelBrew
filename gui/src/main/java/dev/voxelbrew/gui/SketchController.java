@@ -10,6 +10,11 @@ import java.util.function.Function;
 
 /** One isolated sketch-edit transaction. Solves are coalesced and never run on the FX thread. */
 final class SketchController implements AutoCloseable {
+    @dagger.assisted.AssistedFactory
+    interface Factory {
+        SketchController create(SketchGeometry geometry, ParameterSet parameters, String featureId);
+    }
+
     private record Request(
             long sequence,
             SketchGeometry geometry,
@@ -18,9 +23,7 @@ final class SketchController implements AutoCloseable {
             SketchGeometry.Vec target,
             boolean commitDrag) {}
 
-    private final ExecutorService worker =
-            Executors.newSingleThreadExecutor(
-                    Thread.ofPlatform().daemon().name("voxelbrew-sketch-solver").factory());
+    private final ExecutorService worker;
     private final Consumer<Runnable> dispatch;
     private final Function<SketchGeometry, SketchSolver.Result> solver;
     private final Object lock = new Object();
@@ -48,11 +51,40 @@ final class SketchController implements AutoCloseable {
             ParameterSet parameters,
             String featureId,
             Consumer<Runnable> dispatch) {
+        this(
+                geometry,
+                parameters,
+                featureId,
+                dispatch,
+                SketchSolver::solve,
+                WindowResources.worker("sketch-solver"));
+    }
+
+    @dagger.assisted.AssistedInject
+    SketchController(
+            @dagger.assisted.Assisted SketchGeometry geometry,
+            @dagger.assisted.Assisted ParameterSet parameters,
+            @dagger.assisted.Assisted String featureId,
+            @javax.inject.Named("ui") Consumer<Runnable> dispatch,
+            Function<SketchGeometry, SketchSolver.Result> solver,
+            @javax.inject.Named("sketchWorkers")
+                    java.util.function.Supplier<ExecutorService> workers) {
+        this(geometry, parameters, featureId, dispatch, solver, workers.get());
+    }
+
+    private SketchController(
+            SketchGeometry geometry,
+            ParameterSet parameters,
+            String featureId,
+            Consumer<Runnable> dispatch,
+            Function<SketchGeometry, SketchSolver.Result> solver,
+            ExecutorService worker) {
         definition = displayed = geometry;
         this.parameters = parameters;
         this.featureId = featureId;
         this.dispatch = dispatch;
-        this.solver = SketchSolver::solve;
+        this.solver = solver;
+        this.worker = worker;
         submit(null, null, false);
     }
 
@@ -64,10 +96,13 @@ final class SketchController implements AutoCloseable {
             SketchGeometry geometry,
             Consumer<Runnable> dispatch,
             Function<SketchGeometry, SketchSolver.Result> solver) {
-        definition = displayed = geometry;
-        this.dispatch = dispatch;
-        this.solver = solver;
-        submit(null, null, false);
+        this(
+                geometry,
+                ParameterSet.empty(),
+                "sketch",
+                dispatch,
+                solver,
+                WindowResources.worker("sketch-solver"));
     }
 
     void onChanged(Runnable listener) {

@@ -12,7 +12,6 @@ import java.nio.file.Path;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import javafx.application.Platform;
 import javafx.geometry.Point3D;
 import javafx.scene.control.*;
@@ -21,6 +20,7 @@ import javafx.scene.layout.*;
 import javafx.stage.Stage;
 
 /** CAD workbench: model state stays in engine; scene graph and tool previews stay here. */
+@javax.inject.Singleton
 public final class Workbench extends BorderPane implements AutoCloseable {
     private record Entry(String id, String label, boolean body) {
         @Override
@@ -46,71 +46,30 @@ public final class Workbench extends BorderPane implements AutoCloseable {
     private final VBox inspector = new VBox(12), form = new VBox(9);
     private final VBox featureDiagnostics = new VBox(6);
     private final HBox toolActions = new HBox(8);
-    private final Label status = new Label(Translations.current().text("status.ready")),
-            error = new Label(),
-            selectionLabel = new Label(Translations.current().text("status.noSelection")),
-            cursorLabel = new Label();
+    private final Label status, error, selectionLabel, cursorLabel;
     private final Slider cursor = new Slider();
     private final ComboBox<String> views = new ComboBox<>();
     private final HBox history = new HBox(6);
-    private final Button
-            undo =
-                    button(
-                            Translations.current().text("action.undo"),
-                            "undo",
-                            () -> {
-                                cancelTool();
-                                controller().undo();
-                            }),
-            redo =
-                    button(
-                            Translations.current().text("action.redo"),
-                            "redo",
-                            () -> {
-                                cancelTool();
-                                controller().redo();
-                            });
-    private final Button export =
-            button(
-                    Translations.current().text("action.export"),
-                    "export",
-                    () -> ExportDialog.show(stage(), controller(), registry()));
-    private final Button customFeature =
-            button(
-                    Translations.current().text("action.features"),
-                    "custom-feature",
-                    this::customFeature);
-    private final Button parameters =
-            button(
-                    Translations.current().text("action.parameters"),
-                    "parameters",
-                    this::parameters);
+    private final Button undo, redo;
+    private final Button export;
+    private final Button customFeature;
+    private final Button parameters;
     private final ComboBox<String> configuration = new ComboBox<>();
     private dev.voxelbrew.engine.parameters.ParameterSet lastParameters =
             dev.voxelbrew.engine.parameters.ParameterSet.empty();
-    private final Button constrainedSketch =
-            button(
-                    Translations.current().text("action.sketch"),
-                    "constrained-sketch",
-                    () -> editSketch(null));
-    private final Button rectangle =
-            button(
-                    Translations.current().text("action.rectangle"),
-                    "rectangle",
-                    () -> beginSketch(false));
-    private final Button circle =
-            button(Translations.current().text("action.circle"), "circle", () -> beginSketch(true));
-    private final Button extrude =
-            button(Translations.current().text("action.extrude"), "extrude", this::beginExtrusion);
-    private final Button cut =
-            button(Translations.current().text("action.cut"), "cut", this::beginCut);
-    private final Button splitBody =
-            button(Translations.current().text("action.split"), "split-body", this::beginSplit);
+    private final Button constrainedSketch;
+    private final Button rectangle;
+    private final Button circle;
+    private final Button extrude;
+    private final Button cut;
+    private final Button splitBody;
     private final ProgressIndicator progress = new ProgressIndicator();
-    private final Appearance appearance = new Appearance();
-    private final ExecutorService preferencesWorker =
-            Executors.newSingleThreadExecutor(
-                    Thread.ofPlatform().daemon().name("voxelbrew-appearance").factory());
+    private final Appearance appearance;
+    private final ExecutorService preferencesWorker;
+    private final Translations translations;
+    private final WindowResources resources;
+    private final FeatureRegistry.Factory featureProviders;
+    private final SketchController.Factory sketches;
     private Appearance.Choice appearanceChoice;
     private long appearanceRequest;
     private boolean closed, refreshing, updatingView;
@@ -126,22 +85,116 @@ public final class Workbench extends BorderPane implements AutoCloseable {
     private Button finish;
     private final UpdateDialog.Factory updates;
 
-    public Workbench(Stage stage, Path pluginDirectory) throws IOException {
-        this(
+    public static Workbench create(Stage stage, Path plugins) throws IOException {
+        return create(
                 stage,
-                pluginDirectory,
-                () ->
-                        dev.voxelbrew.util.update.UpdateService.system(
-                                dev.voxelbrew.util.update.ApplicationImage.Component.GUI));
+                plugins,
+                dev.voxelbrew.util.di.ApplicationModule.system(
+                        dev.voxelbrew.util.update.ApplicationImage.Component.GUI),
+                new dev.voxelbrew.exporter.di.FileIoModule());
     }
 
-    Workbench(Stage stage, Path pluginDirectory, UpdateDialog.Factory updates) throws IOException {
-        this.updates = updates;
+    static Workbench create(
+            Stage stage, Path plugins, dev.voxelbrew.util.update.UpdateServiceFactory updates)
+            throws IOException {
+        return create(
+                stage,
+                plugins,
+                new dev.voxelbrew.util.di.ApplicationModule(
+                        dev.voxelbrew.util.config.UserConfiguration.user(), updates),
+                new dev.voxelbrew.exporter.di.FileIoModule());
+    }
+
+    static Workbench create(
+            Stage stage,
+            Path plugins,
+            dev.voxelbrew.util.di.ApplicationModule application,
+            dev.voxelbrew.exporter.di.FileIoModule files)
+            throws IOException {
+        var graph = DaggerGuiComponent.factory().create(stage, plugins, application, files);
+        WindowResources resources;
+        try {
+            resources = graph.resources();
+        } catch (java.io.UncheckedIOException failure) {
+            throw failure.getCause();
+        }
+        try {
+            return graph.workbench();
+        } catch (RuntimeException | Error failure) {
+            resources.close();
+            throw failure;
+        }
+    }
+
+    @javax.inject.Inject
+    Workbench(
+            Stage stage,
+            @javax.inject.Named("plugins") Path pluginDirectory,
+            DocumentController controller,
+            ExporterRegistry registry,
+            PrintingPane printing,
+            Appearance appearance,
+            @javax.inject.Named("appearance") ExecutorService preferencesWorker,
+            Translations translations,
+            UpdateDialog.Factory updates,
+            WindowResources resources,
+            FeatureRegistry.Factory featureProviders,
+            SketchController.Factory sketches) {
         this.stage = stage;
         this.pluginDirectory = pluginDirectory;
-        this.controller = new DocumentController(Platform::runLater, pluginDirectory);
-        this.registry = new ExporterRegistry(pluginDirectory);
-        printing = new PrintingPane(controller, pluginDirectory, registry, stage);
+        this.controller = controller;
+        this.registry = registry;
+        this.printing = printing;
+        this.appearance = appearance;
+        this.preferencesWorker = preferencesWorker;
+        this.translations = translations;
+        this.updates = updates;
+        this.resources = resources;
+        this.featureProviders = featureProviders;
+        this.sketches = sketches;
+        this.status = new Label(translations.text("status.ready"));
+        this.error = new Label();
+        this.selectionLabel = new Label(translations.text("status.noSelection"));
+        this.cursorLabel = new Label();
+        this.undo =
+                button(
+                        translations.text("action.undo"),
+                        "undo",
+                        () -> {
+                            cancelTool();
+                            controller().undo();
+                        });
+        this.redo =
+                button(
+                        translations.text("action.redo"),
+                        "redo",
+                        () -> {
+                            cancelTool();
+                            controller().redo();
+                        });
+        this.export =
+                button(
+                        translations.text("action.export"),
+                        "export",
+                        () -> ExportDialog.show(stage(), controller(), registry()));
+        this.customFeature =
+                button(translations.text("action.features"), "custom-feature", this::customFeature);
+        this.parameters =
+                button(translations.text("action.parameters"), "parameters", this::parameters);
+        this.constrainedSketch =
+                button(
+                        translations.text("action.sketch"),
+                        "constrained-sketch",
+                        () -> editSketch(null));
+        this.rectangle =
+                button(
+                        translations.text("action.rectangle"),
+                        "rectangle",
+                        () -> beginSketch(false));
+        this.circle = button(translations.text("action.circle"), "circle", () -> beginSketch(true));
+        this.extrude = button(translations.text("action.extrude"), "extrude", this::beginExtrusion);
+        this.cut = button(translations.text("action.cut"), "cut", this::beginCut);
+        this.splitBody = button(translations.text("action.split"), "split-body", this::beginSplit);
         appearanceChoice = appearance.load();
         setId("workbench");
         featureDiagnostics.setId("feature-diagnostics");
@@ -161,10 +214,7 @@ public final class Workbench extends BorderPane implements AutoCloseable {
                         brand,
                         caption,
                         spacer,
-                        button(
-                                Translations.current().text("action.updates"),
-                                "updates",
-                                this::updates));
+                        button(translations.text("action.updates"), "updates", this::updates));
         title.getStyleClass().add("title-strip");
         views.setId("standard-view");
         views.getItems().setAll("Isometric", "Top", "Front", "Right", "Back", "Left", "Bottom");
@@ -187,9 +237,9 @@ public final class Workbench extends BorderPane implements AutoCloseable {
         themes.setId("appearance");
         themes.getItems()
                 .setAll(
-                        Translations.current().text("appearance.system"),
-                        Translations.current().text("appearance.light"),
-                        Translations.current().text("appearance.dark"));
+                        translations.text("appearance.system"),
+                        translations.text("appearance.light"),
+                        translations.text("appearance.dark"));
         themes.getSelectionModel().select(appearanceChoice.ordinal());
         themes.setOnAction(
                 e -> {
@@ -202,7 +252,7 @@ public final class Workbench extends BorderPane implements AutoCloseable {
         var toolbar =
                 new ToolBar(
                         button(
-                                Translations.current().text("action.new"),
+                                translations.text("action.new"),
                                 "new",
                                 () ->
                                         requestChange(
@@ -214,17 +264,11 @@ public final class Workbench extends BorderPane implements AutoCloseable {
                                                     controller.newDocument();
                                                 })),
                         button(
-                                Translations.current().text("action.open"),
+                                translations.text("action.open"),
                                 "open",
                                 () -> requestChange(this::open)),
-                        button(
-                                Translations.current().text("action.save"),
-                                "save",
-                                () -> save(false)),
-                        button(
-                                Translations.current().text("action.saveAs"),
-                                "save-as",
-                                () -> save(true)),
+                        button(translations.text("action.save"), "save", () -> save(false)),
+                        button(translations.text("action.saveAs"), "save-as", () -> save(true)),
                         new Separator(),
                         undo,
                         redo,
@@ -238,15 +282,15 @@ public final class Workbench extends BorderPane implements AutoCloseable {
         var viewbar =
                 new HBox(
                         9,
-                        new Label(Translations.current().text("view.label")),
+                        new Label(translations.text("view.label")),
                         views,
                         button(
-                                Translations.current().text("action.fit"),
+                                translations.text("action.fit"),
                                 "fit",
                                 () -> viewport.fit(meshes())),
                         new Region(),
                         splitBody,
-                        new Label(Translations.current().text("appearance.label")),
+                        new Label(translations.text("appearance.label")),
                         themes);
         viewbar.getStyleClass().add("view-strip");
         HBox.setHgrow(viewbar.getChildren().get(3), Priority.ALWAYS);
@@ -607,7 +651,7 @@ public final class Workbench extends BorderPane implements AutoCloseable {
         }
     }
 
-    private static String shortName(Feature feature) {
+    private String shortName(Feature feature) {
         if (feature instanceof Feature.Custom custom) return "Custom · " + custom.type();
         return feature instanceof Feature.Sketch s
                 ? (s.profile() instanceof Feature.Circle
@@ -617,7 +661,7 @@ public final class Workbench extends BorderPane implements AutoCloseable {
                         ? "Extrude"
                         : feature instanceof Feature.SplitBody
                                 ? "Split"
-                                : Translations.current().text("action.cut");
+                                : translations.text("action.cut");
     }
 
     private void rebuildTree(CadDocument document) {
@@ -775,7 +819,7 @@ public final class Workbench extends BorderPane implements AutoCloseable {
                                     + custom.payloadVersion());
             metadata.setWrapText(true);
             form.getChildren().add(metadata);
-            try (var features = new FeatureRegistry(pluginDirectory)) {
+            try (var features = featureProviders.open(pluginDirectory)) {
                 var values = features.parameters(custom);
                 for (var parameter : features.descriptor(custom).parameters()) {
                     var input =
@@ -860,7 +904,7 @@ public final class Workbench extends BorderPane implements AutoCloseable {
     private void customFeature() {
         cancelTool();
         try {
-            FeatureDialog.show(stage, pluginDirectory)
+            FeatureDialog.show(stage, pluginDirectory, featureProviders)
                     .ifPresent(
                             feature -> {
                                 controller.add(feature);
@@ -1118,6 +1162,7 @@ public final class Workbench extends BorderPane implements AutoCloseable {
             throw new IllegalArgumentException("Wait for the current rebuild or file operation");
         SketchEditor.show(
                 stage,
+                sketches,
                 sketch,
                 controller.effectiveFeatures(),
                 before.document().parameters(),
@@ -1243,7 +1288,7 @@ public final class Workbench extends BorderPane implements AutoCloseable {
     private void beginSplit() {
         cancelTool();
         var dialog = new Dialog<Void>();
-        dialog.setTitle(Translations.current().text("action.split"));
+        dialog.setTitle(translations.text("action.split"));
         var body = new ComboBox<DocumentController.Body>();
         body.setId("split-input");
         body.getItems().setAll(controller.build().bodies());
@@ -1376,9 +1421,7 @@ public final class Workbench extends BorderPane implements AutoCloseable {
             action.run();
             return;
         }
-        var save =
-                new ButtonType(
-                        Translations.current().text("action.save"), ButtonBar.ButtonData.YES);
+        var save = new ButtonType(translations.text("action.save"), ButtonBar.ButtonData.YES);
         var discard = new ButtonType("Discard", ButtonBar.ButtonData.NO);
         var alert =
                 new Alert(
@@ -1421,6 +1464,14 @@ public final class Workbench extends BorderPane implements AutoCloseable {
         printing.setDark(dark);
     }
 
+    /**
+     * Completes after all window workers drain and plugin JAR handles are released. Wait off the
+     * JavaFX thread before replacing/removing plugin files.
+     */
+    public java.util.concurrent.CompletionStage<Void> whenClosed() {
+        return resources.whenClosed();
+    }
+
     @Override
     public void close() {
         if (closed) return;
@@ -1428,10 +1479,6 @@ public final class Workbench extends BorderPane implements AutoCloseable {
         printing.close();
         controller.close();
         preferencesWorker.shutdown();
-        try {
-            registry.close();
-        } catch (IOException ignored) {
-            /* Class loader shutdown has no document writes. */
-        }
+        resources.close();
     }
 }

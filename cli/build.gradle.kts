@@ -1,5 +1,7 @@
 plugins { application }
 
+apply(from = rootProject.file("gradle/di.gradle.kts"))
+
 apply(from = rootProject.file("gradle/packaging.gradle.kts"))
 
 dependencies {

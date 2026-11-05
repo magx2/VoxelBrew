@@ -66,6 +66,13 @@ assert installation["exportJar"] == f"export-{version}.jar", installation
 for jar in (f"engine-{version}.jar", f"util-{version}.jar", f"import-{version}.jar", f"export-{version}.jar", f"{kind}-{version}.jar"):
     assert (app / jar).is_file(), "Missing application dependency: " + jar
 
+assert list(app.glob("dagger-2.*.jar")), "Dagger runtime is missing"
+assert not list(app.glob("dagger-compiler*.jar")), "Annotation processors must not ship at runtime"
+assert not list(app.glob("dagger-spi*.jar")), "Compiler SPI must not ship at runtime"
+with zipfile.ZipFile(app / installation["mainJar"]) as main_jar:
+    graph = "Cli" if kind == "cli" else "Gui"
+    assert f"dev/voxelbrew/{kind}/Dagger{graph}Component.class" in main_jar.namelist(), "Generated dependency graph is missing"
+
 notices = [root / "LICENSE", root / "THIRD_PARTY_NOTICES.md"]
 notices += sorted(path for path in (root / "third_party").rglob("*") if path.is_file())
 for source in notices:

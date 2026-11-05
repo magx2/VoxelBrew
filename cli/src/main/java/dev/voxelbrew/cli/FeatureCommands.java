@@ -1,6 +1,8 @@
 package dev.voxelbrew.cli;
 
 import dev.voxelbrew.engine.feature.*;
+import dev.voxelbrew.exporter.DocumentSink;
+import dev.voxelbrew.importer.DocumentSource;
 import java.nio.file.Path;
 import java.util.*;
 import java.util.concurrent.Callable;
@@ -11,8 +13,8 @@ final class FeatureCommands {
     private FeatureCommands() {}
 
     static void register(CommandLine cli) {
-        cli.addSubcommand("feature-types", new Types());
-        cli.addSubcommand("custom", new Custom());
+        cli.addSubcommand("feature-types", Types.class);
+        cli.addSubcommand("custom", Custom.class);
     }
 
     @Command(
@@ -20,13 +22,20 @@ final class FeatureCommands {
             mixinStandardHelpOptions = true,
             description = "List trusted persistent feature types and numeric parameters")
     static final class Types implements Callable<Integer> {
+        private final FeatureRegistry.Factory features;
+
+        @javax.inject.Inject
+        Types(FeatureRegistry.Factory features) {
+            this.features = features;
+        }
+
         @Option(names = "--plugin-dir")
         Path plugins = FeatureRegistry.defaultDirectory();
 
         @Spec CommandLine.Model.CommandSpec spec;
 
         public Integer call() throws Exception {
-            try (var registry = new FeatureRegistry(plugins)) {
+            try (var registry = features.open(plugins)) {
                 for (var d : registry.descriptors())
                     spec.commandLine()
                             .getOut()
@@ -49,6 +58,17 @@ final class FeatureCommands {
             mixinStandardHelpOptions = true,
             description = "Add a persistent plugin feature; use edit to change a parameter later")
     static final class Custom extends VoxelBrew.AddFeature {
+        private final FeatureRegistry.Factory features;
+
+        @javax.inject.Inject
+        Custom(
+                DocumentSource documents,
+                DocumentSink documentWriter,
+                FeatureRegistry.Factory features) {
+            super(documents, documentWriter);
+            this.features = features;
+        }
+
         @Option(names = "--provider", required = true)
         String provider;
 
@@ -63,7 +83,7 @@ final class FeatureCommands {
 
         public Integer call() throws Exception {
             var session = session();
-            try (var registry = new FeatureRegistry(pluginDirectory)) {
+            try (var registry = features.open(pluginDirectory)) {
                 registry.diagnostics().forEach(spec.commandLine().getErr()::println);
                 session.add(registry.create(id, provider, type, parameters));
             }

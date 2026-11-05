@@ -13,10 +13,16 @@ final class UpdateCommands {
     private UpdateCommands() {}
 
     static void register(CommandLine root) {
-        root.addSubcommand("update", new Update());
+        root.addSubcommand("update", Update.class);
     }
 
     abstract static class Options implements Callable<Integer> {
+        final UpdateServiceFactory updates;
+
+        Options(UpdateServiceFactory updates) {
+            this.updates = updates;
+        }
+
         @Option(
                 names = {"-h", "--help"},
                 usageHelp = true,
@@ -36,7 +42,7 @@ final class UpdateCommands {
         @Spec CommandSpec spec;
 
         int execute(boolean checkOnly) throws Exception {
-            var service = UpdateService.system(ApplicationImage.Component.CLI);
+            var service = updates.create();
             var cancellation = new UpdateCancellation();
             var request =
                     new UpdateService.Request(
@@ -67,6 +73,12 @@ final class UpdateCommands {
             description =
                     "Download and install a verified application update after exit (requires gh authentication)")
     static final class Update extends Options {
+
+        @javax.inject.Inject
+        Update(UpdateServiceFactory updates) {
+            super(updates);
+        }
+
         @Override
         public Integer call() throws Exception {
             return execute(false);
@@ -75,6 +87,12 @@ final class UpdateCommands {
 
     @Command(name = "check", description = "Check releases without downloading or replacing files")
     static final class Check extends Options {
+
+        @javax.inject.Inject
+        Check(UpdateServiceFactory updates) {
+            super(updates);
+        }
+
         @Override
         public Integer call() throws Exception {
             return execute(true);

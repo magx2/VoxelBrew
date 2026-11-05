@@ -1,6 +1,8 @@
 package dev.voxelbrew.cli;
 
 import dev.voxelbrew.engine.parameters.*;
+import dev.voxelbrew.exporter.DocumentSink;
+import dev.voxelbrew.importer.DocumentSource;
 import picocli.CommandLine;
 import picocli.CommandLine.*;
 
@@ -8,8 +10,8 @@ final class ParameterCommands {
     private ParameterCommands() {}
 
     static void register(CommandLine cli) {
-        cli.addSubcommand("parameters", new Parameters());
-        cli.addSubcommand("configurations", new Configurations());
+        cli.addSubcommand("parameters", Parameters.class);
+        cli.addSubcommand("configurations", Configurations.class);
     }
 
     @Command(
@@ -24,6 +26,10 @@ final class ParameterCommands {
                 Bind.class
             })
     static class Parameters implements Runnable {
+
+        @javax.inject.Inject
+        Parameters() {}
+
         @Spec CommandLine.Model.CommandSpec spec;
 
         public void run() {
@@ -44,6 +50,10 @@ final class ParameterCommands {
                 RemoveConfiguration.class
             })
     static class Configurations implements Runnable {
+
+        @javax.inject.Inject
+        Configurations() {}
+
         @Spec CommandLine.Model.CommandSpec spec;
 
         public void run() {
@@ -53,6 +63,12 @@ final class ParameterCommands {
 
     @Command(name = "list", mixinStandardHelpOptions = true)
     static class ListParameters extends VoxelBrew.FileCommand {
+
+        @javax.inject.Inject
+        ListParameters(DocumentSource documents, DocumentSink documentWriter) {
+            super(documents, documentWriter);
+        }
+
         @Option(names = "--configuration")
         String configuration;
 
@@ -84,6 +100,12 @@ final class ParameterCommands {
             mixinStandardHelpOptions = true,
             description = "Create a parameter or edit its expression in the active configuration")
     static class SetParameter extends VoxelBrew.FileCommand {
+
+        @javax.inject.Inject
+        SetParameter(DocumentSource documents, DocumentSink documentWriter) {
+            super(documents, documentWriter);
+        }
+
         @Option(names = "--name", required = true)
         String name;
 
@@ -108,6 +130,12 @@ final class ParameterCommands {
 
     @Command(name = "rename", mixinStandardHelpOptions = true)
     static class RenameParameter extends VoxelBrew.FileCommand {
+
+        @javax.inject.Inject
+        RenameParameter(DocumentSource documents, DocumentSink documentWriter) {
+            super(documents, documentWriter);
+        }
+
         @Option(names = "--name", required = true)
         String name;
 
@@ -126,6 +154,12 @@ final class ParameterCommands {
             mixinStandardHelpOptions = true,
             description = "Remove an unused parameter; references prevent removal")
     static class RemoveParameter extends VoxelBrew.FileCommand {
+
+        @javax.inject.Inject
+        RemoveParameter(DocumentSource documents, DocumentSink documentWriter) {
+            super(documents, documentWriter);
+        }
+
         @Option(names = "--name", required = true)
         String name;
 
@@ -142,6 +176,12 @@ final class ParameterCommands {
             description =
                     "Bind a sketch/3D dimension to an expression; empty expression restores its stored numeric value")
     static class Bind extends VoxelBrew.FileCommand {
+
+        @javax.inject.Inject
+        Bind(DocumentSource documents, DocumentSink documentWriter) {
+            super(documents, documentWriter);
+        }
+
         @Option(names = "--feature", required = true)
         String feature;
 
@@ -160,6 +200,12 @@ final class ParameterCommands {
 
     @Command(name = "list", mixinStandardHelpOptions = true)
     static class ListConfigurations extends VoxelBrew.FileCommand {
+
+        @javax.inject.Inject
+        ListConfigurations(DocumentSource documents, DocumentSink documentWriter) {
+            super(documents, documentWriter);
+        }
+
         public Integer call() throws Exception {
             var p = session().document().parameters();
             var out = spec.commandLine().getOut();
@@ -183,6 +229,12 @@ final class ParameterCommands {
 
     @Command(name = "add", mixinStandardHelpOptions = true)
     static class AddConfiguration extends VoxelBrew.FileCommand {
+
+        @javax.inject.Inject
+        AddConfiguration(DocumentSource documents, DocumentSink documentWriter) {
+            super(documents, documentWriter);
+        }
+
         @Option(names = "--name", required = true)
         String name;
 
@@ -204,6 +256,12 @@ final class ParameterCommands {
             description =
                     "Set an override; empty expression restores inheritance for a nondefault configuration")
     static class Override extends VoxelBrew.FileCommand {
+
+        @javax.inject.Inject
+        Override(DocumentSource documents, DocumentSink documentWriter) {
+            super(documents, documentWriter);
+        }
+
         @Option(names = "--name", required = true)
         String name;
 
@@ -222,6 +280,12 @@ final class ParameterCommands {
 
     @Command(name = "activate", mixinStandardHelpOptions = true)
     static class Activate extends VoxelBrew.FileCommand {
+
+        @javax.inject.Inject
+        Activate(DocumentSource documents, DocumentSink documentWriter) {
+            super(documents, documentWriter);
+        }
+
         @Option(names = "--name", required = true)
         String name;
 
@@ -234,6 +298,12 @@ final class ParameterCommands {
 
     @Command(name = "rename", mixinStandardHelpOptions = true)
     static class RenameConfiguration extends VoxelBrew.FileCommand {
+
+        @javax.inject.Inject
+        RenameConfiguration(DocumentSource documents, DocumentSink documentWriter) {
+            super(documents, documentWriter);
+        }
+
         @Option(names = "--name", required = true)
         String name;
 
@@ -249,6 +319,12 @@ final class ParameterCommands {
 
     @Command(name = "remove", mixinStandardHelpOptions = true)
     static class RemoveConfiguration extends VoxelBrew.FileCommand {
+
+        @javax.inject.Inject
+        RemoveConfiguration(DocumentSource documents, DocumentSink documentWriter) {
+            super(documents, documentWriter);
+        }
+
         @Option(names = "--name", required = true)
         String name;
 

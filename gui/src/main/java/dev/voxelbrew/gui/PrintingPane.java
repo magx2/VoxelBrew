@@ -8,7 +8,6 @@ import dev.voxelbrew.exporter.ExporterRegistry;
 import dev.voxelbrew.exporter.printing.PrusaSlicerBackend;
 import dev.voxelbrew.exporter.printing.SliceService;
 import dev.voxelbrew.exporter.printing.SlicerRegistry;
-import java.io.IOException;
 import java.nio.file.Path;
 import java.util.*;
 import java.util.concurrent.*;
@@ -18,17 +17,15 @@ import javafx.scene.canvas.Canvas;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
-import javafx.stage.Window;
 import javafx.util.StringConverter;
 
 /** Build placement and actual toolpath preview, sharing all validation and slicing with CLI. */
+@javax.inject.Singleton
 final class PrintingPane extends BorderPane implements AutoCloseable {
     private final DocumentController document;
     private final PrintController jobs;
     private final SlicerRegistry slicers;
-    private final ExecutorService validator =
-            Executors.newSingleThreadExecutor(
-                    Thread.ofPlatform().daemon().name("voxelbrew-print-validation").factory());
+    private final ExecutorService validator;
     private Future<?> validationTask;
     private long validationSequence;
     private final Canvas canvas = new Canvas();
@@ -62,17 +59,18 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
     private List<Double> previewLayers = List.of();
     private SliceService.Result displayed;
 
+    @javax.inject.Inject
     PrintingPane(
             DocumentController document,
-            Path pluginDirectory,
+            PrintController jobs,
+            SlicerRegistry slicers,
             ExporterRegistry exporters,
-            Window owner)
-            throws IOException {
+            javafx.stage.Stage owner,
+            @javax.inject.Named("validation") ExecutorService validator) {
         this.document = document;
-        jobs =
-                new PrintController(
-                        Platform::runLater, () -> document.snapshot().document(), pluginDirectory);
-        slicers = new SlicerRegistry(pluginDirectory);
+        this.jobs = jobs;
+        this.slicers = slicers;
+        this.validator = validator;
         setId("printing-workspace");
         setPadding(new Insets(8));
         bodies.setId("print-body");
@@ -859,10 +857,5 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
         validationSequence++;
         jobs.close();
         validator.shutdownNow();
-        try {
-            slicers.close();
-        } catch (IOException ignored) {
-            /* no document writes */
-        }
     }
 }

@@ -16,6 +16,11 @@ import java.util.ServiceLoader;
 
 /** Loads trusted JARs only. Provider errors are isolated and exposed as diagnostics. */
 public final class ExporterRegistry implements AutoCloseable {
+    @FunctionalInterface
+    public interface Factory {
+        ExporterRegistry open(Path directory) throws IOException;
+    }
+
     public record Entry(ExporterDescriptor descriptor, ModelExporter provider) {}
 
     private final Map<String, Entry> entries = new LinkedHashMap<>();

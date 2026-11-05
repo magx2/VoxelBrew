@@ -5,7 +5,6 @@ import dev.voxelbrew.util.update.*;
 import java.io.IOException;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.function.Consumer;
 import javafx.application.Platform;
 import javafx.event.ActionEvent;
@@ -15,50 +14,60 @@ import javafx.stage.Window;
 
 /** Explicit updater. All network, archive and helper work stays off the JavaFX thread. */
 final class UpdateDialog {
-    @FunctionalInterface
+    @dagger.assisted.AssistedFactory
     interface Factory {
-        UpdateService create() throws IOException;
+        UpdateDialog create(Consumer<Runnable> beforeInstall);
     }
 
-    private final Factory factory;
+    private final UpdateServiceFactory factory;
+    private final Translations translations;
     private final Consumer<Runnable> beforeInstall;
-    private final ExecutorService worker =
-            Executors.newSingleThreadExecutor(
-                    Thread.ofPlatform().daemon().name("voxelbrew-update").factory());
+    private final ExecutorService worker;
     private final UpdateCancellation cancellation = new UpdateCancellation();
     private final Dialog<ButtonType> dialog = new Dialog<>();
     private final TextField version = new TextField();
-    private final CheckBox force = new CheckBox(Translations.current().text("update.reinstall"));
-    private final Label status = new Label(Translations.current().text("update.intro"));
+    private final CheckBox force;
+    private final Label status;
     private final ProgressIndicator progress = new ProgressIndicator();
-    private final Button check = new Button(Translations.current().text("update.check")),
-            download = new Button(Translations.current().text("update.download"));
+    private final Button check, download;
     private final Button install, cancel;
-    private final ButtonType installType =
-            new ButtonType(
-                    Translations.current().text("update.install"), ButtonBar.ButtonData.OK_DONE);
+    private final ButtonType installType;
     private UpdateService service;
     private UpdateService.Check selected;
     private UpdateService.Prepared prepared;
     private boolean busy, closed, scheduled;
 
-    private UpdateDialog(Factory factory, Consumer<Runnable> beforeInstall) {
+    @dagger.assisted.AssistedInject
+    UpdateDialog(
+            UpdateServiceFactory factory,
+            Translations translations,
+            @javax.inject.Named("updateWorkers")
+                    java.util.function.Supplier<ExecutorService> workers,
+            @dagger.assisted.Assisted Consumer<Runnable> beforeInstall) {
         this.factory = factory;
+        this.translations = translations;
         this.beforeInstall = beforeInstall;
-        dialog.setTitle(Translations.current().text("update.title"));
-        dialog.setHeaderText(Translations.current().text("update.heading"));
+        this.worker = workers.get();
+        this.force = new CheckBox(translations.text("update.reinstall"));
+        this.status = new Label(translations.text("update.intro"));
+        this.check = new Button(translations.text("update.check"));
+        this.download = new Button(translations.text("update.download"));
+        this.installType =
+                new ButtonType(translations.text("update.install"), ButtonBar.ButtonData.OK_DONE);
+        dialog.setTitle(translations.text("update.title"));
+        dialog.setHeaderText(translations.text("update.heading"));
         dialog.getDialogPane().getButtonTypes().setAll(installType, ButtonType.CANCEL);
         install = (Button) dialog.getDialogPane().lookupButton(installType);
         cancel = (Button) dialog.getDialogPane().lookupButton(ButtonType.CANCEL);
         install.setId("update-install");
         cancel.setId("update-cancel");
-        cancel.setText(Translations.current().text("action.cancel"));
+        cancel.setText(translations.text("action.cancel"));
         check.setId("update-check");
         download.setId("update-download");
         version.setId("update-version");
         force.setId("update-force");
         status.setId("update-status");
-        version.setPromptText(Translations.current().text("update.versionPrompt"));
+        version.setPromptText(translations.text("update.versionPrompt"));
         status.setWrapText(true);
         progress.setMaxSize(26, 26);
         progress.setVisible(false);
@@ -66,10 +75,8 @@ final class UpdateDialog {
         var content =
                 new VBox(
                         12,
-                        new Label(
-                                Translations.current()
-                                        .text("update.installed", BuildVersion.current())),
-                        new Label(Translations.current().text("update.version")),
+                        new Label(translations.text("update.installed", BuildVersion.current())),
+                        new Label(translations.text("update.version")),
                         version,
                         force,
                         check,
@@ -97,7 +104,7 @@ final class UpdateDialog {
     }
 
     static boolean show(Window owner, Factory factory, Consumer<Runnable> beforeInstall) {
-        var updates = new UpdateDialog(factory, beforeInstall);
+        var updates = factory.create(beforeInstall);
         try {
             Dialogs.show(updates.dialog, owner);
             return updates.scheduled;
@@ -146,7 +153,7 @@ final class UpdateDialog {
         }
         selected = null;
         busy(true);
-        status.setText(Translations.current().text("update.checking"));
+        status.setText(translations.text("update.checking"));
         worker.execute(
                 () -> {
                     try {
@@ -202,7 +209,7 @@ final class UpdateDialog {
     private void handOff() {
         busy(true);
         cancel.setDisable(true);
-        status.setText(Translations.current().text("update.starting"));
+        status.setText(translations.text("update.starting"));
         worker.execute(
                 () -> {
                     try {

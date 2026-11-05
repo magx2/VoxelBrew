@@ -36,7 +36,7 @@ public final class WorkbenchApplication extends Application {
         if (open != null && args.contains("--smoke-test"))
             throw new IllegalArgumentException(
                     "--smoke-test creates an unsaved fixture; omit --open");
-        workbench = new Workbench(stage, plugins);
+        workbench = Workbench.create(stage, plugins);
         var screen = Screen.getPrimary().getVisualBounds();
         stage.setScene(
                 new Scene(

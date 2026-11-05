@@ -3,6 +3,8 @@ plugins {
     `maven-publish`
 }
 
+apply(from = rootProject.file("gradle/di.gradle.kts"))
+
 dependencies { implementation("org.apache.commons:commons-compress:1.28.0") }
 
 val buildVersion = project.version.toString()

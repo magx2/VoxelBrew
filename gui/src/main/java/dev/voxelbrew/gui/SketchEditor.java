@@ -95,6 +95,7 @@ final class SketchEditor extends BorderPane implements AutoCloseable {
 
     static void show(
             Stage stage,
+            SketchController.Factory controllers,
             Feature.Sketch sketch,
             List<Feature> features,
             ParameterSet parameters,
@@ -105,6 +106,7 @@ final class SketchEditor extends BorderPane implements AutoCloseable {
         var previousClose = stage.getOnCloseRequest();
         var editor =
                 new SketchEditor(
+                        controllers,
                         sketch,
                         features,
                         parameters,
@@ -147,6 +149,7 @@ final class SketchEditor extends BorderPane implements AutoCloseable {
     }
 
     private SketchEditor(
+            SketchController.Factory controllers,
             Feature.Sketch sketch,
             List<Feature> features,
             ParameterSet parameters,
@@ -161,12 +164,7 @@ final class SketchEditor extends BorderPane implements AutoCloseable {
                 sketch == null
                         ? new FeatureDimensions.Converted(SketchGeometry.empty(), parameters)
                         : FeatureDimensions.convert(sketch, parameters);
-        controller =
-                new SketchController(
-                        converted.geometry(),
-                        converted.parameters(),
-                        featureId,
-                        Platform::runLater);
+        controller = controllers.create(converted.geometry(), converted.parameters(), featureId);
         setId("sketch-editor");
         getStyleClass().add("sketch-editor");
         plane.setId("constraint-plane");

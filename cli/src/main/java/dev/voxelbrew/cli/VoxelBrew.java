@@ -4,10 +4,10 @@ import dev.voxelbrew.engine.export.*;
 import dev.voxelbrew.engine.geometry.Solid;
 import dev.voxelbrew.engine.mesh.MeshOptions;
 import dev.voxelbrew.engine.model.*;
-import dev.voxelbrew.exporter.DocumentWriter;
+import dev.voxelbrew.exporter.DocumentSink;
 import dev.voxelbrew.exporter.ExportService;
 import dev.voxelbrew.exporter.ExporterRegistry;
-import dev.voxelbrew.importer.DocumentReader;
+import dev.voxelbrew.importer.DocumentSource;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Locale;
@@ -40,6 +40,10 @@ import picocli.CommandLine.Spec;
             VoxelBrew.NativeDemo.class
         })
 public final class VoxelBrew implements Runnable {
+
+    @javax.inject.Inject
+    VoxelBrew() {}
+
     @Spec private CommandSpec spec;
 
     @Override
@@ -64,10 +68,20 @@ public final class VoxelBrew implements Runnable {
     }
 
     public static CommandLine commandLine() {
+        return DaggerCliComponent.factory()
+                .create(
+                        dev.voxelbrew.util.di.ApplicationModule.system(
+                                dev.voxelbrew.util.update.ApplicationImage.Component.CLI),
+                        new dev.voxelbrew.exporter.di.FileIoModule())
+                .commandLine();
+    }
+
+    static CommandLine commandLine(
+            CommandLine.IFactory factory, dev.voxelbrew.util.i18n.Translations translations) {
         var cliCommand =
-                new CommandLine(new VoxelBrew())
-                        .addSubcommand("exporters", new Exporters())
-                        .addSubcommand("export", new Export())
+                new CommandLine(VoxelBrew.class, factory)
+                        .addSubcommand("exporters", Exporters.class)
+                        .addSubcommand("export", Export.class)
                         .setExecutionExceptionHandler(
                                 (failure, command, parsed) -> {
                                     java.util.logging.Logger.getLogger(VoxelBrew.class.getName())
@@ -81,8 +95,7 @@ public final class VoxelBrew implements Runnable {
         cliCommand
                 .getCommandSpec()
                 .usageMessage()
-                .description(
-                        dev.voxelbrew.util.i18n.Translations.current().text("app.description"));
+                .description(translations.text("app.description"));
         PrintingCommands.register(cliCommand);
         FeatureCommands.register(cliCommand);
         SketchCommands.register(cliCommand);
@@ -96,6 +109,13 @@ public final class VoxelBrew implements Runnable {
             mixinStandardHelpOptions = true,
             description = "List built-in and external exporters")
     static final class Exporters implements Callable<Integer> {
+        private final dev.voxelbrew.exporter.ExporterRegistry.Factory exporters;
+
+        @javax.inject.Inject
+        Exporters(dev.voxelbrew.exporter.ExporterRegistry.Factory exporters) {
+            this.exporters = exporters;
+        }
+
         @Option(names = "--plugin-dir")
         Path pluginDirectory = ExporterRegistry.defaultDirectory();
 
@@ -103,7 +123,7 @@ public final class VoxelBrew implements Runnable {
 
         @Override
         public Integer call() throws Exception {
-            try (var registry = new ExporterRegistry(pluginDirectory)) {
+            try (var registry = exporters.open(pluginDirectory)) {
                 for (var descriptor : registry.descriptors()) {
                     spec.commandLine()
                             .getOut()
@@ -127,6 +147,17 @@ public final class VoxelBrew implements Runnable {
             mixinStandardHelpOptions = true,
             description = "Export a complete document using a registered provider")
     static final class Export implements Callable<Integer> {
+        private final DocumentSource documents;
+        private final dev.voxelbrew.exporter.ExporterRegistry.Factory exporters;
+
+        @javax.inject.Inject
+        Export(
+                DocumentSource documents,
+                dev.voxelbrew.exporter.ExporterRegistry.Factory exporters) {
+            this.documents = documents;
+            this.exporters = exporters;
+        }
+
         @Parameters(index = "0")
         Path file;
 
@@ -182,9 +213,9 @@ public final class VoxelBrew implements Runnable {
 
         @Override
         public Integer call() throws Exception {
-            var document = DocumentReader.load(file);
+            var document = documents.load(file);
             try (var evaluation = Evaluator.evaluate(document, pluginDirectory);
-                    var registry = new ExporterRegistry(pluginDirectory)) {
+                    var registry = exporters.open(pluginDirectory)) {
                 registry.diagnostics().forEach(spec.commandLine().getErr()::println);
                 ModelView view =
                         new ExportSelection(space, contents, body, instance)
@@ -229,6 +260,14 @@ public final class VoxelBrew implements Runnable {
     }
 
     abstract static class FileCommand implements Callable<Integer> {
+        final DocumentSource documents;
+        final DocumentSink documentWriter;
+
+        FileCommand(DocumentSource documents, DocumentSink documentWriter) {
+            this.documents = documents;
+            this.documentWriter = documentWriter;
+        }
+
         @Parameters(index = "0", description = "Editable .jcad file")
         Path file;
 
@@ -238,11 +277,11 @@ public final class VoxelBrew implements Runnable {
         @Spec CommandSpec spec;
 
         ModelSession session() throws java.io.IOException {
-            return new ModelSession(DocumentReader.load(file));
+            return new ModelSession(documents.load(file));
         }
 
         int save(ModelSession session) throws java.io.IOException {
-            DocumentWriter.save(session.document(), file, true);
+            documentWriter.save(session.document(), file, true);
             try (Evaluation evaluation = session.evaluate(pluginDirectory)) {
                 if (!evaluation.valid()) {
                     evaluation.diagnostics().stream()
@@ -277,11 +316,21 @@ public final class VoxelBrew implements Runnable {
     }
 
     abstract static class AddFeature extends FileCommand {
+
+        AddFeature(DocumentSource documents, DocumentSink documentWriter) {
+            super(documents, documentWriter);
+        }
+
         @Option(names = "--id", description = "Stable feature ID (default: generated UUID)")
         String id = UUID.randomUUID().toString();
     }
 
     abstract static class AddSketch extends AddFeature {
+
+        AddSketch(DocumentSource documents, DocumentSink documentWriter) {
+            super(documents, documentWriter);
+        }
+
         @Option(names = "--offset-z", defaultValue = "0", description = "XY plane offset, mm")
         double z;
 
@@ -317,6 +366,12 @@ public final class VoxelBrew implements Runnable {
             description = "Create an empty editable document.",
             mixinStandardHelpOptions = true)
     static final class Create extends FileCommand {
+
+        @javax.inject.Inject
+        Create(DocumentSource documents, DocumentSink documentWriter) {
+            super(documents, documentWriter);
+        }
+
         @Option(
                 names = "--overwrite",
                 description = "Explicitly replace an existing supported document")
@@ -324,7 +379,7 @@ public final class VoxelBrew implements Runnable {
 
         @Override
         public Integer call() throws Exception {
-            DocumentWriter.save(CadDocument.empty(), file, overwrite);
+            documentWriter.save(CadDocument.empty(), file, overwrite);
             return 0;
         }
     }
@@ -334,6 +389,12 @@ public final class VoxelBrew implements Runnable {
             description = "Add a dimensioned rectangle sketch on XY or an offset plane.",
             mixinStandardHelpOptions = true)
     static final class Rectangle extends AddSketch {
+
+        @javax.inject.Inject
+        Rectangle(DocumentSource documents, DocumentSink documentWriter) {
+            super(documents, documentWriter);
+        }
+
         @Option(names = "--x", defaultValue = "0")
         double x;
 
@@ -357,6 +418,12 @@ public final class VoxelBrew implements Runnable {
             description = "Add a circle by center and diameter, mm.",
             mixinStandardHelpOptions = true)
     static final class Circle extends AddSketch {
+
+        @javax.inject.Inject
+        Circle(DocumentSource documents, DocumentSink documentWriter) {
+            super(documents, documentWriter);
+        }
+
         @Option(names = "--center-x", required = true)
         double x;
 
@@ -377,6 +444,12 @@ public final class VoxelBrew implements Runnable {
             description = "Extrude an earlier profile as a new body; distance is signed mm.",
             mixinStandardHelpOptions = true)
     static final class Extrude extends AddFeature {
+
+        @javax.inject.Inject
+        Extrude(DocumentSource documents, DocumentSink documentWriter) {
+            super(documents, documentWriter);
+        }
+
         @Option(names = "--sketch", required = true)
         String sketch;
 
@@ -396,6 +469,12 @@ public final class VoxelBrew implements Runnable {
             description = "Cut a circular profile through the complete current Z extent.",
             mixinStandardHelpOptions = true)
     static final class Cut extends AddFeature {
+
+        @javax.inject.Inject
+        Cut(DocumentSource documents, DocumentSink documentWriter) {
+            super(documents, documentWriter);
+        }
+
         @Option(names = "--sketch", required = true)
         String sketch;
 
@@ -426,6 +505,12 @@ public final class VoxelBrew implements Runnable {
             description = "Change one dimension as a single engine transaction.",
             mixinStandardHelpOptions = true)
     static final class Edit extends FileCommand {
+
+        @javax.inject.Inject
+        Edit(DocumentSource documents, DocumentSink documentWriter) {
+            super(documents, documentWriter);
+        }
+
         @Option(names = "--feature", required = true)
         String feature;
 
@@ -459,6 +544,12 @@ public final class VoxelBrew implements Runnable {
             description = "Set evaluated feature count without changing the feature list.",
             mixinStandardHelpOptions = true)
     static final class Cursor extends FileCommand {
+
+        @javax.inject.Inject
+        Cursor(DocumentSource documents, DocumentSink documentWriter) {
+            super(documents, documentWriter);
+        }
+
         @Option(
                 names = "--position",
                 required = true,
@@ -479,6 +570,12 @@ public final class VoxelBrew implements Runnable {
                     "Repair an extrusion/cut sketch reference or cut body input, preserving IDs.",
             mixinStandardHelpOptions = true)
     static final class Repair extends FileCommand {
+
+        @javax.inject.Inject
+        Repair(DocumentSource documents, DocumentSink documentWriter) {
+            super(documents, documentWriter);
+        }
+
         @Option(names = "--feature", required = true)
         String feature;
 
@@ -534,6 +631,12 @@ public final class VoxelBrew implements Runnable {
             description = "List stable feature IDs, definitions and rebuild diagnostics.",
             mixinStandardHelpOptions = true)
     static final class History extends FileCommand {
+
+        @javax.inject.Inject
+        History(DocumentSource documents, DocumentSink documentWriter) {
+            super(documents, documentWriter);
+        }
+
         @Override
         public Integer call() throws Exception {
             var session = session();
@@ -566,6 +669,12 @@ public final class VoxelBrew implements Runnable {
             description = "Rebuild and measure active solids, or classify a point (in mm).",
             mixinStandardHelpOptions = true)
     static final class Inspect extends FileCommand {
+
+        @javax.inject.Inject
+        Inspect(DocumentSource documents, DocumentSink documentWriter) {
+            super(documents, documentWriter);
+        }
+
         @Option(
                 names = "--point",
                 split = ",",
@@ -624,6 +733,10 @@ public final class VoxelBrew implements Runnable {
             description = "Run the M0 real-kernel reference smoke demo.",
             mixinStandardHelpOptions = true)
     static final class NativeDemo implements Callable<Integer> {
+
+        @javax.inject.Inject
+        NativeDemo() {}
+
         @Override
         public Integer call() {
             try (Solid plate = Solid.rectanglePrism(0, 0, 0, 60, 40, 8);

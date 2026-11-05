@@ -12,6 +12,7 @@ import java.util.concurrent.*;
 import java.util.function.*;
 
 /** Owner-thread state with cancellable worker execution and revision-guarded publication. */
+@javax.inject.Singleton
 public final class PrintController implements AutoCloseable {
     public enum State {
         IDLE,
@@ -22,9 +23,7 @@ public final class PrintController implements AutoCloseable {
         OUTDATED
     }
 
-    private final ExecutorService worker =
-            Executors.newSingleThreadExecutor(
-                    Thread.ofPlatform().daemon().name("voxelbrew-slicer").factory());
+    private final ExecutorService worker;
     private final Consumer<Runnable> dispatch;
     private final Supplier<CadDocument> current;
     private final Path pluginDirectory;
@@ -43,9 +42,19 @@ public final class PrintController implements AutoCloseable {
 
     public PrintController(
             Consumer<Runnable> dispatch, Supplier<CadDocument> current, Path pluginDirectory) {
-        this.dispatch = dispatch;
-        this.current = current;
-        this.pluginDirectory = pluginDirectory;
+        this(dispatch, current, pluginDirectory, WindowResources.worker("slicer"));
+    }
+
+    @javax.inject.Inject
+    PrintController(
+            @javax.inject.Named("ui") Consumer<Runnable> dispatch,
+            Supplier<CadDocument> current,
+            @javax.inject.Named("plugins") Path pluginDirectory,
+            @javax.inject.Named("slicing") ExecutorService worker) {
+        this.dispatch = Objects.requireNonNull(dispatch);
+        this.current = Objects.requireNonNull(current);
+        this.pluginDirectory = Objects.requireNonNull(pluginDirectory);
+        this.worker = Objects.requireNonNull(worker);
     }
 
     public State state() {

@@ -226,8 +226,8 @@ a real release. See [release steps](releases.md) and [M12 evidence](acceptance/M
 
 ### M13 — Explicit CLI and GUI application updates
 
-Adapt Bigboy's authenticated `gh` release update workflow to complete VoxelBrew
-app images. Share release/version selection, mandatory checksums, bounded safe
+Update complete VoxelBrew app images directly from public GitHub releases over
+HTTPS, without `gh`, login or credentials. Share release/version selection, mandatory checksums, bounded safe
 extraction and after-exit replacement in util. Add CLI check/install commands
 and a responsive GUI Updates dialog with cancellation and unsaved-work handling.
 Retain a backup, protect other running instances, and document manual recovery.

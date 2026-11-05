@@ -54,6 +54,9 @@ tasks
     }
 
 tasks.named<Test>("e2eTest") {
+    // Full CAD/Robot sessions retain substantial Prism meshes and Windows accessibility data.
+    // The default 512 MiB test heap can exhaust near the end of the complete rendered suite.
+    maxHeapSize = "1g"
     dependsOn(":engine:buildExporterFixture", ":cli:installDist")
     systemProperty(
         "voxelbrew.ui.artifacts",

@@ -16,6 +16,10 @@
 - **CMake 3.31.6**, BSD-3-Clause, https://github.com/Kitware/CMake/tree/v3.31.6.
   Its downloaded distribution retains the upstream notices.
 - **JUnit 5.12.1**, EPL-2.0, test dependency only, https://junit.org/junit5/.
+- **Gson 2.15.0**, Apache-2.0, https://github.com/google/gson/tree/gson-parent-2.15.0.
+  Parses public release metadata in the updater; upstream license in `third_party/gson/`.
+- **Error Prone annotations 2.50.0**, Apache-2.0, https://github.com/google/error-prone/tree/v2.50.0.
+  Gson's transitive annotation dependency; upstream license in `third_party/error-prone-annotations/`.
 - **Lombok 1.18.48**, MIT, https://projectlombok.org/.
   Compile-only annotation processor; its JAR is not bundled with applications.
   Upstream license: `third_party/lombok/LICENSE`.

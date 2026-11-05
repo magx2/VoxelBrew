@@ -8,7 +8,7 @@ import picocli.CommandLine.Model.CommandSpec;
 import picocli.CommandLine.Option;
 import picocli.CommandLine.Spec;
 
-/** Explicit authenticated app-image updates, shared with the desktop frontend. */
+/** Explicit public app-image updates, shared with the desktop frontend. */
 final class UpdateCommands {
     private UpdateCommands() {}
 
@@ -71,7 +71,7 @@ final class UpdateCommands {
             name = "update",
             subcommands = Check.class,
             description =
-                    "Download and install a verified application update after exit (requires gh authentication)")
+                    "Download and install a verified public application update after exit (no GitHub login required)")
     static final class Update extends Options {
 
         @javax.inject.Inject

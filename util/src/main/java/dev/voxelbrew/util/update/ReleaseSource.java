@@ -4,7 +4,7 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.util.Set;
 
-/** Authenticated transport boundary; release selection and installation remain util-owned. */
+/** Release transport boundary; selection and installation remain util-owned. */
 public interface ReleaseSource {
     record Release(ReleaseVersion version, Set<String> assets) {
         public Release {

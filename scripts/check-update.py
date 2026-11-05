@@ -1,5 +1,8 @@
-"""Offline release fixture; real packaged Java, gh process adapter and directory replacement."""
+"""Anonymous HTTP release fixture; real packaged Java, HTTP downloads and directory replacement."""
+import atexit
 import hashlib
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+import threading
 import json
 import os
 from pathlib import Path
@@ -67,39 +70,63 @@ with zipfile.ZipFile(release_dir / asset, "w", zipfile.ZIP_DEFLATED, compresslev
             archive.write(file, file.relative_to(payload.parent).as_posix())
 checksum = hashlib.sha256((release_dir / asset).read_bytes()).hexdigest()
 (release_dir / "SHA256SUMS").write_text(checksum + "  " + asset + "\n", encoding="utf-8")
-fixture = workspace / "gh fixture.py"
-fixture.write_text('''import json, os, shutil, sys
-from pathlib import Path
-args = sys.argv[1:]
-root = Path(__file__).parent
-with (root / "gh-commands.jsonl").open("a") as log:
-    log.write(json.dumps(args) + "\\n")
-config = json.loads((root / "release.json").read_text())
-if (root / "deny-access").exists():
-    sys.stderr.write("fixture authentication denied")
-    sys.exit(1)
-if args[0] == "api":
-    assert args[1:3] == ["--hostname", "github.com"]
-    assert args[3] in ["repos/magx2/VoxelBrew/releases/latest", "repos/magx2/VoxelBrew/releases/tags/v" + config["version"]]
-    print("v" + config["version"] + "\\nfalse\\nfalse\\n" + config["asset"] + "\\nSHA256SUMS")
-else:
-    assert args[:3] == ["release", "download", "v" + config["version"]]
-    assert args[args.index("--repo") + 1] == "github.com/magx2/VoxelBrew"
-    shutil.copyfile(root / "downloads" / args[args.index("--pattern") + 1], args[args.index("--output") + 1])
-''', encoding="utf-8")
-(workspace / "release.json").write_text(json.dumps({"version": new_version, "asset": asset}), encoding="utf-8")
-gh = workspace / ("gh fixture.cmd" if os.name == "nt" else "gh fixture")
-if os.name == "nt":
-    gh.write_text('@echo off\n"' + sys.executable + '" "' + str(fixture) + '" %*\n', encoding="utf-8")
-else:
-    import shlex
-    gh.write_text("#!/bin/sh\nexec " + shlex.quote(sys.executable) + " " + shlex.quote(str(fixture)) + ' "$@"\n', encoding="utf-8")
-    gh.chmod(0o755)
+request_log = workspace / "http-requests.jsonl"
+request_lock = threading.Lock()
+
+
+class Releases(BaseHTTPRequestHandler):
+    def log_message(self, *args):
+        pass
+
+    def do_GET(self):
+        with request_lock, request_log.open("a", encoding="utf-8") as log:
+            log.write(json.dumps({"path": self.path, "authorization": self.headers.get("Authorization"),
+                                  "cookie": self.headers.get("Cookie")}) + "\n")
+        assert self.headers.get("Authorization") is None
+        assert self.headers.get("Cookie") is None
+        if (workspace / "deny-access").exists():
+            self.send_error(503, "fixture server unavailable")
+            return
+        if self.path in ("/repos/magx2/VoxelBrew/releases/latest", "/repos/magx2/VoxelBrew/releases/tags/v" + new_version):
+            body = json.dumps({"tag_name": "v" + new_version, "draft": False, "prerelease": False,
+                               "assets": [{"name": asset}, {"name": "SHA256SUMS"}]}).encode()
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+            return
+        for name in (asset, "SHA256SUMS"):
+            if self.path == "/magx2/VoxelBrew/releases/download/v" + new_version + "/" + name:
+                self.send_response(302)
+                self.send_header("Location", "/cdn/" + name)
+                self.send_header("Content-Length", "0")
+                self.end_headers()
+                return
+            if self.path == "/cdn/" + name:
+                file = release_dir / name
+                self.send_response(200)
+                self.send_header("Content-Type", "application/octet-stream")
+                self.send_header("Content-Length", str(file.stat().st_size))
+                self.end_headers()
+                with file.open("rb") as content:
+                    shutil.copyfileobj(content, self.wfile)
+                return
+        self.send_error(404)
+
+
+server = ThreadingHTTPServer(("127.0.0.1", 0), Releases)
+threading.Thread(target=server.serve_forever, daemon=True).start()
+atexit.register(server.server_close)
+atexit.register(server.shutdown)
+fixture_url = "http://127.0.0.1:" + str(server.server_port) + "/"
+
 env = dict(os.environ)
-for key in ("JAVA_HOME", "JDK_HOME", "JAVA_OPTS", "JDK_JAVA_OPTIONS", "JAVA_TOOL_OPTIONS", "_JAVA_OPTIONS", "CLASSPATH"):
+for key in ("JAVA_HOME", "JDK_HOME", "JAVA_OPTS", "JDK_JAVA_OPTIONS", "JAVA_TOOL_OPTIONS", "_JAVA_OPTIONS", "CLASSPATH", "GH_TOKEN", "GITHUB_TOKEN", "GH_ENTERPRISE_TOKEN", "GITHUB_ENTERPRISE_TOKEN"):
     env.pop(key, None)
-env["_JAVA_OPTIONS"] = '-Dvoxelbrew.home="' + str(workspace / "settings") + '"'
-env["VOXELBREW_GH"] = str(gh)
+env["_JAVA_OPTIONS"] = '-Dvoxelbrew.home="' + str(workspace / "settings") + '" -Dvoxelbrew.update.fixtureUrl=' + fixture_url
+env["VOXELBREW_GH"] = str(workspace / "gh-does-not-exist")
+env["GH_CONFIG_DIR"] = str(workspace / "no-gh-configuration")
 env["PATH"] = str(workspace)
 classes = workspace / "probe classes"
 classes.mkdir()
@@ -135,8 +162,8 @@ if kind == "cli":
     assert not list(install.parent.glob(".VoxelBrew-update-*"))
     # Check-only must never download; explicit versions go to the tag endpoint.
     run([cli, "update", "check", "--version", new_version])
-    logged = [json.loads(line) for line in (workspace / "gh-commands.jsonl").read_text().splitlines()]
-    assert all(args[0] == "api" for args in logged)
+    logged = [json.loads(line) for line in request_log.read_text(encoding="utf-8").splitlines()]
+    assert all(request["path"].startswith("/repos/") for request in logged)
     (workspace / "deny-access").touch()
     run([cli, "update", "check"], expected=1)
     (workspace / "deny-access").unlink()
@@ -182,7 +209,9 @@ shutil.copy2(status_path.with_name("helper.log"), workspace / "helper.log")
 result = {"result": "PASS", "component": kind, "platform": platform, "oldVersion": old_version,
           "newVersion": new_version, "workspace": str(workspace), "status": str(workspace / "status.properties"),
           "sourceArchive": release_archive.name, "sourceArchiveSha256": hashlib.sha256(release_archive.read_bytes()).hexdigest(),
-          "transport": "offline gh fixture", "runtime": "real packaged JVM", "otherInstanceWait": True}
+          "transport": "anonymous HTTP fixture with CDN redirect", "ghAvailable": False, "credentials": False, "runtime": "real packaged JVM", "otherInstanceWait": True}
+assert all(request["authorization"] is None and request["cookie"] is None
+           for request in map(json.loads, request_log.read_text(encoding="utf-8").splitlines()))
 (artifacts / "update-result.json").write_text(json.dumps(result, indent=2), encoding="utf-8")
 # Retain transcripts, status and logs as acceptance evidence, without uploading several JVM copies.
 def remove_readonly(function, path, error):

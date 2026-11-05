@@ -18,6 +18,7 @@ class UpdateCommandsTest {
             assertEquals(0, command.execute(args));
             assertTrue(output.toString().contains("--version=<version>"));
             assertTrue(output.toString().contains("--force"));
+            assertFalse(output.toString().contains("requires gh"));
         }
     }
 

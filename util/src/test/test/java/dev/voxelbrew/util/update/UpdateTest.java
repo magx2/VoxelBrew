@@ -81,15 +81,23 @@ class UpdateTest {
     void rejectsUnsafeReleaseMetadataAndMissingAssets() throws Exception {
         assertEquals(
                 current,
-                GitHubReleaseSource.parse("v1.2.3\nfalse\nfalse\nSHA256SUMS\n", current).version());
+                GitHubReleaseSource.parse(
+                                metadata("v1.2.3", "false", "false", "SHA256SUMS"), current)
+                        .version());
         for (String metadata :
                 List.of(
-                        "v1.2.3\ntrue\nfalse\n",
-                        "v1.2.3\nfalse\ntrue\n",
-                        "v1.2.3\nfalse\nfalse\na\na\n",
-                        "v1.2.3\nfalse\nfalse\n../escape\n",
-                        "1.2.3\nfalse\nfalse\n",
-                        "v1.3.0\nfalse\nfalse\n"))
+                        metadata("v1.2.3", "true", "false"),
+                        metadata("v1.2.3", "false", "true"),
+                        metadata("v1.2.3", "false", "false", "a", "a"),
+                        metadata("v1.2.3", "false", "false", "../escape"),
+                        metadata("1.2.3", "false", "false"),
+                        metadata("v1.3.0", "false", "false"),
+                        metadata("v1.2.3", "\"false\"", "false"),
+                        "null",
+                        "{}",
+                        "{broken",
+                        "[]",
+                        metadata("v1.2.3", "false", "false") + " {}"))
             assertThrows(IOException.class, () -> GitHubReleaseSource.parse(metadata, current));
         var missing = new ReleaseSource.Release(current, Set.of("SHA256SUMS"));
         assertThrows(
@@ -257,6 +265,20 @@ class UpdateTest {
                                 requested == null ? null : ReleaseVersion.release(requested),
                                 force),
                         cancellation);
+    }
+
+    private static String metadata(String tag, String draft, String prerelease, String... assets) {
+        return "{\"tag_name\":\""
+                + tag
+                + "\",\"draft\":"
+                + draft
+                + ",\"prerelease\":"
+                + prerelease
+                + ",\"assets\":["
+                + Arrays.stream(assets)
+                        .map(name -> "{\"name\":\"" + name + "\"}")
+                        .collect(java.util.stream.Collectors.joining(","))
+                + "]}";
     }
 
     @Test

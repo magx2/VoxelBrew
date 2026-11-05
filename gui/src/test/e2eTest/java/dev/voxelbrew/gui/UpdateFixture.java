@@ -1,20 +1,27 @@
 package dev.voxelbrew.gui;
 
+import com.sun.net.httpserver.*;
 import dev.voxelbrew.util.update.*;
 import java.io.IOException;
+import java.net.*;
 import java.nio.file.*;
 import java.security.MessageDigest;
 import java.util.*;
+import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.jar.*;
 import org.apache.commons.compress.archivers.zip.*;
 
 /** A small offline release for exercising the real dialog up to the unsaved-document guard. */
-final class UpdateFixture implements ReleaseSource {
+final class UpdateFixture implements AutoCloseable {
     private final Path directory;
     private final ApplicationImage installed;
-    private final Release release;
+    private final ReleaseSource.Release release;
+    private final HttpServer server;
+    private final ExecutorService workers = Executors.newVirtualThreadPerTaskExecutor();
+    private volatile boolean credentialsSeen;
     volatile boolean slow;
-    volatile int requests;
+    final AtomicInteger requests = new AtomicInteger();
     volatile ReleaseVersion requested;
 
     UpdateFixture(Path directory) throws Exception {
@@ -47,7 +54,11 @@ final class UpdateFixture implements ReleaseSource {
                                 MessageDigest.getInstance("SHA-256")
                                         .digest(Files.readAllBytes(archive)));
         Files.writeString(directory.resolve("SHA256SUMS"), digest + "  " + asset + "\n");
-        release = new Release(replacement.version(), Set.of(asset, "SHA256SUMS"));
+        release = new ReleaseSource.Release(replacement.version(), Set.of(asset, "SHA256SUMS"));
+        server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+        server.setExecutor(workers);
+        server.createContext("/", this::respond);
+        server.start();
     }
 
     UpdateService service() {
@@ -55,34 +66,62 @@ final class UpdateFixture implements ReleaseSource {
                 ApplicationImage.Component.GUI,
                 installed.version(),
                 installed.platform(),
-                this,
+                new GitHubReleaseSource(
+                        URI.create("http://127.0.0.1:" + server.getAddress().getPort() + "/")),
                 Optional.of(installed));
     }
 
-    @Override
-    public Release fetch(ReleaseVersion version, UpdateCancellation cancellation)
-            throws IOException {
-        requests++;
-        requested = version;
-        while (slow) {
-            cancellation.check();
-            try {
-                Thread.sleep(25);
-            } catch (InterruptedException interrupted) {
-                Thread.currentThread().interrupt();
-                cancellation.check();
+    private void respond(HttpExchange exchange) throws IOException {
+        try (exchange) {
+            credentialsSeen |=
+                    exchange.getRequestHeaders().containsKey("Authorization")
+                            || exchange.getRequestHeaders().containsKey("Cookie");
+            String path = exchange.getRequestURI().getPath();
+            if (path.startsWith("/repos/")) {
+                requests.incrementAndGet();
+                requested =
+                        path.endsWith("/latest")
+                                ? null
+                                : ReleaseVersion.release(path.substring(path.lastIndexOf('/') + 1));
+                while (slow) {
+                    try {
+                        Thread.sleep(25);
+                    } catch (InterruptedException interrupted) {
+                        Thread.currentThread().interrupt();
+                        return;
+                    }
+                }
+                String assets =
+                        release.assets().stream()
+                                .map(name -> "{\"name\":\"" + name + "\"}")
+                                .collect(java.util.stream.Collectors.joining(","));
+                byte[] body =
+                        ("{\"tag_name\":\""
+                                        + release.tag()
+                                        + "\",\"draft\":false,\"prerelease\":false,\"assets\":["
+                                        + assets
+                                        + "]}")
+                                .getBytes(java.nio.charset.StandardCharsets.UTF_8);
+                exchange.sendResponseHeaders(200, body.length);
+                exchange.getResponseBody().write(body);
+            } else {
+                String name = path.substring(path.lastIndexOf('/') + 1);
+                if (!release.assets().contains(name)) {
+                    exchange.sendResponseHeaders(404, -1);
+                    return;
+                }
+                Path file = directory.resolve(name);
+                exchange.sendResponseHeaders(200, Files.size(file));
+                Files.copy(file, exchange.getResponseBody());
             }
         }
-        cancellation.check();
-        return release;
     }
 
     @Override
-    public void download(
-            Release selected, String asset, Path destination, UpdateCancellation cancellation)
-            throws IOException {
-        cancellation.check();
-        Files.copy(directory.resolve(asset), destination);
+    public void close() {
+        server.stop(0);
+        workers.shutdownNow();
+        if (credentialsSeen) throw new AssertionError("GUI updates sent credentials");
     }
 
     private ApplicationImage image(Path parent, String version) throws IOException {

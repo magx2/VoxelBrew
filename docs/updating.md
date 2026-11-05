@@ -1,10 +1,10 @@
 # Updating VoxelBrew
 
-VoxelBrew follows Bigboy's explicit update workflow: check the GitHub release,
-select the matching platform asset, download it through the authenticated `gh`
-CLI, verify it, and replace the installed application after exit. The reference
-is [`SelfUpdate.java` at Bigboy b8eff5c](https://github.com/magx2/bigboy/blob/b8eff5cf67fb2f02e54dbd2783eebde00a4fff5c/cli/src/main/java/pl/grzeslowski/commandcenter/cli/SelfUpdate.java).
-There are no network checks at application startup.
+VoxelBrew checks the public GitHub release, selects the matching platform asset,
+downloads it directly over HTTPS, verifies it, and replaces the installed application
+after exit. Both CLI and GUI use Java's built-in HTTP client. **No `gh` executable,
+GitHub account, login, token or external Java installation is required by a released
+app image.** There are no network checks at application startup.
 
 Shared update services and the standalone helper live in `dev.voxelbrew.util.update`.
 CLI commands and the JavaFX dialog stay in their respective frontend modules.
@@ -12,11 +12,15 @@ New app images declare `utilJar`, `importJar` and `exportJar` alongside `engineJ
 build identities are checked. Format-1 metadata without `utilJar` remains readable
 for older images and recovery. The helper is staged from the running utility JAR.
 
-Install [GitHub CLI](https://cli.github.com/) and run `gh auth login` with access
-to `magx2/VoxelBrew`. `gh` must be on PATH; alternatively set `VOXELBREW_GH` to
-its executable path. VoxelBrew uses the existing credentials and does not store
-a separate token. Missing releases and authentication errors are reported without
-changing the installation.
+Release metadata comes from the [public releases API](https://docs.github.com/en/rest/releases/releases),
+and assets come from `https://github.com/magx2/VoxelBrew/releases/download/vVERSION/ASSET`.
+The client follows HTTPS redirects to GitHub's download storage, without sending
+credentials or cookies. It does not read `gh` configuration, `VOXELBREW_GH` or token
+environment variables. Missing releases, network failures and GitHub rate limits
+produce an error without changing the installation; retry later if rate limited.
+Partial downloads are removed on failure or cancellation. Metadata/checksum files
+are limited to 1 MiB and app archives to 1 GiB; request deadlines also cover stalled
+response bodies.
 
 ## CLI
 
@@ -44,7 +48,7 @@ the launcher. The CLI and GUI installations update independently.
 
 ## GUI
 
-Choose **Updates…** in the workbench title bar, then **Check**. Leave the version
+Choose **Settings → Updates…**, then **Check**. Leave the version
 blank for latest stable, or enter a specific `A.B.C`. Use **Download** to prepare
 the verified image, then **Install and quit**. Unsaved work uses the existing
 Save / Discard / Cancel prompt. Cancelling either the update dialog or unsaved
@@ -99,18 +103,24 @@ be removed after all application/helper processes have exited.
 
 `check` includes `:cli:updatePackageCheck` and `:gui:updatePackageCheck` on qualified
 platforms. These copy the real app image to a path containing spaces, construct an
-offline release fixture from the actual Gradle-produced ZIP, and use the real
-bundled JVM and updater helper. They reject unexpected top-level archive entries
+local HTTP release fixture from the actual Gradle-produced ZIP, and use the real
+bundled JVM and updater helper with no `gh` on PATH or GitHub credentials. The fixture
+checks metadata-only requests, asset redirects, anonymous headers and full downloads.
+They reject unexpected top-level archive entries
 (including sibling runtime locks that must never ship). They
 verify metadata-only checks, checksum failure preserving the installation, waiting
 for a second process, directory replacement, the retained backup and the new build
 identity. CLI acceptance then reopens the real-kernel reference part. GUI Robot
-tests exercise checking, both palettes, cancellation, late-result rejection and the
+tests use the same HTTP transport for checking, both palettes, cancellation, late-result rejection and the
 unsaved-document guard. The GUI image uses the same engine installer through a
 fresh-process probe; this is distinct from a full GUI-driven production update.
+HTTP integration tests additionally cover missing releases, rate limits, truncated
+responses, size limits, existing destinations, and cancellation/timeout before headers
+or during a response body. Offline acceptance uses the loopback-only JVM property
+`voxelbrew.update.fixtureUrl=http://127.0.0.1:PORT/`; remote overrides are rejected.
 
 Reports live in `*/build/package-artifacts/update-result.json`, its referenced
-transcript directory, `engine/build/reports/tests/test/` and
+transcript directory, `util/build/reports/tests/test/`, `util/build/reports/tests/integrationTest/` and
 `gui/build/reports/tests/e2eTest/`; screenshots live in `gui/build/ui-artifacts/`.
 No live release is published by these tests. Downloading and installing a real
 GitHub release remains a separate check once an updater-capable release exists.

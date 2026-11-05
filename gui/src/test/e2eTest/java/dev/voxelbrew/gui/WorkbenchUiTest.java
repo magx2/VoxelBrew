@@ -111,32 +111,37 @@ class WorkbenchUiTest {
 
     @AfterEach
     void close(TestInfo info) throws Exception {
-        fx(
-                () -> {
-                    Screenshot.save(
-                            stage.getScene(),
-                            Path.of(
-                                    System.getProperty("voxelbrew.ui.artifacts"),
-                                    info.getTestMethod().orElseThrow().getName() + "-last.png"));
-                    int index = 0;
-                    for (var window : new ArrayList<>(Window.getWindows()))
-                        if (window != stage) {
-                            if (window.getScene() != null)
-                                Screenshot.save(
-                                        window.getScene(),
-                                        Path.of(
-                                                System.getProperty("voxelbrew.ui.artifacts"),
-                                                info.getTestMethod().orElseThrow().getName()
-                                                        + "-dialog-"
-                                                        + (index++)
-                                                        + ".png"));
-                            window.hide();
-                        }
-                    workbench.close();
-                    stage.hide();
-                    return null;
-                });
-        workbench.whenClosed().toCompletableFuture().get(20, TimeUnit.SECONDS);
+        try {
+            fx(
+                    () -> {
+                        Screenshot.save(
+                                stage.getScene(),
+                                Path.of(
+                                        System.getProperty("voxelbrew.ui.artifacts"),
+                                        info.getTestMethod().orElseThrow().getName()
+                                                + "-last.png"));
+                        int index = 0;
+                        for (var window : new ArrayList<>(Window.getWindows()))
+                            if (window != stage) {
+                                if (window.getScene() != null)
+                                    Screenshot.save(
+                                            window.getScene(),
+                                            Path.of(
+                                                    System.getProperty("voxelbrew.ui.artifacts"),
+                                                    info.getTestMethod().orElseThrow().getName()
+                                                            + "-dialog-"
+                                                            + (index++)
+                                                            + ".png"));
+                                window.hide();
+                            }
+                        workbench.close();
+                        stage.hide();
+                        return null;
+                    });
+            workbench.whenClosed().toCompletableFuture().get(20, TimeUnit.SECONDS);
+        } finally {
+            updates.close();
+        }
     }
 
     private static <T> T fx(Callable<T> action) throws Exception {
@@ -899,7 +904,7 @@ class WorkbenchUiTest {
             updates.slow = true;
             click("updates");
             click("update-check");
-            int request = updates.requests;
+            int request = updates.requests.get();
             click("update-cancel");
             updates.slow = false;
             click("updates");
@@ -907,7 +912,7 @@ class WorkbenchUiTest {
             click("update-force");
             click("update-check");
             waitForUpdate("Update available");
-            assertTrue(updates.requests > request);
+            assertTrue(updates.requests.get() > request);
             assertEquals(
                     dev.voxelbrew.util.update.ReleaseVersion.release("1.1.0"), updates.requested);
             fx(

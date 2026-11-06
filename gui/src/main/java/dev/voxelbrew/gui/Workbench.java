@@ -607,7 +607,6 @@ public final class Workbench extends BorderPane implements AutoCloseable {
                                 "fit",
                                 () -> viewport.fit(meshes())));
         viewbar.getStyleClass().add("view-strip");
-        setTop(toolbar);
         tree.setId("model-tree");
         tree.setShowRoot(false);
         tree.setEditable(true);
@@ -672,7 +671,10 @@ public final class Workbench extends BorderPane implements AutoCloseable {
         center.getStyleClass().add("viewport-panel");
         var split = new SplitPane(left, center, inspector);
         split.setDividerPositions(0.18, 0.78);
-        var designTab = new Tab(translations.text("tab.Design"), split);
+        var design = new BorderPane(split);
+        design.setId("design-workspace");
+        design.setTop(toolbar);
+        var designTab = new Tab(translations.text("tab.Design"), design);
         designTab.setId("workspace-design");
         designTab.setClosable(false);
         var printTab = new Tab(translations.text("tab.Print"), printing);
@@ -690,8 +692,6 @@ public final class Workbench extends BorderPane implements AutoCloseable {
                             cancelTool();
                             printing.documentChanged();
                         });
-        toolbar.visibleProperty().bind(designTab.selectedProperty());
-        toolbar.managedProperty().bind(toolbar.visibleProperty());
         setCenter(workspaces);
         timeline =
                 new FeatureTimeline(
@@ -713,7 +713,7 @@ public final class Workbench extends BorderPane implements AutoCloseable {
                         statusSpacer,
                         new Label(translations.text("gui.mm_occt_7_9_grid_10_mm")));
         statusbar.getStyleClass().add("status-strip");
-        setBottom(new VBox(timeline, statusbar));
+        design.setBottom(new VBox(timeline, statusbar));
         viewport.onSelection(
                 (id, face) -> {
                     if (tool == Tool.PLANE) {

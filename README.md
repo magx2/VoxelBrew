@@ -98,6 +98,12 @@ virtual environment and resolves the other formatters on first use. Generated ou
 Gradle wrapper files, acceptance artifacts, third-party
 licenses and local agent configuration are excluded.
 
+`./gradlew basicChecks` also checks high-confidence correctness bugs with SpotBugs.
+CI uploads Sonar analysis and blocks on new critical/blocker bugs or vulnerabilities;
+coverage, duplication and style findings remain advisory. See
+[code quality policy and Sonar setup](docs/code-quality.md) for the required repository
+variables/secret, scope and reports. Local `check` does not require a Sonar account.
+
 ## Windows: build, integration test, demo
 
 From PowerShell at the repository root:

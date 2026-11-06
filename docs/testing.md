@@ -26,7 +26,9 @@ in a module is reported by Gradle, not counted as test coverage.
 Use `./gradlew` on Ubuntu. Java unit tests need Java 21 (and Gradle dependencies).
 Root `test` and `check` also run `workflowTest`: release automation tests under
 `.github/scripts`, requiring Git and Node.js (CI uses Node 24). These tests use
-temporary local repositories and never publish a GitHub release.
+temporary local repositories and never publish a GitHub release. They also exercise
+the Sonar findings gate against local HTTP fixtures, including blocking findings,
+authentication/analysis failures, timeout, pagination and a superseded analysis.
 Integration tests additionally need the native and slicer bootstraps from the
 README, but no display. End-to-end and platform checks require a 3D-capable
 desktop; Ubuntu CI uses Xvfb/Mesa:
@@ -54,7 +56,9 @@ and packaged-app evidence in each frontend's `build/package-artifacts`.
 
 GitHub Actions splits the complete gate into independent jobs:
 
-- Unit tests and formatting run once on Ubuntu, without native bootstrapping.
+- Unit tests, formatting and basic SpotBugs correctness checks run once on Ubuntu,
+  without native bootstrapping. Eligible runs also upload Sonar analysis and require
+  the basic findings gate to pass. See [Sonar scope, setup and policy](code-quality.md).
 - Integration tests run once on Ubuntu, headlessly with real OCCT/PrusaSlicer.
 - Full platform checks run on Windows and Ubuntu, including packaged apps.
 - macOS runs `headlessPlatformCheck` (CLI workflows and packaged CLI) and builds

@@ -6,6 +6,9 @@ OCCT libraries and notices. A full JDK with `jmods` is required to build them;
 Ubuntu's `openjdk-21-jdk-headless` supplies it. Users need no Java installation.
 Development `installDist` tasks remain available and require external Java.
 
+GUI windows and native launchers share the [VoxelBrew application icon](app-icon.md).
+The host package uses ICO on Windows, PNG on Linux and ICNS on macOS.
+
 Build distributable ZIPs with `:cli:packageZip :gui:packageZip`. Extract the whole
 image; keep its adjacent runtime, app libraries, `native` and notices directories.
 Unix executable permissions are retained. Archives are in each frontend's

@@ -32,6 +32,11 @@ val packageArchitecture =
         else -> error("Unsupported package architecture: ${System.getProperty("os.arch")}")
     }
 val applicationName = if (project.name == "gui") "VoxelBrew" else "VoxelBrewCLI"
+val applicationIcon =
+    if (project.name != "gui") null
+    else if (packageWindows) file("src/main/packaging/voxelbrew.ico")
+    else if (packageMac) file("src/main/packaging/voxelbrew.icns")
+    else file("src/main/resources/dev/voxelbrew/gui/icons/voxelbrew-512.png")
 val mainType =
     if (project.name == "gui") "dev.voxelbrew.gui.Launcher" else "dev.voxelbrew.cli.VoxelBrew"
 val packageJdk =
@@ -85,6 +90,7 @@ val appImage by
         inputs.dir(packageInput)
         inputs.file(packageJdk.resolve("release"))
         inputs.file(rootProject.file("gradle/packaging.gradle.kts"))
+        applicationIcon?.let { inputs.file(it) }
         inputs.property("productVersion", productVersion)
         outputs.dir(image)
         doFirst {
@@ -119,8 +125,9 @@ val appImage by
                 "--jlink-options",
                 "--strip-debug --no-man-pages --no-header-files",
             ) +
-                if (packageWindows && project.name == "cli") listOf("--win-console")
-                else emptyList()
+                (applicationIcon?.let { listOf("--icon", it.absolutePath) } ?: emptyList()) +
+                (if (packageWindows && project.name == "cli") listOf("--win-console")
+                else emptyList())
         )
     }
 

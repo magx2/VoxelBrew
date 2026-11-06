@@ -160,6 +160,7 @@ public final class Workbench extends BorderPane implements AutoCloseable {
             FeatureRegistry.Factory featureProviders,
             SketchController.Factory sketches) {
         this.stage = stage;
+        ApplicationIcon.install(stage);
         this.pluginDirectory = pluginDirectory;
         this.controller = controller;
         this.registry = registry;

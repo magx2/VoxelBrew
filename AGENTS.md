@@ -40,6 +40,9 @@
 
 - Follow the bootstrap and build commands in `README.md`. Windows uses
   `gradlew.bat`; Ubuntu uses `./gradlew` and its own Linux native toolchain.
+- Always run Spotless formatting from the repository root before every commit:
+  `.\gradlew.bat spotlessApply` on Windows or `./gradlew spotlessApply` on Ubuntu.
+  Review the resulting changes before staging and committing.
 - Validate implementation changes on both Windows and Ubuntu WSL. Use a separate
   Ubuntu filesystem checkout with the same source revision. Never share native
   build output or run concurrent Gradle builds in the same checkout.

@@ -1,3 +1,5 @@
+import java.nio.file.Files
+
 plugins {
     `java-library`
     `maven-publish`
@@ -190,6 +192,16 @@ val buildNative by
                 from(occtInstall.resolve(if (windows) "bin" else "lib"))
                 include("*.dll", "*.so*", "*.dylib")
                 into(runtime)
+                eachFile {
+                    val installed = runtime.resolve(relativePath.pathString)
+                    // A running desktop locks its DLLs on Windows. Reuse byte-identical
+                    // dependencies; changed or missing libraries still require a normal copy.
+                    if (
+                        installed.isFile && Files.mismatch(file.toPath(), installed.toPath()) == -1L
+                    ) {
+                        exclude()
+                    }
+                }
             }
         }
     }

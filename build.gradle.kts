@@ -118,6 +118,7 @@ spotless {
             "engine/native/CMakeLists.txt",
             "*/src/main/resources/META-INF/services/*",
             "*/src/main/resources/**/*.properties",
+            "*/src/test/**/resources/**/*.properties",
             "*/src/main/resources/**/*.ini",
             "fixtures/exporter-plugin/src/main/resources/META-INF/services/*",
         )
@@ -165,6 +166,9 @@ subprojects {
         "testImplementation"(platform("org.junit:junit-bom:5.12.1"))
         "testImplementation"("org.junit.jupiter:junit-jupiter")
         "testRuntimeOnly"("org.junit.platform:junit-platform-launcher")
+        if (project.name != "util") {
+            "testImplementation"(testFixtures(project(":util")))
+        }
     }
     val sources = extensions.getByType<SourceSetContainer>()
     tasks.named<SpotBugsTask>("spotbugsMain") {
@@ -213,12 +217,30 @@ subprojects {
         dependsOn("e2eTest")
     }
     tasks.named("check") { dependsOn("integrationTest", "platformCheck") }
+    val cleanupTasks =
+        (listOf("test", "integrationTest", "e2eTest") +
+                if (project.name == "engine") listOf("nativeIntegrationTest") else emptyList())
+            .associateWith { suite ->
+                tasks.register<Exec>("${suite}Cleanup") {
+                    description =
+                        "Remove this suite's temporary files without changing its test result."
+                    commandLine(
+                        if (formatterWindows) "python" else "python3",
+                        rootProject.file("scripts/test_workspace.py").absolutePath,
+                        layout.buildDirectory.dir("test-tmp/$suite").get().asFile.absolutePath,
+                        layout.buildDirectory.dir("test-home/$suite").get().asFile.absolutePath,
+                    )
+                    isIgnoreExitValue = true
+                }
+            }
     tasks.withType<Test>().configureEach {
         useJUnitPlatform()
-        systemProperty(
-            "voxelbrew.home",
-            layout.buildDirectory.dir("test-home/$name").get().asFile.absolutePath,
-        )
+        val temporaryDirectory = layout.buildDirectory.dir("test-tmp/$name")
+        val testHome = layout.buildDirectory.dir("test-home/$name")
+        systemProperty("java.io.tmpdir", temporaryDirectory.get().asFile.absolutePath)
+        doFirst { temporaryDirectory.get().asFile.mkdirs() }
+        finalizedBy(cleanupTasks.getValue(name))
+        systemProperty("voxelbrew.home", testHome.get().asFile.absolutePath)
         systemProperty(
             "voxelbrew.slicer",
             providers
@@ -264,10 +286,17 @@ val workflowTest by
         commandLine("node", "--test", ".github/scripts/release.test.cjs")
     }
 
-tasks.named("test") { dependsOn(workflowTest) }
+val testCleanupTest by
+    tasks.registering(Exec::class) {
+        group = "verification"
+        description = "Verify best-effort test workspace cleanup and failure preservation."
+        commandLine(if (formatterWindows) "python" else "python3", "scripts/test_workspace_test.py")
+    }
+
+tasks.named("test") { dependsOn(workflowTest, testCleanupTest) }
 
 tasks.named("check") {
-    dependsOn(workflowTest)
+    dependsOn(workflowTest, testCleanupTest)
     dependsOn(subprojects.map { "${it.path}:check" })
 }
 

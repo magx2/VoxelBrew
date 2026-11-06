@@ -10,15 +10,19 @@ import shutil
 import stat
 import subprocess
 import sys
-import tempfile
 import time
 import zipfile
+
+sys.dont_write_bytecode = True
+from test_workspace import temporary_workspace
 
 kind, image_arg, root_arg, artifacts_arg, archive_arg = sys.argv[1:]
 image, root, artifacts = map(Path, (image_arg, root_arg, artifacts_arg))
 release_archive = Path(archive_arg)
 artifacts.mkdir(parents=True, exist_ok=True)
-workspace = Path(tempfile.mkdtemp(prefix="update with spaces ", dir=artifacts)).resolve()
+evidence = artifacts / "update-evidence"
+workspace = temporary_workspace(root / kind / "build/test-work", "update with spaces ", evidence,
+                                excluded=("installation", "release", "downloads", "probe classes"))
 platform = "windows-x64" if os.name == "nt" else "macos-x64" if sys.platform == "darwin" else "linux-x64"
 app_relative = Path("app" if os.name == "nt" else "Contents/app" if sys.platform == "darwin" else "lib/app")
 runtime_relative = Path("runtime" if os.name == "nt" else "Contents/runtime/Contents/Home" if sys.platform == "darwin" else "lib/runtime")
@@ -225,25 +229,11 @@ finally:
 shutil.copy2(status_path, workspace / "status.properties")
 shutil.copy2(status_path.with_name("helper.log"), workspace / "helper.log")
 result = {"result": "PASS", "component": kind, "platform": platform, "oldVersion": old_version,
-          "newVersion": new_version, "workspace": str(workspace), "status": str(workspace / "status.properties"),
+          "newVersion": new_version, "workspace": str(workspace), "artifacts": str(evidence), "status": str(evidence / "status.properties"),
           "sourceArchive": release_archive.name, "sourceArchiveSha256": hashlib.sha256(release_archive.read_bytes()).hexdigest(),
           "transport": "anonymous HTTP fixture with CDN redirect", "ghAvailable": False, "credentials": False, "runtime": "real packaged JVM", "otherInstanceWait": True,
           "documentVersions": [old_version, new_version], "olderDocumentReadable": True, "newerDocumentRejectedByBackup": True}
 assert all(request["authorization"] is None and request["cookie"] is None
            for request in map(json.loads, request_log.read_text(encoding="utf-8").splitlines()))
 (artifacts / "update-result.json").write_text(json.dumps(result, indent=2), encoding="utf-8")
-# Retain transcripts, status and logs as acceptance evidence, without uploading several JVM copies.
-def remove_readonly(function, path, error):
-    generated_file = Path(path).resolve()
-    assert generated_file.is_relative_to(workspace) and generated_file != workspace
-    if not isinstance(error[1], PermissionError):
-        raise error[1]
-    generated_file.chmod(generated_file.stat().st_mode | 0o200)
-    function(path)
-
-
-for name in ("installation", "release", "downloads", "probe classes"):
-    generated = (workspace / name).resolve()
-    assert generated.is_relative_to(workspace) and generated != workspace
-    shutil.rmtree(generated, onerror=remove_readonly)
-print("PACKAGE_UPDATE_PASS", kind, workspace)
+print("PACKAGE_UPDATE_PASS", kind, evidence)

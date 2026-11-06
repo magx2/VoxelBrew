@@ -30,6 +30,9 @@ libraries and selected toolkits. `buildOcct` builds Release and installs under
 version and the Java 21 toolchain's JNI headers. `buildNative` compiles the
 bridge and copies its dynamic dependencies into a single runtime directory.
 The complete commands are visible with Gradle `--info`.
+The copy step reuses byte-identical dependencies so an open desktop does not block
+a check merely by locking an unchanged DLL. Changed native libraries still need
+to be replaced and continue to invalidate the relevant tests.
 
 ## Ownership / failure invariants
 

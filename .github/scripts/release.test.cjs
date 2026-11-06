@@ -12,11 +12,28 @@ const {
   assetNames,
   manifest,
   digest,
+  cleanupTemporaryDirectory,
 } = require("./release.cjs");
+
+test("cleanup logs deletion errors without changing the test outcome", () => {
+  const failure = new Error("locked fixture file");
+  const messages = [];
+  assert.doesNotThrow(() =>
+    cleanupTemporaryDirectory(
+      "owned test directory",
+      () => {
+        throw failure;
+      },
+      (...message) => messages.push(message),
+    ),
+  );
+  assert.match(messages[0][0], /ERROR:.*owned test directory/);
+  assert.equal(messages[0][1], failure);
+});
 
 function fixture(t) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "VoxelBrew release tests with spaces "));
-  t.after(() => fs.rmSync(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }));
+  t.after(() => cleanupTemporaryDirectory(root));
   const remote = path.join(root, "remote.git"),
     cwd = path.join(root, "source");
   execFileSync("git", ["init", "--bare", "--initial-branch=master", remote], { stdio: "pipe" });

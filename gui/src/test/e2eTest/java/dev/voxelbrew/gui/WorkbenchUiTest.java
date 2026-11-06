@@ -127,7 +127,7 @@ class WorkbenchUiTest {
         try {
             fx(
                     () -> {
-                        if (stage.isShowing())
+                        if (stage != null && stage.isShowing())
                             Screenshot.save(
                                     stage.getScene(),
                                     Path.of(
@@ -148,13 +148,14 @@ class WorkbenchUiTest {
                                                             + ".png"));
                                 window.hide();
                             }
-                        workbench.close();
-                        stage.hide();
+                        if (workbench != null) workbench.close();
+                        if (stage != null) stage.hide();
                         return null;
                     });
-            workbench.whenClosed().toCompletableFuture().get(20, TimeUnit.SECONDS);
+            if (workbench != null)
+                workbench.whenClosed().toCompletableFuture().get(20, TimeUnit.SECONDS);
         } finally {
-            updates.close();
+            if (updates != null) updates.close();
         }
     }
 

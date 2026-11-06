@@ -7,6 +7,13 @@ const { execFileSync } = require("node:child_process");
 function check(condition, message) {
   if (!condition) throw new Error(message);
 }
+function cleanupTemporaryDirectory(directory, remove = fs.rmSync, report = console.error) {
+  try {
+    remove(directory, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+  } catch (error) {
+    report(`ERROR: Could not clean temporary directory: ${directory}`, error);
+  }
+}
 function version(text) {
   const lines = text.match(/^[ \t]*projectVersion(?:[ \t]*[=:]|[ \t]+).*$/gm) || [];
   check(lines.length === 1, "Expected exactly one projectVersion property.");
@@ -423,7 +430,7 @@ class Release {
           ...["ours", "base", "theirs"].map((name) => path.join(directory, name)),
         ) + "\n";
     } finally {
-      fs.rmSync(directory, { recursive: true, force: true });
+      cleanupTemporaryDirectory(directory);
     }
     try {
       try {
@@ -508,6 +515,7 @@ function main() {
     );
 }
 module.exports = {
+  cleanupTemporaryDirectory,
   Release,
   version,
   replaceVersion,

@@ -52,6 +52,22 @@ and `build/reports/tests/{test,integrationTest,e2eTest}`. Screenshots remain in
 `gui/build/ui-artifacts`, slicer evidence in `export/build/printing-artifacts`,
 and packaged-app evidence in each frontend's `build/package-artifacts`.
 
+Temporary files are deleted after successful **and failed** tests. Shared test-only
+fixtures in `util/src/test/fixtures` configure JUnit's `@TempDir` factory on the
+test classpath (including IDE runs). The factory logs deletion failures at ERROR
+without changing the test outcome. Gradle also cleans each suite's isolated
+`build/test-tmp/<suite>` and `build/test-home/<suite>` after the worker exits.
+Temporary directories stay on the checkout's disk rather than filling the OS
+temporary directory. Keep manually created files beneath `@TempDir`.
+
+Packaged launcher, updater and release-archive checks clean their copied runtimes,
+downloads and extracted images on exit, including setup/assertion failures. Small
+diagnostics and reference files are copied to `package-artifacts/launcher-evidence`
+or `package-artifacts/update-evidence` first. Node release tests also use best-effort
+cleanup. Failures to delete files are logged with their paths; assertions, launches,
+resource shutdown and other actual test failures still fail the check. Reports,
+screenshots, intentional acceptance evidence and built distributions are retained.
+
 GitHub Actions splits the complete gate into independent jobs:
 
 - Unit tests, formatting and basic SpotBugs correctness checks run once on Ubuntu,

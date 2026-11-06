@@ -9,16 +9,20 @@ import shutil
 import struct
 import subprocess
 import sys
-import tempfile
 import xml.etree.ElementTree as ET
 import zipfile
+
+sys.dont_write_bytecode = True
+from test_workspace import temporary_workspace
 
 kind, image_arg, root_arg, artifacts_arg = sys.argv[1:]
 image, root, artifacts = map(Path, (image_arg, root_arg, artifacts_arg))
 artifacts.mkdir(parents=True, exist_ok=True)
 for report in ("result.json", "commands.json"):
     (artifacts / report).unlink(missing_ok=True)
-workspace = Path(tempfile.mkdtemp(prefix="package with spaces ", dir=artifacts))
+evidence = artifacts / "launcher-evidence"
+workspace = temporary_workspace(root / kind / "build/test-work", "package with spaces ",
+                                evidence, excluded=("trusted plugins with spaces",))
 name = "VoxelBrew" if kind == "gui" else "VoxelBrewCLI"
 if sys.platform == "win32":
     launcher = image / (name + ".exe")
@@ -196,8 +200,8 @@ else:
         model = ET.fromstring(archive.read("3D/3dmodel.model"))
         assert model.find(".//{*}object").attrib["name"] == "spacer.body"
 (artifacts / "result.json").write_text(json.dumps({"result": "PASS", "platform": platform.platform(),
-    "architecture": platform.machine(), "image": str(image), "artifacts": str(workspace),
+    "architecture": platform.machine(), "image": str(image), "artifacts": str(evidence),
     "installation": installation, "native_libraries": native_libraries, "notices_verified": len(notices),
     "runtime": {key: settings[key] for key in ("java.version", "java.vendor", "java.home", "os.arch")},
     "java_on_path": False, "headless": kind == "cli"}, indent=2), encoding="utf-8")
-print("PACKAGE_PASS", kind, platform.platform(), workspace)
+print("PACKAGE_PASS", kind, platform.platform(), evidence)

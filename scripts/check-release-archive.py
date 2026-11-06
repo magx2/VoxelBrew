@@ -6,8 +6,10 @@ import os
 import stat
 import subprocess
 import sys
-import tempfile
 import zipfile
+
+sys.dont_write_bytecode = True
+from test_workspace import temporary_workspace
 
 kind, archive_arg, root_arg, artifacts_arg = sys.argv[1:]
 archive, root, artifacts = map(Path, (archive_arg, root_arg, artifacts_arg))
@@ -19,7 +21,7 @@ with archive.open("rb") as source:
         checksum.update(chunk)
 extracted_images = root / ".tools/release-extracted"
 extracted_images.mkdir(parents=True, exist_ok=True)
-destination = Path(tempfile.mkdtemp(prefix="release archive with spaces ", dir=extracted_images)).resolve()
+destination = temporary_workspace(extracted_images, "release archive with spaces ")
 name = "VoxelBrew" if kind == "gui" else "VoxelBrewCLI"
 image_name = name + (".app" if sys.platform == "darwin" else "")
 launcher = (image_name + "/Contents/MacOS/" + name if sys.platform == "darwin" else

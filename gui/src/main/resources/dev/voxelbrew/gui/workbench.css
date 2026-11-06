@@ -595,3 +595,23 @@
 .sketch-plane-label:hover {
   -fx-border-width: 2.5px;
 }
+.sketch-editor .button:active-tool,
+.sketch-editor .combo-box:active-tool {
+  -fx-background-color: #245ac4;
+  -fx-text-fill: white;
+  -fx-border-color: #123a89;
+  -fx-border-width: 2;
+  -fx-border-radius: 4;
+  -fx-background-radius: 4;
+}
+.dark .sketch-editor .button:active-tool,
+.dark .sketch-editor .combo-box:active-tool {
+  -fx-background-color: #326bd6;
+  -fx-border-color: #9bbfff;
+}
+.sketch-editor .combo-box:active-tool > .list-cell {
+  -fx-text-fill: white;
+}
+.sketch-editor .combo-box:active-tool .arrow {
+  -fx-background-color: white;
+}

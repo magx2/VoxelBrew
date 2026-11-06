@@ -7,6 +7,7 @@ import dev.voxelbrew.engine.parameters.*;
 import dev.voxelbrew.engine.sketch.*;
 import java.util.*;
 import javafx.application.Platform;
+import javafx.css.PseudoClass;
 import javafx.geometry.Insets;
 import javafx.geometry.Point2D;
 import javafx.geometry.Pos;
@@ -25,6 +26,8 @@ import javafx.stage.WindowEvent;
  * Window-local 2D sketch workspace; Finish publishes one engine transaction, Cancel publishes none.
  */
 final class SketchEditor extends BorderPane implements AutoCloseable {
+    private static final PseudoClass ACTIVE_TOOL = PseudoClass.getPseudoClass("active-tool");
+
     enum Draw {
         SELECT,
         POINT,
@@ -1157,6 +1160,7 @@ final class SketchEditor extends BorderPane implements AutoCloseable {
                         + " · "
                         + translations.text("constraint.hint." + type.name()));
         if (enough(type)) apply(type);
+        draw();
     }
 
     private boolean enough(Type type) {
@@ -1551,6 +1555,17 @@ final class SketchEditor extends BorderPane implements AutoCloseable {
     }
 
     private void draw() {
+        for (var candidate : Draw.values()) {
+            Node control =
+                    candidate == Draw.ADVANCED
+                            ? createType
+                            : shortcutActions.get(
+                                    "sketch-tool-" + candidate.name().toLowerCase(Locale.ROOT));
+            if (control != null) {
+                control.pseudoClassStateChanged(
+                        ACTIVE_TOOL, tool == candidate && activeConstraint == null);
+            }
+        }
         var graphics = canvas.getGraphicsContext2D();
         double w = canvas.getWidth(), h = canvas.getHeight();
         if (w <= 0 || h <= 0 || !Double.isFinite(scale) || scale <= 0) return;

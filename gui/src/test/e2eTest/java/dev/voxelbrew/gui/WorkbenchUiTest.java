@@ -1166,6 +1166,10 @@ class WorkbenchUiTest {
         sketchReady();
         assertButtonDescriptions();
         assertEquals("Prostokąt", fx(() -> ((Button) node("#sketch-tool-rectangle")).getText()));
+        assertShortcutCaption("sketch-tool-rectangle", "Prostokąt", "r");
+        assertShortcutCaption("sketch-tool-circle", "Okrąg (C)", "C");
+        assertShortcutCaption("sketch-tool-arc", "Łuk (A)", "A");
+        saveShortcutLabels("pl-light");
         assertEquals("Zakończ szkic", fx(() -> ((Button) node("#constraint-finish")).getText()));
         assertTrue(
                 fx(
@@ -4221,6 +4225,8 @@ class WorkbenchUiTest {
     void keyboardModelingNavigationAndSketchDraftsRespectFocusAndModalBoundaries()
             throws Exception {
         ready();
+        assertShortcutCaption("extrude", "↑  Extrude", "E");
+        assertShortcutCaption("split-body", "Split body (X)", "X");
         click("fit");
         key(KeyCode.E);
         assertNull(
@@ -4238,6 +4244,11 @@ class WorkbenchUiTest {
         key(KeyCode.K);
         click("choose-plane-xy");
         sketchReady();
+        assertShortcutCaption("sketch-tool-rectangle", "Rectangle", "R");
+        assertShortcutCaption("sketch-tool-circle", "Circle", "C");
+        assertShortcutCaption("sketch-tool-select", "Select (V)", "V");
+        assertShortcutCaption("sketch-tool-polygon", "Polygon", "g");
+        saveShortcutLabels("en-light");
         sketchType(SketchTools.Tool.RECTANGLE_TWO_POINT);
         sketchNumericPoint(0, 0);
         sketchNumericPoint(60, 40);
@@ -4400,6 +4411,65 @@ class WorkbenchUiTest {
                     return null;
                 });
         closeShortcutHelp();
+        click("constrained-sketch");
+        click("choose-plane-xy");
+        sketchReady();
+        assertShortcutCaption("sketch-tool-rectangle", "Rectangle", "R");
+        assertShortcutCaption("sketch-tool-select", "Select (V)", "V");
+        saveShortcutLabels("en-dark");
+        click("constraint-cancel");
+    }
+
+    private void assertShortcutCaption(String id, String expected, String letter) throws Exception {
+        fx(
+                () -> {
+                    var button = (ButtonBase) node("#" + id);
+                    button.getScene().getRoot().applyCss();
+                    button.getScene().getRoot().layout();
+                    var caption = (javafx.scene.layout.HBox) button.lookup(".shortcut-caption");
+                    assertNotNull(caption, id);
+                    var fragments =
+                            caption.getChildren().stream()
+                                    .map(javafx.scene.text.Text.class::cast)
+                                    .toList();
+                    assertEquals(
+                            expected,
+                            fragments.stream()
+                                    .map(javafx.scene.text.Text::getText)
+                                    .collect(java.util.stream.Collectors.joining()),
+                            id);
+                    var marked =
+                            fragments.stream().filter(javafx.scene.text.Text::isUnderline).toList();
+                    assertEquals(1, marked.size(), id);
+                    assertEquals(letter, marked.getFirst().getText(), id);
+                    assertEquals(button.getTextFill(), marked.getFirst().getFill(), id);
+                    assertEquals(button.getFont(), marked.getFirst().getFont(), id);
+                    assertFalse(
+                            button.isMnemonicParsing(), "Do not register unrelated Alt mnemonics");
+                    var bounds = button.localToScene(button.getLayoutBounds());
+                    var textBounds = caption.localToScene(caption.getLayoutBounds());
+                    assertTrue(
+                            textBounds.getMinX() >= bounds.getMinX() - 1
+                                    && textBounds.getMaxX() <= bounds.getMaxX() + 1,
+                            "Full caption fits: " + id);
+                    assertTrue(
+                            textBounds.getMinY() >= bounds.getMinY() - 1
+                                    && textBounds.getMaxY() <= bounds.getMaxY() + 1,
+                            "Caption height fits: " + id);
+                    return null;
+                });
+    }
+
+    private void saveShortcutLabels(String languageAndPalette) throws Exception {
+        fx(
+                () -> {
+                    Screenshot.save(
+                            stage.getScene(),
+                            Path.of(
+                                    System.getProperty("voxelbrew.ui.artifacts"),
+                                    "shortcut-labels-" + languageAndPalette + ".png"));
+                    return null;
+                });
     }
 
     @Test

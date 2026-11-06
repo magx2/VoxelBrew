@@ -9,6 +9,12 @@ Use **More sketch types…** for the expanded M8 geometry tools; see
 
 ## Drawing and selection
 
+Single-letter shortcuts are always underlined in tool button labels. When the
+translated label does not contain that letter, it is appended in parentheses:
+for example, Polish `Koło (C)` underlines the `C`. The existing shortcuts and
+typing safeguards are unchanged; modifier combinations remain in tooltips and
+the keyboard-shortcuts reference.
+
 Sketches use millimeters on XY or a parallel offset plane. New sketches have a
 Plane Z field; edit a shared plane through the main property inspector.
 

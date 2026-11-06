@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 import javafx.scene.Node;
 import javafx.scene.control.*;
+import javafx.scene.input.KeyCodeCombination;
 import javafx.scene.input.KeyCombination;
 import javafx.scene.input.KeyEvent;
 import javafx.scene.layout.GridPane;
@@ -81,6 +82,25 @@ final class KeyboardShortcuts {
                     binding(Scope.SKETCH, "keyboard-shortcuts", true, "F1"));
 
     private KeyboardShortcuts() {}
+
+    /** Bare letter keys can be shown in captions without implying a new Alt mnemonic. */
+    static java.util.Optional<String> letter(String id) {
+        return BINDINGS.stream()
+                .filter(binding -> binding.id().equals(id))
+                .flatMap(binding -> binding.keys().stream())
+                .filter(KeyCodeCombination.class::isInstance)
+                .map(KeyCodeCombination.class::cast)
+                .filter(
+                        key ->
+                                key.getCode().isLetterKey()
+                                        && key.getShift() == KeyCombination.ModifierValue.UP
+                                        && key.getControl() == KeyCombination.ModifierValue.UP
+                                        && key.getAlt() == KeyCombination.ModifierValue.UP
+                                        && key.getMeta() == KeyCombination.ModifierValue.UP
+                                        && key.getShortcut() == KeyCombination.ModifierValue.UP)
+                .map(key -> key.getCode().getName())
+                .findFirst();
+    }
 
     static void consume(KeyEvent event, javafx.scene.Scene scene) {
         event.consume();

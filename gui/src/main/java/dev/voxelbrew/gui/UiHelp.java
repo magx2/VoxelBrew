@@ -58,6 +58,7 @@ final class UiHelp {
 
     static void install(Control control, Translations translations) {
         describe(control, description(translations, control.getId()));
+        if (control instanceof ButtonBase button) ShortcutLabels.install(button);
     }
 
     static void describe(Control control, String description) {

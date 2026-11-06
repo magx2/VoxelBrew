@@ -16,6 +16,7 @@ import java.util.ServiceConfigurationError;
 import java.util.ServiceLoader;
 
 /** Loads trusted JARs only. Provider errors are isolated and exposed as diagnostics. */
+@lombok.extern.slf4j.Slf4j
 public final class ExporterRegistry implements AutoCloseable {
     @FunctionalInterface
     public interface Factory {
@@ -63,6 +64,8 @@ public final class ExporterRegistry implements AutoCloseable {
                 }
             }
         }
+        log.debug("Loaded {} exporters from {}", entries.size(), directory);
+        diagnostics.forEach(message -> log.warn("Exporter discovery: {}", message));
     }
 
     private void register(ModelExporter provider) {

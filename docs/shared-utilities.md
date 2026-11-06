@@ -36,8 +36,8 @@ appearance=DARK
 language=pl
 logging.level=INFO
 logging.console.level=WARNING
-logging.file.limit=1048576
-logging.file.count=3
+logging.file.limit=20971520
+logging.file.count=10
 ```
 
 Appearance accepts `SYSTEM`, `LIGHT`, `DARK`; the GUI writes changes through
@@ -94,8 +94,10 @@ the existing English workflow on Windows and Ubuntu.
 
 ## Logging and concurrency
 
-The launchers initialize `Logging` for `cli` or `gui`. Files rotate under
-`~/.voxelbrew/logs/`; defaults are INFO, three files of 1 MiB per process.
+The launchers initialize `Logging` for `cli` or `gui`. Both write UTF-8 to
+`~/.voxelbrew/log/app.log`. Each application start archives the previous nonempty
+file; size rollover defaults to 20 MB (20 × 1024 × 1024 bytes). Ten timestamped
+archives are retained by default. See [logging behavior and levels](logging.md).
 Console diagnostics default to WARNING on stderr, preserving CLI stdout.
 Configuration changes apply on restart. Logging affects only the `dev.voxelbrew`
 hierarchy and does not reset host or third-party loggers. Log setup failure leaves

@@ -162,9 +162,7 @@ subprojects {
         options.release.set(21)
         options.compilerArgs.addAll(listOf("-Xlint:all", "-Werror"))
     }
-    if (name !in setOf("import-api", "export-api")) {
-        apply(from = rootProject.file("gradle/lombok.gradle.kts"))
-    }
+    apply(from = rootProject.file("gradle/lombok.gradle.kts"))
     dependencies {
         "testImplementation"(platform("org.junit:junit-bom:5.12.1"))
         "testImplementation"("org.junit.jupiter:junit-jupiter")

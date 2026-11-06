@@ -7,12 +7,21 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 
 /** Bounded .jcad loading; unknown schemas and corrupt data remain protected from writes. */
+@lombok.extern.slf4j.Slf4j
 public final class DocumentReader {
     private DocumentReader() {}
 
     public static CadDocument load(Path path) throws IOException {
+        log.debug("Reading document {}", path);
         try (var input = Files.newInputStream(path)) {
-            return DocumentCodec.decode(input.readNBytes(DocumentCodec.MAX_ENCODED_BYTES + 1));
+            var document =
+                    DocumentCodec.decode(input.readNBytes(DocumentCodec.MAX_ENCODED_BYTES + 1));
+            log.debug(
+                    "Read document {} with {} features at cursor {}",
+                    document.id(),
+                    document.features().size(),
+                    document.cursor());
+            return document;
         }
     }
 }

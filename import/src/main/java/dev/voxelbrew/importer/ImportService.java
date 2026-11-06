@@ -6,6 +6,7 @@ import java.nio.file.*;
 import java.util.*;
 
 /** Host-owned, bounded input and provider validation. Importing never writes the source file. */
+@lombok.extern.slf4j.Slf4j
 public final class ImportService {
     public static final long MAX_INPUT_BYTES = 256L * 1024 * 1024;
 
@@ -35,6 +36,7 @@ public final class ImportService {
         }
         if (Files.size(source) > MAX_INPUT_BYTES)
             throw new IOException("Import exceeds 256 MiB input limit");
+        log.info("Importing {} using {}", source, format);
         try (var input = Files.newInputStream(source)) {
             var borrowed = new BoundedInput(input);
             var result =
@@ -45,12 +47,14 @@ public final class ImportService {
             if (result.kind() != descriptor.resultKind())
                 throw new IOException(
                         "Importer returned a different result kind than its descriptor");
+            log.info("Imported {} as {}", source, result.kind());
             return result;
         } catch (IOException
                 | RuntimeException
                 | LinkageError
                 | ServiceConfigurationError
                 | AssertionError failure) {
+            log.error("Import failed for {} using {}", source, format, failure);
             throw new IOException(
                     "Importer '" + format + "' failed: " + failure.getMessage(), failure);
         }

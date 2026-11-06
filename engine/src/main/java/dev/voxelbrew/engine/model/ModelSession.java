@@ -6,6 +6,7 @@ import java.util.Deque;
 import java.util.List;
 
 /** Both frontends submit these transactions. Undo/redo snapshots exclude the timeline cursor. */
+@lombok.extern.slf4j.Slf4j
 public final class ModelSession {
     private final String id;
     private List<Feature> features;
@@ -233,6 +234,7 @@ public final class ModelSession {
         new CadDocument(id, features, newCursor);
         cursor = newCursor;
         revision++;
+        log.debug("Document {} moved to cursor {} at revision {}", id, cursor, revision);
     }
 
     public synchronized boolean undo() {
@@ -242,6 +244,7 @@ public final class ModelSession {
         boolean followEnd = cursor == features.size();
         redo.push(new State(features, printSetup, parameters));
         var previous = undo.pop();
+        log.debug("Undo in document {} from revision {}", id, revision);
         features = previous.features();
         printSetup = previous.printSetup();
         parameters = previous.parameters();
@@ -257,6 +260,7 @@ public final class ModelSession {
         boolean followEnd = cursor == features.size();
         undo.push(new State(features, printSetup, parameters));
         var next = redo.pop();
+        log.debug("Redo in document {} from revision {}", id, revision);
         features = next.features();
         printSetup = next.printSetup();
         parameters = next.parameters();
@@ -312,5 +316,10 @@ public final class ModelSession {
         printSetup = setup;
         parameters = expressions;
         revision++;
+        log.debug(
+                "Committed document {} revision {} with {} features",
+                id,
+                revision,
+                features.size());
     }
 }

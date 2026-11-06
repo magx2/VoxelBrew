@@ -65,11 +65,10 @@ public final class UpdateProbe {
         java.util.logging.Logger.getLogger("dev.voxelbrew.verification")
                 .info("UTILITY_RUNTIME_LOG");
         dev.voxelbrew.util.logging.Logging.close();
-        boolean logged = false;
-        try (var entries = Files.list(dev.voxelbrew.util.config.ApplicationPaths.logs())) {
-            for (var file : entries.filter(path -> path.toString().endsWith(".log")).toList())
-                logged |= Files.readString(file).contains("UTILITY_RUNTIME_LOG");
-        }
+        Path activeLog = dev.voxelbrew.util.config.ApplicationPaths.home().resolve("log/app.log");
+        boolean logged =
+                Files.isRegularFile(activeLog)
+                        && Files.readString(activeLog).contains("UTILITY_RUNTIME_LOG");
         if (!logged) throw new IllegalStateException("Bundled file logging is unavailable");
         System.out.println("PACKAGE_UTIL_PASS " + component);
     }

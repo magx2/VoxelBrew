@@ -5,6 +5,7 @@ import java.nio.file.Path;
 import javafx.application.Application;
 
 /** Separate main class allows the non-modular development distribution to launch JavaFX. */
+@lombok.extern.slf4j.Slf4j
 public final class Launcher {
     private Launcher() {}
 
@@ -19,6 +20,12 @@ public final class Launcher {
                 return;
             }
             launch(args);
+        } catch (java.io.IOException | RuntimeException | Error failure) {
+            log.error("GUI terminated unexpectedly", failure);
+            throw failure;
+        } finally {
+            // JUL closes handlers on JVM shutdown, after window-owned workers finish draining.
+            log.info("GUI launcher finished");
         }
     }
 

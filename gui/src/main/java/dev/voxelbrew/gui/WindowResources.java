@@ -100,7 +100,7 @@ final class WindowResources implements AutoCloseable {
         }
         if (failed == null) disposal.complete(null);
         else {
-            log.debug("Closing plugin loader", failed);
+            log.warn("Cannot close plugin loaders cleanly", failed);
             disposal.completeExceptionally(failed);
         }
     }

@@ -27,6 +27,6 @@ public final class ApplicationPaths {
     }
 
     public static Path logs() {
-        return home().resolve("logs");
+        return home().resolve("log");
     }
 }

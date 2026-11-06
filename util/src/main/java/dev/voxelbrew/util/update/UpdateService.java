@@ -6,6 +6,7 @@ import java.util.*;
 import java.util.function.Consumer;
 
 /** Shared explicit update workflow. No network access occurs at application startup. */
+@lombok.extern.slf4j.Slf4j
 public final class UpdateService {
     public record Request(ReleaseVersion version, boolean force) {
         public Request {
@@ -58,6 +59,7 @@ public final class UpdateService {
     }
 
     public Check check(Request request, UpdateCancellation cancellation) throws IOException {
+        log.info("Checking {} updates for {} from version {}", component, platform, current);
         var release = source.fetch(request.version(), cancellation);
         cancellation.check();
         if (request.version() != null && !release.version().equals(request.version()))
@@ -89,6 +91,11 @@ public final class UpdateService {
         if (installation.isEmpty())
             message +=
                     ". Installation requires a released app image; development distributions are not replaced.";
+        log.info(
+                "Update check completed: selected {}, available={}, installable={}",
+                release.version(),
+                available,
+                installation.isPresent());
         return new Check(release, asset, available, installation.isPresent(), message);
     }
 
@@ -103,6 +110,7 @@ public final class UpdateService {
         if (!check.asset().equals(component.asset(check.release().version(), platform)))
             throw new IOException("Wrong application update asset");
         ApplicationImage.Lease lease = ApplicationImage.lock(image.updateLock(), false);
+        log.info("Preparing verified {} update to {}", component, check.release().version());
         Path stage = null;
         boolean complete = false;
         try {
@@ -158,9 +166,11 @@ public final class UpdateService {
             UpdateHelper.status(
                     stage, "PREPARED", "Ready to install " + replacement.version() + " after exit");
             complete = true;
+            log.info("Update {} is staged and ready for handoff", replacement.version());
             return new Prepared(stage, lease, platform);
         } finally {
             if (!complete) {
+                log.debug("Discarding incomplete update staging");
                 try {
                     lease.close();
                 } finally {

@@ -8,6 +8,7 @@ import java.nio.file.*;
 import java.util.*;
 
 /** Trusted provider JARs use a dedicated loader; one bad provider does not disable its peers. */
+@lombok.extern.slf4j.Slf4j
 public final class SlicerRegistry implements AutoCloseable {
     @FunctionalInterface
     public interface Factory {
@@ -56,6 +57,8 @@ public final class SlicerRegistry implements AutoCloseable {
                 diagnostics.add("Slicer provider failed: " + failure);
             }
         }
+        log.debug("Loaded {} slicers from {}", providers.size(), directory);
+        diagnostics.forEach(message -> log.warn("Slicer discovery: {}", message));
     }
 
     public List<SlicerBackend.Descriptor> descriptors() {

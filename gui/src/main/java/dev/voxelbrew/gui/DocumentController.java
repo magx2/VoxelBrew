@@ -19,6 +19,7 @@ import lombok.experimental.Accessors;
 
 /** UI-neutral document controller. UI dispatch confines all state changes to its owner thread. */
 @javax.inject.Singleton
+@lombok.extern.slf4j.Slf4j
 public final class DocumentController implements AutoCloseable {
     public record Body(String id, Feature.BodyRef output, MeshData mesh, double volume) {}
 
@@ -342,6 +343,7 @@ public final class DocumentController implements AutoCloseable {
                                     }
                                     ioBusy = false;
                                     replace(document, source.toAbsolutePath());
+                                    log.info("Opened document {} from {}", document.id(), source);
                                     result.complete(null);
                                 });
                     } catch (Exception failure) {
@@ -476,6 +478,7 @@ public final class DocumentController implements AutoCloseable {
     }
 
     private void finishIo(CompletableFuture<Void> future, Exception failure) {
+        if (failure != null) log.error("Document file operation failed", failure);
         dispatch.accept(
                 () -> {
                     if (closed) {
@@ -499,6 +502,8 @@ public final class DocumentController implements AutoCloseable {
     private void schedule(CadDocument document, boolean isPreview) {
         if (closed) return;
         long ticket = ++sequence;
+        log.debug(
+                "Queued rebuild {} for document {} (preview={})", ticket, document.id(), isPreview);
         rebuilding = true;
         error = "";
         synchronized (queueLock) {
@@ -529,6 +534,11 @@ public final class DocumentController implements AutoCloseable {
             try {
                 result = evaluator.apply(request.document());
             } catch (RuntimeException | LinkageError failure) {
+                log.error(
+                        "Rebuild {} failed for document {}",
+                        request.sequence(),
+                        request.document().id(),
+                        failure);
                 result = new Build(List.of(), List.of(), false);
                 message = failure.getMessage();
             }
@@ -541,7 +551,19 @@ public final class DocumentController implements AutoCloseable {
                                 || request.sequence() != sequence
                                 || request.generation() != documentGeneration
                                 || request.revision() != current.revision()
-                                || !request.document().id().equals(current.document().id())) return;
+                                || !request.document().id().equals(current.document().id())) {
+                            log.debug("Discarding obsolete rebuild {}", request.sequence());
+                            return;
+                        }
+                        if (!complete.valid() && !request.preview())
+                            log.warn(
+                                    "Document {} revision {} has rebuild diagnostics; geometry is unavailable",
+                                    request.document().id(),
+                                    request.revision());
+                        log.debug(
+                                "Published rebuild {} with {} bodies",
+                                request.sequence(),
+                                complete.bodies().size());
                         build = complete;
                         rebuilding = false;
                         displayedPreview = request.preview();
@@ -575,6 +597,7 @@ public final class DocumentController implements AutoCloseable {
 
     @Override
     public void close() {
+        log.debug("Closing document controller for {}", session.document().id());
         closed = true;
         ++sequence;
         synchronized (queueLock) {

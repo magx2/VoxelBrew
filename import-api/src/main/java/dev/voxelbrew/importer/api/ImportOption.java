@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.Objects;
 
 /** Typed, frontend-neutral provider option; values cross the SPI as canonical strings. */
+@lombok.extern.slf4j.Slf4j
 public record ImportOption(
         String key, String label, Type type, String defaultValue, List<String> choices) {
     public enum Type {
@@ -28,6 +29,7 @@ public record ImportOption(
         try {
             validate(type, value, choices);
         } catch (IllegalArgumentException failure) {
+            log.debug("Rejected importer option {} of type {}", key, type);
             throw new IllegalArgumentException(
                     "Invalid option '" + key + "': " + failure.getMessage(), failure);
         }

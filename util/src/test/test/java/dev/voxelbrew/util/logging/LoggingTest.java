@@ -45,7 +45,7 @@ class LoggingTest {
         assertArrayEquals(rootHandlers, Logger.getLogger("").getHandlers());
         try (var files = Files.list(logs)) {
             var paths = files.filter(path -> path.toString().endsWith(".log")).toList();
-            assertEquals(2, paths.size());
+            assertEquals(3, paths.size());
             boolean found = false;
             for (Path path : paths)
                 found |= Files.readString(path).contains("Zażółć ☕ final marker");
@@ -73,6 +73,7 @@ class LoggingTest {
                 log.trace("hidden trace");
                 log.debug("revision {}", 42);
                 log.warn("Cannot read {}", "plate.jcad", new IOException("file unavailable"));
+                log.warn("Console UTF-8: Zażółć ☕");
             } finally {
                 Logging.close();
                 System.setOut(originalOut);
@@ -85,6 +86,7 @@ class LoggingTest {
         assertFalse(console.contains("hidden trace"));
         assertEquals(1, console.split("Cannot read plate.jcad", -1).length - 1);
         assertTrue(console.contains("java.io.IOException: file unavailable"));
+        assertTrue(console.contains("Console UTF-8: Zażółć ☕"));
         assertArrayEquals(rootHandlers, Logger.getLogger("").getHandlers());
         try (var files = Files.list(logs)) {
             var paths = files.filter(path -> path.toString().endsWith(".log")).toList();
@@ -105,5 +107,101 @@ class LoggingTest {
                 IllegalArgumentException.class,
                 () -> Logging.configure(config, directory.resolve("logs"), "cli"));
         assertFalse(Files.exists(directory.resolve("logs")));
+    }
+
+    @Test
+    void restartArchivesThePreviousSessionAndUsesTheExactActiveFilename() throws Exception {
+        var config = new UserConfiguration(directory.resolve("config.properties"));
+        config.set("logging.console.level", "OFF");
+        Path logs = directory.resolve("log");
+        try {
+            Logging.configure(config, logs, "gui");
+            log.info("first-session-marker");
+            Logging.close();
+            Logging.configure(config, logs, "cli");
+            log.info("second-session-marker");
+        } finally {
+            Logging.close();
+        }
+        String active = Files.readString(logs.resolve("app.log"));
+        assertTrue(active.contains("second-session-marker"));
+        assertTrue(active.contains("INFO [cli:"));
+        assertFalse(active.contains("first-session-marker"));
+        try (var files = Files.list(logs)) {
+            var archives =
+                    files.filter(p -> p.getFileName().toString().startsWith("app-")).toList();
+            assertEquals(1, archives.size());
+            assertTrue(Files.readString(archives.getFirst()).contains("first-session-marker"));
+        }
+    }
+
+    @Test
+    void defaultsRotateAtTwentyMebibytesWithoutSplittingRecords() throws Exception {
+        var config = new UserConfiguration(directory.resolve("config.properties"));
+        config.set("logging.console.level", "OFF");
+        Path logs = directory.resolve("log");
+        String payload = ".".repeat(1024 * 1024);
+        try {
+            Logging.configure(config, logs, "gui");
+            for (int i = 0; i < 21; i++) log.info("record-{} {}", i, payload);
+        } finally {
+            Logging.close();
+        }
+        try (var files = Files.list(logs)) {
+            var paths = files.filter(p -> p.toString().endsWith(".log")).toList();
+            assertEquals(2, paths.size());
+            for (var path : paths) assertTrue(Files.size(path) <= 20L * 1024 * 1024);
+            long archived =
+                    paths.stream()
+                            .filter(p -> !p.getFileName().toString().equals("app.log"))
+                            .mapToLong(p -> p.toFile().length())
+                            .sum();
+            assertTrue(archived >= 19L * 1024 * 1024);
+            String active = Files.readString(logs.resolve("app.log"));
+            assertTrue(active.contains("record-20 "));
+            assertFalse(active.contains("record-0 "));
+        }
+    }
+
+    @Test
+    void consoleCanBeMoreVerboseThanFileAndUnrelatedArchivesArePreserved() throws Exception {
+        var config = new UserConfiguration(directory.resolve("config.properties"));
+        config.update(
+                Map.of(
+                        "logging.level",
+                        "ERROR",
+                        "logging.console.level",
+                        "DEBUG",
+                        "logging.file.count",
+                        "1"),
+                Set.of());
+        Path logs = Files.createDirectory(directory.resolve("log"));
+        Path unrelated = Files.writeString(logs.resolve("app-personal.log"), "keep");
+        var stderr = new ByteArrayOutputStream();
+        PrintStream original = System.err;
+        try (var capture = new PrintStream(stderr, true, StandardCharsets.UTF_8)) {
+            System.setErr(capture);
+            try {
+                for (int i = 0; i < 3; i++) {
+                    Logging.configure(config, logs, "cli");
+                    log.debug("console-only-marker");
+                    log.error("error-marker");
+                    Logging.close();
+                }
+            } finally {
+                Logging.close();
+                System.setErr(original);
+            }
+        }
+        assertTrue(stderr.toString(StandardCharsets.UTF_8).contains("console-only-marker"));
+        assertFalse(Files.readString(logs.resolve("app.log")).contains("console-only-marker"));
+        assertTrue(Files.readString(logs.resolve("app.log")).contains("ERROR"));
+        assertEquals("keep", Files.readString(unrelated));
+        try (var files = Files.list(logs)) {
+            assertEquals(
+                    1,
+                    files.filter(p -> p.getFileName().toString().matches("app-\\d.*\\.log"))
+                            .count());
+        }
     }
 }

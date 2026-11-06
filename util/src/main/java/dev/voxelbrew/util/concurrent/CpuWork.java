@@ -8,6 +8,7 @@ import java.util.function.*;
 /**
  * Bounded CPU workers for independent operations. Every call joins all its work before returning.
  */
+@lombok.extern.slf4j.Slf4j
 public final class CpuWork {
     private CpuWork() {}
 
@@ -59,6 +60,7 @@ public final class CpuWork {
                 throw new IllegalArgumentException(
                         "voxelbrew.compute.threads must be from 1 to 32");
             this.parallelism = parallelism;
+            log.debug("Creating computation pool with parallelism {}", parallelism);
             executor =
                     parallelism == 1
                             ? null

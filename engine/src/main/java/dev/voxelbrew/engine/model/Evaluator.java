@@ -13,6 +13,7 @@ import java.util.Map;
 import java.util.function.Function;
 
 /** Deterministic full replay. Only earlier, named outputs can be referenced. */
+@lombok.extern.slf4j.Slf4j
 public final class Evaluator {
     private Evaluator() {}
 
@@ -33,6 +34,7 @@ public final class Evaluator {
             result = replay(document, registry::evaluate);
             return result;
         } catch (IOException failure) {
+            log.warn("Cannot load feature plugins from {}", pluginDirectory, failure);
             if (result != null) result.close();
             return replay(
                     document,
@@ -46,6 +48,12 @@ public final class Evaluator {
 
     private static Evaluation replay(
             CadDocument document, Function<Feature.Custom, Solid> customEvaluator) {
+        long started = System.nanoTime();
+        log.debug(
+                "Rebuilding document {}: {} features, cursor {}",
+                document.id(),
+                document.features().size(),
+                document.cursor());
         var diagnostics = new ArrayList<Evaluation.Diagnostic>();
         var owned = new ArrayList<Solid>();
         Map<String, Feature.Sketch> sketches = new LinkedHashMap<>();
@@ -63,6 +71,7 @@ public final class Evaluator {
                     throw new IllegalArgumentException(
                             "Binding refers to missing feature " + binding.target());
         } catch (IllegalArgumentException failure) {
+            log.debug("Parameter evaluation failed for document {}", document.id(), failure);
             return new Evaluation(
                     document,
                     List.of(new Evaluation.Diagnostic("parameters", FAILED, failure.getMessage())),
@@ -247,15 +256,28 @@ public final class Evaluator {
                     states.put(feature.id(), OK);
                     diagnostics.add(new Evaluation.Diagnostic(feature.id(), OK, "rebuilt"));
                 } catch (Blocked failure) {
+                    log.debug("Feature {} blocked: {}", feature.id(), failure.getMessage());
                     states.put(feature.id(), BLOCKED);
                     diagnostics.add(
                             new Evaluation.Diagnostic(feature.id(), BLOCKED, failure.getMessage()));
                 } catch (RuntimeException failure) {
+                    log.debug(
+                            "Feature {} failed in document {}",
+                            feature.id(),
+                            document.id(),
+                            failure);
                     states.put(feature.id(), FAILED);
                     diagnostics.add(
                             new Evaluation.Diagnostic(feature.id(), FAILED, failure.getMessage()));
                 }
             }
+            if (log.isDebugEnabled())
+                log.debug(
+                        "Rebuilt document {} in {} ms: {} active bodies, {} failed features",
+                        document.id(),
+                        (System.nanoTime() - started) / 1_000_000,
+                        active.size(),
+                        diagnostics.stream().filter(d -> d.state() == FAILED).count());
             return new Evaluation(
                     document, diagnostics, new ArrayList<>(active.values()), owned, resolved);
         } catch (Throwable failure) {

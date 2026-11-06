@@ -12,6 +12,7 @@ import javafx.stage.Stage;
 import javafx.util.Duration;
 
 /** Explicit opt-in acceptance command, exercised through the packaged native launcher. */
+@lombok.extern.slf4j.Slf4j
 final class PackageSmoke {
     private PackageSmoke() {}
 
@@ -27,7 +28,7 @@ final class PackageSmoke {
                     try {
                         action.run();
                     } catch (Exception failure) {
-                        failure.printStackTrace();
+                        log.error("Packaged GUI smoke check failed", failure);
                         System.exit(1);
                     }
                 });

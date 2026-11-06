@@ -29,6 +29,20 @@ class ConfigurationProcessTest {
                                         .getProtectionDomain()
                                         .getCodeSource()
                                         .getLocation()
+                                        .toURI())
+                        + java.io.File.pathSeparator
+                        + Path.of(
+                                org.slf4j.LoggerFactory.class
+                                        .getProtectionDomain()
+                                        .getCodeSource()
+                                        .getLocation()
+                                        .toURI())
+                        + java.io.File.pathSeparator
+                        + Path.of(
+                                Class.forName("org.slf4j.jul.JULServiceProvider")
+                                        .getProtectionDomain()
+                                        .getCodeSource()
+                                        .getLocation()
                                         .toURI());
         var processes = new ArrayList<Process>();
         try {

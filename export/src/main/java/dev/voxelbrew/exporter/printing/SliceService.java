@@ -10,6 +10,7 @@ import java.nio.file.*;
 import java.util.*;
 import java.util.function.Consumer;
 
+@lombok.extern.slf4j.Slf4j
 public final class SliceService {
     @FunctionalInterface
     public interface Commit {
@@ -85,6 +86,12 @@ public final class SliceService {
             throw new IOException(
                     "Backend does not support the requested process capabilities: " + required);
         diagnostics.accept("Backend: " + probe.actualVersion());
+        log.info(
+                "Slicing document {} revision {} using {} ({})",
+                model.documentId(),
+                model.revision(),
+                descriptor.id(),
+                probe.actualVersion());
         Path work = Files.createTempDirectory(target.getParent(), ".voxelbrew-slice-");
         try {
             Path raw = work.resolve("sliced.gcode"), complete = work.resolve("complete.gcode");
@@ -141,7 +148,20 @@ public final class SliceService {
                                                     StandardCopyOption.REPLACE_EXISTING);
                                         else Files.createLink(target, complete);
                                     }));
+            log.info(
+                    "Published sliced job {} with {} model layers",
+                    target,
+                    job.modelLayers().size());
             return new Result(target, job, probe.actualVersion());
+        } catch (java.util.concurrent.CancellationException cancelled) {
+            log.info("Slicing cancelled for document {}", model.documentId());
+            throw cancelled;
+        } catch (OutdatedException outdated) {
+            log.warn("Discarded sliced job for outdated revision {}", model.revision());
+            throw outdated;
+        } catch (IOException | RuntimeException failure) {
+            log.error("Slicing failed for document {}", model.documentId(), failure);
+            throw failure;
         } finally {
             try (var files = Files.walk(work)) {
                 for (var path : files.sorted(Comparator.reverseOrder()).toList())

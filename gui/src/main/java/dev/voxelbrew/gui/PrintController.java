@@ -17,6 +17,7 @@ import lombok.experimental.Accessors;
 
 /** Owner-thread state with cancellable worker execution and revision-guarded publication. */
 @javax.inject.Singleton
+@lombok.extern.slf4j.Slf4j
 public final class PrintController implements AutoCloseable {
     public enum State {
         IDLE,
@@ -178,6 +179,10 @@ public final class PrintController implements AutoCloseable {
                                     onChanged.run();
                                 });
                     } catch (Exception | LinkageError failure) {
+                        if (failure instanceof CancellationException
+                                || failure instanceof SliceService.OutdatedException)
+                            log.debug("Print job cancelled or outdated", failure);
+                        else log.error("Print job failed", failure);
                         dispatch.accept(
                                 () -> {
                                     if (closed || ticket != generation) {
@@ -244,6 +249,7 @@ public final class PrintController implements AutoCloseable {
 
     public void cancel() {
         if (cancellation != null && running && cancellation.cancel()) {
+            log.info("Print cancellation requested");
             state = State.CANCELLED;
             result = null;
             message = "Cancelling slicer";

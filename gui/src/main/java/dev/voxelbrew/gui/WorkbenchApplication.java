@@ -10,6 +10,7 @@ import javafx.scene.Scene;
 import javafx.stage.Screen;
 import javafx.stage.Stage;
 
+@lombok.extern.slf4j.Slf4j
 public final class WorkbenchApplication extends Application {
     private Workbench workbench;
 
@@ -46,6 +47,7 @@ public final class WorkbenchApplication extends Application {
         stage.setMinWidth(Math.min(1100, screen.getWidth() - 60));
         stage.setMinHeight(Math.min(700, screen.getHeight() - 80));
         stage.show();
+        log.info("Workbench window opened with plugin directory {}", plugins);
         if (open != null) workbench.controller().open(open).exceptionally(failure -> null);
         if (args.contains("--smoke-test")) {
             var controller = workbench.controller();
@@ -75,6 +77,7 @@ public final class WorkbenchApplication extends Application {
 
     @Override
     public void stop() {
+        log.info("Closing workbench application");
         if (workbench != null) workbench.close();
     }
 }

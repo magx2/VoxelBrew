@@ -9,6 +9,7 @@ import java.nio.file.*;
 import java.util.*;
 
 /** Isolated class loader for trusted feature JARs; a broken provider does not disable others. */
+@lombok.extern.slf4j.Slf4j
 public final class FeatureRegistry implements AutoCloseable {
     @FunctionalInterface
     public interface Factory {
@@ -67,6 +68,8 @@ public final class FeatureRegistry implements AutoCloseable {
                 }
             }
         }
+        log.debug("Loaded {} feature providers from {}", entries.size(), directory);
+        diagnostics.forEach(message -> log.warn("Feature discovery: {}", message));
     }
 
     public List<FeatureDescriptor> descriptors() {

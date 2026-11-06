@@ -62,10 +62,13 @@ public final class VoxelBrew implements Runnable {
                 dev.voxelbrew.util.update.ApplicationImage.running(
                         dev.voxelbrew.util.update.ApplicationImage.Component.CLI)) {
             result = commandLine().execute(args);
-        } catch (java.io.IOException failure) {
+        } catch (java.io.IOException | RuntimeException | LinkageError failure) {
+            log.error("CLI startup or execution failed", failure);
             System.err.println("ERROR: " + failure.getMessage());
             result = 1;
         }
+        log.info("CLI finished with exit code {}", result);
+        dev.voxelbrew.util.logging.Logging.close();
         System.exit(result);
     }
 
@@ -86,7 +89,16 @@ public final class VoxelBrew implements Runnable {
                         .addSubcommand("export", Export.class)
                         .setExecutionExceptionHandler(
                                 (failure, command, parsed) -> {
-                                    log.debug("Command failed", failure);
+                                    if (failure instanceof IllegalArgumentException)
+                                        log.warn(
+                                                "Command {} rejected: {}",
+                                                command.getCommandName(),
+                                                failure.getMessage());
+                                    else
+                                        log.error(
+                                                "Command {} failed",
+                                                command.getCommandName(),
+                                                failure);
                                     command.getErr().println("ERROR: " + failure.getMessage());
                                     return 1;
                                 });
@@ -100,6 +112,14 @@ public final class VoxelBrew implements Runnable {
         SketchCommands.register(cliCommand);
         ParameterCommands.register(cliCommand);
         UpdateCommands.register(cliCommand);
+        cliCommand.setExecutionStrategy(
+                parsed -> {
+                    var selected = parsed;
+                    while (selected.hasSubcommand()) selected = selected.subcommand();
+                    String command = selected.commandSpec().name();
+                    log.info("Executing CLI command {}", command);
+                    return new CommandLine.RunLast().execute(parsed);
+                });
         return cliCommand;
     }
 

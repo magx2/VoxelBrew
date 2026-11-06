@@ -13,6 +13,7 @@ import lombok.Setter;
 import lombok.experimental.Accessors;
 
 /** One isolated sketch-edit transaction. Solves are coalesced and never run on the FX thread. */
+@lombok.extern.slf4j.Slf4j
 final class SketchController implements AutoCloseable {
     @dagger.assisted.AssistedFactory
     interface Factory {
@@ -231,6 +232,11 @@ final class SketchController implements AutoCloseable {
                 if (closed) return;
                 continue;
             } catch (RuntimeException failure) {
+                log.debug(
+                        "Sketch solve failed for feature {} request {}",
+                        featureId,
+                        request.sequence(),
+                        failure);
                 solved =
                         new SketchSolver.Result(
                                 request.geometry(),

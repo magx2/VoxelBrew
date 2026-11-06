@@ -3,9 +3,13 @@ package dev.voxelbrew.engine.geometry;
 import java.nio.file.Path;
 
 /** Internal JNI boundary. Tokens are registry IDs, never exposed native pointers. */
+@lombok.extern.slf4j.Slf4j
 final class NativeKernel {
     static {
         String directory = System.getProperty("voxelbrew.native.path");
+        log.debug(
+                "Loading native kernel from {}",
+                directory == null ? "system library path" : directory);
         try {
             if (directory == null || directory.isBlank()) {
                 System.loadLibrary("voxelbrew_native");
@@ -33,7 +37,13 @@ final class NativeKernel {
                 }
                 System.load(runtime.resolve(System.mapLibraryName("voxelbrew_native")).toString());
             }
+            log.info("Loaded OCCT kernel {}", version());
         } catch (UnsatisfiedLinkError failure) {
+            log.error(
+                    "Cannot load native kernel for {}/{}",
+                    System.getProperty("os.name"),
+                    System.getProperty("os.arch"),
+                    failure);
             throw new UnsatisfiedLinkError(
                     "VoxelBrew native kernel could not load for "
                             + System.getProperty("os.name")

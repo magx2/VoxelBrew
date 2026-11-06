@@ -9,6 +9,7 @@ import java.nio.file.*;
 import java.util.*;
 
 /** UTF-8 properties with cross-process read/merge/write locking and atomic publication. */
+@lombok.extern.slf4j.Slf4j
 public final class UserConfiguration {
     private static final Object[] LOCKS = new Object[32];
 
@@ -54,6 +55,11 @@ public final class UserConfiguration {
     }
 
     public void update(Map<String, String> values, Set<String> removed) throws IOException {
+        log.debug(
+                "Updating configuration {} ({} keys set, {} removed)",
+                file,
+                values.size(),
+                removed.size());
         var snapshot = Map.copyOf(values);
         var removals = Set.copyOf(removed);
         snapshot.keySet().forEach(UserConfiguration::checkKey);

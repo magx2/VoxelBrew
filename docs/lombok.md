@@ -1,6 +1,6 @@
 # Lombok and logging
 
-All six projects use Lombok **1.18.48** as `compileOnly` and `annotationProcessor`
+All eight projects use Lombok **1.18.48** as `compileOnly` and `annotationProcessor`
 in main, unit, integration and end-to-end source sets. The shared configuration is
 `gradle/lombok.gradle.kts`. Root `lombok.config` stops inherited machine-specific
 settings and is a declared compiler input, so changing it invalidates compilation.
@@ -41,6 +41,9 @@ the same JUL provider as the applications.
 files and console levels. It leaves the host application's root handlers alone.
 Only backend configuration uses JUL directly; application messages use `@Slf4j`.
 There is no reverse JUL-to-SLF4J bridge.
+
+The active file is `~/.voxelbrew/log/app.log`, with startup and 20 MB rollover.
+See [logging configuration, retention and event levels](logging.md).
 
 Existing `~/.voxelbrew/config.properties` options and JUL level names work as
 before. SLF4J names are also accepted: `TRACE` → `FINEST`, `DEBUG` → `FINE`,

@@ -15,6 +15,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.ServiceConfigurationError;
 
+@lombok.extern.slf4j.Slf4j
 public final class ExportService {
     private ExportService() {}
 
@@ -54,6 +55,7 @@ public final class ExportService {
         if (Files.exists(target) && !overwrite)
             throw new IOException("Destination exists; explicit overwrite required: " + target);
         Path temporary = Files.createTempFile(target.getParent(), ".voxelbrew-export-", ".tmp");
+        log.info("Exporting {} instances as {} to {}", view.instances().size(), format, target);
         try {
             try (var channel = FileChannel.open(temporary, StandardOpenOption.WRITE);
                     var stream = Channels.newOutputStream(channel)) {
@@ -81,11 +83,13 @@ public final class ExportService {
                         StandardCopyOption.ATOMIC_MOVE,
                         StandardCopyOption.REPLACE_EXISTING);
             else Files.createLink(target, temporary);
+            log.info("Exported {} to {}", format, target);
         } catch (IOException
                 | RuntimeException
                 | LinkageError
                 | ServiceConfigurationError
                 | AssertionError failure) {
+            log.error("Export failed for {} using {}", target, format, failure);
             throw new IOException(
                     "Exporter '" + format + "' failed: " + failure.getMessage(), failure);
         } finally {

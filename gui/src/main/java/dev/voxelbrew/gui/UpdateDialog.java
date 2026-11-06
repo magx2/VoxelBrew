@@ -234,6 +234,8 @@ final class UpdateDialog {
     }
 
     private void failed(Exception failure) {
+        if (failure instanceof CancellationException) log.debug("Update operation cancelled");
+        else log.error("Update operation failed", failure);
         Platform.runLater(
                 () -> {
                     if (closed) return;

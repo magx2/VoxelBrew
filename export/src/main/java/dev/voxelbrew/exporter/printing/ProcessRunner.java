@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
+@lombok.extern.slf4j.Slf4j
 final class ProcessRunner {
     private ProcessRunner() {}
 
@@ -22,7 +23,8 @@ final class ProcessRunner {
         var builder = new ProcessBuilder(arguments).redirectErrorStream(true);
         if (directory != null) builder.directory(directory.toFile());
         var process = builder.start();
-        var log = new StringBuilder();
+        log.debug("Started slicer process {} from {}", process.pid(), arguments.getFirst());
+        var transcript = new StringBuilder();
         Runnable stop =
                 () -> {
                     process.descendants().forEach(ProcessHandle::destroyForcibly);
@@ -39,20 +41,23 @@ final class ProcessRunner {
                                                             process.getInputStream(),
                                                             StandardCharsets.UTF_8))) {
                                         for (String line; (line = input.readLine()) != null; ) {
-                                            synchronized (log) {
-                                                if (log.length() < 65536)
-                                                    log.append(line).append('\n');
+                                            synchronized (transcript) {
+                                                if (transcript.length() < 65536)
+                                                    transcript.append(line).append('\n');
                                             }
                                             try {
                                                 sink.accept(line);
-                                            } catch (RuntimeException ignored) {
-                                                /* A diagnostic listener cannot stop draining the process pipe. */
+                                            } catch (RuntimeException failure) {
+                                                log.debug(
+                                                        "Slicer diagnostic listener failed",
+                                                        failure);
                                             }
                                         }
                                     } catch (IOException failure) {
-                                        synchronized (log) {
-                                            log.append(failure.getMessage());
+                                        synchronized (transcript) {
+                                            transcript.append(failure.getMessage());
                                         }
+                                        log.debug("Slicer output stream closed", failure);
                                     }
                                 });
         try {
@@ -66,9 +71,10 @@ final class ProcessRunner {
             reader.join(5000);
             cancellation.check();
             String output;
-            synchronized (log) {
-                output = log.toString();
+            synchronized (transcript) {
+                output = transcript.toString();
             }
+            log.debug("Slicer process {} exited with {}", process.pid(), process.exitValue());
             if (process.exitValue() != 0)
                 throw new IOException("Slicer exited with " + process.exitValue() + ":\n" + output);
             return output;

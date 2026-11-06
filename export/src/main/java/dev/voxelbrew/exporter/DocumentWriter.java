@@ -9,6 +9,7 @@ import java.nio.channels.FileChannel;
 import java.nio.file.*;
 
 /** Atomic publication of editable .jcad documents, preserving unsupported existing files. */
+@lombok.extern.slf4j.Slf4j
 public final class DocumentWriter {
     private DocumentWriter() {}
 
@@ -17,6 +18,7 @@ public final class DocumentWriter {
      */
     public static void save(CadDocument document, Path path, boolean overwrite) throws IOException {
         Path target = path.toAbsolutePath().normalize();
+        log.debug("Saving document {} to {} (overwrite={})", document.id(), target, overwrite);
         if (Files.exists(target)) {
             if (!overwrite) {
                 throw new IOException("Destination exists; use explicit overwrite: " + target);
@@ -53,6 +55,14 @@ public final class DocumentWriter {
                 // replaced.
                 Files.createLink(target, temporary);
             }
+            log.info(
+                    "Saved document {} with {} features to {}",
+                    document.id(),
+                    document.features().size(),
+                    target);
+        } catch (IOException failure) {
+            log.error("Document save failed for {}", target, failure);
+            throw failure;
         } finally {
             Files.deleteIfExists(temporary);
         }

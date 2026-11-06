@@ -1257,9 +1257,12 @@ class WorkbenchUiTest {
                 secondStage.show();
                 assertSame(second, graph.workbench());
                 assertNotSame(workbench.controller(), second.controller());
-                assertNotEquals(
-                        workbench.controller().snapshot().document().id(),
-                        second.controller().snapshot().document().id());
+                assertNotSame(
+                        workbench.controller().snapshot().document(),
+                        second.controller().snapshot().document());
+                assertNotSame(
+                        workbench.controller().snapshot().document().uuidGenerator(),
+                        second.controller().snapshot().document().uuidGenerator());
                 assertEquals(
                         new dev.voxelbrew.util.i18n.Translations(Locale.forLanguageTag("pl")).text("action.save"),
                         command(second, "save").getText());

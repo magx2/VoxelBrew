@@ -125,7 +125,7 @@ final class PrintingCommands {
             var instances = new ArrayList<>(setup.instances());
             instances.removeIf(i -> i.id().equals(id));
             instances.add(
-                    new ModelView.Instance(
+                    new BodyInstance(
                             id,
                             body,
                             Transform.translation(x, y, z)
@@ -171,7 +171,7 @@ final class PrintingCommands {
             var original = instance(setup, source);
             var instances = new ArrayList<>(setup.instances());
             instances.add(
-                    new ModelView.Instance(
+                    new BodyInstance(
                             id,
                             original.bodyId(),
                             Transform.translation(x, y, z).compose(original.transform())));
@@ -222,16 +222,14 @@ final class PrintingCommands {
                             session.document(), MeshOptions.DEFAULT, pluginDirectory);
             var transform =
                     MeshGeometry.layOnFace(
-                            model.tessellate(selected.bodyId(), MeshOptions.DEFAULT),
-                            face,
-                            selected.transform());
+                            model.mesh(selected.bodyId()), face, selected.transform());
             session.setPrintSetup(
                     setup.withInstances(
                             setup.instances().stream()
                                     .map(
                                             i ->
                                                     i.id().equals(id)
-                                                            ? new ModelView.Instance(
+                                                            ? new BodyInstance(
                                                                     i.id(), i.bodyId(), transform)
                                                             : i)
                                     .toList()));
@@ -608,7 +606,7 @@ final class PrintingCommands {
         }
     }
 
-    private static ModelView.Instance instance(PrintSetup setup, String id) {
+    private static BodyInstance instance(PrintSetup setup, String id) {
         return setup.instances().stream()
                 .filter(i -> i.id().equals(id))
                 .findFirst()

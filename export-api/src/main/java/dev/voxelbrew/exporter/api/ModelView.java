@@ -1,7 +1,8 @@
-package dev.voxelbrew.engine.model;
+package dev.voxelbrew.exporter.api;
 
 import dev.voxelbrew.engine.mesh.MeshData;
 import dev.voxelbrew.engine.mesh.MeshOptions;
+import dev.voxelbrew.engine.model.BodyInstance;
 import java.util.List;
 import java.util.Objects;
 
@@ -26,17 +27,9 @@ public interface ModelView {
         }
     }
 
-    record Instance(String id, String bodyId, Transform transform) {
-        public Instance {
-            Objects.requireNonNull(id);
-            Objects.requireNonNull(bodyId);
-            Objects.requireNonNull(transform);
-        }
-    }
-
     List<Body> bodies();
 
-    List<Instance> instances();
+    List<BodyInstance> instances();
 
     MeshData tessellate(String bodyId, MeshOptions options);
 }

@@ -2,7 +2,6 @@ package dev.voxelbrew.gui;
 
 import dev.voxelbrew.engine.mesh.MeshOptions;
 import dev.voxelbrew.engine.parameters.*;
-import dev.voxelbrew.engine.printing.ManufacturingModel;
 import dev.voxelbrew.exporter.ExportSelection;
 import dev.voxelbrew.exporter.ExporterRegistry;
 import dev.voxelbrew.exporter.api.ExportOption;
@@ -57,11 +56,11 @@ final class ExportDialog {
         UiText.enums(space, translations, "export.space.");
         space.getItems().setAll(ExportSelection.Space.values());
         space.setValue(ExportSelection.Space.DESIGN);
-        var contents = new ComboBox<ManufacturingModel.Selection>();
+        var contents = new ComboBox<ExportSelection.Contents>();
         contents.setId("export-contents");
         UiText.enums(contents, translations, "export.contents.");
-        contents.getItems().setAll(ManufacturingModel.Selection.values());
-        contents.setValue(ManufacturingModel.Selection.MODEL);
+        contents.getItems().setAll(ExportSelection.Contents.values());
+        contents.setValue(ExportSelection.Contents.MODEL);
         var instance = new ComboBox<String>();
         instance.setId("export-instance");
         UiText.choices(
@@ -88,7 +87,7 @@ final class ExportDialog {
                     body.setDisable(!design);
                     if (design) {
                         instance.setValue("All instances");
-                        contents.setValue(ManufacturingModel.Selection.MODEL);
+                        contents.setValue(ExportSelection.Contents.MODEL);
                     }
                 });
         var path = FormulaField.text("", parameters).localized(translations);

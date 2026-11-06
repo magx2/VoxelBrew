@@ -3,12 +3,14 @@ package dev.voxelbrew.exporter.printing;
 import static org.junit.jupiter.api.Assertions.*;
 
 import dev.voxelbrew.engine.mesh.*;
-import dev.voxelbrew.engine.model.ModelView;
-import dev.voxelbrew.engine.model.ModelViews;
+import dev.voxelbrew.engine.model.BodyInstance;
 import dev.voxelbrew.engine.model.Transform;
 import dev.voxelbrew.engine.printing.*;
+import dev.voxelbrew.exporter.ExportSelection;
 import dev.voxelbrew.exporter.ExportService;
 import dev.voxelbrew.exporter.ExporterRegistry;
+import dev.voxelbrew.exporter.ModelViews;
+import dev.voxelbrew.exporter.api.ModelView;
 import java.nio.*;
 import java.nio.file.*;
 import java.util.*;
@@ -20,6 +22,121 @@ import org.w3c.dom.Element;
 
 class ManufacturingTest {
     @TempDir Path directory;
+
+    @Test
+    void completeExportAdapterPreservesProfilesSupportsAndDetachedLifetime() throws Exception {
+        var session = PrintingTest.reference();
+        session.setPrintSetup(
+                session.document()
+                        .printSetup()
+                        .withSupports(
+                                List.of(
+                                        new SupportVolume(
+                                                "block",
+                                                "part",
+                                                SupportVolume.Role.BLOCKER,
+                                                0,
+                                                0,
+                                                0,
+                                                4,
+                                                4,
+                                                4),
+                                        new SupportVolume(
+                                                "pillar",
+                                                "part",
+                                                SupportVolume.Role.SOLID_SUPPORT,
+                                                15,
+                                                5,
+                                                0,
+                                                4,
+                                                4,
+                                                7.8))));
+        ModelView view;
+        try (var evaluation = session.evaluate()) {
+            view =
+                    new ExportSelection(
+                                    ExportSelection.Space.BUILD_PLATE,
+                                    ExportSelection.Contents.MODEL,
+                                    null,
+                                    null)
+                            .view(session.document(), evaluation, MeshOptions.DEFAULT);
+        }
+        // Export after the evaluation closes: the build-plate adapter owns detached meshes.
+        try (var registry = new ExporterRegistry(directory)) {
+            for (boolean includeSolids : List.of(false, true)) {
+                var output = directory.resolve("project-" + includeSolids + ".3mf");
+                ExportService.export(
+                        registry,
+                        "prusa-project",
+                        view,
+                        MeshOptions.DEFAULT,
+                        Map.of("include-support-solids", Boolean.toString(includeSolids)),
+                        output,
+                        false);
+                try (var zip = new ZipFile(output.toFile())) {
+                    var xml =
+                            DocumentBuilderFactory.newInstance()
+                                    .newDocumentBuilder()
+                                    .parse(
+                                            zip.getInputStream(
+                                                    zip.getEntry(
+                                                            "Metadata/Slic3r_PE_model.config")));
+                    assertEquals(
+                            includeSolids ? 3 : 2, xml.getElementsByTagName("volume").getLength());
+                    var metadata = xml.getElementsByTagName("metadata");
+                    var values = new ArrayList<String>();
+                    for (int i = 0; i < metadata.getLength(); i++)
+                        values.add(((Element) metadata.item(i)).getAttribute("value"));
+                    assertTrue(values.contains("part/thickness.body"));
+                    assertTrue(values.contains("part/block"));
+                    assertTrue(values.contains("SupportBlocker"));
+                    assertEquals(includeSolids, values.contains("part/pillar"));
+                    var config =
+                            new String(
+                                    zip.getInputStream(zip.getEntry("Metadata/Slic3r_PE.config"))
+                                            .readAllBytes(),
+                                    java.nio.charset.StandardCharsets.UTF_8);
+                    assertTrue(config.contains("; filament_type = PLA\n"));
+                    assertTrue(config.contains("; nozzle_diameter = 0.4\n"));
+                }
+            }
+        }
+    }
+
+    @Test
+    void projectExportRejectsFilteredViewsAndPreservesExistingDestination() throws Exception {
+        var model =
+                ManufacturingModel.evaluate(
+                        PrintingTest.reference().document(), MeshOptions.DEFAULT);
+        var view = ModelViews.from(model);
+        var output = directory.resolve("original.3mf");
+        Files.writeString(output, "original project");
+        try (var registry = new ExporterRegistry(directory)) {
+            for (var filtered :
+                    List.of(
+                            ModelViews.select(view, "thickness.body"),
+                            ModelViews.selectInstance(view, "part"),
+                            ModelViews.from(model, ExportSelection.Contents.ALL))) {
+                var failure =
+                        assertThrows(
+                                java.io.IOException.class,
+                                () ->
+                                        ExportService.export(
+                                                registry,
+                                                "prusa-project",
+                                                filtered,
+                                                MeshOptions.DEFAULT,
+                                                Map.of(),
+                                                output,
+                                                true));
+                assertTrue(failure.getMessage().contains("complete build-plate setup"));
+                assertEquals("original project", Files.readString(output));
+            }
+        }
+        try (var entries = Files.list(directory)) {
+            assertEquals(List.of(output), entries.toList());
+        }
+    }
 
     @Test
     void preflightReportsRotatedBedBoundsExcludedZonesOverlapHeightAndBrokenAttachments() {
@@ -48,16 +165,16 @@ class ManufacturingTest {
                 base.setup()
                         .withInstances(
                                 List.of(
-                                        new ModelView.Instance(
+                                        new BodyInstance(
                                                 "rotated",
                                                 "thickness.body",
                                                 Transform.translation(20, 20, 0)
                                                         .compose(Transform.rotation(0, 0, 90))),
-                                        new ModelView.Instance(
+                                        new BodyInstance(
                                                 "tall",
                                                 "thickness.body",
                                                 Transform.translation(20, 20, 198)),
-                                        new ModelView.Instance(
+                                        new BodyInstance(
                                                 "overlap",
                                                 "thickness.body",
                                                 Transform.translation(0, 20, 0))))
@@ -116,8 +233,8 @@ class ManufacturingTest {
                 PrintSetup.empty()
                         .withInstances(
                                 List.of(
-                                        new ModelView.Instance("open", "open", Transform.IDENTITY),
-                                        new ModelView.Instance(
+                                        new BodyInstance("open", "open", Transform.IDENTITY),
+                                        new BodyInstance(
                                                 "degenerate",
                                                 "degenerate",
                                                 Transform.translation(20, 0, 0))));
@@ -140,7 +257,7 @@ class ManufacturingTest {
                             ExportService.export(
                                     registry,
                                     "stl",
-                                    ModelViews.selectInstance(model, "open"),
+                                    ModelViews.selectInstance(ModelViews.from(model), "open"),
                                     MeshOptions.DEFAULT,
                                     Map.of(),
                                     file,
@@ -192,14 +309,14 @@ class ManufacturingTest {
                                                 4,
                                                 7.8))));
         var model = ManufacturingModel.evaluate(session.document(), MeshOptions.DEFAULT);
-        assertEquals(1, model.selection(ManufacturingModel.Selection.MODEL).bodies().size());
-        assertEquals(1, model.selection(ManufacturingModel.Selection.SUPPORTS).bodies().size());
+        assertEquals(1, ModelViews.from(model, ExportSelection.Contents.MODEL).bodies().size());
+        assertEquals(1, ModelViews.from(model, ExportSelection.Contents.SUPPORTS).bodies().size());
         try (var registry = new ExporterRegistry(directory)) {
             Path file = directory.resolve("supports.stl");
             ExportService.export(
                     registry,
                     "stl",
-                    model.selection(ManufacturingModel.Selection.SUPPORTS),
+                    ModelViews.from(model, ExportSelection.Contents.SUPPORTS),
                     MeshOptions.DEFAULT,
                     Map.of(),
                     file,
@@ -225,7 +342,7 @@ class ManufacturingTest {
             ExportService.export(
                     registry,
                     "3mf",
-                    model.selection(ManufacturingModel.Selection.ALL),
+                    ModelViews.from(model, ExportSelection.Contents.ALL),
                     MeshOptions.DEFAULT,
                     Map.of(),
                     packageFile,

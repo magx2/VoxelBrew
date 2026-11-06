@@ -10,13 +10,7 @@ import lombok.experimental.Accessors;
 /** Detached immutable revision shared by validators, exporters, slicers and preview. */
 @Getter
 @Accessors(fluent = true)
-public final class ManufacturingModel implements ModelView {
-    public enum Selection {
-        MODEL,
-        SUPPORTS,
-        ALL
-    }
-
+public final class ManufacturingModel {
     private final String documentId, revision;
     private final PrintSetup setup;
     private final PrintProfile profile;
@@ -63,77 +57,17 @@ public final class ManufacturingModel implements ModelView {
                 meshes);
     }
 
-    @Override
-    public List<Body> bodies() {
-        return meshes.keySet().stream()
-                .filter(id -> instances().stream().anyMatch(i -> i.bodyId().equals(id)))
-                .map(id -> new Body(id, id))
-                .toList();
-    }
-
-    @Override
-    public List<Instance> instances() {
+    public List<BodyInstance> instances() {
         return setup.instances();
     }
 
-    @Override
-    public MeshData tessellate(String body, MeshOptions options) {
-        var mesh = meshes.get(body);
-        if (mesh == null) throw new IllegalArgumentException("Missing body: " + body);
+    public MeshData mesh(String bodyId) {
+        var mesh = meshes.get(bodyId);
+        if (mesh == null) throw new IllegalArgumentException("Missing body: " + bodyId);
         return mesh;
     }
 
-    public MeshData placedMesh(Instance instance) {
-        return MeshGeometry.transform(
-                tessellate(instance.bodyId(), MeshOptions.DEFAULT), instance.transform());
-    }
-
-    public ModelView selection(Selection selection) {
-        if (selection == Selection.MODEL) return this;
-        var selectedMeshes = new LinkedHashMap<String, MeshData>();
-        var bodies = new ArrayList<Body>();
-        var instances = new ArrayList<Instance>();
-        if (selection == Selection.ALL) {
-            selectedMeshes.putAll(meshes);
-            bodies.addAll(bodies());
-            instances.addAll(instances());
-        }
-        for (var support : setup.supports())
-            if (support.role() == SupportVolume.Role.SOLID_SUPPORT) {
-                var owner =
-                        setup.instances().stream()
-                                .filter(i -> i.id().equals(support.instanceId()))
-                                .findFirst()
-                                .orElseThrow(
-                                        () ->
-                                                new IllegalArgumentException(
-                                                        "Support "
-                                                                + support.id()
-                                                                + " has missing instance "
-                                                                + support.instanceId()));
-                String id = "support." + support.id();
-                selectedMeshes.put(id, MeshGeometry.box(support));
-                bodies.add(new Body(id, support.id(), Role.SOLID_SUPPORT));
-                instances.add(new Instance(id, id, owner.transform()));
-            }
-        return new ModelView() {
-            @Override
-            public List<Body> bodies() {
-                return List.copyOf(bodies);
-            }
-
-            @Override
-            public List<Instance> instances() {
-                return List.copyOf(instances);
-            }
-
-            @Override
-            public MeshData tessellate(String body, MeshOptions options) {
-                var mesh = selectedMeshes.get(body);
-                if (mesh == null)
-                    throw new IllegalArgumentException("Unknown selected body " + body);
-                return mesh;
-            }
-        };
+    public MeshData placedMesh(BodyInstance instance) {
+        return MeshGeometry.transform(mesh(instance.bodyId()), instance.transform());
     }
 }

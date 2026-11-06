@@ -1,7 +1,9 @@
 # M2 mesh export and external providers
 
 Format implementations and exporter discovery live in the `export` project.
-The versioned SPI lives in `export-api`; the read-only CAD view remains in engine. See [file-I/O APIs and boundaries](file-io.md).
+The versioned SPI and read-only `ModelView`/`ManufacturingView` contracts live in `export-api`.
+`ModelViews` adapters and selection live in `export`; shared CAD placements stay in engine.
+See [file-I/O APIs and boundaries](file-io.md).
 
 The installed `cli`/`cli.bat` supports:
 

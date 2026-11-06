@@ -1,7 +1,7 @@
 package dev.voxelbrew.engine.printing;
 
+import dev.voxelbrew.engine.model.BodyInstance;
 import dev.voxelbrew.engine.model.CadDocument;
-import dev.voxelbrew.engine.model.ModelView;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
@@ -14,7 +14,7 @@ public record PrintSetup(
         String printerId,
         String materialId,
         ProcessSettings process,
-        List<ModelView.Instance> instances,
+        List<BodyInstance> instances,
         List<SupportVolume> supports) {
     public PrintSetup {
         CadDocument.identifier(id, "print setup ID");
@@ -53,7 +53,7 @@ public record PrintSetup(
                 List.of());
     }
 
-    public PrintSetup withInstances(List<ModelView.Instance> next) {
+    public PrintSetup withInstances(List<BodyInstance> next) {
         return new PrintSetup(
                 id, version, backendId, printerId, materialId, process, next, supports);
     }

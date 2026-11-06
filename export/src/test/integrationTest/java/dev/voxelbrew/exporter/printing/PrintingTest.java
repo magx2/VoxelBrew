@@ -36,7 +36,7 @@ class PrintingTest {
                         .printSetup()
                         .withInstances(
                                 List.of(
-                                        new ModelView.Instance(
+                                        new BodyInstance(
                                                 "part",
                                                 "thickness.body",
                                                 Transform.translation(20, 30, 0)))));
@@ -99,7 +99,7 @@ class PrintingTest {
         var session = reference();
         var first = session.document().printSetup().instances().getFirst();
         var second =
-                new ModelView.Instance(
+                new BodyInstance(
                         "copy",
                         first.bodyId(),
                         Transform.translation(150, 30, 0).compose(Transform.rotation(0, 0, 90)));

@@ -42,7 +42,7 @@ class PrintControllerTest {
                         .printSetup()
                         .withInstances(
                                 List.of(
-                                        new ModelView.Instance(
+                                        new BodyInstance(
                                                 "part",
                                                 "height.body",
                                                 Transform.translation(10, 10, 0)))));

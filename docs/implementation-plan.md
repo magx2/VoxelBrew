@@ -69,7 +69,7 @@ Expose CLI commands for creating a document, adding sketches and features, editi
 
 ### M2 — Ship mesh export and prove external plugins work
 
-Introduce a versioned ModelExporter SPI and an engine-owned read-only model view with a tessellation operation. Register binary STL and 3MF Core exporters through the same registry as external providers. Take tessellation tolerance as an explicit export option. Write STL coordinates in mm. Write units, object identities, build items and placements in 3MF.
+Introduce a versioned ModelExporter SPI and a read-only model view with a tessellation operation in export-api; concrete view adapters and format writers belong to export. Register binary STL and 3MF Core exporters through the same registry as external providers. Take tessellation tolerance as an explicit export option. Write STL coordinates in mm. Write units, object identities, build items and placements in 3MF.
 
 Discover trusted JARs from a configurable plugin directory using a dedicated class loader and ServiceLoader. Define provider IDs, API compatibility and diagnostics for duplicate IDs, incompatible versions and load errors. Compile a small independent example exporter against the published export-api artifact.
 

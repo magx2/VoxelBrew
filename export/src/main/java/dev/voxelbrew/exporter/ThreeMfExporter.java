@@ -2,15 +2,17 @@ package dev.voxelbrew.exporter;
 
 import dev.voxelbrew.engine.mesh.MeshOptions;
 import dev.voxelbrew.engine.mesh.MeshValidation;
-import dev.voxelbrew.engine.model.ModelView;
+import dev.voxelbrew.engine.model.Transform;
 import dev.voxelbrew.exporter.api.ExporterDescriptor;
 import dev.voxelbrew.exporter.api.ModelExporter;
+import dev.voxelbrew.exporter.api.ModelView;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.StringJoiner;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 import javax.xml.stream.XMLOutputFactory;
@@ -82,7 +84,7 @@ public final class ThreeMfExporter implements ModelExporter {
             for (var instance : model.instances()) {
                 xml.writeEmptyElement("item");
                 xml.writeAttribute("objectid", Integer.toString(ids.get(instance.bodyId())));
-                xml.writeAttribute("transform", instance.transform().threeMfValues());
+                xml.writeAttribute("transform", transformValues(instance.transform()));
             }
             xml.writeEndElement();
             xml.writeEndElement();
@@ -92,6 +94,14 @@ public final class ThreeMfExporter implements ModelExporter {
         } catch (XMLStreamException failure) {
             throw new IOException("3MF XML write failed", failure);
         }
+    }
+
+    private static String transformValues(Transform transform) {
+        var matrix = transform.matrix();
+        var values = new StringJoiner(" ");
+        for (int index : new int[] {0, 4, 8, 1, 5, 9, 2, 6, 10, 3, 7, 11})
+            values.add(Double.toString(matrix[index]));
+        return values.toString();
     }
 
     private static void text(ZipOutputStream zip, String name, String content) throws IOException {

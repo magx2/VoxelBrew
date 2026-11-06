@@ -1,10 +1,10 @@
 package consumer;
 
 import dev.voxelbrew.engine.mesh.MeshOptions;
-import dev.voxelbrew.engine.model.ModelView;
 import dev.voxelbrew.exporter.api.ExportOption;
 import dev.voxelbrew.exporter.api.ExporterDescriptor;
 import dev.voxelbrew.exporter.api.ModelExporter;
+import dev.voxelbrew.exporter.api.ModelView;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;

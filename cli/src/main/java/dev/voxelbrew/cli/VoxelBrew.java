@@ -7,6 +7,7 @@ import dev.voxelbrew.exporter.ExportSelection;
 import dev.voxelbrew.exporter.ExportService;
 import dev.voxelbrew.exporter.ExporterRegistry;
 import dev.voxelbrew.exporter.api.DocumentSink;
+import dev.voxelbrew.exporter.api.ModelView;
 import dev.voxelbrew.importer.api.DocumentSource;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -184,7 +185,7 @@ public final class VoxelBrew implements Runnable {
                 defaultValue = "MODEL",
                 description =
                         "MODEL (default), SUPPORTS or ALL; support solids require BUILD_PLATE")
-        dev.voxelbrew.engine.printing.ManufacturingModel.Selection contents;
+        ExportSelection.Contents contents;
 
         @Option(names = "--plugin-dir")
         Path pluginDirectory = ExporterRegistry.defaultDirectory();

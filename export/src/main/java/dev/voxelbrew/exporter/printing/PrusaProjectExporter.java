@@ -1,11 +1,13 @@
 package dev.voxelbrew.exporter.printing;
 
 import dev.voxelbrew.engine.mesh.*;
-import dev.voxelbrew.engine.model.ModelView;
+import dev.voxelbrew.engine.model.BodyInstance;
 import dev.voxelbrew.engine.printing.*;
 import dev.voxelbrew.exporter.api.ExportOption;
 import dev.voxelbrew.exporter.api.ExporterDescriptor;
+import dev.voxelbrew.exporter.api.ManufacturingView;
 import dev.voxelbrew.exporter.api.ModelExporter;
+import dev.voxelbrew.exporter.api.ModelView;
 import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
@@ -37,9 +39,10 @@ public final class PrusaProjectExporter implements ModelExporter {
     public void write(
             ModelView view, MeshOptions options, Map<String, String> supplied, OutputStream output)
             throws IOException {
-        if (!(view instanceof ManufacturingModel model))
+        if (!(view instanceof ManufacturingView manufacturing))
             throw new IOException(
                     "Prusa project export requires the complete build-plate setup, with profiles and support instructions");
+        var model = manufacturing.manufacturingModel();
         PrintValidation.validate(model).requireValid();
         var setup = model.setup();
         if (!Boolean.parseBoolean(supplied.getOrDefault("include-support-solids", "false")))
@@ -58,7 +61,7 @@ public final class PrusaProjectExporter implements ModelExporter {
                 output);
     }
 
-    public static List<Volume> volumes(ManufacturingModel model, ModelView.Instance instance) {
+    public static List<Volume> volumes(ManufacturingModel model, BodyInstance instance) {
         var result = new ArrayList<Volume>();
         result.add(
                 new Volume(

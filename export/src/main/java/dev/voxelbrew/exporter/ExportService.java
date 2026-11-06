@@ -1,7 +1,7 @@
 package dev.voxelbrew.exporter;
 
 import dev.voxelbrew.engine.mesh.MeshOptions;
-import dev.voxelbrew.engine.model.ModelView;
+import dev.voxelbrew.exporter.api.ModelView;
 import java.io.FilterOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;

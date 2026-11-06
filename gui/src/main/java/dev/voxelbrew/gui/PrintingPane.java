@@ -1,7 +1,7 @@
 package dev.voxelbrew.gui;
 
 import dev.voxelbrew.engine.mesh.*;
-import dev.voxelbrew.engine.model.ModelView;
+import dev.voxelbrew.engine.model.BodyInstance;
 import dev.voxelbrew.engine.model.Transform;
 import dev.voxelbrew.engine.parameters.*;
 import dev.voxelbrew.engine.persistence.DocumentCodec;
@@ -433,7 +433,7 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
         return document.snapshot().document().printSetup();
     }
 
-    private ModelView.Instance selected() {
+    private BodyInstance selected() {
         return setup().instances().stream()
                 .filter(i -> i.id().equals(instances.getValue()))
                 .findFirst()
@@ -461,7 +461,7 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
         var all = new ArrayList<>(setup().instances());
         String id = "part-" + UUID.randomUUID();
         all.add(
-                new ModelView.Instance(
+                new BodyInstance(
                         id,
                         body,
                         Transform.translation(
@@ -482,14 +482,14 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
                                         number("print-rotate-y"),
                                         number("print-rotate-z")));
         replace(
-                new ModelView.Instance(
+                new BodyInstance(
                         selected.id(),
                         Objects.requireNonNull(
                                 bodies.getValue(), translations.text("gui.choose_a_cad_body")),
                         transform));
     }
 
-    private void replace(ModelView.Instance selected) {
+    private void replace(BodyInstance selected) {
         commit(
                 setup().withInstances(
                                 setup().instances().stream()
@@ -502,7 +502,7 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
         String id = "part-" + UUID.randomUUID();
         var all = new ArrayList<>(setup().instances());
         all.add(
-                new ModelView.Instance(
+                new BodyInstance(
                         id,
                         source.bodyId(),
                         Transform.translation(70, 0, 0).compose(source.transform())));
@@ -542,7 +542,7 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
                         .orElseThrow()
                         .mesh();
         replace(
-                new ModelView.Instance(
+                new BodyInstance(
                         selected.id(),
                         selected.bodyId(),
                         MeshGeometry.layOnFace(mesh, integer("print-face"), selected.transform())));
@@ -697,7 +697,7 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
                 String selected = instances.getValue();
                 instances
                         .getItems()
-                        .setAll(setup().instances().stream().map(ModelView.Instance::id).toList());
+                        .setAll(setup().instances().stream().map(BodyInstance::id).toList());
                 instances.setValue(
                         instances.getItems().contains(selected)
                                 ? selected

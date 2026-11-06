@@ -6,6 +6,7 @@ import dev.voxelbrew.exporter.DocumentWriter;
 import dev.voxelbrew.exporter.ExportSelection;
 import dev.voxelbrew.exporter.ExportService;
 import dev.voxelbrew.exporter.ExporterRegistry;
+import dev.voxelbrew.exporter.api.ModelView;
 import dev.voxelbrew.importer.DocumentReader;
 import java.nio.file.Path;
 import java.util.*;

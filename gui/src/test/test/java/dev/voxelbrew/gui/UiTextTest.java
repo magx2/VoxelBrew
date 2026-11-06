@@ -36,7 +36,7 @@ class UiTextTest {
             choices(t, "print.capability.", SlicerBackend.Capability.values());
             choices(t, "print.state.", PrintController.State.values());
             choices(t, "export.space.", ExportSelection.Space.values());
-            choices(t, "export.contents.", ManufacturingModel.Selection.values());
+            choices(t, "export.contents.", ExportSelection.Contents.values());
         }
     }
 

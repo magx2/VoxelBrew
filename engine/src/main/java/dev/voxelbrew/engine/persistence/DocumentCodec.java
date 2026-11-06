@@ -1,9 +1,9 @@
 package dev.voxelbrew.engine.persistence;
 
 import com.google.protobuf.Message;
+import dev.voxelbrew.engine.model.BodyInstance;
 import dev.voxelbrew.engine.model.CadDocument;
 import dev.voxelbrew.engine.model.Feature;
-import dev.voxelbrew.engine.model.ModelView;
 import dev.voxelbrew.engine.model.Transform;
 import dev.voxelbrew.engine.persistence.proto.DocumentProto;
 import dev.voxelbrew.engine.printing.*;
@@ -240,7 +240,7 @@ public final class DocumentCodec {
                 setup.getInstancesList().stream()
                         .map(
                                 i ->
-                                        new ModelView.Instance(
+                                        new BodyInstance(
                                                 i.getId(),
                                                 i.getBodyId(),
                                                 new Transform(

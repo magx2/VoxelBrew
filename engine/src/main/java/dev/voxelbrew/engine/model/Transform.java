@@ -1,7 +1,6 @@
 package dev.voxelbrew.engine.model;
 
 import java.util.Arrays;
-import java.util.stream.Collectors;
 
 /** Rigid, orientation-preserving 3x4 row-major placement. Distances are mm. */
 public final class Transform {
@@ -117,14 +116,5 @@ public final class Transform {
             m[4] * x + m[5] * y + m[6] * z + m[7],
             m[8] * x + m[9] * y + m[10] * z + m[11]
         };
-    }
-
-    public String threeMfValues() {
-        return Arrays.stream(
-                        new double[] {
-                            m[0], m[4], m[8], m[1], m[5], m[9], m[2], m[6], m[10], m[3], m[7], m[11]
-                        })
-                .mapToObj(Double::toString)
-                .collect(Collectors.joining(" "));
     }
 }

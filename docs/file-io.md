@@ -16,8 +16,12 @@ The Java packages are `dev.voxelbrew.importer` and `dev.voxelbrew.exporter`;
 
 The APIs contain only public contracts and their value types. Concrete format classes,
 registries, services and ServiceLoader registrations stay in `import` / `export`.
-Engine has no production dependency on either API or implementation module. CAD views,
-instances and transforms live in `dev.voxelbrew.engine.model`. All services are headless.
+Engine has no production dependency on either API or implementation module. Export inputs
+`ModelView` and `ManufacturingView` live in `dev.voxelbrew.exporter.api`; the concrete
+`ModelViews` adapters and `ExportSelection` live in `dev.voxelbrew.exporter`. Shared CAD
+placements (`BodyInstance` and `Transform`) stay in `dev.voxelbrew.engine.model`.
+`ManufacturingModel` is a detached CAD/manufacturing snapshot, independent of the export API.
+All services are headless.
 STL mesh-to-editable-CAD and STEP import remain outside the implemented workflow.
 
 ## Public file operations
@@ -66,6 +70,14 @@ newer-file guard. Use a built distribution to open files from a released version
 live in `dev.voxelbrew.exporter`. Prusa project/configuration writers, the backend,
 slicer registry and `SliceService` live in `dev.voxelbrew.exporter.printing`.
 `GcodeJob` stays an immutable engine preview model; use `GcodeReader.read` to load it.
+
+Use `ModelViews.from(evaluation)` for design geometry, keeping the owning evaluation open
+throughout export. `ModelViews.from(manufacturingModel)` adapts an already detached snapshot
+and exposes `ManufacturingView.manufacturingModel()` for project exporters that need the
+complete print setup. Selecting bodies, instances, or support solids returns a plain
+`ModelView`; it cannot be used as a complete slicer project. `ExportSelection.Contents`
+controls model/support/all geometry selection. Format-specific transform serialization
+(including 3MF matrix ordering) belongs to the format writer, not the engine placement type.
 
 ## Authoring an external provider
 

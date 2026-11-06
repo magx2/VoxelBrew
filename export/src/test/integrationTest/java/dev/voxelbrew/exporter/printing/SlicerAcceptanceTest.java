@@ -6,8 +6,10 @@ import dev.voxelbrew.engine.mesh.*;
 import dev.voxelbrew.engine.model.*;
 import dev.voxelbrew.engine.printing.*;
 import dev.voxelbrew.exporter.DocumentWriter;
+import dev.voxelbrew.exporter.ExportSelection;
 import dev.voxelbrew.exporter.ExportService;
 import dev.voxelbrew.exporter.ExporterRegistry;
+import dev.voxelbrew.exporter.ModelViews;
 import dev.voxelbrew.importer.DocumentReader;
 import dev.voxelbrew.importer.GcodeReader;
 import java.nio.file.*;
@@ -48,7 +50,7 @@ class SlicerAcceptanceTest {
                         .filter(f -> f instanceof Feature.Extrude)
                         .map(
                                 f ->
-                                        new ModelView.Instance(
+                                        new BodyInstance(
                                                 f.id(),
                                                 f.id() + ".body",
                                                 Transform.translation(20, 30, 0)))
@@ -65,7 +67,7 @@ class SlicerAcceptanceTest {
                         .printSetup()
                         .withInstances(
                                 List.of(
-                                        new ModelView.Instance(
+                                        new BodyInstance(
                                                 "cube",
                                                 "cube.body",
                                                 Transform.translation(20, 30, 0)))));
@@ -334,7 +336,7 @@ class SlicerAcceptanceTest {
             ExportService.export(
                     registry,
                     "stl",
-                    ModelViews.selectInstance(model, "roof"),
+                    ModelViews.selectInstance(ModelViews.from(model), "roof"),
                     MeshOptions.DEFAULT,
                     Map.of(),
                     roof,
@@ -342,7 +344,7 @@ class SlicerAcceptanceTest {
             ExportService.export(
                     registry,
                     "stl",
-                    ModelViews.selectInstance(model, "leg"),
+                    ModelViews.selectInstance(ModelViews.from(model), "leg"),
                     MeshOptions.DEFAULT,
                     Map.of(),
                     leg,
@@ -350,7 +352,7 @@ class SlicerAcceptanceTest {
             ExportService.export(
                     registry,
                     "stl",
-                    model.selection(ManufacturingModel.Selection.SUPPORTS),
+                    ModelViews.from(model, ExportSelection.Contents.SUPPORTS),
                     MeshOptions.DEFAULT,
                     Map.of(),
                     pillar,
@@ -358,7 +360,7 @@ class SlicerAcceptanceTest {
             ExportService.export(
                     registry,
                     "3mf",
-                    model.selection(ManufacturingModel.Selection.ALL),
+                    ModelViews.from(model, ExportSelection.Contents.ALL),
                     MeshOptions.DEFAULT,
                     Map.of(),
                     artifacts.resolve("handoff-assembly.3mf"),
@@ -377,10 +379,7 @@ class SlicerAcceptanceTest {
                         .withSupports(List.of())
                         .withInstances(
                                 importedMeshes.keySet().stream()
-                                        .map(
-                                                id ->
-                                                        new ModelView.Instance(
-                                                                id, id, Transform.IDENTITY))
+                                        .map(id -> new BodyInstance(id, id, Transform.IDENTITY))
                                         .toList());
         var imported =
                 new ManufacturingModel(
@@ -446,7 +445,7 @@ class SlicerAcceptanceTest {
                         .withInstances(
                                 List.of(
                                         first,
-                                        new ModelView.Instance(
+                                        new BodyInstance(
                                                 "rotated",
                                                 first.bodyId(),
                                                 Transform.translation(150, 30, 0)
@@ -454,7 +453,14 @@ class SlicerAcceptanceTest {
         var model = ManufacturingModel.evaluate(session.document(), MeshOptions.DEFAULT);
         Path core = artifacts.resolve("portable-two-instances.3mf");
         try (var registry = new ExporterRegistry(artifacts.resolve("no-plugins"))) {
-            ExportService.export(registry, "3mf", model, MeshOptions.DEFAULT, Map.of(), core, true);
+            ExportService.export(
+                    registry,
+                    "3mf",
+                    ModelViews.from(model),
+                    MeshOptions.DEFAULT,
+                    Map.of(),
+                    core,
+                    true);
         }
         Path config = artifacts.resolve("portable.ini");
         Files.writeString(config, PrusaConfiguration.ini(model));

@@ -18,7 +18,7 @@ public final class ComputeBenchmark {
 
     public static CadDocument document(int bodies, int holes) {
         var features = new ArrayList<Feature>();
-        var placements = new ArrayList<ModelView.Instance>();
+        var placements = new ArrayList<BodyInstance>();
         for (int body = 0; body < bodies; body++) {
             String prefix = "part" + body;
             var plane = new Feature.Plane("origin-xy", 0);
@@ -28,7 +28,7 @@ public final class ComputeBenchmark {
             String output = prefix + "extrude";
             features.add(new Feature.Extrude(output, new Feature.ProfileRef(prefix, "profile"), 8));
             placements.add(
-                    new ModelView.Instance(
+                    new BodyInstance(
                             prefix,
                             output + ".body",
                             Transform.translation((body % 4) * 45, (body / 4) * 35, 0)));

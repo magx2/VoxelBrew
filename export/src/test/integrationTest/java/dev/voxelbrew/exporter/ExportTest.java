@@ -74,7 +74,7 @@ class ExportTest {
                     ModelViews.placed(
                             evaluation,
                             List.of(
-                                    new ModelView.Instance(
+                                    new BodyInstance(
                                             "translated",
                                             "thickness.body",
                                             Transform.translation(25, -7, 3))));
@@ -109,9 +109,8 @@ class ExportTest {
                     ModelViews.placed(
                             evaluation,
                             List.of(
-                                    new ModelView.Instance(
-                                            "first", "thickness.body", Transform.IDENTITY),
-                                    new ModelView.Instance(
+                                    new BodyInstance("first", "thickness.body", Transform.IDENTITY),
+                                    new BodyInstance(
                                             "second",
                                             "thickness.body",
                                             new Transform(

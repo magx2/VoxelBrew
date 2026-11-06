@@ -61,10 +61,15 @@ and unsaved edits. This preference never enters a `.jcad` file.
 
 Dagger supplies an immutable `Translations` instance to each window.
 `Translations.current()` is also available to process-level callers. Both read
-`language` when created: `en` (default),
-`pl`, a BCP 47 language tag, or `system` for the desktop locale. Restart after
-changing it. Unsupported languages fall back to English, independently of the
-host locale; missing keys raise a diagnostic rather than silently displaying a key.
+`language` when created: `system` (default), `en`, `pl`, or a BCP 47 language tag.
+On first launch, or with a missing/blank preference, the GUI uses the system's
+display language rather than its number/date formatting locale. An unset or
+unsupported system language falls back to English. A saved language overrides
+the system; invalid or unsupported saved languages also fall back to English.
+Detection does not write a preference, so System remains selected until changed
+explicitly. Restart after changing it. INFO logs record the selected language,
+its source, and any fallback reason. Missing keys raise a diagnostic rather than
+silently displaying a key.
 Bundled runtimes include `jdk.localedata`, so locale-specific number/date formatting
 works consistently with the development JDK.
 Create `new Translations(locale)` for an explicit locale and use `text(key, args)`

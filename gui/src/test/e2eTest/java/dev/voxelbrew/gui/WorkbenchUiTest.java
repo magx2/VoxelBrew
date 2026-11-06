@@ -74,9 +74,10 @@ class WorkbenchUiTest {
         configuration =
                 new dev.voxelbrew.util.config.UserConfiguration(
                         directory.resolve("preferences.properties"));
-        configuration.set(
-                "language",
-                info.getTestMethod().orElseThrow().getName().startsWith("polish") ? "pl" : "en");
+        String testName = info.getTestMethod().orElseThrow().getName();
+        boolean firstLaunch = testName.startsWith("firstLaunch");
+        if (!firstLaunch)
+            configuration.set("language", testName.startsWith("polish") ? "pl" : "en");
         configuration.set("external.setting", "preserve me");
         Path plugins = Files.createDirectory(directory.resolve("plugins with spaces"));
         Files.copy(
@@ -87,13 +88,21 @@ class WorkbenchUiTest {
                     stage = new Stage();
                     if (System.getProperty("os.name").startsWith("Windows"))
                         stage.setAlwaysOnTop(true);
-                    workbench =
-                            Workbench.create(
-                                    stage,
-                                    plugins,
-                                    new dev.voxelbrew.util.di.ApplicationModule(
-                                            configuration, updates::service),
-                                    new dev.voxelbrew.exporter.di.FileIoModule());
+                    Locale previousDisplay = Locale.getDefault(Locale.Category.DISPLAY);
+                    try {
+                        if (firstLaunch)
+                            Locale.setDefault(
+                                    Locale.Category.DISPLAY, Locale.forLanguageTag("pl-PL"));
+                        workbench =
+                                Workbench.create(
+                                        stage,
+                                        plugins,
+                                        new dev.voxelbrew.util.di.ApplicationModule(
+                                                configuration, updates::service),
+                                        new dev.voxelbrew.exporter.di.FileIoModule());
+                    } finally {
+                        Locale.setDefault(Locale.Category.DISPLAY, previousDisplay);
+                    }
                     var screen = Screen.getPrimary().getVisualBounds();
                     // Match the hosted Windows runner so clipped inspector fields require
                     // scrolling.
@@ -469,6 +478,21 @@ class WorkbenchUiTest {
                 });
         Thread.sleep(150);
         assertEquals(color, fx(() -> ((ColorPicker) node("#body-color")).getValue()));
+    }
+
+    @Test
+    void firstLaunchUsesSystemDisplayLanguageAndShowsSystemPreference() throws Exception {
+        ready();
+        assertEquals("Zapisz", fx(() -> command(workbench, "save").getText()));
+        assertEquals("Widok: Góra", fx(() -> node("#view-cube-top").getAccessibleText()));
+        assertFalse(configuration.read().containsKey("language"));
+        click("language");
+        assertEquals("system", fx(() -> ((ComboBox<?>) node("#language-choice")).getValue()));
+        assertEquals("Zapisz", fx(() -> ((Button) node("#language-save")).getText()));
+        click("language-close");
+        assertFalse(configuration.read().containsKey("language"));
+        assertEquals("preserve me", configuration.get("external.setting", ""));
+        assertFalse(fx(() -> workbench.controller().dirty()));
     }
 
     @Test

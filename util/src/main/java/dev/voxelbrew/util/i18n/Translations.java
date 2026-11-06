@@ -70,14 +70,30 @@ public final class Translations {
 
     public static Translations configured(UserConfiguration configuration) {
         try {
-            String language = configuration.get("language", "en");
+            String language = configuration.get("language", "system").strip();
+            boolean system = language.isEmpty() || language.equalsIgnoreCase("system");
             Locale selected =
-                    language.equalsIgnoreCase("system")
-                            ? Locale.getDefault()
+                    system
+                            ? Locale.getDefault(Locale.Category.DISPLAY)
                             : new Locale.Builder().setLanguageTag(language).build();
-            return new Translations(selected);
+            var translations = new Translations(selected);
+            String source = system ? "system display locale" : "saved language preference";
+            if (selected.getLanguage().equals(translations.locale().getLanguage()))
+                log.info(
+                        "Selected application language {} from {} ({})",
+                        translations.locale().toLanguageTag(),
+                        source,
+                        selected.toLanguageTag());
+            else
+                log.info(
+                        "Selected application language en: English fallback for unset or unsupported {} ({})",
+                        source,
+                        selected.toLanguageTag());
+            return translations;
         } catch (IOException | IllformedLocaleException failure) {
             log.warn("Cannot read language preference; using English", failure);
+            log.info(
+                    "Selected application language en: English fallback for unreadable or invalid language preference");
             return new Translations(Locale.ENGLISH);
         }
     }

@@ -29,9 +29,9 @@ final class LanguageDialog {
         message.setWrapText(true);
         message.setId("language-status");
         try {
-            String saved = configuration.get("language", "en");
+            String saved = configuration.get("language", "system").strip();
             choice.setValue(
-                    saved.equalsIgnoreCase("system")
+                    saved.isEmpty() || saved.equalsIgnoreCase("system")
                             ? "system"
                             : Locale.forLanguageTag(saved).getLanguage().equals("pl")
                                     ? "pl"

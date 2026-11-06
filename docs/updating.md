@@ -124,3 +124,18 @@ transcript directory, `util/build/reports/tests/test/`, `util/build/reports/test
 `gui/build/reports/tests/e2eTest/`; screenshots live in `gui/build/ui-artifacts/`.
 No live release is published by these tests. Downloading and installing a real
 GitHub release remains a separate check once an updater-capable release exists.
+
+## About the application
+
+Open **Settings → About** (**Ustawienia → O programie**) to see the version from
+`Version.version()` (`0.0.0` for IDE/class-directory runs), the latest release status,
+and offline copies of the GNU AGPL v3 license and third-party notices. Opening About
+starts a cancellable background lookup; application startup does not contact the
+release service. **Check again** retries a failed or completed lookup.
+**Open updater…** closes About and opens the existing explicit update workflow,
+including its save/discard guard before installation. No download or installation
+starts from About. Closing the dialog cancels its lookup and ignores late results.
+
+The legal texts are included in the GUI JAR from the repository's `LICENSE` and
+`THIRD_PARTY_NOTICES.md`, so they also work without a network connection or in a
+development distribution. Individual component licenses remain in `third_party/`.

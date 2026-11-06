@@ -21,6 +21,8 @@ final class UpdateFixture implements AutoCloseable {
     private final ExecutorService workers = Executors.newVirtualThreadPerTaskExecutor();
     private volatile boolean credentialsSeen;
     volatile boolean slow;
+    volatile boolean current, development;
+    volatile int failureStatus;
     final AtomicInteger requests = new AtomicInteger();
     volatile ReleaseVersion requested;
 
@@ -68,7 +70,7 @@ final class UpdateFixture implements AutoCloseable {
                 installed.platform(),
                 new GitHubReleaseSource(
                         URI.create("http://127.0.0.1:" + server.getAddress().getPort() + "/")),
-                Optional.of(installed));
+                development ? Optional.empty() : Optional.of(installed));
     }
 
     private void respond(HttpExchange exchange) throws IOException {
@@ -91,13 +93,26 @@ final class UpdateFixture implements AutoCloseable {
                         return;
                     }
                 }
+                if (failureStatus != 0) {
+                    exchange.sendResponseHeaders(failureStatus, -1);
+                    return;
+                }
+                var selected =
+                        current
+                                ? new ReleaseSource.Release(
+                                        installed.version(),
+                                        Set.of(
+                                                ApplicationImage.Component.GUI.asset(
+                                                        installed.version(), installed.platform()),
+                                                "SHA256SUMS"))
+                                : release;
                 String assets =
-                        release.assets().stream()
+                        selected.assets().stream()
                                 .map(name -> "{\"name\":\"" + name + "\"}")
                                 .collect(java.util.stream.Collectors.joining(","));
                 byte[] body =
                         ("{\"tag_name\":\""
-                                        + release.tag()
+                                        + selected.tag()
                                         + "\",\"draft\":false,\"prerelease\":false,\"assets\":["
                                         + assets
                                         + "]}")

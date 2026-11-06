@@ -1234,7 +1234,7 @@ class WorkbenchUiTest {
         String menu =
                 switch (id) {
                     case "new", "open", "import", "save", "save-as", "export" -> "menu-file";
-                    case "language", "updates" -> "menu-settings";
+                    case "language", "updates", "about" -> "menu-settings";
                     case "appearance" -> "menu-view";
                     default -> null;
                 };
@@ -1657,6 +1657,136 @@ class WorkbenchUiTest {
 
     private CadDocument document() throws Exception {
         return fx(() -> workbench.controller().snapshot().document());
+    }
+
+    @Test
+    void aboutDetailsAndUpdateLinkInBothPalettes() throws Exception {
+        assertEquals(0, updates.requests.get(), "Startup must not contact the release service");
+        for (int palette : List.of(1, 2)) {
+            choice("appearance", palette);
+            click("about");
+            waitForAbout("New version available: 1.1.0");
+            assertEquals(
+                    "Version " + dev.voxelbrew.util.Version.version(),
+                    fx(() -> ((Label) node("#about-version")).getText()));
+            fx(
+                    () -> {
+                        for (String id :
+                                List.of(
+                                        "about-check",
+                                        "about-updates",
+                                        "about-license",
+                                        "about-notices",
+                                        "about-close")) {
+                            var control = (Control) node("#" + id);
+                            assertNotNull(control.getTooltip(), id);
+                            assertFalse(control.getAccessibleHelp().isBlank(), id);
+                        }
+                        Screenshot.save(
+                                stage.getScene(),
+                                Path.of(
+                                        System.getProperty("voxelbrew.ui.artifacts"),
+                                        "about-" + palette + ".png"));
+                        return null;
+                    });
+            click("about-license");
+            assertTrue(
+                    fx(
+                            () ->
+                                    ((TextArea) node("#about-legal-text"))
+                                            .getText()
+                                            .contains("GNU AFFERO GENERAL PUBLIC LICENSE")));
+            assertFalse(fx(() -> ((TextArea) node("#about-legal-text")).isEditable()));
+            click("about-legal-close");
+            click("about-notices");
+            assertTrue(
+                    fx(
+                            () ->
+                                    ((TextArea) node("#about-legal-text"))
+                                            .getText()
+                                            .contains("Open CASCADE")));
+            click("about-legal-close");
+            click("about-updates");
+            assertNotNull(fx(() -> node("#update-check")));
+            click("update-cancel");
+            ready();
+        }
+    }
+
+    @Test
+    void aboutCheckFailureRetryAndCancellation() throws Exception {
+        updates.slow = true;
+        click("about");
+        waitForAbout("Checking for updates");
+        long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
+        while (updates.requests.get() == 0 && System.nanoTime() < deadline) Thread.sleep(25);
+        assertTrue(updates.requests.get() > 0, "Cancel a lookup already waiting for a response");
+        assertTrue(fx(() -> node("#about-check").isDisabled()));
+        click("about-close");
+        ready();
+        updates.failureStatus = 503;
+        updates.slow = false;
+        click("about");
+        waitForAbout("Could not check for updates");
+        assertFalse(fx(() -> node("#about-check").isDisabled()));
+        updates.failureStatus = 0;
+        updates.current = true;
+        click("about-check");
+        waitForAbout("You are up to date. Latest published version: 1.0.0");
+        updates.current = false;
+        updates.development = true;
+        click("about-check");
+        waitForAbout("Development runs are not replaced");
+        assertTrue(
+                fx(
+                        () ->
+                                ((Label) node("#about-status"))
+                                        .getText()
+                                        .startsWith("New version available: 1.1.0")));
+        click("about-close");
+        ready();
+    }
+
+    @Test
+    void polishAboutShowsTranslatedVersionUpdatesAndLegalHelp() throws Exception {
+        click("about");
+        waitForAbout("Dostępna nowa wersja: 1.1.0");
+        assertEquals(
+                "Wersja " + dev.voxelbrew.util.Version.version(),
+                fx(() -> ((Label) node("#about-version")).getText()));
+        assertEquals(
+                "Otwórz aktualizator…", fx(() -> ((Hyperlink) node("#about-updates")).getText()));
+        assertTrue(
+                fx(
+                        () ->
+                                ((Hyperlink) node("#about-license"))
+                                        .getTooltip()
+                                        .getText()
+                                        .contains("licencję")));
+        fx(
+                () -> {
+                    Screenshot.save(
+                            stage.getScene(),
+                            Path.of(System.getProperty("voxelbrew.ui.artifacts"), "about-pl.png"));
+                    return null;
+                });
+        click("about-notices");
+        assertTrue(
+                fx(
+                        () ->
+                                ((TextArea) node("#about-legal-text"))
+                                        .getText()
+                                        .contains("Open CASCADE")));
+        click("about-legal-close");
+        click("about-close");
+        ready();
+    }
+
+    private void waitForAbout(String message) throws Exception {
+        long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(15);
+        while (!fx(() -> ((Label) node("#about-status")).getText().contains(message))
+                && System.nanoTime() < deadline) Thread.sleep(50);
+        assertTrue(fx(() -> ((Label) node("#about-status")).getText().contains(message)), message);
     }
 
     @Test

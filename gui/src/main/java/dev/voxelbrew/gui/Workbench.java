@@ -103,6 +103,7 @@ public final class Workbench extends BorderPane implements AutoCloseable {
     private Feature.Sketch planeRepair;
     private Button finish;
     private final UpdateDialog.Factory updates;
+    private final javax.inject.Provider<AboutDialog> about;
 
     public static Workbench create(Stage stage, Path plugins) throws IOException {
         return create(
@@ -158,6 +159,7 @@ public final class Workbench extends BorderPane implements AutoCloseable {
             Translations translations,
             dev.voxelbrew.util.config.UserConfiguration configurationStore,
             UpdateDialog.Factory updates,
+            javax.inject.Provider<AboutDialog> about,
             WindowResources resources,
             FeatureRegistry.Factory featureProviders,
             SketchController.Factory sketches) {
@@ -174,6 +176,7 @@ public final class Workbench extends BorderPane implements AutoCloseable {
         this.configurationStore = configurationStore;
         this.viewport = new Viewport(translations);
         this.updates = updates;
+        this.about = about;
         this.resources = resources;
         this.featureProviders = featureProviders;
         this.sketches = sketches;
@@ -337,6 +340,13 @@ public final class Workbench extends BorderPane implements AutoCloseable {
                                 "updates",
                                 false,
                                 this::updates),
+                        menuItem(
+                                translations.text("about.title"),
+                                "about",
+                                false,
+                                () -> {
+                                    if (about.get().show(stage)) updates();
+                                }),
                         new SeparatorMenuItem(),
                         menuItem(
                                 translations.text("shortcuts.title"),

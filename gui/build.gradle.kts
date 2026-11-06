@@ -26,6 +26,12 @@ dependencies {
 
 application { mainClass.set("dev.voxelbrew.gui.Launcher") }
 
+tasks.processResources {
+    from(listOf(rootProject.file("LICENSE"), rootProject.file("THIRD_PARTY_NOTICES.md"))) {
+        into("dev/voxelbrew/gui/legal")
+    }
+}
+
 distributions {
     main {
         contents {

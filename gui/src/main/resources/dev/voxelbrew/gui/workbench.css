@@ -21,6 +21,12 @@
   -fx-selection-bar: #2e436e;
   -fx-selection-bar-non-focused: #393b40;
 }
+.light .about-content .hyperlink {
+  -fx-text-fill: #245ac4;
+}
+.dark .about-content .hyperlink {
+  -fx-text-fill: #9bbfff;
+}
 .dark .table-view .table-row-cell:selected {
   -fx-background-color: -fx-selection-bar;
 }

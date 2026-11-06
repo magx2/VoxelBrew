@@ -249,7 +249,8 @@ public final class Workbench extends BorderPane implements AutoCloseable {
     private final VBox featureDiagnostics = new VBox(6);
     private final HBox toolActions = new HBox(8);
     private final Label status, error, selectionLabel;
-    private final ComboBox<String> views = new ComboBox<>();
+    private static final List<String> STANDARD_VIEWS =
+            List.of("Isometric", "Top", "Front", "Right", "Back", "Left", "Bottom");
     private final FeatureTimeline timeline;
     private final Button undo, redo;
     private final MenuItem export;
@@ -277,7 +278,7 @@ public final class Workbench extends BorderPane implements AutoCloseable {
     private final SketchController.Factory sketches;
     private Appearance.Choice appearanceChoice;
     private long appearanceRequest;
-    private boolean closed, refreshing, updatingView;
+    private boolean closed, refreshing;
     private Tool tool = Tool.NONE;
     private String selectedFeature, selectedBody;
     private final Map<String, TextField> fields = new LinkedHashMap<>();
@@ -417,28 +418,9 @@ public final class Workbench extends BorderPane implements AutoCloseable {
                 .add(
                         Objects.requireNonNull(getClass().getResource("workbench.css"))
                                 .toExternalForm());
-        views.setId("standard-view");
-        views.getItems().setAll("Isometric", "Top", "Front", "Right", "Back", "Left", "Bottom");
-        UiText.choices(views, name -> UiText.view(translations, name));
         UiText.choices(
                 configuration,
                 name -> name.equals("Default") ? translations.text("configuration.default") : name);
-        views.setValue("Isometric");
-        views.setOnAction(
-                e -> {
-                    if (!updatingView) viewport.standardView(views.getValue());
-                });
-        viewport.orientationProperty()
-                .addListener(
-                        (observable, before, after) -> {
-                            updatingView = true;
-                            try {
-                                views.setValue(after.name());
-                            } finally {
-                                updatingView = false;
-                            }
-                        });
-        UiHelp.install(views, translations);
         var fileMenu = menu("menu-file");
         var newItem = menuItem(translations.text("action.new"), "new", true, this::newDocument);
         var openItem =
@@ -483,8 +465,11 @@ public final class Workbench extends BorderPane implements AutoCloseable {
                                 translations.text("action.fit"),
                                 "menu-fit",
                                 false,
-                                () -> viewport.fit(meshes())));
-        for (var name : views.getItems()) {
+                                () -> {
+                                    viewport.fit(meshes());
+                                    Platform.runLater(viewport::requestFocus);
+                                }));
+        for (var name : STANDARD_VIEWS) {
             var item =
                     menuItem(
                             UiText.view(translations, name),
@@ -596,17 +581,6 @@ public final class Workbench extends BorderPane implements AutoCloseable {
         toolbar.setId("modeling-toolbar");
         toolbar.getStyleClass().add("command-strip");
         constrainedSketch.getStyleClass().add("primary");
-        var viewbar =
-                new FlowPane(
-                        8,
-                        5,
-                        new Label(translations.text("view.label")),
-                        views,
-                        button(
-                                translations.text("action.fit"),
-                                "fit",
-                                () -> viewport.fit(meshes())));
-        viewbar.getStyleClass().add("view-strip");
         tree.setId("model-tree");
         tree.setShowRoot(false);
         tree.setEditable(true);
@@ -667,7 +641,6 @@ public final class Workbench extends BorderPane implements AutoCloseable {
                         error,
                         toolActions);
         var center = new BorderPane(viewport);
-        center.setTop(viewbar);
         center.getStyleClass().add("viewport-panel");
         var split = new SplitPane(left, center, inspector);
         split.setDividerPositions(0.18, 0.78);
@@ -787,7 +760,7 @@ public final class Workbench extends BorderPane implements AutoCloseable {
                         case "split-body" -> splitBody.fire();
                         case "fit" -> viewport.fit(meshes());
                         default ->
-                                views.getItems().stream()
+                                STANDARD_VIEWS.stream()
                                         .filter(
                                                 name ->
                                                         ("view-" + name.toLowerCase(Locale.ROOT))
@@ -1815,11 +1788,9 @@ public final class Workbench extends BorderPane implements AutoCloseable {
                 e -> {
                     if (!finish.isDisabled()) finish.fire();
                 });
-        UiText.choices(views, name -> UiText.view(translations, name));
         UiText.choices(
                 configuration,
                 name -> name.equals("Default") ? translations.text("configuration.default") : name);
-        views.setValue("Isometric");
         viewport.standardView("Isometric");
         controller.previewExtrusion(sketch, 5);
         viewport.extrusionHandle(

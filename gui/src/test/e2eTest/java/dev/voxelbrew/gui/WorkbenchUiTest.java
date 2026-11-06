@@ -80,7 +80,7 @@ class WorkbenchUiTest {
         var snapshot = fx(() -> workbench.controller().snapshot());
         var bytes = Files.readAllBytes(file);
         renderStyle("technical");
-        choice("standard-view", 1);
+        standardView(1);
         click("history-3");
         Thread.sleep(250);
         fx(
@@ -135,7 +135,7 @@ class WorkbenchUiTest {
                 fx(() -> node("#body-material-name")),
                 "Visible solid remains pickable through its outlines");
         click("history-3");
-        choice("standard-view", 0);
+        standardView(0);
         fx(
                 () -> {
                     var bounds = Screen.getPrimary().getVisualBounds();
@@ -347,7 +347,7 @@ class WorkbenchUiTest {
     @Test
     void historyScrollsLongDesignsAndStopsAtFailedOperations() throws Exception {
         ready();
-        click("fit");
+        click("menu-fit");
         var session = new ModelSession(CadDocument.empty());
         for (int i = 0; i < 26; i++)
             session.add(
@@ -399,7 +399,7 @@ class WorkbenchUiTest {
     @Test
     void sketchPlanePickerRejectsCurvedFacesAndObsoleteDocumentRevisions() throws Exception {
         ready();
-        click("fit");
+        click("menu-fit");
         var session = new ModelSession(CadDocument.empty());
         session.add(
                 new Feature.Sketch(
@@ -414,7 +414,7 @@ class WorkbenchUiTest {
         open(file);
         var before = fx(() -> workbench.controller().snapshot());
         click("constrained-sketch");
-        choice("standard-view", 2);
+        standardView(2);
         modelClick(40, 20, 8);
         assertNull(fx(() -> stage.getScene().lookup("#sketch-editor")));
         assertNotNull(fx(() -> node("#sketch-plane-hint")));
@@ -459,7 +459,7 @@ class WorkbenchUiTest {
         for (String name : List.of("XY", "XZ", "YZ")) {
             click("constrained-sketch");
             // View perpendicular to the actual 3D pick target, then use a native mouse click.
-            choice("standard-view", ++index);
+            standardView(++index);
             var pick = Feature.Plane.origin(name).frame().apply(12, 12, 0);
             modelClick(pick[0], pick[1], pick[2]);
             sketchReady();
@@ -499,7 +499,7 @@ class WorkbenchUiTest {
         for (int palette : List.of(1, 2)) {
             choice("appearance", palette);
             click("constrained-sketch");
-            choice("standard-view", 1);
+            standardView(1);
             fx(
                     () -> {
                         robot.mouseMove(workbench.viewport().modelToScreen(new Point3D(40, 30, 5)));
@@ -1708,7 +1708,7 @@ class WorkbenchUiTest {
                 switch (id) {
                     case "new", "open", "import", "save", "save-as", "export" -> "menu-file";
                     case "language", "updates", "about" -> "menu-settings";
-                    case "appearance" -> "menu-view";
+                    case "appearance", "menu-fit" -> "menu-view";
                     default -> null;
                 };
         if (menu != null) click(menu);
@@ -2064,6 +2064,14 @@ class WorkbenchUiTest {
                 });
     }
 
+    private void standardView(int index) throws Exception {
+        click("menu-view");
+        click(
+                "view-"
+                        + List.of("isometric", "top", "front", "right", "back", "left", "bottom")
+                                .get(index));
+    }
+
     private void choice(String id, int index) throws Exception {
         if (id.equals("appearance")) {
             click("menu-view");
@@ -2414,8 +2422,8 @@ class WorkbenchUiTest {
         rectangleDraft(60, 40, offset);
         click("constraint-finish");
         ready();
-        choice("standard-view", 1);
-        click("fit");
+        standardView(1);
+        click("menu-fit");
     }
 
     private void rectangleDraft(double width, double height, double offset) throws Exception {
@@ -3714,7 +3722,6 @@ class WorkbenchUiTest {
                 });
         Thread.sleep(180);
         assertEquals(expected, fx(() -> workbench.viewport().orientationProperty().get()), region);
-        assertEquals(expected.name(), fx(() -> ((ComboBox<?>) node("#standard-view")).getValue()));
     }
 
     @Test
@@ -3788,7 +3795,7 @@ class WorkbenchUiTest {
                 top,
                 fx(() -> workbench.viewport().orientationProperty().get()),
                 "A small screen-space picking tolerance protects thin curves after viewport resizing");
-        click("fit");
+        click("menu-fit");
         click("extrude");
         ready();
         key(KeyCode.ENTER);
@@ -4052,7 +4059,7 @@ class WorkbenchUiTest {
                 inspection.contains(
                         "bounds=0.000000000,0.000000000,0.000000000,60.000000000,40.000000000,8.000000000"));
         assertTrue(cli("inspect", file.toString(), "--point", "30,20,4").contains("contains=true"));
-        choice("standard-view", 0);
+        standardView(0);
         modelClick(30, 20, 8);
         assertTrue(
                 fx(
@@ -4088,9 +4095,9 @@ class WorkbenchUiTest {
                 afterPan.distance(fx(() -> workbench.viewport().modelToScreen(point))) > 2,
                 "Zoom changes projection");
         assertEquals(navigationDocument, document());
-        choice("standard-view", 1);
-        choice("standard-view", 0);
-        click("fit");
+        standardView(1);
+        standardView(0);
+        click("menu-fit");
         Path artifacts = Path.of(System.getProperty("voxelbrew.ui.artifacts"));
         Files.createDirectories(artifacts);
         choice("appearance", 1);
@@ -4418,7 +4425,7 @@ class WorkbenchUiTest {
         ready();
         assertShortcutCaption("extrude", "↑  Extrude", "E");
         assertShortcutCaption("split-body", "Split body (X)", "X");
-        click("fit");
+        click("menu-fit");
         key(KeyCode.E);
         assertNull(
                 fx(() -> workbench.lookup("#extrude-distance")),
@@ -4456,19 +4463,19 @@ class WorkbenchUiTest {
         text("dimension-offsetZ", "circle");
         assertNull(fx(() -> workbench.lookup("#sketch-diameter")), "Letters stay in the field");
         text("dimension-offsetZ", "0");
-        click("fit");
+        click("menu-fit");
         key(KeyCode.E);
         assertNotNull(fx(() -> node("#extrude-distance")));
         key(KeyCode.ESCAPE);
         assertEquals(rectangle, document(), "Cancelled extrusion creates no history entry");
-        click("fit");
+        click("menu-fit");
         key(KeyCode.E);
         text("extrude-distance", "-5");
         key(KeyCode.ENTER);
         ready();
         assertEquals(2, document().features().size());
         assertEquals(12000, volume(), .01);
-        click("fit");
+        click("menu-fit");
         shortcut(KeyCode.Z, false);
         ready();
         assertEquals(1, document().features().size());
@@ -4522,7 +4529,7 @@ class WorkbenchUiTest {
         shortcut(KeyCode.E, false);
         assertNotNull(fx(() -> node("#export-path")));
         key(KeyCode.ESCAPE);
-        click("fit");
+        click("menu-fit");
         key(KeyCode.K);
         click("choose-plane-xy");
         sketchReady();
@@ -4573,7 +4580,7 @@ class WorkbenchUiTest {
         ready();
         assertEquals(
                 3, document().features().size(), "Finish sketch commits exactly one operation");
-        click("fit");
+        click("menu-fit");
         shortcut(KeyCode.Z, false);
         ready();
         assertEquals(part, document());

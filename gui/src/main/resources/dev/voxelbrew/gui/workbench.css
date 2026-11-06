@@ -147,11 +147,6 @@
   -fx-border-color: transparent;
   -fx-text-fill: white;
 }
-.view-strip {
-  -fx-padding: 5 10;
-  -fx-alignment: center-left;
-  -fx-background-color: -fx-base;
-}
 .view-cube-panel {
   -fx-stroke-width: 1;
 }

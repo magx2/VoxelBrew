@@ -98,7 +98,7 @@ evaluated revision; sketches continue to use stable XY-parallel plane references
 | Shift + middle drag             | Pan                                                    |
 | Right drag                      | Pan the whole design view                              |
 | Mouse wheel                     | Zoom                                                   |
-| View selector / Fit             | Isometric and all six standard views / frame the model |
+| View menu                       | Isometric and all six standard views / frame the model |
 | View cube face / edge / corner  | Snap to one of 26 viewing directions                   |
 | Left drag on the view cube      | Orbit the model                                        |
 | View cube Home                  | Restore the fitted isometric overview                  |
@@ -146,8 +146,8 @@ Camera and selection are transient and are not saved into `.jcad`.
 The view cube in the upper-right corner follows the viewport rotation and shows
 the X (red), Y (green), and Z (blue) axes. Hover over a face, beveled edge, or
 corner to highlight its snap target. Its menu also provides hidden faces and
-Fit model; focused cube targets activate with Enter or Space. Navigation keeps
-the view selector synchronized and never creates a feature or undo entry.
+Fit model; focused cube targets activate with Enter or Space. Navigation never creates a feature or undo entry.
+The cube replaces the separate view selector and Fit strip above the viewport.
 Dragging the cube, dragging empty grid space with the left mouse button, and
 middle-dragging all rotate the scene in the direction of the pointer. Left drags
 starting on a body or sketch keep selection behavior; drawing tools and extrusion

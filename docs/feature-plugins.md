@@ -21,7 +21,7 @@ intermediate solids; the returned independent `Solid` transfers to engine owners
 Native pointers, generated Protobuf classes and frontend types are absent from
 the contract. This is trusted in-process code, without a plugin sandbox.
 
-Custom definitions were introduced in `.jcad` schema 3; current schema 6 retains
+Custom definitions were introduced in `.jcad` schema 3; current schema 7 retains
 the provider ID, type, payload version and opaque bytes, and older documents remain
 readable. Unknown plugins or payload versions remain
 savable, with byte-for-byte payload preservation and stable IDs. Their rebuilds

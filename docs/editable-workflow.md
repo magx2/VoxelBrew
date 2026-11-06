@@ -125,3 +125,11 @@ M1 provides headless editing and a development CLI distribution. M2 adds export
 contracts and external plugins, M3 supplies JavaFX gestures, and M4 adds print
 setups, slicing and supports. GUI parity, face naming, packaging, mesh validation
 and physical printing have not been accepted in this increment.
+
+## Body materials and colors
+
+Select a body in the CAD viewport or model tree and use **Material & color** in
+Properties. Choose a preset such as PLA/PETG or type a custom material name, pick
+an opaque color, then Apply. The two properties commit together as one undo step.
+Reset restores the inherited/default assignment. See [body materials](body-materials.md)
+for persistence, split inheritance and CLI commands.

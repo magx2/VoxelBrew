@@ -156,6 +156,160 @@ class WorkbenchUiTest {
     }
 
     @Test
+    void bodyMaterialAndColorPickingUndoSaveAndBothPalettes() throws Exception {
+        var session = new ModelSession(CadDocument.empty());
+        for (int i = 0; i < 2; i++) {
+            session.add(
+                    new Feature.Sketch(
+                            "sketch" + i,
+                            "profile" + i,
+                            new Feature.Plane("origin-xy", 0),
+                            new Feature.Rectangle(i * 40, 0, 30, 30)));
+            session.add(
+                    new Feature.Extrude(
+                            "solid" + i, new Feature.ProfileRef("sketch" + i, "profile" + i), 5));
+        }
+        Path file = directory.resolve("red PETG and blue PLA.jcad");
+        DocumentWriter.save(session.document(), file, false);
+        click("open");
+        text("file-path", file.toString());
+        click("file-confirm");
+        ready();
+        modelClick(15, 15, 5);
+        text("body-material-name", "PETG");
+        pickBodyColor(javafx.scene.paint.Color.RED);
+        assertTrue(document().bodyStyles().isEmpty(), "Editing controls is only a draft");
+        click("body-style-apply");
+        ready();
+        var red = new BodyStyle("PETG", "#FF0000");
+        assertEquals(red, document().bodyStyle("solid0.body"));
+        assertTrue(fx(() -> workbench.controller().dirty()));
+        click("undo");
+        ready();
+        assertTrue(document().bodyStyles().isEmpty());
+        click("redo");
+        ready();
+        assertEquals(red, document().bodyStyle("solid0.body"));
+        modelClick(55, 15, 5);
+        text("body-material-name", "PLA");
+        pickBodyColor(javafx.scene.paint.Color.BLUE);
+        click("body-style-apply");
+        ready();
+        assertEquals(new BodyStyle("PLA", "#0000FF"), document().bodyStyle("solid1.body"));
+        click("save");
+        ready();
+        assertEquals(document(), DocumentReader.load(file));
+        click("new");
+        ready();
+        click("open");
+        text("file-path", file.toString());
+        click("file-confirm");
+        ready();
+        for (int palette : List.of(1, 2)) {
+            choice("appearance", palette);
+            // Selecting a feature clears body highlighting and exposes the exact chosen colors.
+            click("history-0");
+            fx(
+                    () -> {
+                        for (int i = 0; i < 2; i++) {
+                            var view =
+                                    findBodyView(workbench.viewport(), "body-solid" + i + ".body");
+                            assertNotNull(view);
+                            assertEquals(
+                                    i == 0
+                                            ? javafx.scene.paint.Color.RED
+                                            : javafx.scene.paint.Color.BLUE,
+                                    ((javafx.scene.paint.PhongMaterial) view.getMaterial())
+                                            .getDiffuseColor());
+                        }
+                        Screenshot.save(
+                                stage.getScene(),
+                                Path.of(
+                                        System.getProperty("voxelbrew.ui.artifacts"),
+                                        "body-colors-" + palette + ".png"));
+                        return null;
+                    });
+        }
+        modelClick(55, 15, 5);
+        assertEquals("PLA", fx(() -> ((TextField) node("#body-material-name")).getText()));
+        assertButtonDescriptions();
+        click("body-style-reset");
+        ready();
+        assertEquals(BodyStyle.DEFAULT, document().bodyStyle("solid1.body"));
+        assertEquals(red, document().bodyStyle("solid0.body"));
+    }
+
+    private static javafx.scene.shape.MeshView findBodyView(Node node, String id) {
+        if (node instanceof javafx.scene.shape.MeshView mesh && id.equals(mesh.getId()))
+            return mesh;
+        if (node instanceof SubScene scene) return findBodyView(scene.getRoot(), id);
+        if (node instanceof Parent parent) {
+            for (var child : parent.getChildrenUnmodifiable()) {
+                var found = findBodyView(child, id);
+                if (found != null) return found;
+            }
+        }
+        return null;
+    }
+
+    private void pickBodyColor(javafx.scene.paint.Color color) throws Exception {
+        click("body-color");
+        fx(
+                () -> {
+                    Node square =
+                            Window.getWindows().stream()
+                                    .filter(Window::isShowing)
+                                    .filter(w -> w.getScene() != null)
+                                    .flatMap(
+                                            w ->
+                                                    w
+                                                            .getScene()
+                                                            .getRoot()
+                                                            .lookupAll(".color-square")
+                                                            .stream())
+                                    .filter(
+                                            n ->
+                                                    n instanceof Parent p
+                                                            && p.getChildrenUnmodifiable().stream()
+                                                                    .anyMatch(
+                                                                            c ->
+                                                                                    c
+                                                                                                    instanceof
+                                                                                                    javafx
+                                                                                                                    .scene
+                                                                                                                    .shape
+                                                                                                                    .Rectangle
+                                                                                                            r
+                                                                                            && color
+                                                                                                    .equals(
+                                                                                                            r
+                                                                                                                    .getFill())))
+                                    .findFirst()
+                                    .orElseThrow(
+                                            () ->
+                                                    new AssertionError(
+                                                            "Missing palette color " + color));
+                    var bounds = square.localToScreen(square.getBoundsInLocal());
+                    robot.mouseMove(bounds.getCenterX(), bounds.getCenterY());
+                    return null;
+                });
+        Thread.sleep(100);
+        fx(
+                () -> {
+                    robot.mousePress(MouseButton.PRIMARY);
+                    return null;
+                });
+        Thread.sleep(60);
+        fx(
+                () -> {
+                    robot.mouseRelease(MouseButton.PRIMARY);
+                    return null;
+                });
+        Thread.sleep(150);
+        assertEquals(color, fx(() -> ((ColorPicker) node("#body-color")).getValue()));
+    }
+
+    @Test
     void polishWorkbenchDialogsSketchPrintingAndLanguagePreferenceUseRealControls()
             throws Exception {
         ready();

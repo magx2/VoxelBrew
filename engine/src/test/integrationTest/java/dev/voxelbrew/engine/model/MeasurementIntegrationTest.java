@@ -112,7 +112,13 @@ class MeasurementIntegrationTest {
         var before =
                 DocumentProto.Document.parseFrom(Arrays.copyOfRange(original, 44, original.length));
         var after = DocumentProto.Document.parseFrom(Arrays.copyOfRange(saved, 44, saved.length));
-        assertEquals(before.toBuilder().setApplicationVersion(Version.version()).build(), after);
+        assertEquals(
+                before.toBuilder()
+                        .setSchemaVersion(
+                                dev.voxelbrew.engine.persistence.DocumentCodec.SCHEMA_VERSION)
+                        .setApplicationVersion(Version.version())
+                        .build(),
+                after);
         assertEquals(document, DocumentReader.load(file));
         session.selectConfiguration("Default");
         try (var e = session.evaluate()) {

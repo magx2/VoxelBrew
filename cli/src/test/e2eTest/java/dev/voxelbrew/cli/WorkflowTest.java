@@ -22,6 +22,48 @@ class WorkflowTest {
     @TempDir Path directory;
 
     @Test
+    void bodyMaterialsAndColorsPersistAcrossCommandsAndInvalidAssignmentsDoNotWrite()
+            throws Exception {
+        String file = directory.resolve("colored objects.jcad").toString();
+        run(0, "new", file);
+        run(0, "rectangle", file, "--id", "plate", "--width", "60", "--height", "40");
+        run(0, "extrude", file, "--id", "solid", "--sketch", "plate", "--distance", "5");
+        run(
+                0,
+                "body-style",
+                file,
+                "--body",
+                "solid.body",
+                "--material",
+                "PETG",
+                "--color",
+                "#FF0000");
+        assertTrue(run(0, "body-style", file).contains("solid.body\tPETG\t#FF0000"));
+        run(0, "edit", file, "--feature", "solid", "--field", "distance", "--value", "8");
+        assertTrue(run(0, "body-style", file).contains("solid.body\tPETG\t#FF0000"));
+        byte[] saved = Files.readAllBytes(Path.of(file));
+        run(1, "body-style", file, "--body", "solid.body", "--color", "red");
+        run(1, "body-style", file, "--body", "missing.body", "--material", "PLA");
+        run(1, "body-style", file, "--material", "PLA");
+        run(1, "body-style", file, "--body", "solid.body", "--reset", "--material", "PLA");
+        assertArrayEquals(saved, Files.readAllBytes(Path.of(file)));
+        run(
+                0,
+                "body-style",
+                file,
+                "--body",
+                "solid.body",
+                "--material",
+                "PLA",
+                "--color",
+                "#0000ff");
+        assertTrue(run(0, "body-style", file).contains("solid.body\tPLA\t#0000FF"));
+        run(0, "body-style", file, "--body", "solid.body", "--reset");
+        assertTrue(DocumentReader.load(Path.of(file)).bodyStyles().isEmpty());
+        assertVolume(19200, run(0, "inspect", file));
+    }
+
+    @Test
     void externalImporterListsOptionsAndPublishesEditableDocumentsAcrossProcesses()
             throws Exception {
         Path plugins = Files.createDirectories(directory.resolve("import plugins with spaces"));

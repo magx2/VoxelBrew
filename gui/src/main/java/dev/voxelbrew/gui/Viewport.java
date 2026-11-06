@@ -468,10 +468,31 @@ public final class Viewport extends StackPane {
     public void select(String id) {
         selected = id;
         bodyViews.forEach(
-                (key, view) ->
-                        view.setMaterial(
-                                new PhongMaterial(
-                                        Color.web(key.equals(id) ? "#edae49" : "#91a8b9"))));
+                (key, view) -> {
+                    var base =
+                            Color.web(
+                                    bodyStyles
+                                            .getOrDefault(
+                                                    key,
+                                                    dev.voxelbrew.engine.model.BodyStyle.DEFAULT)
+                                            .color());
+                    var material =
+                            new PhongMaterial(
+                                    key.equals(id)
+                                            ? base.interpolate(Color.web("#edae49"), 0.3)
+                                            : base);
+                    material.setSpecularColor(key.equals(id) ? Color.web("#fff1ba") : Color.WHITE);
+                    material.setSpecularPower(key.equals(id) ? 64 : 32);
+                    view.setMaterial(material);
+                });
+    }
+
+    private Map<String, dev.voxelbrew.engine.model.BodyStyle> bodyStyles = Map.of();
+
+    public void setBodyStyles(Map<String, dev.voxelbrew.engine.model.BodyStyle> styles) {
+        if (bodyStyles.equals(styles)) return;
+        bodyStyles = Map.copyOf(styles);
+        select(selected);
     }
 
     public void fit(Map<String, MeshData> meshes) {

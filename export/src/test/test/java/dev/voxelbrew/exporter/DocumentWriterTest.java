@@ -21,8 +21,7 @@ class DocumentWriterTest {
     @TempDir Path directory;
 
     @Test
-    void legacySchemaSixGainsWriterMetadataWithoutChangingDefinitionsOrFingerprint()
-            throws Exception {
+    void legacySchemaSixUpgradesMetadataWithoutChangingDefinitions() throws Exception {
         byte[] baseline;
         try (var input = getClass().getResourceAsStream("/fixtures/reference-schema6.jcad")) {
             baseline = Objects.requireNonNull(input).readAllBytes();
@@ -31,15 +30,26 @@ class DocumentWriterTest {
                 "0481466803177edae0ca10582497b7e60b698fe2d15f347f78c0ba679aa80570",
                 HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(baseline)));
         var document = DocumentCodec.decode(baseline);
+        var upgradedDefinitions =
+                message(baseline).toBuilder()
+                        .setSchemaVersion(DocumentCodec.SCHEMA_VERSION)
+                        .clearApplicationVersion()
+                        .build();
         assertEquals(
-                "df3bc6b5f8389380bf29db8af9e3618043d57dda4176b669883c560d643f3476",
+                HexFormat.of()
+                        .formatHex(
+                                MessageDigest.getInstance("SHA-256")
+                                        .digest(upgradedDefinitions.toByteArray())),
                 DocumentCodec.fingerprint(document));
         Path file = directory.resolve("saved with spaces.jcad");
         DocumentWriter.save(document, file, false);
         byte[] saved = Files.readAllBytes(file);
         var legacy = message(baseline);
         assertEquals(
-                legacy.toBuilder().setApplicationVersion(Version.version()).build(),
+                legacy.toBuilder()
+                        .setSchemaVersion(DocumentCodec.SCHEMA_VERSION)
+                        .setApplicationVersion(Version.version())
+                        .build(),
                 message(saved));
         assertEquals(document, DocumentReader.load(file));
         DocumentWriter.save(document, file, true);

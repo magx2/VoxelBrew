@@ -12,13 +12,15 @@ public final class ModelSession {
     private List<Feature> features;
     private dev.voxelbrew.engine.printing.PrintSetup printSetup;
     private dev.voxelbrew.engine.parameters.ParameterSet parameters;
+    private java.util.Map<String, BodyStyle> bodyStyles;
     private int cursor;
     private long revision;
 
     private record State(
             List<Feature> features,
             dev.voxelbrew.engine.printing.PrintSetup printSetup,
-            dev.voxelbrew.engine.parameters.ParameterSet parameters) {}
+            dev.voxelbrew.engine.parameters.ParameterSet parameters,
+            java.util.Map<String, BodyStyle> bodyStyles) {}
 
     private final Deque<State> undo = new ArrayDeque<>();
     private final Deque<State> redo = new ArrayDeque<>();
@@ -28,11 +30,12 @@ public final class ModelSession {
         features = document.features();
         printSetup = document.printSetup();
         parameters = document.parameters();
+        bodyStyles = document.bodyStyles();
         cursor = document.cursor();
     }
 
     public synchronized CadDocument document() {
-        return new CadDocument(id, features, cursor, printSetup, parameters);
+        return new CadDocument(id, features, cursor, printSetup, parameters, bodyStyles);
     }
 
     public synchronized long revision() {
@@ -242,12 +245,13 @@ public final class ModelSession {
             return false;
         }
         boolean followEnd = cursor == features.size();
-        redo.push(new State(features, printSetup, parameters));
+        redo.push(new State(features, printSetup, parameters, bodyStyles));
         var previous = undo.pop();
         log.debug("Undo in document {} from revision {}", id, revision);
         features = previous.features();
         printSetup = previous.printSetup();
         parameters = previous.parameters();
+        bodyStyles = previous.bodyStyles();
         cursor = followEnd ? features.size() : Math.min(cursor, features.size());
         revision++;
         return true;
@@ -258,12 +262,13 @@ public final class ModelSession {
             return false;
         }
         boolean followEnd = cursor == features.size();
-        undo.push(new State(features, printSetup, parameters));
+        undo.push(new State(features, printSetup, parameters, bodyStyles));
         var next = redo.pop();
         log.debug("Redo in document {} from revision {}", id, revision);
         features = next.features();
         printSetup = next.printSetup();
         parameters = next.parameters();
+        bodyStyles = next.bodyStyles();
         cursor = followEnd ? features.size() : Math.min(cursor, features.size());
         revision++;
         return true;
@@ -302,19 +307,39 @@ public final class ModelSession {
             List<Feature> next,
             dev.voxelbrew.engine.printing.PrintSetup setup,
             dev.voxelbrew.engine.parameters.ParameterSet expressions) {
+        commit(next, setup, expressions, bodyStyles);
+    }
+
+    /** Null removes the override and restores the default or inherited split-body assignment. */
+    public synchronized void setBodyStyle(String bodyId, BodyStyle style) {
+        BodyStyle.requireBodyId(bodyId);
+        var next = new java.util.HashMap<>(bodyStyles);
+        if (style == null) next.remove(bodyId);
+        else next.put(bodyId, style);
+        commit(features, printSetup, parameters, next);
+        log.debug("Updated material and color for body {} in document {}", bodyId, id);
+    }
+
+    private void commit(
+            List<Feature> next,
+            dev.voxelbrew.engine.printing.PrintSetup setup,
+            dev.voxelbrew.engine.parameters.ParameterSet expressions,
+            java.util.Map<String, BodyStyle> styles) {
         List<Feature> validated =
-                new CadDocument(id, next, Math.min(cursor, next.size()), setup, expressions)
+                new CadDocument(id, next, Math.min(cursor, next.size()), setup, expressions, styles)
                         .features();
         if (validated.equals(features)
                 && setup.equals(printSetup)
-                && expressions.equals(parameters)) {
+                && expressions.equals(parameters)
+                && styles.equals(bodyStyles)) {
             return;
         }
-        undo.push(new State(features, printSetup, parameters));
+        undo.push(new State(features, printSetup, parameters, bodyStyles));
         redo.clear();
         features = validated;
         printSetup = setup;
         parameters = expressions;
+        bodyStyles = java.util.Map.copyOf(styles);
         revision++;
         log.debug(
                 "Committed document {} revision {} with {} features",

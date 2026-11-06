@@ -39,6 +39,46 @@ class EditableEngineTest {
     }
 
     @Test
+    void bodyStylesFollowStableIdsThroughCutSplitSaveAndGeometryEdits() throws Exception {
+        var session = reference();
+        var red = new BodyStyle("PETG", "#FF0000");
+        session.setBodyStyle("thickness.body", red);
+        session.editDimension("thickness", "distance", 8);
+        try (var evaluation = session.evaluate()) {
+            assertTrue(evaluation.valid());
+            assertEquals("thickness.body", evaluation.bodies().getFirst().id());
+            assertEquals(19099.469035085127, evaluation.bodies().getFirst().solid().volume(), .01);
+        }
+        session.add(
+                new Feature.SplitBody(
+                        "split",
+                        new Feature.BodyRef("cut", "body"),
+                        new Feature.SplitPlane(1, 0, 0, 30)));
+        session.setBodyStyle("split.positive", new BodyStyle("PLA", "#0000FF"));
+        Path file = directory.resolve("colored split bodies.jcad");
+        DocumentWriter.save(session.document(), file, false);
+        var reopened = new ModelSession(DocumentReader.load(file));
+        try (var evaluation = reopened.evaluate()) {
+            assertTrue(evaluation.valid());
+            assertEquals(2, evaluation.bodies().size());
+            assertEquals(
+                    19099.469035085127,
+                    evaluation.bodies().stream().mapToDouble(b -> b.solid().volume()).sum(),
+                    .01);
+            assertEquals(red, reopened.document().bodyStyle("split.negative"));
+            assertEquals("PLA", reopened.document().bodyStyle("split.positive").material());
+        }
+        reopened.setCursor(3);
+        try (var evaluation = reopened.evaluate()) {
+            assertEquals(red, reopened.document().bodyStyle(evaluation.bodies().getFirst().id()));
+            assertEquals(19200, evaluation.bodies().getFirst().solid().volume(), .01);
+        }
+        reopened.setCursor(5);
+        reopened.editDimension("thickness", "distance", 10);
+        assertEquals(session.document().bodyStyles(), reopened.document().bodyStyles());
+    }
+
+    @Test
     void reopenEditAndRollbackPreserveStableIdsAndThroughHole() throws Exception {
         var session = reference();
         Path file = directory.resolve("reference.jcad");

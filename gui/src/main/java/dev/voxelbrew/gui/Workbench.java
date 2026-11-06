@@ -94,6 +94,9 @@ public final class Workbench extends BorderPane implements AutoCloseable {
     private String selectedFeature, selectedBody;
     private final Map<String, TextField> fields = new LinkedHashMap<>();
     private List<Feature> lastFeatures = List.of();
+    private Map<String, BodyStyle> lastBodyStyles = Map.of();
+    private boolean lastRebuilding;
+    private boolean lastIoBusy;
     private DocumentController.Build lastBuild;
     private String lastDocument = "";
     private boolean fitNext = true;
@@ -715,13 +718,19 @@ public final class Workbench extends BorderPane implements AutoCloseable {
             var snapshot = controller.snapshot();
             var document = snapshot.document();
             var effective = controller.effectiveFeatures();
+            boolean buildStateChanged =
+                    lastBuild != controller.build()
+                            || lastRebuilding != controller.rebuilding()
+                            || lastIoBusy != controller.ioBusy();
             boolean changed =
                     !lastFeatures.equals(effective)
+                            || !lastBodyStyles.equals(document.bodyStyles())
                             || !lastParameters.equals(document.parameters())
                             || !lastDocument.equals(document.id());
             if (!lastDocument.equals(document.id())) {
                 selectedFeature = null;
                 selectedBody = null;
+                viewport.select(null);
                 fitNext = true;
             }
             if (changed || lastBuild != controller.build()) rebuildTree(document);
@@ -738,11 +747,21 @@ public final class Workbench extends BorderPane implements AutoCloseable {
                     if (feature != null) selectionLabel.setText(shortName(feature));
                 }
             }
+            var styles = new LinkedHashMap<String, BodyStyle>();
+            controller
+                    .build()
+                    .bodies()
+                    .forEach(b -> styles.put(b.id(), document.bodyStyle(b.id())));
+            viewport.setBodyStyles(styles);
             synchronizeTreeSelection();
             viewport.showSketches(effective.subList(0, document.cursor()), selectedFeature);
             if (tool == Tool.RECTANGLE || tool == Tool.CIRCLE) sketchPreview();
-            if (tool == Tool.NONE && changed) inspect();
+            if (tool == Tool.NONE && (changed || selectedBody != null && buildStateChanged))
+                inspect();
+            lastRebuilding = controller.rebuilding();
+            lastIoBusy = controller.ioBusy();
             lastFeatures = effective;
+            lastBodyStyles = document.bodyStyles();
             lastParameters = document.parameters();
             lastDocument = document.id();
             cursor.setMax(document.features().size());
@@ -987,6 +1006,7 @@ public final class Workbench extends BorderPane implements AutoCloseable {
         identity.setWrapText(true);
         identity.getStyleClass().add("muted");
         form.getChildren().add(identity);
+        if (selectedBody != null) bodyStyleEditor(selectedBody);
         if (feature instanceof Feature.Sketch s) {
             if (s.profile() instanceof Feature.Rectangle r) {
                 dimension(feature, "x", r.x());
@@ -1078,6 +1098,73 @@ public final class Workbench extends BorderPane implements AutoCloseable {
         }
         form.getChildren().add(featureDiagnostics);
         updateFeatureDiagnostics();
+    }
+
+    private void bodyStyleEditor(String bodyId) {
+        var document = controller.snapshot().document();
+        var style = document.bodyStyle(bodyId);
+        var material = new ComboBox<String>();
+        material.setId("body-material");
+        material.getItems().setAll("PLA", "PETG", "ABS", "ASA", "TPU");
+        material.setEditable(true);
+        material.getEditor().setId("body-material-name");
+        material.setValue(style.material());
+        material.setPromptText(translations.text("body.unassigned"));
+        material.getEditor().setPromptText(translations.text("body.unassigned"));
+        material.setMaxWidth(Double.MAX_VALUE);
+        UiHelp.install(material, translations);
+        UiHelp.describe(material.getEditor(), translations.text("help.body-material"));
+        var color = new ColorPicker(javafx.scene.paint.Color.web(style.color()));
+        color.setId("body-color");
+        color.setMaxWidth(Double.MAX_VALUE);
+        UiHelp.install(color, translations);
+        var apply =
+                button(
+                        translations.text("gui.apply"),
+                        "body-style-apply",
+                        () -> {
+                            var c = color.getValue();
+                            String rgb =
+                                    String.format(
+                                            Locale.ROOT,
+                                            "#%02X%02X%02X",
+                                            Math.round(c.getRed() * 255),
+                                            Math.round(c.getGreen() * 255),
+                                            Math.round(c.getBlue() * 255));
+                            controller.bodyStyle(
+                                    bodyId, new BodyStyle(material.getEditor().getText(), rgb));
+                        });
+        var reset =
+                button(
+                        translations.text("body.reset"),
+                        "body-style-reset",
+                        () -> controller.bodyStyle(bodyId, null));
+        reset.setDisable(!document.bodyStyles().containsKey(bodyId));
+        material.getEditor().setOnAction(e -> apply.fire());
+        var materialLabel = new Label(translations.text("body.material"));
+        materialLabel.setLabelFor(material);
+        var colorLabel = new Label(translations.text("body.color"));
+        colorLabel.setLabelFor(color);
+        var hint = new Label(translations.text("body.cadHint"));
+        hint.setWrapText(true);
+        hint.getStyleClass().add("muted");
+        var content =
+                new VBox(
+                        6,
+                        materialLabel,
+                        material,
+                        colorLabel,
+                        color,
+                        new HBox(6, apply, reset),
+                        hint);
+        // Properties remain readable while rebuilding; editing requires a current body.
+        content.setDisable(
+                !controller.canExport()
+                        || controller.build().bodies().stream()
+                                .noneMatch(b -> b.id().equals(bodyId)));
+        var section = new TitledPane(translations.text("body.appearance"), content);
+        section.setCollapsible(false);
+        form.getChildren().add(section);
     }
 
     private void updateFeatureDiagnostics() {

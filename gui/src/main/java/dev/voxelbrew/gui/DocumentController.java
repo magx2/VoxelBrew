@@ -260,6 +260,15 @@ public final class DocumentController implements AutoCloseable {
         schedule(session.document(), false);
     }
 
+    public void bodyStyle(String bodyId, BodyStyle style) {
+        if (!canExport() || build.bodies().stream().noneMatch(b -> b.id().equals(bodyId))) {
+            throw new IllegalStateException(
+                    "Select a current body at the end of a successful rebuild");
+        }
+        session.setBodyStyle(bodyId, style);
+        schedule(session.document(), false);
+    }
+
     public void cursor(int position) {
         preview = null;
         session.setCursor(position);

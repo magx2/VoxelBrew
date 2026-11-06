@@ -18,6 +18,43 @@ class DocumentControllerTest {
     private final ConcurrentLinkedQueue<Runnable> callbacks = new ConcurrentLinkedQueue<>();
 
     @Test
+    void bodyStylesDirtySaveUndoAndRejectStaleOrInactiveSelections() throws Exception {
+        try (var controller = new DocumentController(callbacks::add)) {
+            controller.add(sketch("plate", 0));
+            controller.add(
+                    new Feature.Extrude(
+                            "solid", new Feature.ProfileRef("plate", "plate.profile"), 5));
+            await(() -> !controller.rebuilding());
+            Path file = directory.resolve("body style.jcad");
+            controller.save(file, false);
+            await(() -> !controller.ioBusy());
+            assertFalse(controller.dirty());
+            var red = new BodyStyle("PETG", "#FF0000");
+            controller.bodyStyle("solid.body", red);
+            assertTrue(controller.dirty());
+            assertThrows(
+                    IllegalStateException.class, () -> controller.bodyStyle("solid.body", red));
+            await(() -> !controller.rebuilding());
+            assertEquals(12000, controller.build().bodies().getFirst().volume(), .01);
+            assertThrows(
+                    IllegalStateException.class, () -> controller.bodyStyle("missing.body", red));
+            controller.undo();
+            await(() -> !controller.rebuilding());
+            assertFalse(controller.dirty());
+            controller.redo();
+            await(() -> !controller.rebuilding());
+            assertEquals(red, controller.snapshot().document().bodyStyle("solid.body"));
+            controller.save(file, true);
+            await(() -> !controller.ioBusy());
+            assertEquals(red, DocumentReader.load(file).bodyStyle("solid.body"));
+            controller.cursor(1);
+            await(() -> !controller.rebuilding());
+            assertThrows(
+                    IllegalStateException.class, () -> controller.bodyStyle("solid.body", red));
+        }
+    }
+
+    @Test
     void importedDocumentsAreUnsavedAndFailuresPreserveTheCurrentDocument() throws Exception {
         Path plugins = Files.createDirectories(directory.resolve("import providers"));
         Files.copy(

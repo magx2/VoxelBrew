@@ -21,7 +21,7 @@ import java.util.List;
  * and writers live in the import/export projects.
  */
 public final class DocumentCodec {
-    public static final int SCHEMA_VERSION = 6;
+    public static final int SCHEMA_VERSION = 7;
     private static final byte[] MAGIC = {'J', 'C', 'A', 'D', 13, 10, 26, 10};
     private static final int HEADER = 44;
     private static final int MAX_PAYLOAD = 16 * 1024 * 1024;
@@ -82,7 +82,15 @@ public final class DocumentCodec {
                             : PrintSetup.empty(),
                     message.hasParameters()
                             ? ParameterCodec.fromProto(message.getParameters())
-                            : dev.voxelbrew.engine.parameters.ParameterSet.empty());
+                            : dev.voxelbrew.engine.parameters.ParameterSet.empty(),
+                    message.getBodyStylesMap().entrySet().stream()
+                            .collect(
+                                    java.util.stream.Collectors.toMap(
+                                            java.util.Map.Entry::getKey,
+                                            e ->
+                                                    new dev.voxelbrew.engine.model.BodyStyle(
+                                                            e.getValue().getMaterial(),
+                                                            e.getValue().getColor()))));
         } catch (DocumentFormatException failure) {
             throw failure;
         } catch (IOException | IllegalArgumentException failure) {
@@ -213,6 +221,16 @@ public final class DocumentCodec {
                         .setPrintSetup(toProto(document.printSetup()))
                         .setParameters(ParameterCodec.toProto(document.parameters()));
         document.features().forEach(feature -> message.addFeatures(toProto(feature)));
+        document.bodyStyles().entrySet().stream()
+                .sorted(java.util.Map.Entry.comparingByKey())
+                .forEach(
+                        e ->
+                                message.putBodyStyles(
+                                        e.getKey(),
+                                        DocumentProto.BodyStyle.newBuilder()
+                                                .setMaterial(e.getValue().material())
+                                                .setColor(e.getValue().color())
+                                                .build()));
         return message.build();
     }
 

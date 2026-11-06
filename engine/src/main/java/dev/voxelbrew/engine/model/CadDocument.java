@@ -2,6 +2,7 @@ package dev.voxelbrew.engine.model;
 
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 /** Immutable millimeter document. The cursor counts evaluated features. */
@@ -10,7 +11,17 @@ public record CadDocument(
         List<Feature> features,
         int cursor,
         dev.voxelbrew.engine.printing.PrintSetup printSetup,
-        dev.voxelbrew.engine.parameters.ParameterSet parameters) {
+        dev.voxelbrew.engine.parameters.ParameterSet parameters,
+        Map<String, BodyStyle> bodyStyles) {
+    public CadDocument(
+            String id,
+            List<Feature> features,
+            int cursor,
+            dev.voxelbrew.engine.printing.PrintSetup printSetup,
+            dev.voxelbrew.engine.parameters.ParameterSet parameters) {
+        this(id, features, cursor, printSetup, parameters, Map.of());
+    }
+
     public CadDocument(
             String id,
             List<Feature> features,
@@ -31,6 +42,8 @@ public record CadDocument(
     public CadDocument {
         java.util.Objects.requireNonNull(printSetup);
         java.util.Objects.requireNonNull(parameters);
+        bodyStyles = Map.copyOf(bodyStyles);
+        bodyStyles.keySet().forEach(BodyStyle::requireBodyId);
         identifier(id, "document ID");
         features = List.copyOf(features);
         var ids = new HashSet<String>();
@@ -47,6 +60,38 @@ public record CadDocument(
 
     public static CadDocument empty() {
         return new CadDocument(UUID.randomUUID().toString(), List.of(), 0);
+    }
+
+    /**
+     * Explicit assignments win; split children inherit from their source, including through cuts.
+     */
+    public BodyStyle bodyStyle(String bodyId) {
+        return bodyStyle(bodyId, new HashSet<>());
+    }
+
+    private BodyStyle bodyStyle(String bodyId, java.util.Set<String> visited) {
+        var assigned = bodyStyles.get(bodyId);
+        if (assigned != null) return assigned;
+        if (!visited.add(bodyId)) return BodyStyle.DEFAULT;
+        for (var feature : features) {
+            if (feature instanceof Feature.SplitBody split
+                    && (bodyId.equals(split.id() + ".negative")
+                            || bodyId.equals(split.id() + ".positive"))) {
+                return outputStyle(split.body(), visited);
+            }
+        }
+        return BodyStyle.DEFAULT;
+    }
+
+    private BodyStyle outputStyle(Feature.BodyRef output, java.util.Set<String> visited) {
+        for (var feature : features) {
+            if (feature.id().equals(output.featureId())
+                    && feature instanceof Feature.ThroughCut cut) {
+                if (!visited.add("output:" + output.featureId())) return BodyStyle.DEFAULT;
+                return outputStyle(cut.body(), visited);
+            }
+        }
+        return bodyStyle(output.featureId() + "." + output.outputName(), visited);
     }
 
     public static void identifier(String id, String field) {

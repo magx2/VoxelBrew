@@ -41,7 +41,7 @@ var preview = GcodeReader.read(gcodeFile);
 Replace `DocumentStore.load/save` with `DocumentReader.load/DocumentWriter.save`.
 Schema version and stable revision fingerprints are exposed by
 `dev.voxelbrew.engine.persistence.DocumentCodec`; it also provides in-memory
-`encode/decode` and never accesses files. `.jcad` schema 6 now includes the optional
+`encode/decode` and never accesses files. `.jcad` schema 7 retains the optional
 `application_version` string at field 18, populated from `Version.version()` on
 every save. Existing field numbers, checksums, opaque provider payloads and CAD
 fingerprints retain their meanings. Writer metadata is excluded from fingerprints.

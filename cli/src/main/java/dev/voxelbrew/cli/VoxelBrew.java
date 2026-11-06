@@ -38,6 +38,7 @@ import picocli.CommandLine.Spec;
             VoxelBrew.Repair.class,
             VoxelBrew.History.class,
             VoxelBrew.Inspect.class,
+            BodyStyleCommand.class,
             VoxelBrew.NativeDemo.class
         })
 @lombok.extern.slf4j.Slf4j

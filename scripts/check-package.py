@@ -153,12 +153,14 @@ if kind == "gui":
     assert screenshot.is_file() and screenshot.stat().st_size > 10000
     assert screenshot.with_suffix(".txt").read_text().startswith("GUI_SMOKE_PASS")
 else:
-    assert run("--version").strip() == f"VoxelBrew {version} / jcad schema 6"
+    assert run("--version").strip() == f"VoxelBrew {version} / jcad schema 7"
     document = workspace / "reference.jcad"
     shutil.copy2(root / "fixtures/reference-8mm.jcad", document)
     history = run("history", document)
+    run("body-style", document, "--body", "thickness.body", "--material", "PETG", "--color", "#FF0000")
     run("edit", document, "--feature", "thickness", "--field", "distance", "--value", 5)
     run("edit", document, "--feature", "thickness", "--field", "distance", "--value", 8)
+    assert "thickness.body\tPETG\t#FF0000" in run("body-style", document)
     inspection = run("inspect", document, "--point", "10,10,4")
     assert "19099.469" in inspection and "false" in inspection, inspection
     assert "thickness" in run("history", document) and "thickness" in history

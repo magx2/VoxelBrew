@@ -12,6 +12,11 @@ import dev.voxelbrew.engine.feature.FeatureRegistry;
 abstract class CommandBindings {
     @Binds
     @IntoMap
+    @ClassKey(BodyStyleCommand.class)
+    abstract Object bodyStyle(BodyStyleCommand command);
+
+    @Binds
+    @IntoMap
     @ClassKey(ImportCommands.Importers.class)
     abstract Object importers(ImportCommands.Importers command);
 

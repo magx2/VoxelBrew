@@ -16,7 +16,13 @@ message Document {
   // Last writer's Version.version(); empty in documents saved before version
   // tracking.
   string application_version = 18;
+  map<string, BodyStyle> body_styles = 19;
   reserved 6 to 15;
+}
+// Stable body IDs, including inactive ancestors retained for split inheritance.
+message BodyStyle {
+  string material = 1;
+  string color = 2;  // opaque sRGB #RRGGBB
 }
 message ParameterSet {
   repeated UserParameter parameters = 1;

@@ -10,6 +10,16 @@ import dev.voxelbrew.engine.feature.FeatureRegistry;
 /** Each command is unscoped: a new parser gets fresh mutable argument state. */
 @Module
 abstract class CommandBindings {
+    @Binds
+    @IntoMap
+    @ClassKey(ImportCommands.Importers.class)
+    abstract Object importers(ImportCommands.Importers command);
+
+    @Binds
+    @IntoMap
+    @ClassKey(ImportCommands.ImportFile.class)
+    abstract Object importFile(ImportCommands.ImportFile command);
+
     @Provides
     static FeatureRegistry.Factory features() {
         return FeatureRegistry::new;

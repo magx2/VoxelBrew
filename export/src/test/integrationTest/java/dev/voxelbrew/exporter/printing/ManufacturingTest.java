@@ -2,8 +2,10 @@ package dev.voxelbrew.exporter.printing;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-import dev.voxelbrew.engine.export.*;
 import dev.voxelbrew.engine.mesh.*;
+import dev.voxelbrew.engine.model.ModelView;
+import dev.voxelbrew.engine.model.ModelViews;
+import dev.voxelbrew.engine.model.Transform;
 import dev.voxelbrew.engine.printing.*;
 import dev.voxelbrew.exporter.ExportService;
 import dev.voxelbrew.exporter.ExporterRegistry;

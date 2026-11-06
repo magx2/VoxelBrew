@@ -14,6 +14,26 @@ java { toolchain.languageVersion.set(JavaLanguageVersion.of(21)) }
 // Standalone consumers can choose any published version with -PengineVersion=...
 val engineVersion = providers.gradleProperty("engineVersion").orElse("0.1.0-SNAPSHOT")
 
-dependencies { compileOnly("dev.voxelbrew:engine:${engineVersion.get()}") }
+dependencies {
+    compileOnly("dev.voxelbrew:export-api:${engineVersion.get()}")
+    compileOnly("dev.voxelbrew:import-api:${engineVersion.get()}")
+}
 
 tasks.withType<JavaCompile>().configureEach { options.encoding = "UTF-8" }
+
+tasks.named("jar") {
+    doFirst {
+        val hostModules =
+            configurations.compileClasspath
+                .get()
+                .resolvedConfiguration
+                .resolvedArtifacts
+                .map { it.moduleVersion.id }
+                .filter { it.group == "dev.voxelbrew" }
+                .map { it.name }
+                .toSet()
+        check(hostModules == setOf("engine", "import-api", "export-api")) {
+            "The external consumer must compile with API/domain artifacts only: $hostModules"
+        }
+    }
+}

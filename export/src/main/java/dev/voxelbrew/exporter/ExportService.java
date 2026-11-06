@@ -1,7 +1,7 @@
 package dev.voxelbrew.exporter;
 
-import dev.voxelbrew.engine.export.*;
 import dev.voxelbrew.engine.mesh.MeshOptions;
+import dev.voxelbrew.engine.model.ModelView;
 import java.io.FilterOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
@@ -84,7 +84,8 @@ public final class ExportService {
         } catch (IOException
                 | RuntimeException
                 | LinkageError
-                | ServiceConfigurationError failure) {
+                | ServiceConfigurationError
+                | AssertionError failure) {
             throw new IOException(
                     "Exporter '" + format + "' failed: " + failure.getMessage(), failure);
         } finally {

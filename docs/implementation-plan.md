@@ -18,19 +18,21 @@ Once the check passes, review and stage the milestone changes and create a Git c
 
 ## Project boundaries
 
-| Gradle project | Responsibilities                                                                                                                             | Dependencies                               |
-| -------------- | -------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------ |
-| util           | Translations, user properties, logging, updates, generic concurrency and paths                                                               | Java and archive support; no other project |
-| engine         | CAD document/models, units, sketch math, evaluation, native geometry, schema/codec, tessellation, manufacturing models and plugin interfaces | util, Java, Protobuf, pinned OCCT/JNI      |
-| import         | Bounded .jcad file loading and G-code parsing                                                                                                | engine                                     |
-| export         | Atomic document writing, STL/3MF writers, exporter discovery, slicer adapters and file publication                                           | engine, import, util                       |
-| gui            | JavaFX desktop, sketch tools, viewport, properties, timeline, file and print dialogs                                                         | engine, import, export, util               |
-| cli            | Headless modeling, editing, file operations, inspection, export, plugin listing and slicing commands                                         | engine, import, export, util               |
+| Gradle project | Responsibilities                                                                                                                              | Dependencies                               |
+| -------------- | --------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------ |
+| util           | Translations, user properties, logging, updates, generic concurrency and paths                                                                | Java and archive support; no other project |
+| engine         | CAD document/models, units, sketch math, evaluation, native geometry, schema/codec, tessellation, manufacturing models and feature interfaces | util, Java, Protobuf, pinned OCCT/JNI      |
+| import-api     | Public importer contracts, descriptors, options, results and reader ports                                                                     | engine                                     |
+| export-api     | Public exporter/slicer contracts, descriptors, options and writer ports                                                                       | engine                                     |
+| import         | Bounded .jcad/G-code readers and importer discovery                                                                                           | import-api, util                           |
+| export         | Atomic document writing, STL/3MF writers, exporter discovery, slicer adapters and file publication                                            | export-api, import, util                   |
+| gui            | JavaFX desktop, sketch tools, viewport, properties, timeline, file and print dialogs                                                          | engine, import, export, util               |
+| cli            | Headless modeling, editing, file operations, inspection, export, plugin listing and slicing commands                                          | engine, import, export, util               |
 
-Keep these six first-party subprojects. The user-requested utility and file-I/O
+Keep these eight first-party subprojects. The user-requested utility and file-I/O
 extractions supersede the original three-project boundary. Example plugins belong
 in test fixtures or a separate consumer build. Publish the versioned plugin
-contracts from engine. Keep JavaFX, CLI parsing, generated Protobuf classes and
+feature contracts from engine and file-I/O contracts from import-api/export-api. Keep JavaFX, CLI parsing, generated Protobuf classes and
 native pointers out of plugin contracts. Both frontends submit the same model
 operations. Util is independent of CAD/JNI/frontend frameworks; engine has no
 production dependency on import/export. See [file-I/O boundaries](file-io.md).
@@ -69,7 +71,7 @@ Expose CLI commands for creating a document, adding sketches and features, editi
 
 Introduce a versioned ModelExporter SPI and an engine-owned read-only model view with a tessellation operation. Register binary STL and 3MF Core exporters through the same registry as external providers. Take tessellation tolerance as an explicit export option. Write STL coordinates in mm. Write units, object identities, build items and placements in 3MF.
 
-Discover trusted JARs from a configurable plugin directory using a dedicated class loader and ServiceLoader. Define provider IDs, API compatibility and diagnostics for duplicate IDs, incompatible versions and load errors. Compile a small independent example exporter against the published engine API.
+Discover trusted JARs from a configurable plugin directory using a dedicated class loader and ServiceLoader. Define provider IDs, API compatibility and diagnostics for duplicate IDs, incompatible versions and load errors. Compile a small independent example exporter against the published export-api artifact.
 
 **Exit test:** Load the example JAR without recompiling the application and export from the CLI. Independently read the STL and 3MF outputs and check scale, bounds, oriented closed mesh and an open through-hole. Open the 3MF in Bambu Studio and verify dimensions and layer preview, or record that manual check as pending.
 
@@ -77,7 +79,7 @@ Discover trusted JARs from a configurable plugin directory using a dedicated cla
 
 Build the JavaFX viewport with orbit, pan, zoom, picking, sketch-plane coordinates and profile selection. Use an engine-supplied mesh with triangle-to-face mapping. Add rectangle and circle tools, numeric dimensions, sketch completion and an extrusion handle. During drag, show a temporary preview. Accepting a typed distance or releasing the handle commits one operation. Escape discards the preview.
 
-Add a timeline with an editable cursor, a dimension inspector, undo/redo and feature diagnostics. Make the Export dialog use the engine plugin registry. Run expensive rebuilds away from the UI thread and discard stale results when newer edits finish first.
+Add a timeline with an editable cursor, a dimension inspector, undo/redo and feature diagnostics. Make the Export dialog use the export module plugin registry. Run expensive rebuilds away from the UI thread and discard stale results when newer edits finish first.
 
 **Exit test:** Create the reference part entirely in the GUI, change thickness, roll back, redo and export it. Open the GUI-saved document with the CLI and verify identical model measurements. One drag creates one undo step. Cancelling a drag leaves the document intact.
 

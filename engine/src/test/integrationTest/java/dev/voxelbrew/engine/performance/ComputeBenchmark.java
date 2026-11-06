@@ -2,7 +2,6 @@ package dev.voxelbrew.engine.performance;
 
 import static dev.voxelbrew.engine.sketch.SketchGeometry.*;
 
-import dev.voxelbrew.engine.export.*;
 import dev.voxelbrew.engine.mesh.*;
 import dev.voxelbrew.engine.model.*;
 import dev.voxelbrew.engine.printing.*;

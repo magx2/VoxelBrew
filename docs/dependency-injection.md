@@ -4,7 +4,7 @@ VoxelBrew uses **Google Dagger 2.60.1** for dependency injection and inversion o
 control. Gradle continues to resolve libraries. The shared Gradle script
 `gradle/di.gradle.kts` supplies the Dagger runtime and a separate annotation-processor
 configuration to util, export, CLI and GUI. Generated sources remain in `build/`.
-Engine and import declare no Dagger dependency or DI annotations; their CAD models,
+Engine, import and both API projects declare no Dagger dependency or DI annotations; their CAD models,
 geometry algorithms, document codecs and plugin contracts stay independently usable.
 
 ## Graphs and ownership
@@ -15,7 +15,7 @@ geometry algorithms, document codecs and plugin contracts stay independently usa
 | GUI window      | `Workbench.create(stage, plugins)` builds a new `GuiComponent`. Document and print controllers, workbench, plugin registries and workers belong to that window. `@Singleton` means one instance **within that graph**, never one global document.                            |
 | Update dialog   | An assisted factory combines the window's translations and lazy updater factory with the runtime save/discard callback. Each dialog gets its own worker and cancellation state and closes them when dismissed.                                                               |
 | Shared services | `ApplicationModule` supplies configuration, an immutable translation catalog and `UpdateServiceFactory`. Creating a graph or requesting help performs no update lookup.                                                                                                      |
-| File I/O        | `FileIoModule` binds `DocumentSource`, `DocumentSink` and `GcodeSource` to existing bounded readers and atomic writers. Explicit replacements support tests without filesystem writes or native loading.                                                                     |
+| File I/O        | `FileIoModule` binds the API-module `DocumentSource`, `DocumentSink` and `GcodeSource` ports to existing bounded readers and atomic writers. Explicit replacements support tests without filesystem writes or native loading.                                                |
 
 Sketch sessions also use an assisted factory: geometry, parameters and feature
 identity are combined with the injected solver, UI dispatcher and a fresh worker.

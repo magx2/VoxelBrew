@@ -1,6 +1,7 @@
 package dev.voxelbrew.exporter;
 
-import dev.voxelbrew.engine.export.*;
+import dev.voxelbrew.exporter.api.ExporterDescriptor;
+import dev.voxelbrew.exporter.api.ModelExporter;
 import java.io.IOException;
 import java.net.URL;
 import java.net.URLClassLoader;
@@ -51,7 +52,10 @@ public final class ExporterRegistry implements AutoCloseable {
                 if (!iterator.hasNext()) break;
                 register(iterator.next());
                 failures = 0;
-            } catch (ServiceConfigurationError | LinkageError | RuntimeException failure) {
+            } catch (ServiceConfigurationError
+                    | LinkageError
+                    | RuntimeException
+                    | AssertionError failure) {
                 diagnostics.add("Provider load failed: " + failure);
                 if (++failures >= 100) {
                     diagnostics.add("Stopped after 100 consecutive provider failures");

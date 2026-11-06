@@ -18,7 +18,8 @@
 - Evolve `src/main/proto/document.proto` and the in-memory `DocumentCodec` compatibly: reserve retired field numbers,
   never hand-edit generated code, and protect newer/unknown documents from
   destructive writes. File access and atomic publication belong to import/export.
-- For export/plugins, follow the plan's versioned engine API, dedicated class
+- For plugins, keep feature contracts here and file-I/O contracts in import-api/export-api.
+  Follow the versioned APIs, dedicated class
   loader, ServiceLoader registry, compatibility diagnostics, and independent
   consumer fixture. Keep tessellation tolerance an explicit option.
 - Use `:engine:test` for isolated unit tests, `:engine:integrationTest` for

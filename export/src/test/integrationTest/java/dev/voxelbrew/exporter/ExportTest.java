@@ -2,10 +2,10 @@ package dev.voxelbrew.exporter;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-import dev.voxelbrew.engine.export.*;
 import dev.voxelbrew.engine.geometry.Solid;
 import dev.voxelbrew.engine.mesh.*;
 import dev.voxelbrew.engine.model.*;
+import dev.voxelbrew.exporter.api.ExporterDescriptor;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.file.Files;

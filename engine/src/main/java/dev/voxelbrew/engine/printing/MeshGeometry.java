@@ -1,9 +1,9 @@
 package dev.voxelbrew.engine.printing;
 
-import dev.voxelbrew.engine.export.Transform;
 import dev.voxelbrew.engine.geometry.Bounds;
 import dev.voxelbrew.engine.mesh.MeshData;
 import dev.voxelbrew.engine.mesh.MeshValidation;
+import dev.voxelbrew.engine.model.Transform;
 import java.awt.geom.Area;
 import java.awt.geom.Path2D;
 import java.util.List;

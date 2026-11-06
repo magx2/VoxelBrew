@@ -1,7 +1,7 @@
 package dev.voxelbrew.engine.printing;
 
-import dev.voxelbrew.engine.export.ModelView;
 import dev.voxelbrew.engine.model.CadDocument;
+import dev.voxelbrew.engine.model.ModelView;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;

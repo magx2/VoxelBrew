@@ -1,13 +1,13 @@
 package dev.voxelbrew.cli;
 
-import dev.voxelbrew.engine.export.*;
 import dev.voxelbrew.engine.geometry.Solid;
 import dev.voxelbrew.engine.mesh.MeshOptions;
 import dev.voxelbrew.engine.model.*;
-import dev.voxelbrew.exporter.DocumentSink;
+import dev.voxelbrew.exporter.ExportSelection;
 import dev.voxelbrew.exporter.ExportService;
 import dev.voxelbrew.exporter.ExporterRegistry;
-import dev.voxelbrew.importer.DocumentSource;
+import dev.voxelbrew.exporter.api.DocumentSink;
+import dev.voxelbrew.importer.api.DocumentSource;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Locale;
@@ -94,6 +94,7 @@ public final class VoxelBrew implements Runnable {
                 .usageMessage()
                 .description(translations.text("app.description"));
         PrintingCommands.register(cliCommand);
+        ImportCommands.register(cliCommand);
         FeatureCommands.register(cliCommand);
         SketchCommands.register(cliCommand);
         ParameterCommands.register(cliCommand);

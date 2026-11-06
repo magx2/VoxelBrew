@@ -1,8 +1,8 @@
 package dev.voxelbrew.cli;
 
 import dev.voxelbrew.engine.parameters.*;
-import dev.voxelbrew.exporter.DocumentSink;
-import dev.voxelbrew.importer.DocumentSource;
+import dev.voxelbrew.exporter.api.DocumentSink;
+import dev.voxelbrew.importer.api.DocumentSource;
 import picocli.CommandLine;
 import picocli.CommandLine.*;
 

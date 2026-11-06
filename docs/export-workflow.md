@@ -1,8 +1,7 @@
 # M2 mesh export and external providers
 
 Format implementations and exporter discovery live in the `export` project.
-The versioned SPI and read-only CAD view remain in engine for existing provider
-compatibility. See [file-I/O APIs and boundaries](file-io.md).
+The versioned SPI lives in `export-api`; the read-only CAD view remains in engine. See [file-I/O APIs and boundaries](file-io.md).
 
 The installed `cli`/`cli.bat` supports:
 
@@ -20,17 +19,17 @@ Use `--overwrite` explicitly to replace an export. Failed writes preserve the ol
 destination. New output uses atomic create-if-absent publication; replacement
 requires atomic rename. Broken or rolled-back documents cannot be exported.
 
-`engine` publishes `dev.voxelbrew:engine:0.1.0-SNAPSHOT` via `maven-publish`.
-`./gradlew :engine:publishEnginePublicationToFixtureRepository` writes a local
-Maven repository under `engine/build/repository`. `fixtures/exporter-plugin` is an
+`export-api` publishes `dev.voxelbrew:export-api:0.1.0-SNAPSHOT` via `maven-publish`.
+`./gradlew :engine:buildExporterFixture` publishes both APIs and their engine/util
+dependencies to a local Maven repository under `engine/build/repository`. `fixtures/exporter-plugin` is an
 independent Gradle consumer, not an application subproject. Root `check` compiles
 its JAR against the published API and tests discovery without recompiling the app.
 
-Implement `dev.voxelbrew.engine.export.ModelExporter` (SPI version 1) and list
-provider classes in `META-INF/services/dev.voxelbrew.engine.export.ModelExporter`.
+Implement `dev.voxelbrew.exporter.api.ModelExporter` (SPI version 1) and list
+provider classes in `META-INF/services/dev.voxelbrew.exporter.api.ModelExporter`.
 Descriptors declare stable format ID, display name, extensions, single/multiple
 instance capability, and STRING/BOOLEAN/INTEGER/DECIMAL/CHOICE options. Options are
-validated and defaults applied before writing. The engine owns the model view and
+validated and defaults applied before writing. The host owns the model view and
 output stream; providers must not retain them. Returned meshes are immutable and
 detached. Plugin contracts contain no UI types, Protobuf messages, or native handles.
 

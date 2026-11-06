@@ -3,8 +3,11 @@ package dev.voxelbrew.exporter.di;
 import dagger.Module;
 import dagger.Provides;
 import dev.voxelbrew.exporter.*;
+import dev.voxelbrew.exporter.api.DocumentSink;
 import dev.voxelbrew.exporter.printing.SlicerRegistry;
 import dev.voxelbrew.importer.*;
+import dev.voxelbrew.importer.api.DocumentSource;
+import dev.voxelbrew.importer.api.GcodeSource;
 import javax.inject.Singleton;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
@@ -42,6 +45,11 @@ public final class FileIoModule {
     @Provides
     static ExporterRegistry.Factory exporters() {
         return ExporterRegistry::new;
+    }
+
+    @Provides
+    static ImporterRegistry.Factory importers() {
+        return ImporterRegistry::new;
     }
 
     @Provides

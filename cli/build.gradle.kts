@@ -40,6 +40,7 @@ tasks.named<Sync>("installDist") {
 }
 
 tasks.named<Test>("e2eTest") {
+    inputs.file(rootProject.file("fixtures/exporter-plugin/build/libs/fixture-exporter-1.0.jar"))
     dependsOn(":engine:buildExporterFixture")
     systemProperty(
         "voxelbrew.test.plugin",

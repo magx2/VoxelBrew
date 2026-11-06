@@ -243,6 +243,8 @@ val buildExporterFixture by
         dependsOn(
             "publishEnginePublicationToFixtureRepository",
             ":util:publishUtilPublicationToFixtureRepository",
+            ":export-api:publishApiPublicationToFixtureRepository",
+            ":import-api:publishApiPublicationToFixtureRepository",
         )
         dir = rootProject.file("fixtures/exporter-plugin")
         tasks = listOf("jar")
@@ -250,6 +252,7 @@ val buildExporterFixture by
     }
 
 tasks.named<Test>("integrationTest") {
+    inputs.file(rootProject.file("fixtures/exporter-plugin/build/libs/fixture-exporter-1.0.jar"))
     dependsOn(buildExporterFixture)
     systemProperty(
         "voxelbrew.test.plugin",

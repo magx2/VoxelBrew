@@ -55,6 +55,7 @@ tasks
     }
 
 tasks.named<Test>("e2eTest") {
+    inputs.file(rootProject.file("fixtures/exporter-plugin/build/libs/fixture-exporter-1.0.jar"))
     // Full CAD/Robot sessions retain substantial Prism meshes and Windows accessibility data.
     // The default 512 MiB test heap can exhaust near the end of the complete rendered suite.
     maxHeapSize = "1g"
@@ -91,6 +92,7 @@ tasks.named<Sync>("installDist") {
 }
 
 tasks.named<Test>("integrationTest") {
+    inputs.file(rootProject.file("fixtures/exporter-plugin/build/libs/fixture-exporter-1.0.jar"))
     dependsOn(":engine:buildExporterFixture")
     systemProperty(
         "voxelbrew.test.plugin",

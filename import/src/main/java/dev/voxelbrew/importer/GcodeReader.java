@@ -17,6 +17,13 @@ public final class GcodeReader {
                     "(?:^|\\s)([XYZEF])([-+]?(?:[0-9]+(?:\\.[0-9]*)?|\\.[0-9]+)(?:[eE][-+]?[0-9]+)?)");
 
     public static GcodeJob read(Path path) throws IOException {
+        try (var input = Files.newInputStream(path)) {
+            return read(input);
+        }
+    }
+
+    /** Reads UTF-8 toolpaths; closing a provider's borrowed stream remains under host control. */
+    public static GcodeJob read(InputStream input) throws IOException {
         var segments = new ArrayList<Segment>();
         var layers = new TreeSet<Double>();
         var report = new LinkedHashMap<String, String>();
@@ -25,7 +32,8 @@ public final class GcodeReader {
         double x = 0, y = 0, z = 0, e = 0, width = 0.45, height = 0.2;
         boolean absolute = true, absoluteE = true;
         Role role = Role.UNKNOWN;
-        try (var reader = Files.newBufferedReader(path, StandardCharsets.UTF_8)) {
+        try (var reader =
+                new BufferedReader(new InputStreamReader(input, StandardCharsets.UTF_8))) {
             String line;
             while ((line = reader.readLine()) != null) {
                 if (line.startsWith(";TYPE:")) role = role(line.substring(6).strip());

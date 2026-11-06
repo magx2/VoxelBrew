@@ -1,8 +1,8 @@
 package dev.voxelbrew.cli;
 
 import dev.voxelbrew.engine.feature.*;
-import dev.voxelbrew.exporter.DocumentSink;
-import dev.voxelbrew.importer.DocumentSource;
+import dev.voxelbrew.exporter.api.DocumentSink;
+import dev.voxelbrew.importer.api.DocumentSource;
 import java.nio.file.Path;
 import java.util.*;
 import java.util.concurrent.Callable;

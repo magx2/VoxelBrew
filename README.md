@@ -13,8 +13,10 @@ extrusion, picking, editable history and export. The shared subproject
 generic CPU workers. It has no CAD or frontend dependencies; engine and both
 frontends depend on it. See [shared utilities and configuration](docs/shared-utilities.md).
 The `import` and `export` projects own document/G-code reading, document writing,
-STL/3MF exporters and the slicer file pipeline. Both depend on engine; engine has
-no production dependency on them. There are six first-party projects. See
+STL/3MF exporters and the slicer file pipeline. The `import-api` and `export-api`
+projects publish provider contracts so external JARs can add formats without depending
+on implementation projects. Both APIs depend on engine; engine has no production
+dependency on them. There are eight first-party projects. See
 [file import/export boundaries and API migration](docs/file-io.md).
 CLI commands and each desktop window are assembled by Dagger with constructor
 injection, scoped services and explicit resource ownership. See

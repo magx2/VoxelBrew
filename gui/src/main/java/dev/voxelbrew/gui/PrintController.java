@@ -4,6 +4,7 @@ import dev.voxelbrew.engine.mesh.MeshOptions;
 import dev.voxelbrew.engine.model.CadDocument;
 import dev.voxelbrew.engine.persistence.DocumentCodec;
 import dev.voxelbrew.engine.printing.*;
+import dev.voxelbrew.exporter.api.printing.SlicerBackend;
 import dev.voxelbrew.exporter.printing.SliceService;
 import java.io.IOException;
 import java.nio.file.Path;

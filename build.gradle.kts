@@ -7,7 +7,17 @@ plugins {
 
 // Root-owned targets include the independent consumer build without making it a subproject.
 val sourceProjects =
-    listOf("util", "engine", "import", "export", "cli", "gui", "fixtures/exporter-plugin")
+    listOf(
+        "util",
+        "engine",
+        "import-api",
+        "export-api",
+        "import",
+        "export",
+        "cli",
+        "gui",
+        "fixtures/exporter-plugin",
+    )
 val formatterWindows = System.getProperty("os.name").startsWith("Windows")
 val formatterEnvironment = layout.projectDirectory.dir(".tools/formatters")
 val formatterBin = formatterEnvironment.dir(if (formatterWindows) "Scripts" else "bin")
@@ -130,7 +140,9 @@ subprojects {
         options.release.set(21)
         options.compilerArgs.addAll(listOf("-Xlint:all", "-Werror"))
     }
-    apply(from = rootProject.file("gradle/lombok.gradle.kts"))
+    if (name !in setOf("import-api", "export-api")) {
+        apply(from = rootProject.file("gradle/lombok.gradle.kts"))
+    }
     dependencies {
         "testImplementation"(platform("org.junit:junit-bom:5.12.1"))
         "testImplementation"("org.junit.jupiter:junit-jupiter")

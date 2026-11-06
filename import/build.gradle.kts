@@ -3,7 +3,24 @@ plugins {
     `maven-publish`
 }
 
-dependencies { api(project(":engine")) }
+dependencies {
+    api(project(":import-api"))
+    implementation(project(":util"))
+}
+
+tasks.named<Test>("integrationTest") {
+    inputs.file(rootProject.file("fixtures/exporter-plugin/build/libs/fixture-exporter-1.0.jar"))
+    dependsOn(":engine:buildExporterFixture", ":engine:buildNative")
+    val runtime = project(":engine").layout.buildDirectory.dir("native/runtime")
+    inputs.dir(runtime)
+    systemProperty("voxelbrew.native.path", runtime.get().asFile.absolutePath)
+    systemProperty(
+        "voxelbrew.test.plugin",
+        rootProject
+            .file("fixtures/exporter-plugin/build/libs/fixture-exporter-1.0.jar")
+            .absolutePath,
+    )
+}
 
 val buildVersion = project.version.toString()
 

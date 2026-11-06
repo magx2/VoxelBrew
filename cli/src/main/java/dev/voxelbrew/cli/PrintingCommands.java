@@ -1,15 +1,14 @@
 package dev.voxelbrew.cli;
 
-import dev.voxelbrew.engine.export.*;
 import dev.voxelbrew.engine.mesh.MeshOptions;
 import dev.voxelbrew.engine.model.*;
 import dev.voxelbrew.engine.printing.*;
-import dev.voxelbrew.exporter.DocumentSink;
 import dev.voxelbrew.exporter.ExporterRegistry;
+import dev.voxelbrew.exporter.api.DocumentSink;
 import dev.voxelbrew.exporter.printing.PrusaSlicerBackend;
 import dev.voxelbrew.exporter.printing.SliceService;
 import dev.voxelbrew.exporter.printing.SlicerRegistry;
-import dev.voxelbrew.importer.DocumentSource;
+import dev.voxelbrew.importer.api.DocumentSource;
 import java.nio.file.Path;
 import java.util.*;
 import java.util.concurrent.*;
@@ -590,10 +589,10 @@ final class PrintingCommands {
             description =
                     "Independently inspect actual G-code deposition layers, roles, estimates and job provenance.")
     static final class InspectJob implements Callable<Integer> {
-        private final dev.voxelbrew.importer.GcodeSource gcode;
+        private final dev.voxelbrew.importer.api.GcodeSource gcode;
 
         @javax.inject.Inject
-        InspectJob(dev.voxelbrew.importer.GcodeSource gcode) {
+        InspectJob(dev.voxelbrew.importer.api.GcodeSource gcode) {
             this.gcode = gcode;
         }
 

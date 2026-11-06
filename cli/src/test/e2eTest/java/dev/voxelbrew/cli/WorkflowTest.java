@@ -22,6 +22,77 @@ class WorkflowTest {
     @TempDir Path directory;
 
     @Test
+    void externalImporterListsOptionsAndPublishesEditableDocumentsAcrossProcesses()
+            throws Exception {
+        Path plugins = Files.createDirectories(directory.resolve("import plugins with spaces"));
+        Files.copy(
+                Path.of(System.getProperty("voxelbrew.test.plugin")),
+                plugins.resolve("provider.jar"));
+        String listing = run(0, "importers", "--plugin-dir", plugins.toString());
+        assertTrue(listing.contains("plate\tExternal plate"), listing);
+        assertTrue(listing.contains("scale=1 (DECIMAL)"), listing);
+        Path source = directory.resolve("source plate.vbplate"),
+                output = directory.resolve("imported design.jcad");
+        Files.writeString(source, "60,40,4");
+        run(
+                0,
+                "import",
+                source.toString(),
+                "--format",
+                "plate",
+                "--plugin-dir",
+                plugins.toString(),
+                "--option",
+                "scale=2",
+                "--output",
+                output.toString());
+        assertVolume(76800, run(0, "inspect", output.toString()));
+        byte[] saved = Files.readAllBytes(output);
+        run(
+                1,
+                "import",
+                source.toString(),
+                "--format",
+                "failing",
+                "--plugin-dir",
+                plugins.toString(),
+                "--output",
+                output.toString(),
+                "--overwrite");
+        assertArrayEquals(saved, Files.readAllBytes(output));
+        run(
+                1,
+                "import",
+                source.toString(),
+                "--format",
+                "plate",
+                "--plugin-dir",
+                plugins.toString(),
+                "--output",
+                output.toString());
+        assertArrayEquals(saved, Files.readAllBytes(output));
+        String error =
+                run(
+                        1,
+                        "import",
+                        source.toString(),
+                        "--format",
+                        "plate",
+                        "--plugin-dir",
+                        plugins.toString(),
+                        "--output",
+                        source.toString(),
+                        "--overwrite");
+        assertTrue(error.contains("must differ from its source"), error);
+        assertEquals("60,40,4", Files.readString(source));
+        Path gcode = directory.resolve("source.gcode");
+        Files.writeString(gcode, "G21\nG90\nM82\nG1 Z0.2\nG1 X10 Y10 E1 F1200\n");
+        assertTrue(
+                run(0, "import", gcode.toString(), "--format", "gcode")
+                        .contains("deposition_moves=1"));
+    }
+
+    @Test
     void olderApplicationFilesUpgradeAndFutureFilesAreRejectedWithoutWrites() throws Exception {
         Path file = directory.resolve("versioned design.jcad");
         run(0, "new", file.toString());

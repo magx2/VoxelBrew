@@ -1,9 +1,9 @@
 package dev.voxelbrew.gui;
 
-import dev.voxelbrew.engine.export.*;
 import dev.voxelbrew.engine.mesh.*;
 import dev.voxelbrew.engine.model.*;
 import dev.voxelbrew.exporter.DocumentWriter;
+import dev.voxelbrew.exporter.ExportSelection;
 import dev.voxelbrew.exporter.ExportService;
 import dev.voxelbrew.exporter.ExporterRegistry;
 import dev.voxelbrew.importer.DocumentReader;
@@ -42,8 +42,8 @@ public final class DocumentController implements AutoCloseable {
 
     private final ExecutorService worker;
     private final ExecutorService io;
-    private final dev.voxelbrew.importer.DocumentSource documents;
-    private final dev.voxelbrew.exporter.DocumentSink documentWriter;
+    private final dev.voxelbrew.importer.api.DocumentSource documents;
+    private final dev.voxelbrew.exporter.api.DocumentSink documentWriter;
     private final Consumer<Runnable> dispatch;
     private final Function<CadDocument, Build> evaluator;
     private final Path pluginDirectory;
@@ -55,6 +55,7 @@ public final class DocumentController implements AutoCloseable {
     private long documentGeneration;
     private ModelSession session = new ModelSession(CadDocument.empty());
     private CadDocument saved = session.document();
+    private boolean unsavedImport;
 
     @Getter
     @Accessors(fluent = true)
@@ -119,8 +120,8 @@ public final class DocumentController implements AutoCloseable {
             @javax.inject.Named("plugins") Path pluginDirectory,
             @javax.inject.Named("rebuild") ExecutorService worker,
             @javax.inject.Named("files") ExecutorService io,
-            dev.voxelbrew.importer.DocumentSource documents,
-            dev.voxelbrew.exporter.DocumentSink documentWriter) {
+            dev.voxelbrew.importer.api.DocumentSource documents,
+            dev.voxelbrew.exporter.api.DocumentSink documentWriter) {
         this(
                 dispatch,
                 document -> evaluate(document, pluginDirectory),
@@ -137,8 +138,8 @@ public final class DocumentController implements AutoCloseable {
             Path pluginDirectory,
             ExecutorService worker,
             ExecutorService io,
-            dev.voxelbrew.importer.DocumentSource documents,
-            dev.voxelbrew.exporter.DocumentSink documentWriter) {
+            dev.voxelbrew.importer.api.DocumentSource documents,
+            dev.voxelbrew.exporter.api.DocumentSink documentWriter) {
         this.dispatch = Objects.requireNonNull(dispatch);
         this.evaluator = Objects.requireNonNull(evaluator);
         this.pluginDirectory = Objects.requireNonNull(pluginDirectory);
@@ -187,7 +188,7 @@ public final class DocumentController implements AutoCloseable {
     }
 
     public boolean dirty() {
-        return !session.document().equals(saved);
+        return unsavedImport || !session.document().equals(saved);
     }
 
     public boolean hasPreview() {
@@ -214,6 +215,7 @@ public final class DocumentController implements AutoCloseable {
         if (ioBusy) throw new IllegalStateException("Wait for the current file operation");
         session = new ModelSession(document);
         saved = document;
+        unsavedImport = false;
         path = source;
         preview = null;
         documentGeneration++;
@@ -368,8 +370,53 @@ public final class DocumentController implements AutoCloseable {
                                     ioBusy = false;
                                     if (documentGeneration == generation) {
                                         saved = captured;
+                                        unsavedImport = false;
                                         path = destination.toAbsolutePath();
                                     }
+                                    onChanged.run();
+                                    result.complete(null);
+                                });
+                    } catch (Exception failure) {
+                        finishIo(result, failure);
+                    }
+                });
+        return result;
+    }
+
+    /** Reads a provider on the file worker; the imported document needs its own Save As. */
+    public CompletableFuture<Void> importFile(
+            dev.voxelbrew.importer.ImporterRegistry.Factory importers,
+            String format,
+            Path source,
+            Map<String, String> options) {
+        var values = Map.copyOf(options);
+        requireIdleIo();
+        ioBusy = true;
+        onChanged.run();
+        var result = new CompletableFuture<Void>();
+        io.execute(
+                () -> {
+                    try {
+                        CadDocument document;
+                        try (var registry = importers.open(pluginDirectory)) {
+                            if (registry.require(format).descriptor().resultKind()
+                                    != dev.voxelbrew.importer.api.ImportResult.Kind.DOCUMENT)
+                                throw new IllegalArgumentException("Choose a document importer");
+                            document =
+                                    ((dev.voxelbrew.importer.api.ImportResult.Document)
+                                                    dev.voxelbrew.importer.ImportService.read(
+                                                            registry, format, source, values))
+                                            .document();
+                        }
+                        dispatch.accept(
+                                () -> {
+                                    if (closed) {
+                                        result.cancel(false);
+                                        return;
+                                    }
+                                    ioBusy = false;
+                                    replace(document, null);
+                                    unsavedImport = true;
                                     onChanged.run();
                                     result.complete(null);
                                 });

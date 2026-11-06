@@ -1,7 +1,8 @@
 # File import instructions
 
 - Use `dev.voxelbrew.importer` (Java reserves the word `import`).
-- Own bounded document-file reading and independent G-code parsing; return engine domain values.
+- Own bounded file reading, importer discovery, .jcad and G-code providers; return engine domain values.
+- Put only public importer contracts in import-api; keep concrete readers and ServiceLoader registrations here.
 - Keep readers headless and independent of export, CLI and JavaFX.
 - Preserve .jcad schema compatibility, opaque plugin payloads and corruption/newer-schema diagnostics.
 - Do not reinterpret a mesh import as editable CAD history or claim unsupported formats work.

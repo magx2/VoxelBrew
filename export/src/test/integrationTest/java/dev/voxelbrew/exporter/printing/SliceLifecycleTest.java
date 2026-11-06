@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 import dev.voxelbrew.engine.mesh.MeshOptions;
 import dev.voxelbrew.engine.printing.*;
+import dev.voxelbrew.exporter.api.printing.SlicerBackend;
 import java.io.IOException;
 import java.nio.file.*;
 import java.util.*;

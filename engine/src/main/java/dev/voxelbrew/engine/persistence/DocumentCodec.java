@@ -1,10 +1,10 @@
 package dev.voxelbrew.engine.persistence;
 
 import com.google.protobuf.Message;
-import dev.voxelbrew.engine.export.ModelView;
-import dev.voxelbrew.engine.export.Transform;
 import dev.voxelbrew.engine.model.CadDocument;
 import dev.voxelbrew.engine.model.Feature;
+import dev.voxelbrew.engine.model.ModelView;
+import dev.voxelbrew.engine.model.Transform;
 import dev.voxelbrew.engine.persistence.proto.DocumentProto;
 import dev.voxelbrew.engine.printing.*;
 import dev.voxelbrew.util.Version;

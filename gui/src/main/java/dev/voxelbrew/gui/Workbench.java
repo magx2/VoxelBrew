@@ -1,6 +1,5 @@
 package dev.voxelbrew.gui;
 
-import dev.voxelbrew.engine.export.*;
 import dev.voxelbrew.engine.feature.FeatureRegistry;
 import dev.voxelbrew.engine.mesh.MeshData;
 import dev.voxelbrew.engine.model.*;
@@ -47,6 +46,7 @@ public final class Workbench extends BorderPane implements AutoCloseable {
 
     private final Path pluginDirectory;
     private final ExporterRegistry registry;
+    private final dev.voxelbrew.importer.ImporterRegistry.Factory importers;
 
     @Getter
     @Accessors(fluent = true)
@@ -149,6 +149,7 @@ public final class Workbench extends BorderPane implements AutoCloseable {
             @javax.inject.Named("plugins") Path pluginDirectory,
             DocumentController controller,
             ExporterRegistry registry,
+            dev.voxelbrew.importer.ImporterRegistry.Factory importers,
             PrintingPane printing,
             Appearance appearance,
             @javax.inject.Named("appearance") ExecutorService preferencesWorker,
@@ -162,6 +163,7 @@ public final class Workbench extends BorderPane implements AutoCloseable {
         this.pluginDirectory = pluginDirectory;
         this.controller = controller;
         this.registry = registry;
+        this.importers = importers;
         this.printing = printing;
         this.appearance = appearance;
         this.preferencesWorker = preferencesWorker;
@@ -254,15 +256,22 @@ public final class Workbench extends BorderPane implements AutoCloseable {
                         true,
                         () -> requestChange(this::open));
         var saveItem = menuItem(translations.text("action.save"), "save", true, () -> save(false));
+        var importItem =
+                menuItem(
+                        translations.text("action.import"),
+                        "import",
+                        true,
+                        () -> requestChange(this::importFile));
         var saveAsItem =
                 menuItem(translations.text("action.saveAs"), "save-as", true, () -> save(true));
-        for (var item : List.of(newItem, openItem, saveItem, saveAsItem))
+        for (var item : List.of(newItem, openItem, importItem, saveItem, saveAsItem))
             item.disableProperty().bind(disabledProperty().or(fileBusy));
         export.disableProperty().bind(disabledProperty().or(exportUnavailable));
         fileMenu.getItems()
                 .addAll(
                         newItem,
                         openItem,
+                        importItem,
                         new SeparatorMenuItem(),
                         saveItem,
                         saveAsItem,
@@ -542,6 +551,7 @@ public final class Workbench extends BorderPane implements AutoCloseable {
                         switch (action) {
                             case "new" -> fire(newItem);
                             case "open" -> fire(openItem);
+                            case "import" -> fire(importItem);
                             case "save" -> fire(saveItem);
                             case "save-as" -> fire(saveAsItem);
                             case "export" -> fire(export);
@@ -657,6 +667,29 @@ public final class Workbench extends BorderPane implements AutoCloseable {
                     fitNext = true;
                     controller.newDocument();
                 });
+    }
+
+    private void importFile() {
+        try (var providers = importers.open(pluginDirectory)) {
+            ImportDialog.choose(
+                            stage,
+                            providers,
+                            controller.snapshot().document().parameters(),
+                            translations)
+                    .ifPresent(
+                            request -> {
+                                cancelTool();
+                                controller
+                                        .importFile(
+                                                importers,
+                                                request.format(),
+                                                request.source(),
+                                                request.options())
+                                        .exceptionally(failure -> null);
+                            });
+        } catch (IOException failure) {
+            throw new java.io.UncheckedIOException(failure);
+        }
     }
 
     private void attempt(Runnable action) {

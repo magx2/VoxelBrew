@@ -6,7 +6,7 @@ plugins {
 apply(from = rootProject.file("gradle/di.gradle.kts"))
 
 dependencies {
-    api(project(":engine"))
+    api(project(":export-api"))
     implementation(project(":import"))
     implementation(project(":util"))
     testImplementation("com.google.protobuf:protobuf-java:4.30.2")
@@ -20,6 +20,7 @@ tasks.processResources {
 }
 
 tasks.named<Test>("integrationTest") {
+    inputs.file(rootProject.file("fixtures/exporter-plugin/build/libs/fixture-exporter-1.0.jar"))
     dependsOn(":engine:buildNative", ":engine:buildExporterFixture")
     val runtime = project(":engine").layout.buildDirectory.dir("native/runtime")
     inputs.dir(runtime)

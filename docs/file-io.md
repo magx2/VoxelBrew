@@ -4,19 +4,21 @@ The `import` and `export` Gradle projects separate file I/O from the CAD engine.
 The Java packages are `dev.voxelbrew.importer` and `dev.voxelbrew.exporter`;
 `import` is a Java keyword, so it cannot be a package segment.
 
-| Project   | Owns                                                                                          | Production dependencies      |
-| --------- | --------------------------------------------------------------------------------------------- | ---------------------------- |
-| util      | Configuration, translations, logging, updates, generic CPU workers                            | No other project             |
-| engine    | CAD and manufacturing models, geometry, tessellation, document schema/codec, plugin contracts | util                         |
-| import    | Bounded `.jcad` reading and independent G-code motion parsing                                 | engine                       |
-| export    | `.jcad` writing, STL/3MF writers, exporter discovery, slicer adapters and output publication  | engine, import, util         |
-| cli / gui | Commands and desktop interactions                                                             | engine, import, export, util |
+| Project    | Owns                                                                                       | Production dependencies      |
+| ---------- | ------------------------------------------------------------------------------------------ | ---------------------------- |
+| util       | Configuration, translations, logging, updates, generic workers                             | No other project             |
+| engine     | CAD/manufacturing models, geometry, tessellation, document schema/codec, feature contracts | util                         |
+| import-api | FileImporter SPI, descriptors, typed options/results, DocumentSource/GcodeSource ports     | engine                       |
+| export-api | ModelExporter and SlicerBackend SPIs, descriptors/options, DocumentSink port               | engine                       |
+| import     | Bounded .jcad/G-code reading, importer discovery and invocation                            | import-api, util             |
+| export     | Atomic .jcad writing, STL/3MF writers, exporter discovery, slicer execution/publication    | export-api, import, util     |
+| cli / gui  | Commands and desktop interactions                                                          | engine, import, export, util |
 
-The engine has no production dependency on the file-I/O modules. Existing engine
-integration tests may exercise the shared readers/writers; format/slicer suites
-now live under export and the G-code parser suite under import. All modules stay
-headless except GUI. No additional file formats are introduced by this refactor.
-STEP/STL-to-editable-CAD import remains outside the implemented workflow.
+The APIs contain only public contracts and their value types. Concrete format classes,
+registries, services and ServiceLoader registrations stay in `import` / `export`.
+Engine has no production dependency on either API or implementation module. CAD views,
+instances and transforms live in `dev.voxelbrew.engine.model`. All services are headless.
+STL mesh-to-editable-CAD and STEP import remain outside the implemented workflow.
 
 ## Public file operations
 
@@ -65,23 +67,72 @@ live in `dev.voxelbrew.exporter`. Prusa project/configuration writers, the backe
 slicer registry and `SliceService` live in `dev.voxelbrew.exporter.printing`.
 `GcodeJob` stays an immutable engine preview model; use `GcodeReader.read` to load it.
 
-Exporter and slicer **SPI version 1 contracts keep their existing engine packages**.
-Existing provider JARs still use the same service descriptor names and compile
-against the published engine artifact. Built-in registrations and the pinned
-Prusa profile resource now ship in export.jar. CLI commands and GUI workflows use
-the new modules without changing their user-facing file operations.
+## Authoring an external provider
+
+Compile against `dev.voxelbrew:import-api:<version>` or `dev.voxelbrew:export-api:<version>`
+with `compileOnly` (Maven `provided` scope). Engine domain types are available transitively.
+Do not bundle host API classes into a plugin JAR. No dependency on import/export, JavaFX,
+picocli, Protobuf classes or Dagger is needed. This source migration intentionally has no
+old-package shims: recompile existing providers and rename their service resources.
+
+| Extension    | Public interface                                    | JAR service resource                                                  |
+| ------------ | --------------------------------------------------- | --------------------------------------------------------------------- |
+| Import       | `dev.voxelbrew.importer.api.FileImporter`           | `META-INF/services/dev.voxelbrew.importer.api.FileImporter`           |
+| Model export | `dev.voxelbrew.exporter.api.ModelExporter`          | `META-INF/services/dev.voxelbrew.exporter.api.ModelExporter`          |
+| Slicing      | `dev.voxelbrew.exporter.api.printing.SlicerBackend` | `META-INF/services/dev.voxelbrew.exporter.api.printing.SlicerBackend` |
+
+Each service file lists public, no-argument provider classes, one per line. Implement the
+interface and return a descriptor with a unique ID, supported API version, extensions,
+capabilities/result kind and STRING/BOOLEAN/INTEGER/DECIMAL/CHOICE options. Declare defaults
+in the descriptor; the host validates options before invoking a provider. Importers return
+`ImportResult.Document(CadDocument)` or `ImportResult.Gcode(GcodeJob)`; declare the matching
+result kind. A document importer must create actual editable definitions, not disguise
+triangles as feature history. Providers must not retain borrowed streams/model views.
+Imports use host-owned bounded input (256 MiB maximum, with .jcad's smaller codec limit).
+Exports use host-owned output and atomic publication only after success.
+
+`ImporterRegistry`/`ImportService` and `ExporterRegistry`/`ExportService` are host services in
+the implementation projects. Trusted JARs are discovered using dedicated, closeable
+ServiceLoader class loaders in `~/.voxelbrew/plugins` or `--plugin-dir`. Plugins execute with
+the application's permissions. Duplicate IDs retain the first provider; incompatible APIs
+and broken providers are diagnosed without disabling unrelated providers. Invocation errors
+name the provider. Import never writes its source. Built-in `.jcad` and G-code importers and
+STL/3MF exporters use the same discovery mechanism.
+
+`fixtures/exporter-plugin` is an independent Gradle build with published API dependencies
+only. It includes `consumer.ProbeImporter` (CSV `width,height,thickness` in a `.vbplate` file,
+with a `scale` option) and `consumer.ProbeExporter` (a mesh report with a `label` option).
+`./gradlew :engine:buildExporterFixture` publishes engine/util and both APIs to
+`engine/build/repository`, then compiles that consumer. For Maven-local development run
+`./gradlew :util:publishToMavenLocal :engine:publishToMavenLocal :import-api:publishToMavenLocal :export-api:publishToMavenLocal`.
+The API artifacts also publish source JARs. Copy the consumer JAR into a trusted plugin directory.
+
+```text
+cli importers --plugin-dir "path with spaces/plugins"
+cli import plate.vbplate --format plate --option scale=2 --plugin-dir "path with spaces/plugins" --output plate.jcad
+cli import part.gcode --format gcode
+cli exporters --plugin-dir "path with spaces/plugins"
+cli export plate.jcad --format probe --option label=custom --plugin-dir "path with spaces/plugins" --output report.txt
+```
+
+Document imports require a separate `--output`; existing destinations require `--overwrite`.
+G-code import prints toolpath counts and rejects `--output`, because it is not editable CAD.
+GUI **File → Import…** (`Ctrl+I`) lists document providers and generates option editors from
+their descriptors. Reads run on the file worker; success opens an unsaved design, and failure
+keeps the current document. Save/Discard/Cancel protects unsaved work before importing. Toolpath
+importers are available through the host API and CLI; the GUI import dialog is for documents.
 
 ## Distribution and verification
 
-Both new libraries are published alongside engine/util and automatically included
+Both API libraries and the implementations are published alongside engine/util and automatically included
 in development distributions and bundled images. Installation metadata identifies
-`importJar` and `exportJar`; the updater checks their presence and build versions.
+`importJar`, `exportJar`, `import-apiJar` and `export-apiJar`; the updater checks their presence and build versions.
 Older format-1 installation metadata remains readable for recovery/downgrades.
 
 Focused checks:
 
 ```text
-./gradlew :import:test :export:test :export:integrationTest
+./gradlew :import-api:test :export-api:test :import:test :import:integrationTest :export:test :export:integrationTest
 ```
 
 The compatibility fixture in `export/src/test/test/resources/fixtures/` was
@@ -97,6 +148,6 @@ exercise the relocated implementations.
 
 Completion requires full `gradlew.bat check` on Windows and `./gradlew check` in a
 separate Ubuntu WSL checkout, including GUI interaction and real packaged/extracted
-application updates. Local evidence is in `.tools/io-*.log` and
-`.tools/io-qualification.json`; reports remain in each module's `build/reports/tests`.
+application updates. Local evidence is in `.tools/io-api-*.log` and
+`.tools/io-api-qualification.json`; reports remain in each module's `build/reports/tests`.
 CI artifacts retain the existing three-day limit. macOS GUI qualification remains deferred.

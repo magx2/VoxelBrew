@@ -2,8 +2,8 @@ package dev.voxelbrew.engine.printing;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-import dev.voxelbrew.engine.export.Transform;
 import dev.voxelbrew.engine.mesh.MeshData;
+import dev.voxelbrew.engine.model.Transform;
 import java.awt.geom.*;
 import java.util.*;
 import org.junit.jupiter.api.Test;

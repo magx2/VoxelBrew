@@ -18,7 +18,7 @@ class UpdateTest {
 
     @Test
     void declaredFileIoModulesMustExistAndMatchTheInstallationVersion() throws Exception {
-        for (String module : List.of("import", "export")) {
+        for (String module : List.of("import", "export", "import-api", "export-api")) {
             var image = image(directory.resolve(module), current);
             Path marker = image.appDirectory().resolve(ApplicationImage.MARKER);
             Files.writeString(

@@ -252,7 +252,7 @@ class WorkbenchUiTest {
                         () -> {
                             @SuppressWarnings("unchecked")
                             var combo =
-                                    (ComboBox<dev.voxelbrew.engine.export.ExportSelection.Space>)
+                                    (ComboBox<dev.voxelbrew.exporter.ExportSelection.Space>)
                                             node("#export-space");
                             return combo.getConverter().toString(combo.getValue());
                         }));
@@ -535,7 +535,7 @@ class WorkbenchUiTest {
     private void click(String id) throws Exception {
         String menu =
                 switch (id) {
-                    case "new", "open", "save", "save-as", "export" -> "menu-file";
+                    case "new", "open", "import", "save", "save-as", "export" -> "menu-file";
                     case "language", "updates" -> "menu-settings";
                     case "appearance" -> "menu-view";
                     default -> null;
@@ -972,6 +972,41 @@ class WorkbenchUiTest {
             if (exists) Thread.sleep(50);
         } while (exists && System.nanoTime() < deadline);
         assertFalse(exists);
+    }
+
+    @Test
+    void externalImportDialogUsesOptionsAndProtectsSourceInBothPalettes() throws Exception {
+        Path source = directory.resolve("external plate.vbplate");
+        Files.writeString(source, "60,40,4");
+        ready();
+        choice("appearance", 1);
+        shortcut(KeyCode.I, false);
+        choice("import-format", 2); // failing, jcad, plate; toolpaths are excluded.
+        text("import-path", source.toString());
+        text("import-option-scale", "2");
+        assertButtonDescriptions();
+        click("import-confirm");
+        ready();
+        assertEquals("imported-plate", document().id());
+        assertTrue(fx(() -> workbench.controller().dirty()));
+        assertNull(fx(() -> workbench.controller().path()));
+        assertEquals(
+                76800, fx(() -> workbench.controller().build().bodies().getFirst().volume()), .01);
+        Path saved = directory.resolve("imported design.jcad");
+        save(saved);
+        assertFalse(fx(() -> workbench.controller().dirty()));
+        var before = document();
+        choice("appearance", 2);
+        click("import");
+        assertButtonDescriptions();
+        text("import-path", source.toString());
+        click("import-confirm"); // First provider deliberately fails.
+        ready();
+        assertEquals(before, document());
+        assertTrue(
+                fx(() -> workbench.controller().error().contains("Deliberate importer failure")));
+        assertEquals("60,40,4", Files.readString(source));
+        assertEquals(before, DocumentReader.load(saved));
     }
 
     private void waitForUpdate(String message) throws Exception {

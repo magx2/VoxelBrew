@@ -42,6 +42,7 @@ final class KeyboardShortcuts {
             List.of(
                     binding(Scope.DOCUMENT, "new", true, "Shortcut+N"),
                     binding(Scope.DOCUMENT, "open", true, "Shortcut+O"),
+                    binding(Scope.DOCUMENT, "import", true, "Shortcut+I"),
                     binding(Scope.DOCUMENT, "save", true, "Shortcut+S"),
                     binding(Scope.DOCUMENT, "save-as", true, "Shortcut+Shift+S"),
                     binding(Scope.DOCUMENT, "export", true, "Shortcut+E"),

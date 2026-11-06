@@ -17,6 +17,50 @@ class DocumentControllerTest {
     @TempDir Path directory;
     private final ConcurrentLinkedQueue<Runnable> callbacks = new ConcurrentLinkedQueue<>();
 
+    @Test
+    void importedDocumentsAreUnsavedAndFailuresPreserveTheCurrentDocument() throws Exception {
+        Path plugins = Files.createDirectories(directory.resolve("import providers"));
+        Files.copy(
+                Path.of(System.getProperty("voxelbrew.test.plugin")),
+                plugins.resolve("provider.jar"));
+        Path source = directory.resolve("plate.vbplate");
+        Files.writeString(source, "60,40,4");
+        try (var controller = new DocumentController(callbacks::add, plugins)) {
+            var imported =
+                    controller.importFile(
+                            dev.voxelbrew.importer.ImporterRegistry::new,
+                            "plate",
+                            source,
+                            java.util.Map.of("scale", "2"));
+            assertTrue(controller.ioBusy());
+            await(() -> imported.isDone() && !controller.rebuilding());
+            imported.join();
+            assertTrue(controller.dirty());
+            assertNull(controller.path());
+            assertEquals(76800, controller.build().bodies().getFirst().volume(), .01);
+            Path saved = directory.resolve("saved.jcad");
+            controller.save(saved, false);
+            await(() -> !controller.ioBusy());
+            assertFalse(controller.dirty());
+            controller.edit("thickness", "distance", 9);
+            await(() -> !controller.rebuilding());
+            var before = controller.snapshot();
+            var failed =
+                    controller.importFile(
+                            dev.voxelbrew.importer.ImporterRegistry::new,
+                            "failing",
+                            source,
+                            java.util.Map.of());
+            await(failed::isDone);
+            assertTrue(failed.isCompletedExceptionally());
+            assertEquals(before, controller.snapshot());
+            assertEquals(saved.toAbsolutePath(), controller.path());
+            assertTrue(controller.dirty());
+            assertTrue(controller.error().contains("Deliberate importer failure"));
+            assertEquals("60,40,4", Files.readString(source));
+        }
+    }
+
     private static Feature.Sketch sketch(String id, double z) {
         return new Feature.Sketch(
                 id,

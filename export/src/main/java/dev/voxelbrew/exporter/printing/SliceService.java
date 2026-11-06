@@ -1,6 +1,7 @@
 package dev.voxelbrew.exporter.printing;
 
 import dev.voxelbrew.engine.printing.*;
+import dev.voxelbrew.exporter.api.printing.SlicerBackend;
 import dev.voxelbrew.importer.GcodeReader;
 import java.io.*;
 import java.nio.channels.FileChannel;

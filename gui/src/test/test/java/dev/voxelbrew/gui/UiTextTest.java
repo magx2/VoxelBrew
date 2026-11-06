@@ -2,9 +2,10 @@ package dev.voxelbrew.gui;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-import dev.voxelbrew.engine.export.ExportSelection;
 import dev.voxelbrew.engine.printing.*;
 import dev.voxelbrew.engine.sketch.*;
+import dev.voxelbrew.exporter.ExportSelection;
+import dev.voxelbrew.exporter.api.printing.SlicerBackend;
 import dev.voxelbrew.util.i18n.Translations;
 import java.nio.file.*;
 import java.util.*;

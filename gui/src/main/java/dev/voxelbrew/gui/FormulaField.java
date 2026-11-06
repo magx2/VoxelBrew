@@ -10,6 +10,20 @@ import javafx.scene.control.skin.TextFieldSkin;
 
 /** A normal editable TextField with explicit formula affordance and non-destructive previews. */
 final class FormulaField extends TextField {
+    enum ExpressionType {
+        NUMBER("ƒx", "number-expression"),
+        STRING("ƒs", "string-expression");
+
+        private final String mark;
+        private final String styleClass;
+
+        ExpressionType(String mark, String styleClass) {
+            this.mark = mark;
+            this.styleClass = styleClass;
+        }
+    }
+
+    private final ExpressionType expressionType;
     private static final PseudoClass FORMULA = PseudoClass.getPseudoClass("formula");
     private static final PseudoClass INVALID = PseudoClass.getPseudoClass("formula-invalid");
     private final Supplier<ParameterSet> parameters;
@@ -23,7 +37,8 @@ final class FormulaField extends TextField {
         super(text);
         this.parameters = Objects.requireNonNull(parameters);
         this.unit = unit;
-        getStyleClass().add("formula-field");
+        expressionType = unit == null ? ExpressionType.STRING : ExpressionType.NUMBER;
+        getStyleClass().addAll("formula-field", expressionType.styleClass);
         setTooltip(preview);
         localizeHelp();
         textProperty().addListener((o, a, b) -> refreshFormula());
@@ -48,6 +63,10 @@ final class FormulaField extends TextField {
 
     static FormulaField text(String text, Supplier<ParameterSet> parameters) {
         return new FormulaField(text, parameters, null);
+    }
+
+    ExpressionType expressionType() {
+        return expressionType;
     }
 
     FormulaField localized(dev.voxelbrew.util.i18n.Translations translations) {
@@ -112,13 +131,14 @@ final class FormulaField extends TextField {
                             ? ""
                             : " " + unit.get().canonicalUnit();
             preview.setText(
-                    "ƒx  "
+                    expressionType.mark
+                            + "  "
                             + (formula
                                     ? translations.text("formula.result", result, suffix)
                                     : translations.text("gui.supports_formulas_and_parameters")));
             pseudoClassStateChanged(INVALID, false);
         } catch (RuntimeException failure) {
-            preview.setText("ƒx  " + failure.getMessage());
+            preview.setText(expressionType.mark + "  " + failure.getMessage());
             pseudoClassStateChanged(INVALID, true);
         }
     }
@@ -126,7 +146,7 @@ final class FormulaField extends TextField {
     @Override
     protected Skin<?> createDefaultSkin() {
         return new TextFieldSkin(this) {
-            private final Label mark = new Label("ƒx");
+            private final Label mark = new Label(expressionType.mark);
 
             {
                 mark.getStyleClass().add("formula-mark");

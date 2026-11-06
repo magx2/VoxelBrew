@@ -183,6 +183,9 @@ complete valid active configuration at the timeline end.
 
 ## Fusion comparison and scope
 
+Expression fields show their result type: `ƒx` marks numeric expressions and
+`ƒs` marks string expressions, including paths, names and sketch text.
+
 Autodesk documents [configured user parameters](https://help.autodesk.com/cloudhelp/ENU/Fusion-Configurations/files/CFG-USER-PARAMETERS.htm)
 and a broader [set of configurable aspects](https://help.autodesk.com/cloudhelp/ENU/Fusion-Configurations/files/CFG-CONFIGURABLE-ASPECTS.htm).
 VoxelBrew implements named numeric parameters and parameter configurations in

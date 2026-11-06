@@ -2756,7 +2756,8 @@ class WorkbenchUiTest {
                     assertTrue(
                             field.getPseudoClassStates()
                                     .contains(javafx.css.PseudoClass.getPseudoClass("formula")));
-                    assertNotNull(field.lookup(".formula-mark"));
+                    assertEquals(FormulaField.ExpressionType.NUMBER, field.expressionType());
+                    assertEquals("ƒx", ((Label) field.lookup(".formula-mark")).getText());
                     assertTrue(field.getTooltip().getText().contains("30"));
                     var centimeters =
                             FormulaField.number(
@@ -2808,6 +2809,10 @@ class WorkbenchUiTest {
                     assertEquals(
                             "Width: 5",
                             ((FormulaField) node("#sketch-text-content")).evaluatedText());
+                    var stringField = (FormulaField) node("#sketch-text-content");
+                    assertEquals(FormulaField.ExpressionType.STRING, stringField.expressionType());
+                    assertTrue(stringField.getStyleClass().contains("string-expression"));
+                    assertEquals("ƒs", ((Label) stringField.lookup(".formula-mark")).getText());
                     Screenshot.save(stage.getScene(), artifacts.resolve("formulas-dark.png"));
                     return null;
                 });

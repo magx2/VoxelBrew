@@ -275,13 +275,20 @@
 .dark .formula-field .formula-mark {
   -fx-text-fill: #9ecbf0;
 }
+.formula-field.string-expression .formula-mark {
+  -fx-text-fill: #287a45;
+}
+.dark .formula-field.string-expression .formula-mark {
+  -fx-text-fill: #83d99b;
+}
 .text-field.formula-field:formula-invalid,
 .text-field.formula-field.invalid,
 .dark .text-field.formula-field:formula-invalid,
 .dark .text-field.formula-field.invalid {
   -fx-border-color: #d65c46;
 }
-.formula-field:formula-invalid .formula-mark {
+.formula-field:formula-invalid .formula-mark,
+.dark .formula-field:formula-invalid .formula-mark {
   -fx-text-fill: #d65c46;
 }
 

@@ -37,6 +37,7 @@ public final class Workbench extends BorderPane implements AutoCloseable {
         private Label validation;
         private ModelSession.Snapshot editingSnapshot;
         private Entry editingEntry;
+        private boolean renameRequested;
 
         BodyTreeCell() {
             var rename = new MenuItem(translations.text("body.rename"));
@@ -47,7 +48,7 @@ public final class Workbench extends BorderPane implements AutoCloseable {
                         var item = getTreeItem();
                         Platform.runLater(
                                 () -> {
-                                    if (item == getTreeItem()) tree.edit(item);
+                                    if (item == getTreeItem()) requestRename();
                                 });
                     });
             var fit = new MenuItem(translations.text("body.fit"));
@@ -76,7 +77,7 @@ public final class Workbench extends BorderPane implements AutoCloseable {
                         if (event.getButton() == MouseButton.PRIMARY
                                 && event.getClickCount() == 2
                                 && canRename()) {
-                            tree.edit(getTreeItem());
+                            requestRename();
                             event.consume();
                         }
                     });
@@ -91,6 +92,15 @@ public final class Workbench extends BorderPane implements AutoCloseable {
                     && controller.canExport()
                     && controller.build().bodies().stream()
                             .anyMatch(body -> body.id().equals(entry.id()));
+        }
+
+        private void requestRename() {
+            renameRequested = true;
+            try {
+                tree.edit(getTreeItem());
+            } finally {
+                renameRequested = false;
+            }
         }
 
         @Override
@@ -108,7 +118,9 @@ public final class Workbench extends BorderPane implements AutoCloseable {
         @Override
         public void startEdit() {
             if (isEditing()) return;
-            if (!canRename()) {
+            // TreeView's default single-click editing can resize/scroll a selected row
+            // between the two clicks, moving the second click onto a different item.
+            if (!renameRequested || !canRename()) {
                 if (tree.getEditingItem() == getTreeItem()) tree.edit(null);
                 return;
             }
@@ -334,6 +346,7 @@ public final class Workbench extends BorderPane implements AutoCloseable {
             dev.voxelbrew.importer.ImporterRegistry.Factory importers,
             PrintingPane printing,
             Appearance appearance,
+            Rendering rendering,
             @javax.inject.Named("appearance") ExecutorService preferencesWorker,
             Translations translations,
             dev.voxelbrew.util.config.UserConfiguration configurationStore,
@@ -354,6 +367,7 @@ public final class Workbench extends BorderPane implements AutoCloseable {
         this.translations = translations;
         this.configurationStore = configurationStore;
         this.viewport = new Viewport(translations);
+        this.viewport.setRendering(rendering.load());
         this.updates = updates;
         this.about = about;
         this.resources = resources;
@@ -500,6 +514,26 @@ public final class Workbench extends BorderPane implements AutoCloseable {
             appearanceMenu.getItems().add(item);
         }
         viewMenu.getItems().addAll(new SeparatorMenuItem(), appearanceMenu);
+        var renderingMenu = new Menu(translations.text("rendering.label"));
+        renderingMenu.setId("menu-rendering");
+        UiHelp.menu(renderingMenu, translations);
+        var renderingGroup = new ToggleGroup();
+        for (var style : Rendering.Style.values()) {
+            String name = style.name().toLowerCase(Locale.ROOT);
+            var item = new RadioMenuItem(translations.text("rendering." + name));
+            item.setId("rendering-" + name);
+            item.setToggleGroup(renderingGroup);
+            item.setSelected(style == viewport.rendering());
+            item.disableProperty().bind(disabledProperty());
+            UiHelp.menuItem(item, translations.text("help.rendering-" + name));
+            item.setOnAction(
+                    event -> {
+                        viewport.setRendering(style);
+                        rendering.save(style);
+                    });
+            renderingMenu.getItems().add(item);
+        }
+        viewMenu.getItems().add(renderingMenu);
         var settingsMenu = menu("menu-settings");
         settingsMenu
                 .getItems()
@@ -913,7 +947,7 @@ public final class Workbench extends BorderPane implements AutoCloseable {
             }
             if (changed || lastBuild != controller.build()) rebuildTree(document);
             if (lastBuild != controller.build()) {
-                viewport.showBodies(meshes());
+                viewport.showBodies(controller.build().bodies());
                 if (fitNext && !controller.build().bodies().isEmpty()) {
                     viewport.fit(meshes());
                     fitNext = false;

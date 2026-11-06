@@ -27,6 +27,7 @@ import javafx.scene.transform.Translate;
 /** Z-up CAD coordinates map to FX (x,-z,y); camera orbit never changes model coordinates. */
 public final class Viewport extends StackPane {
     private final Group bodies = new Group(),
+            outlines = new Group(),
             sketches = new Group(),
             aids = new Group(),
             world = new Group();
@@ -35,6 +36,12 @@ public final class Viewport extends StackPane {
     private final Translate center = new Translate(), pan = new Translate();
     private final PerspectiveCamera camera = new PerspectiveCamera(true);
     private final Map<String, MeshView> bodyViews = new LinkedHashMap<>();
+    private final Map<String, MeshView> edgeViews = new LinkedHashMap<>();
+    private final Map<String, TechnicalEdges> edgeData = new LinkedHashMap<>();
+    private final AmbientLight light = new AmbientLight(Color.gray(0.45));
+    private final PointLight key = new PointLight(Color.gray(0.7));
+    private Rendering.Style rendering = Rendering.Style.SHADED;
+    private boolean dark, edgesPending;
     private final SubScene scene;
     private final ReadOnlyObjectWrapper<ViewOrientation> orientation =
             new ReadOnlyObjectWrapper<>(ViewOrientation.HOME);
@@ -74,12 +81,13 @@ public final class Viewport extends StackPane {
         this.translations = translations;
         setId("viewport");
         setMinSize(300, 250);
-        world.getChildren().addAll(aids, bodies, sketches, handle, planeTargets, faceHighlight);
+        world.getChildren()
+                .addAll(aids, bodies, outlines, sketches, handle, planeTargets, faceHighlight);
+        outlines.setMouseTransparent(true);
+        outlines.setDepthTest(DepthTest.ENABLE);
         faceHighlight.setMouseTransparent(true);
         faceHighlight.setDepthTest(DepthTest.DISABLE);
         world.getTransforms().addAll(pan, tilt, orbit, center);
-        var light = new AmbientLight(Color.gray(0.45));
-        var key = new PointLight(Color.gray(0.7));
         key.setTranslateX(-100);
         key.setTranslateY(-150);
         key.setTranslateZ(-150);
@@ -96,8 +104,19 @@ public final class Viewport extends StackPane {
         scene.heightProperty().bind(heightProperty());
         planeLabels.setPickOnBounds(false);
         getChildren().addAll(scene, planeLabels);
-        world.localToSceneTransformProperty().addListener((o, a, b) -> positionPlaneLabels());
-        camera.translateZProperty().addListener((o, a, b) -> positionPlaneLabels());
+        world.localToSceneTransformProperty()
+                .addListener(
+                        (o, a, b) -> {
+                            positionPlaneLabels();
+                            scheduleEdges();
+                        });
+        camera.translateZProperty()
+                .addListener(
+                        (o, a, b) -> {
+                            positionPlaneLabels();
+                            scheduleEdges();
+                        });
+        scene.heightProperty().addListener((o, a, b) -> scheduleEdges());
         viewCube =
                 new ViewCube(
                         this::setOrientation,
@@ -418,8 +437,18 @@ public final class Viewport extends StackPane {
         sketches.getChildren().clear();
         sketchPicks.clear();
         pressedSketch = null;
+        var consumed = new java.util.HashSet<String>();
+        if (rendering == Rendering.Style.TECHNICAL) {
+            for (var feature : features) {
+                if (feature instanceof Feature.Extrude extrude)
+                    consumed.add(extrude.profile().sketchId());
+                else if (feature instanceof Feature.ThroughCut cut)
+                    consumed.add(cut.profile().sketchId());
+            }
+        }
         for (var feature : features)
             if (feature instanceof Feature.Sketch sketch) {
+                if (consumed.contains(sketch.id()) && !sketch.id().equals(selectedSketch)) continue;
                 if (sketch.profile() instanceof Feature.Constrained constrained) {
                     showConstrainedSketch(
                             sketch, constrained.geometry(), sketch.id().equals(selectedSketch));
@@ -676,14 +705,53 @@ public final class Viewport extends StackPane {
     }
 
     public void setDark(boolean dark) {
-        scene.setFill(Color.web(dark ? "#1e1f22" : "#f2f3f5"));
+        this.dark = dark;
+        scene.setFill(
+                rendering == Rendering.Style.TECHNICAL
+                        ? Color.WHITE
+                        : Color.web(dark ? "#1e1f22" : "#f2f3f5"));
         viewCube.setDark(dark);
     }
 
-    public void showBodies(Map<String, MeshData> meshes) {
+    Rendering.Style rendering() {
+        return rendering;
+    }
+
+    void setRendering(Rendering.Style style) {
+        rendering = java.util.Objects.requireNonNull(style);
+        boolean technical = style == Rendering.Style.TECHNICAL;
+        light.setColor(technical ? Color.WHITE : Color.gray(.45));
+        key.setLightOn(!technical);
+        if (!technical) camera.setNearClip(.01);
+        aids.setVisible(!technical);
+        outlines.setVisible(technical);
+        setDark(dark);
+        select(selected);
+        var previousSketches = shownSketches;
+        shownSketches = List.of();
+        showSketches(previousSketches, shownSketchSelection);
+        scheduleEdges();
+    }
+
+    public void showBodies(List<DocumentController.Body> evaluated) {
+        var meshes = new LinkedHashMap<String, MeshData>();
+        evaluated.forEach(body -> meshes.put(body.id(), body.mesh()));
         currentMeshes = Map.copyOf(meshes);
         bodies.getChildren().clear();
         bodyViews.clear();
+        outlines.getChildren().clear();
+        edgeViews.clear();
+        edgeData.clear();
+        for (var body : evaluated) {
+            edgeData.put(body.id(), body.edges());
+            var mesh = new TriangleMesh();
+            mesh.getTexCoords().setAll(0, 0);
+            var edges = new MeshView(mesh);
+            edges.setId("outline-" + body.id());
+            edges.setCullFace(CullFace.NONE);
+            edgeViews.put(body.id(), edges);
+            outlines.getChildren().add(edges);
+        }
         meshes.forEach(
                 (id, data) -> {
                     MeshView view = meshView(data);
@@ -710,6 +778,71 @@ public final class Viewport extends StackPane {
                     bodies.getChildren().add(view);
                 });
         select(selected);
+        scheduleEdges();
+    }
+
+    private void scheduleEdges() {
+        if (rendering != Rendering.Style.TECHNICAL || edgesPending) return;
+        edgesPending = true;
+        // Coalesce the tilt/orbit/pan/fit transform changes into one update per UI pulse.
+        javafx.application.Platform.runLater(
+                () -> {
+                    edgesPending = false;
+                    if (rendering == Rendering.Style.TECHNICAL) updateEdges();
+                });
+    }
+
+    private void updateEdges() {
+        if (scene.getHeight() <= 0) return;
+        // Preserve useful depth precision at the current zoom. The fixed 0.01 mm near
+        // plane otherwise makes coplanar outlines speckle on large/distant parts.
+        camera.setNearClip(Math.max(.01, distance / 1000));
+        var eye = world.parentToLocal(new Point3D(0, 0, -distance));
+        var modelEye = toModel(eye);
+        var sight = new TechnicalEdges.Point(modelEye.getX(), modelEye.getY(), modelEye.getZ());
+        var forward =
+                world.parentToLocal(new Point3D(0, 0, 1 - distance)).subtract(eye).normalize();
+        double pixelScale =
+                2 * Math.tan(Math.toRadians(camera.getFieldOfView() / 2)) / scene.getHeight();
+        edgeData.forEach(
+                (id, data) -> {
+                    var visible =
+                            data.edges().stream().filter(edge -> edge.visibleFrom(sight)).toList();
+                    var points = new float[visible.size() * 12];
+                    var faces = new int[visible.size() * 12];
+                    int count = 0;
+                    for (var edge : visible) {
+                        var a = toView(edge.a().x(), edge.a().y(), edge.a().z());
+                        var b = toView(edge.b().x(), edge.b().y(), edge.b().z());
+                        var middle = a.midpoint(b);
+                        double depth = middle.subtract(eye).dotProduct(forward);
+                        if (depth <= camera.getNearClip()) continue;
+                        var side = b.subtract(a).crossProduct(eye.subtract(middle));
+                        if (side.magnitude() < 1e-12) continue;
+                        double radius = depth * pixelScale * .75;
+                        side = side.normalize().multiply(radius);
+                        // A roughly one-pixel bias prevents coplanar z-fighting; the body depth
+                        // buffer
+                        // still conceals rear edges, including edges behind other bodies.
+                        a = a.add(eye.subtract(a).normalize().multiply(radius * 1.5));
+                        b = b.add(eye.subtract(b).normalize().multiply(radius * 1.5));
+                        Point3D[] quad = {
+                            a.add(side), a.subtract(side), b.add(side), b.subtract(side)
+                        };
+                        for (int v = 0; v < 4; v++) {
+                            points[count * 12 + v * 3] = (float) quad[v].getX();
+                            points[count * 12 + v * 3 + 1] = (float) quad[v].getY();
+                            points[count * 12 + v * 3 + 2] = (float) quad[v].getZ();
+                        }
+                        int[] corners = {0, 1, 2, 2, 1, 3};
+                        for (int c = 0; c < 6; c++)
+                            faces[count * 12 + c * 2] = count * 4 + corners[c];
+                        count++;
+                    }
+                    var mesh = (TriangleMesh) edgeViews.get(id).getMesh();
+                    mesh.getPoints().setAll(java.util.Arrays.copyOf(points, count * 12));
+                    mesh.getFaces().setAll(java.util.Arrays.copyOf(faces, count * 12));
+                });
     }
 
     private static MeshView meshView(MeshData data) {
@@ -752,8 +885,21 @@ public final class Viewport extends StackPane {
                                             : base);
                     material.setSpecularColor(key.equals(id) ? Color.web("#fff1ba") : Color.WHITE);
                     material.setSpecularPower(key.equals(id) ? 64 : 32);
+                    if (rendering == Rendering.Style.TECHNICAL) {
+                        material =
+                                new PhongMaterial(
+                                        key.equals(id) ? Color.web("#fff7e6") : Color.WHITE);
+                        material.setSpecularColor(Color.BLACK);
+                    }
                     view.setMaterial(material);
                 });
+        edgeViews.forEach(
+                (key, view) ->
+                        view.setMaterial(
+                                new PhongMaterial(
+                                        key.equals(id)
+                                                ? Color.web("#a86600")
+                                                : Color.web("#202124"))));
     }
 
     private Map<String, dev.voxelbrew.engine.model.BodyStyle> bodyStyles = Map.of();

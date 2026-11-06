@@ -34,6 +34,188 @@ import org.junit.jupiter.api.io.TempDir;
 /** Actual JavaFX windows, rendering, picking, keyboard input and mouse gestures on both OSes. */
 class WorkbenchUiTest {
     @Test
+    void technicalDrawingRenderingHidesRearEdgesKeepsPickingAndRemembersStyle() throws Exception {
+        var session = new ModelSession(CadDocument.empty());
+        session.add(
+                new Feature.Sketch(
+                        "plate",
+                        "profile",
+                        Feature.Plane.origin("XY"),
+                        new Feature.Rectangle(0, 0, 60, 40)));
+        session.add(
+                new Feature.Extrude("thickness", new Feature.ProfileRef("plate", "profile"), 8));
+        session.add(
+                new Feature.Sketch(
+                        "hole",
+                        "profile",
+                        Feature.Plane.origin("XY"),
+                        new Feature.Circle(10, 10, 4)));
+        session.add(
+                new Feature.ThroughCut(
+                        "cut",
+                        new Feature.ProfileRef("hole", "profile"),
+                        new Feature.BodyRef("thickness", "body")));
+        // A separate body completely behind the plate tests occlusion across bodies.
+        session.add(
+                new Feature.Sketch(
+                        "hidden",
+                        "profile",
+                        new Feature.Plane("offset", -5),
+                        new Feature.Rectangle(20, 10, 10, 10)));
+        session.add(
+                new Feature.Extrude(
+                        "hidden-solid", new Feature.ProfileRef("hidden", "profile"), 2));
+        session.setBodyStyle("thickness.body", new BodyStyle("PETG", "#FF0000"));
+        session.add(
+                new Feature.Sketch(
+                        "boss",
+                        "profile",
+                        new Feature.Plane("top", 8),
+                        new Feature.Circle(42, 22, 12)));
+        session.add(
+                new Feature.Extrude("boss-solid", new Feature.ProfileRef("boss", "profile"), 10));
+        Path file = directory.resolve("technical rendering.jcad");
+        DocumentWriter.save(session.document(), file, false);
+        open(file);
+        var snapshot = fx(() -> workbench.controller().snapshot());
+        var bytes = Files.readAllBytes(file);
+        renderStyle("technical");
+        choice("standard-view", 1);
+        click("history-3");
+        Thread.sleep(250);
+        fx(
+                () -> {
+                    var view = workbench.viewport();
+                    assertEquals(Rendering.Style.TECHNICAL, view.rendering());
+                    var scene = (SubScene) node("#viewport-scene");
+                    assertEquals(javafx.scene.paint.Color.WHITE, scene.getFill());
+                    var image = scene.snapshot(null, null);
+                    for (var point :
+                            List.of(
+                                    new Point3D(30, 20, 8),
+                                    new Point3D(20, 15, -3),
+                                    new Point3D(25, 10, -3))) {
+                        var screen = view.modelToScreen(point);
+                        var pixel = scene.screenToLocal(screen);
+                        var color =
+                                image.getPixelReader()
+                                        .getColor((int) pixel.getX(), (int) pixel.getY());
+                        assertTrue(
+                                color.getBrightness() > .97,
+                                "White face conceals internal triangles, grid and rear-body edges: "
+                                        + color);
+                    }
+                    var start = scene.screenToLocal(view.modelToScreen(new Point3D(0, 0, 8)));
+                    var end = scene.screenToLocal(view.modelToScreen(new Point3D(60, 0, 8)));
+                    for (int step = 1; step < 20; step++) {
+                        var pixel = start.add(end.subtract(start).multiply(step / 20.0));
+                        boolean ink = false;
+                        for (int dx = -1; dx <= 1; dx++)
+                            for (int dy = -1; dy <= 1; dy++)
+                                ink |=
+                                        image.getPixelReader()
+                                                        .getColor(
+                                                                (int) pixel.getX() + dx,
+                                                                (int) pixel.getY() + dy)
+                                                        .getBrightness()
+                                                < .6;
+                        assertTrue(ink, "Visible outline is continuous at sample " + step);
+                    }
+                    var outline = findBodyView(view, "outline-thickness.body");
+                    assertNotNull(outline);
+                    assertTrue(
+                            ((javafx.scene.shape.TriangleMesh) outline.getMesh()).getFaces().size()
+                                    > 0);
+                    return null;
+                });
+        assertEquals(snapshot, fx(() -> workbench.controller().snapshot()));
+        assertFalse(fx(() -> workbench.controller().dirty()));
+        modelClick(35, 25, 8);
+        assertNotNull(
+                fx(() -> node("#body-material-name")),
+                "Visible solid remains pickable through its outlines");
+        click("history-3");
+        choice("standard-view", 0);
+        fx(
+                () -> {
+                    var bounds = Screen.getPrimary().getVisualBounds();
+                    stage.setWidth(Math.min(1400, bounds.getWidth() - 60));
+                    stage.setHeight(Math.min(900, bounds.getHeight() - 80));
+                    stage.centerOnScreen();
+                    return null;
+                });
+        Thread.sleep(250);
+        for (int palette : List.of(1, 2)) {
+            choice("appearance", palette);
+            fx(
+                    () -> {
+                        Screenshot.save(
+                                stage.getScene(),
+                                Path.of(
+                                        System.getProperty("voxelbrew.ui.artifacts"),
+                                        "technical-drawing-"
+                                                + (palette == 1 ? "light" : "dark")
+                                                + ".png"));
+                        return null;
+                    });
+        }
+        // The normal creation path remains available while this style is active.
+        click("constrained-sketch");
+        click("choose-plane-xy");
+        sketchReady();
+        click("constraint-cancel");
+        assertEquals(snapshot, fx(() -> workbench.controller().snapshot()));
+        renderStyle("shaded");
+        assertEquals(Rendering.Style.SHADED, fx(() -> workbench.viewport().rendering()));
+        assertEquals(
+                javafx.scene.paint.Color.RED,
+                fx(
+                        () ->
+                                ((javafx.scene.paint.PhongMaterial)
+                                                findBodyView(
+                                                                workbench.viewport(),
+                                                                "body-thickness.body")
+                                                        .getMaterial())
+                                        .getDiffuseColor()));
+        renderStyle("technical");
+        assertEquals("TECHNICAL", configuration.get("rendering.style", ""));
+        assertEquals("preserve me", configuration.get("external.setting", ""));
+        fx(
+                () -> {
+                    workbench.close();
+                    return null;
+                });
+        workbench.whenClosed().toCompletableFuture().get(20, TimeUnit.SECONDS);
+        fx(
+                () -> {
+                    workbench =
+                            Workbench.create(
+                                    stage,
+                                    directory.resolve("plugins with spaces"),
+                                    new dev.voxelbrew.util.di.ApplicationModule(
+                                            configuration, updates::service),
+                                    new dev.voxelbrew.exporter.di.FileIoModule());
+                    stage.setScene(workbench.createScene(964, 648));
+                    stage.toFront();
+                    stage.requestFocus();
+                    return null;
+                });
+        Thread.sleep(400);
+        open(file);
+        assertEquals(Rendering.Style.TECHNICAL, fx(() -> workbench.viewport().rendering()));
+        assertArrayEquals(bytes, Files.readAllBytes(file));
+    }
+
+    private void renderStyle(String style) throws Exception {
+        click("menu-view");
+        click("menu-rendering");
+        click("rendering-" + style);
+        Thread.sleep(200);
+        assertTrue(
+                fx(() -> ((RadioMenuItem) command(workbench, "rendering-" + style)).isSelected()));
+    }
+
+    @Test
     void compactHistorySupportsPickingDraggingPlaybackAndIndependentUndo() throws Exception {
         rectangle(0);
         click("extrude");
@@ -722,6 +904,10 @@ class WorkbenchUiTest {
         click("redo");
         ready();
         long renamed = fx(() -> workbench.controller().snapshot().revision());
+        bodyTreeClick("Mounting plate", MouseButton.PRIMARY, 1);
+        assertNull(
+                fx(() -> ((TreeView<?>) node("#model-tree")).getEditingItem()),
+                "A single click must not resize or scroll the selected row before a double-click");
         bodyTreeClick("Mounting plate", MouseButton.PRIMARY, 2);
         key(KeyCode.ENTER);
         ready();

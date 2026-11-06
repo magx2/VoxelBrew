@@ -46,6 +46,15 @@ its slider changes rollback independently of Undo/Redo.
 
 ## Reference-part demo
 
+**View → Visual style → Technical drawing** displays white surfaces with dark
+face boundaries and silhouettes on a white background, hiding rear edges and
+the grid. Orbit, zoom, picking, sketching and editing continue to work. Selected
+bodies retain a warm highlight. **Shaded** restores lighting, the grid and the
+original object colors. The style is independent of the light/dark UI palette;
+it is remembered locally as `rendering.style` in `~/.voxelbrew/config.properties`,
+without changing the design, its undo history, materials or exports. Outlines
+follow the evaluated tessellation and do not include internal triangle edges.
+
 For the constraint workspace, choose **New sketch…** or select an existing sketch
 and choose **Edit sketch / constraints…** in Properties. The workspace supports
 geometric constraints, driving dimensions, point dragging and local undo/redo.

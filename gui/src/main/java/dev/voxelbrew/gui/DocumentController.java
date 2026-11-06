@@ -26,9 +26,19 @@ public final class DocumentController implements AutoCloseable {
             Feature.BodyRef output,
             MeshData mesh,
             double volume,
-            List<dev.voxelbrew.engine.geometry.PlanarFace> planarFaces) {
+            List<dev.voxelbrew.engine.geometry.PlanarFace> planarFaces,
+            TechnicalEdges edges) {
         public Body(String id, Feature.BodyRef output, MeshData mesh, double volume) {
             this(id, output, mesh, volume, List.of());
+        }
+
+        public Body(
+                String id,
+                Feature.BodyRef output,
+                MeshData mesh,
+                double volume,
+                List<dev.voxelbrew.engine.geometry.PlanarFace> planarFaces) {
+            this(id, output, mesh, volume, planarFaces, TechnicalEdges.from(mesh));
         }
 
         public Body {

@@ -37,6 +37,11 @@ class UiTextTest {
             choices(t, "print.state.", PrintController.State.values());
             choices(t, "export.space.", ExportSelection.Space.values());
             choices(t, "export.contents.", ExportSelection.Contents.values());
+            for (var style : Rendering.Style.values()) {
+                String name = style.name().toLowerCase(Locale.ROOT);
+                assertFalse(t.text("rendering." + name).isBlank());
+                assertFalse(t.text("help.rendering-" + name).isBlank());
+            }
         }
     }
 

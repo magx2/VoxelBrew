@@ -513,8 +513,9 @@ class WorkbenchUiTest {
                                                         label.getText()
                                                                 .equals("PROJEKTOWANIE 3D"))));
         closeShortcutHelp();
-        click("rectangle");
-        text("sketch-width", "=$");
+        click("constrained-sketch");
+        sketchReady();
+        text("constraint-plane", "=$");
         assertEquals(List.of(), completionNames());
         assertEquals(
                 "Brak pasujących parametrów",
@@ -526,8 +527,9 @@ class WorkbenchUiTest {
                                         .getText()));
         key(KeyCode.ESCAPE);
         assertNoCompletion();
-        assertNotNull(fx(() -> node("#sketch-width")), "Escape closes suggestions before the tool");
-        key(KeyCode.ESCAPE);
+        assertNotNull(
+                fx(() -> node("#constraint-plane")), "Escape closes suggestions before the tool");
+        click("constraint-cancel");
         assertEquals("Zapisz", fx(() -> command(workbench, "save").getText()));
         assertButtonDescriptions();
         assertEquals("Widok: Góra", fx(() -> node("#view-cube-top").getAccessibleText()));
@@ -792,15 +794,17 @@ class WorkbenchUiTest {
         assertEquals(documentId, document().id());
         assertNotNull(fx(() -> node("#file-path")));
         key(KeyCode.ESCAPE);
-        hoverHelp("rectangle");
-        click("rectangle");
-        assertNotNull(fx(() -> node("#sketch-width")), "Help must not consume the modeling click");
-        key(KeyCode.ESCAPE);
+        hoverHelp("constrained-sketch");
+        click("constrained-sketch");
+        sketchReady();
+        assertNotNull(fx(() -> node("#sketch-editor")), "Help must not consume the modeling click");
+        click("constraint-cancel");
         hoverHelp("menu-file");
-        click("rectangle");
+        click("constrained-sketch");
+        sketchReady();
         assertNotNull(
-                fx(() -> node("#sketch-width")), "Menu help must not cover a neighboring action");
-        key(KeyCode.ESCAPE);
+                fx(() -> node("#sketch-editor")), "Menu help must not cover a neighboring action");
+        click("constraint-cancel");
         click("constrained-sketch");
         sketchReady();
         assertButtonDescriptions();
@@ -1390,21 +1394,47 @@ class WorkbenchUiTest {
     }
 
     private void rectangle(double offset) throws Exception {
-        click("rectangle");
-        assertNotNull(fx(() -> workbench.lookup("#sketch-width")), "Rectangle tool opened");
-        modelClick(0, 0, 0);
-        modelClick(60, 40, 0);
-        assertEquals(
-                60,
-                fx(() -> Double.parseDouble(((TextField) node("#sketch-width")).getText())),
-                0.6);
-        text("sketch-x", "0");
-        text("sketch-y", "0");
-        text("sketch-width", "60");
-        text("sketch-height", "40");
-        text("sketch-offset", Double.toString(offset));
-        click("finish-sketch");
+        rectangleDraft(60, 40, offset);
+        click("constraint-finish");
         ready();
+        choice("standard-view", 1);
+        click("fit");
+    }
+
+    private void rectangleDraft(double width, double height, double offset) throws Exception {
+        click("constrained-sketch");
+        sketchReady();
+        text("constraint-plane", Double.toString(offset));
+        sketchType(SketchTools.Tool.RECTANGLE_TWO_POINT);
+        sketchNumericPoint(0, 0);
+        sketchNumericPoint(width, height);
+        assertEquals(4, sketchGeometry().entities().size());
+    }
+
+    private void circle() throws Exception {
+        click("constrained-sketch");
+        sketchReady();
+        sketchType(SketchTools.Tool.CIRCLE_CENTER);
+        sketchNumericPoint(10, 10);
+        sketchNumericPoint(12, 10);
+        click("constraint-finish");
+        ready();
+    }
+
+    private void openLegacyRectangle() throws Exception {
+        // Existing primitive sketches remain editable and convertible to constraints.
+        // New profiles are always created through the sketch editor in the other workflows.
+        var session = new ModelSession(CadDocument.empty());
+        session.add(
+                new Feature.Sketch(
+                        "legacy",
+                        "legacy.profile",
+                        new Feature.Plane("origin-xy", 0),
+                        new Feature.Rectangle(0, 0, 60, 40)));
+        Path file = directory.resolve("existing rectangle.jcad");
+        DocumentWriter.save(session.document(), file, false);
+        open(file);
+        click("history-0");
     }
 
     private void save(Path path) throws Exception {
@@ -1542,56 +1572,61 @@ class WorkbenchUiTest {
         click("parameters-apply");
         ready();
         var original = document();
-        click("rectangle");
-        text("sketch-width", "=$");
+        click("constrained-sketch");
+        sketchReady();
+        sketchType(SketchTools.Tool.RECTANGLE_TWO_POINT);
+        text("constraint-plane", "=$");
         assertEquals(List.of("bar", "fooHeight", "fooWidth"), completionNames());
         key(KeyCode.F);
         key(KeyCode.O);
         key(KeyCode.O);
-        assertEquals("=$foo", fx(() -> ((TextField) node("#sketch-width")).getText()));
+        assertEquals("=$foo", fx(() -> ((TextField) node("#constraint-plane")).getText()));
         assertEquals(List.of("fooHeight", "fooWidth"), completionNames());
         completionScreenshot("parameter-completion-light.png");
         key(KeyCode.DOWN);
         key(KeyCode.ENTER);
         assertNoCompletion();
-        assertEquals("=$fooWidth", fx(() -> ((TextField) node("#sketch-width")).getText()));
+        assertEquals("=$fooWidth", fx(() -> ((TextField) node("#constraint-plane")).getText()));
         assertEquals(
                 original, document(), "Accepting a suggestion creates no feature or history entry");
         shortcut(KeyCode.Z, false);
-        assertEquals("=$foo", fx(() -> ((TextField) node("#sketch-width")).getText()));
+        assertEquals("=$foo", fx(() -> ((TextField) node("#constraint-plane")).getText()));
         assertNoCompletion(); // Text undo selects the replaced reference; resume at its end.
         key(KeyCode.RIGHT);
         assertEquals(List.of("fooHeight", "fooWidth"), completionNames());
         shortcut(KeyCode.Y, false);
-        assertEquals("=$fooWidth", fx(() -> ((TextField) node("#sketch-width")).getText()));
+        assertEquals("=$fooWidth", fx(() -> ((TextField) node("#constraint-plane")).getText()));
         completionNames();
         key(KeyCode.ESCAPE);
         assertNoCompletion();
-        assertNotNull(fx(() -> node("#sketch-width")));
-        text("sketch-height", "=$fooH");
+        assertNotNull(fx(() -> node("#constraint-plane")));
+        text("sketch-point-x", "=$fooH");
         assertEquals(List.of("fooHeight"), completionNames());
         key(KeyCode.TAB);
-        assertEquals("=$fooHeight", fx(() -> ((TextField) node("#sketch-height")).getText()));
-        assertTrue(fx(() -> node("#sketch-height").isFocused()));
+        assertEquals("=$fooHeight", fx(() -> ((TextField) node("#sketch-point-x")).getText()));
+        assertTrue(fx(() -> node("#sketch-point-x").isFocused()));
         assertEquals(original, document());
-        click("finish-sketch");
+        sketchNumericPoint(0, 0);
+        sketchNumericPoint(60, 40);
+        click("constraint-finish");
         ready();
         assertEquals(1, document().features().size());
         var part = document();
 
-        text("dimension-width", "=$fooWidth/2+1");
+        text("dimension-offsetZ", "=$fooWidth/2+1");
         key(KeyCode.HOME);
         for (int i = 0; i < 5; i++) key(KeyCode.RIGHT);
         assertEquals(List.of("fooHeight", "fooWidth"), completionNames());
         click("formula-suggestion-fooHeight");
         assertNoCompletion();
-        assertEquals("=$fooHeight/2+1", fx(() -> ((TextField) node("#dimension-width")).getText()));
+        assertEquals(
+                "=$fooHeight/2+1", fx(() -> ((TextField) node("#dimension-offsetZ")).getText()));
         assertEquals(part, document(), "Mouse completion also preserves uncommitted editing");
-        text("dimension-width", "=$missing");
+        text("dimension-offsetZ", "=$missing");
         assertEquals(List.of(), completionNames());
         key(KeyCode.ESCAPE);
         assertNoCompletion();
-        assertEquals("=$missing", fx(() -> ((TextField) node("#dimension-width")).getText()));
+        assertEquals("=$missing", fx(() -> ((TextField) node("#dimension-offsetZ")).getText()));
         click("history-0");
 
         choice("appearance", 2);
@@ -1682,15 +1717,12 @@ class WorkbenchUiTest {
         click("parameters-apply");
         ready();
         var before = document();
-        click("rectangle");
-        text("sketch-x", "0");
-        text("sketch-y", "0");
-        text("sketch-width", "=$width/2");
-        text("sketch-height", "=20+20");
-        text("sketch-offset", "0");
+        rectangleDraft(30, 40, 0);
+        sketchReference(sketchGeometry().entities().getFirst().id());
+        text("sketch-dimension-value", "=$width/2");
         fx(
                 () -> {
-                    var field = (FormulaField) node("#sketch-width");
+                    var field = (FormulaField) node("#sketch-dimension-value");
                     assertEquals(30, field.value());
                     assertTrue(
                             field.getPseudoClassStates()
@@ -1707,19 +1739,22 @@ class WorkbenchUiTest {
                     Screenshot.save(stage.getScene(), artifacts.resolve("formulas-light.png"));
                     return null;
                 });
-        text("sketch-height", "=1/0");
-        click("finish-sketch");
+        sketchDimension(0, "=$width/2");
+        click("sketch-clear-selection");
+        sketchReference(sketchGeometry().entities().get(1).id());
+        text("sketch-dimension-value", "=1/0");
+        click("sketch-apply-dimension");
         assertEquals(before, document());
         assertTrue(
                 fx(
                         () ->
-                                node("#sketch-height")
+                                node("#sketch-dimension-value")
                                         .getPseudoClassStates()
                                         .contains(
                                                 javafx.css.PseudoClass.getPseudoClass(
                                                         "formula-invalid"))));
-        text("sketch-height", "=20+20");
-        click("finish-sketch");
+        sketchDimension(0, "=20+20");
+        click("constraint-finish");
         ready();
         assertEquals(2, document().parameters().bindings().size());
         click("extrude");
@@ -1789,7 +1824,7 @@ class WorkbenchUiTest {
         ready();
         assertEquals(8000.0 / 3, volume(), .01);
         assertEquals(
-                1,
+                5, // Four rectangle edges and one text entity are rendered as sketch curves.
                 fx(
                         () ->
                                 ((SubScene) workbench.viewport().getChildren().getFirst())
@@ -1942,7 +1977,7 @@ class WorkbenchUiTest {
     @Test
     void parameterRepairRenameAndSketchCancellationUseRealControls() throws Exception {
         choice("appearance", 1);
-        rectangle(0);
+        openLegacyRectangle();
         click("parameters");
         parameter("width", "60");
         click("parameters-apply");
@@ -2676,11 +2711,44 @@ class WorkbenchUiTest {
 
         rectangle(0);
         var top = fx(() -> workbench.viewport().orientationProperty().get());
-        primaryDrag(fx(() -> workbench.viewport().modelToScreen(new Point3D(30, 20, 0))), 80, 24);
+        double fittedWidth =
+                fx(
+                        () ->
+                                workbench
+                                        .viewport()
+                                        .modelToScreen(new Point3D(0, 0, 0))
+                                        .distance(
+                                                workbench
+                                                        .viewport()
+                                                        .modelToScreen(new Point3D(60, 0, 0))));
+        // At Fit the sketch stroke is subpixel on the Linux test display. Zoom in
+        // before picking its curve so Robot rounding cannot hit the adjacent grid.
+        fx(
+                () -> {
+                    robot.mouseMove(workbench.viewport().modelToScreen(new Point3D(30, 20, 0)));
+                    robot.mouseWheel(-8);
+                    return null;
+                });
+        Thread.sleep(200);
+        assertTrue(
+                fx(
+                                () ->
+                                        workbench
+                                                .viewport()
+                                                .modelToScreen(new Point3D(0, 0, 0))
+                                                .distance(
+                                                        workbench
+                                                                .viewport()
+                                                                .modelToScreen(
+                                                                        new Point3D(60, 0, 0))))
+                        > fittedWidth,
+                "Zoom enlarges the curve before native picking");
+        primaryDrag(fx(() -> workbench.viewport().modelToScreen(new Point3D(30, 0, .04))), 80, 24);
         assertEquals(
                 top,
                 fx(() -> workbench.viewport().orientationProperty().get()),
                 "A drag that starts on a sketch does not become a grid orbit");
+        click("fit");
         click("extrude");
         ready();
         key(KeyCode.ENTER);
@@ -2714,29 +2782,22 @@ class WorkbenchUiTest {
                     return null;
                 });
 
-        click("rectangle");
+        click("constrained-sketch");
+        sketchReady();
         var drawingView = fx(() -> workbench.viewport().orientationProperty().get());
-        var fields = List.of("sketch-x", "sketch-y", "sketch-width", "sketch-height");
-        var draft =
+        click("sketch-tool-rectangle");
+        var drawingPoint =
                 fx(
                         () ->
-                                fields.stream()
-                                        .map(id -> ((TextField) node("#" + id)).getText())
-                                        .toList());
-        primaryDrag(fx(() -> workbench.viewport().modelToScreen(new Point3D(-15, 10, 0))), 40, 24);
+                                ((SketchEditor) node("#sketch-editor"))
+                                        .modelToScreen(new SketchGeometry.Vec(0, 0)));
+        primaryDrag(drawingPoint, 40, 24);
         assertEquals(
                 drawingView,
                 fx(() -> workbench.viewport().orientationProperty().get()),
-                "The active drawing tool owns left-button input");
-        assertEquals(
-                draft,
-                fx(
-                        () ->
-                                fields.stream()
-                                        .map(id -> ((TextField) node("#" + id)).getText())
-                                        .toList()),
-                "Dragging while drawing does not insert sketch points");
+                "Drawing in the sketch editor cannot orbit the underlying model");
         key(KeyCode.ESCAPE);
+        click("constraint-cancel");
         assertEquals(saved, fx(() -> workbench.controller().snapshot()));
         assertFalse(fx(() -> workbench.controller().dirty()));
     }
@@ -2836,12 +2897,12 @@ class WorkbenchUiTest {
         assertEquals(
                 ViewOrientation.named("Top"),
                 fx(() -> workbench.viewport().orientationProperty().get()));
-        // Cube input is consumed by navigation, including while the sketch plane is active.
-        click("rectangle");
-        var draftX = fx(() -> ((TextField) node("#sketch-x")).getText());
-        cubeClick("top-front", ViewOrientation.lookingFrom(0, -1, 1));
-        assertEquals(draftX, fx(() -> ((TextField) node("#sketch-x")).getText()));
-        key(KeyCode.ESCAPE);
+        // The sketch editor owns input while the design viewport is disabled.
+        click("constrained-sketch");
+        sketchReady();
+        assertTrue(fx(workbench::isDisabled));
+        assertEquals(snapshot, fx(() -> workbench.controller().snapshot()));
+        click("constraint-cancel");
         click("view-cube-home");
         modelClick(30, 20, 5);
         assertTrue(
@@ -2875,14 +2936,7 @@ class WorkbenchUiTest {
         key(KeyCode.ENTER);
         ready();
         assertEquals(2, document().features().size());
-        click("circle");
-        modelClick(10, 10, 0);
-        modelClick(12, 10, 0);
-        text("sketch-x", "10");
-        text("sketch-y", "10");
-        text("sketch-diameter", "4");
-        click("finish-sketch");
-        ready();
+        circle();
         click("cut");
         click("cut-confirm");
         ready();
@@ -3270,9 +3324,9 @@ class WorkbenchUiTest {
 
     @Test
     void invalidDimensionsAndBrokenInputRepairStayEditable() throws Exception {
-        rectangle(0);
+        rectangle(12); // A parallel offset plane is editable; the origin plane is fixed.
         var original = document();
-        text("dimension-width", "NaN");
+        text("dimension-offsetZ", "NaN");
         key(KeyCode.ENTER);
         assertEquals(original, document());
         assertTrue(fx(() -> ((Label) node("#tool-error")).getText().contains("finite")));
@@ -3327,22 +3381,31 @@ class WorkbenchUiTest {
                 "Disabled extrusion stays unavailable");
         shortcut(KeyCode.E, false);
         assertFalse(fx(workbench::isDisabled), "Unavailable export does not open a dialog");
+        assertNull(fx(() -> workbench.lookup("#rectangle")));
+        assertNull(fx(() -> workbench.lookup("#circle")));
+        var empty = fx(() -> workbench.controller().snapshot());
         key(KeyCode.R);
-        text("sketch-width", "60");
-        text("sketch-height", "40");
-        click("finish-sketch");
+        key(KeyCode.C);
+        assertEquals(empty, fx(() -> workbench.controller().snapshot()));
+        assertFalse(fx(workbench::isDisabled), "R/C cannot open a standalone design tool");
+        key(KeyCode.K);
+        sketchReady();
+        sketchType(SketchTools.Tool.RECTANGLE_TWO_POINT);
+        sketchNumericPoint(0, 0);
+        sketchNumericPoint(60, 40);
+        click("constraint-finish");
         ready();
         assertEquals(1, document().features().size());
         var rectangle = document();
-        text("dimension-width", "=30+30");
+        text("dimension-offsetZ", "=30+30");
         shortcut(KeyCode.Z, false);
         assertEquals(rectangle, document(), "Typing undo must not remove a CAD feature");
-        assertNotEquals("=30+30", fx(() -> ((TextField) node("#dimension-width")).getText()));
+        assertNotEquals("=30+30", fx(() -> ((TextField) node("#dimension-offsetZ")).getText()));
         shortcut(KeyCode.Y, false);
-        assertEquals("=30+30", fx(() -> ((TextField) node("#dimension-width")).getText()));
-        text("dimension-width", "circle");
+        assertEquals("=30+30", fx(() -> ((TextField) node("#dimension-offsetZ")).getText()));
+        text("dimension-offsetZ", "circle");
         assertNull(fx(() -> workbench.lookup("#sketch-diameter")), "Letters stay in the field");
-        text("dimension-width", "60");
+        text("dimension-offsetZ", "0");
         click("fit");
         key(KeyCode.E);
         assertNotNull(fx(() -> node("#extrude-distance")));
@@ -3396,9 +3459,10 @@ class WorkbenchUiTest {
                                         .getSelectionModel()
                                         .getSelectedItem()
                                         .getId()));
-        key(KeyCode.R);
+        key(KeyCode.K);
         assertNull(
-                fx(() -> workbench.lookup("#sketch-width")), "Design tools are inactive in Print");
+                fx(() -> stage.getScene().lookup("#sketch-editor")),
+                "Design tools are inactive in Print");
         shortcut(KeyCode.DIGIT1, false);
         shortcut(KeyCode.P, true);
         assertNotNull(fx(() -> node("#parameters-cancel")));
@@ -3466,8 +3530,10 @@ class WorkbenchUiTest {
         key(KeyCode.HOME);
         ready();
         assertEquals(0, document().cursor());
-        key(KeyCode.R);
-        assertNull(fx(() -> workbench.lookup("#sketch-width")), "Rollback blocks new features");
+        key(KeyCode.K);
+        assertNull(
+                fx(() -> stage.getScene().lookup("#sketch-editor")),
+                "Rollback blocks new features");
         shortcut(KeyCode.E, false);
         assertFalse(fx(workbench::isDisabled), "Rollback blocks export");
         key(KeyCode.END);
@@ -3489,7 +3555,7 @@ class WorkbenchUiTest {
 
     @Test
     void fileShortcutsAndUnsavedSaveDiscardCancelProtectDocuments() throws Exception {
-        rectangle(0);
+        rectangle(12); // Use an editable plane for the unsaved-dimension changes below.
         var original = document();
         assertTrue(fx(() -> stage.getTitle().startsWith("●")));
         click("new");
@@ -3501,7 +3567,7 @@ class WorkbenchUiTest {
         click("file-confirm");
         ready();
         assertFalse(fx(() -> workbench.controller().dirty()));
-        text("dimension-width", "61");
+        text("dimension-offsetZ", "1");
         key(KeyCode.ENTER);
         ready();
         assertTrue(fx(() -> workbench.controller().dirty()));
@@ -3510,17 +3576,16 @@ class WorkbenchUiTest {
         ready();
         assertTrue(document().features().isEmpty());
         assertEquals(
-                61,
-                ((Feature.Rectangle)
-                                ((Feature.Sketch) DocumentReader.load(file).features().getFirst())
-                                        .profile())
-                        .width());
+                1,
+                ((Feature.Sketch) DocumentReader.load(file).features().getFirst())
+                        .plane()
+                        .offsetZ());
         shortcut(KeyCode.O, false);
         text("file-path", file.toString());
         click("file-confirm");
         ready();
         click("history-0");
-        text("dimension-height", "41");
+        text("dimension-offsetZ", "2");
         key(KeyCode.ENTER);
         ready();
         click("new");
@@ -3528,11 +3593,10 @@ class WorkbenchUiTest {
         ready();
         assertTrue(document().features().isEmpty());
         assertEquals(
-                40,
-                ((Feature.Rectangle)
-                                ((Feature.Sketch) DocumentReader.load(file).features().getFirst())
-                                        .profile())
-                        .height());
+                1,
+                ((Feature.Sketch) DocumentReader.load(file).features().getFirst())
+                        .plane()
+                        .offsetZ());
     }
 
     @Test
@@ -3543,12 +3607,7 @@ class WorkbenchUiTest {
         text("extrude-distance", "8");
         key(KeyCode.ENTER);
         ready();
-        click("circle");
-        text("sketch-x", "10");
-        text("sketch-y", "10");
-        text("sketch-diameter", "4");
-        click("finish-sketch");
-        ready();
+        circle();
         click("cut");
         click("cut-confirm");
         ready();

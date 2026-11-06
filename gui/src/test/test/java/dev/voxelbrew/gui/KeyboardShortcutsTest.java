@@ -13,12 +13,36 @@ import org.junit.jupiter.api.Test;
 class KeyboardShortcutsTest {
     @Test
     void modelingKeysRequireExactModifiersAndDoNotHijackCopyOrAltGr() {
-        assertEquals("circle", match(KeyCode.C, false, false, false));
+        assertEquals("constrained-sketch", match(KeyCode.K, false, false, false));
+        assertNull(match(KeyCode.R, false, false, false));
+        assertNull(match(KeyCode.C, false, false, false));
         assertNull(match(KeyCode.C, false, true, false));
         assertNull(match(KeyCode.C, false, true, true));
         assertNull(match(KeyCode.C, true, false, false));
         assertEquals("view-top", match(KeyCode.DIGIT1, false, false, false));
         assertNull(match(KeyCode.DIGIT1, false, true, false));
+    }
+
+    @Test
+    void rectangleAndCircleShortcutsExistOnlyInsideTheSketchEditor() {
+        for (var entry :
+                java.util.Map.of(
+                                KeyCode.R, "sketch-tool-rectangle", KeyCode.C, "sketch-tool-circle")
+                        .entrySet())
+            assertEquals(
+                    entry.getValue(),
+                    KeyboardShortcuts.match(
+                            KeyboardShortcuts.Scope.SKETCH,
+                            new KeyEvent(
+                                    KeyEvent.KEY_PRESSED,
+                                    "",
+                                    "",
+                                    entry.getKey(),
+                                    false,
+                                    false,
+                                    false,
+                                    false),
+                            null));
     }
 
     @Test

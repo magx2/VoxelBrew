@@ -38,8 +38,9 @@ and Polish; screen readers can also access action help. Plugin-owned option name
 retain their provider wording. Escape closes an open menu before cancelling a tool.
 Document menu shortcuts are disabled while a modal editor is open.
 
-The model tree is kept above configuration controls. **New sketch…** is the primary
-toolbar action; Rectangle and Circle provide the quick two-point tools. Extrude
+The model tree is kept above configuration controls. **New sketch…** opens the
+sketch editor, where Rectangle, Circle and the other drawing tools live. Create
+and finish a sketch before making a body from its closed profile. Extrude
 and Through cut require a suitable selected profile. The timeline selects operations;
 its slider changes rollback independently of Undo/Redo.
 
@@ -49,16 +50,17 @@ For the constraint workspace, choose **New sketch…** or select an existing ske
 and choose **Edit sketch / constraints…** in Properties. The workspace supports
 geometric constraints, driving dimensions, point dragging and local undo/redo.
 See [the constrained sketch workflow](sketch-constraints.md) for selection rules
-and an equivalent headless workflow. The quick rectangle/circle tools below
-remain available.
+and an equivalent headless workflow.
 The **More sketch types…** selector provides the M8 creation variants, with
 numeric point input and tool-specific settings. See [sketch types](sketch-types.md).
 
-1. Choose **Rectangle**. Click (0,0) and (60,40) in the top viewport, or set
-   X=0, Y=0, Width=60, Height=40, Plane offset Z=0. Choose **Finish sketch**.
+1. Choose **New sketch…**. In **More sketch types…**, choose **2-point rectangle**.
+   Add numeric points (0,0) and (60,40), keeping Plane Z=0, then choose **Finish sketch**.
+   Alternatively draw two corners with Rectangle and apply driving dimensions.
 2. With that profile selected, choose **Extrude**. Enter 5 and press Enter.
-3. Choose **Circle**. Click the center and a radius point, or set center
-   (10,10), diameter 4, offset 0. Finish the sketch. Choose **Through cut**,
+3. Choose **New sketch…**, then **Center diameter circle** in **More sketch types…**.
+   Add numeric points (10,10) and (12,10), keeping Plane Z=0.
+   Finish the sketch. Choose **Through cut**,
    select the plate body and confirm.
 4. Choose **File → Save As** to save a `.jcad` file. Open it again. Select the extrusion in the tree or
    timeline, change distance from 5 to 8 and press Enter or Apply.
@@ -79,30 +81,30 @@ evaluated revision; sketches continue to use stable XY-parallel plane references
 
 ## Navigation, editing and files
 
-| Input                           | Action                                                  |
-| ------------------------------- | ------------------------------------------------------- |
-| Left click                      | Select a sketch profile, body or rendered face          |
-| Left drag on empty grid space   | Orbit the model                                         |
-| Middle drag                     | Orbit                                                   |
-| Shift + middle drag             | Pan                                                     |
-| Mouse wheel                     | Zoom                                                    |
-| View selector / Fit             | Isometric and all six standard views / frame the model  |
-| View cube face / edge / corner  | Snap to one of 26 viewing directions                    |
-| Left drag on the view cube      | Orbit the model                                         |
-| View cube Home                  | Restore the fitted isometric overview                   |
-| Ctrl+N / Ctrl+O                 | New / Open                                              |
-| Ctrl+S / Ctrl+Shift+S           | Save / Save As                                          |
-| Ctrl+Z / Ctrl+Y or Ctrl+Shift+Z | Undo / Redo                                             |
-| Ctrl+E                          | Export the current evaluated model                      |
-| Ctrl+Shift+P                    | Edit parameters (document or sketch draft)              |
-| Ctrl+1 / Ctrl+2                 | Switch to Design / Print                                |
-| K / R / C                       | New constrained sketch / quick rectangle / quick circle |
-| E / H / X                       | Extrude / through cut / split body                      |
-| F / 0                           | Fit model / isometric view                              |
-| 1 / 2 / 3 / 4 / 5 / 6           | Top / front / right / back / left / bottom view         |
-| F1                              | Open the translated shortcut reference                  |
-| Enter in a dimension            | Apply or commit the entered value                       |
-| Escape                          | Cancel the active drawing or extrusion tool             |
+| Input                           | Action                                                 |
+| ------------------------------- | ------------------------------------------------------ |
+| Left click                      | Select a sketch profile, body or rendered face         |
+| Left drag on empty grid space   | Orbit the model                                        |
+| Middle drag                     | Orbit                                                  |
+| Shift + middle drag             | Pan                                                    |
+| Mouse wheel                     | Zoom                                                   |
+| View selector / Fit             | Isometric and all six standard views / frame the model |
+| View cube face / edge / corner  | Snap to one of 26 viewing directions                   |
+| Left drag on the view cube      | Orbit the model                                        |
+| View cube Home                  | Restore the fitted isometric overview                  |
+| Ctrl+N / Ctrl+O                 | New / Open                                             |
+| Ctrl+S / Ctrl+Shift+S           | Save / Save As                                         |
+| Ctrl+Z / Ctrl+Y or Ctrl+Shift+Z | Undo / Redo                                            |
+| Ctrl+E                          | Export the current evaluated model                     |
+| Ctrl+Shift+P                    | Edit parameters (document or sketch draft)             |
+| Ctrl+1 / Ctrl+2                 | Switch to Design / Print                               |
+| K                               | New sketch                                             |
+| E / H / X                       | Extrude / through cut / split body                     |
+| F / 0                           | Fit model / isometric view                             |
+| 1 / 2 / 3 / 4 / 5 / 6           | Top / front / right / back / left / bottom view        |
+| F1                              | Open the translated shortcut reference                 |
+| Enter in a dimension            | Apply or commit the entered value                      |
+| Escape                          | Cancel the active drawing or extrusion tool            |
 
 In the 2D sketch editor, **V/P/L/R/C/A/S/G** select the selection, point,
 line, rectangle, circle, arc, spline and polygon tools. **F** fits the sketch,

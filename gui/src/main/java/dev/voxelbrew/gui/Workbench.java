@@ -13,7 +13,6 @@ import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import javafx.application.Platform;
-import javafx.geometry.Point3D;
 import javafx.scene.control.*;
 import javafx.scene.input.*;
 import javafx.scene.layout.*;
@@ -33,8 +32,6 @@ public final class Workbench extends BorderPane implements AutoCloseable {
 
     private enum Tool {
         NONE,
-        RECTANGLE,
-        CIRCLE,
         EXTRUDE
     }
 
@@ -76,8 +73,6 @@ public final class Workbench extends BorderPane implements AutoCloseable {
     private dev.voxelbrew.engine.parameters.ParameterSet lastParameters =
             dev.voxelbrew.engine.parameters.ParameterSet.empty();
     private final Button constrainedSketch;
-    private final Button rectangle;
-    private final Button circle;
     private final Button extrude;
     private final Button cut;
     private final Button splitBody;
@@ -102,7 +97,6 @@ public final class Workbench extends BorderPane implements AutoCloseable {
     private DocumentController.Build lastBuild;
     private String lastDocument = "";
     private boolean fitNext = true;
-    private Point3D firstPoint;
     private Feature.Sketch extrusionSketch;
     private Button finish;
     private final UpdateDialog.Factory updates;
@@ -215,12 +209,6 @@ public final class Workbench extends BorderPane implements AutoCloseable {
                         translations.text("action.sketch"),
                         "constrained-sketch",
                         () -> editSketch(null));
-        this.rectangle =
-                button(
-                        translations.text("action.rectangle"),
-                        "rectangle",
-                        () -> beginSketch(false));
-        this.circle = button(translations.text("action.circle"), "circle", () -> beginSketch(true));
         this.extrude = button(translations.text("action.extrude"), "extrude", this::beginExtrusion);
         this.cut = button(translations.text("action.cut"), "cut", this::beginCut);
         this.splitBody = button(translations.text("action.split"), "split-body", this::beginSplit);
@@ -375,7 +363,7 @@ public final class Workbench extends BorderPane implements AutoCloseable {
         title.getStyleClass().add("title-strip");
         window = new WindowFrame(stage, title, this, translations);
         var historyCommands = new HBox(2, undo, redo);
-        var sketchCommands = new HBox(2, constrainedSketch, rectangle, circle);
+        var sketchCommands = new HBox(2, constrainedSketch);
         var solidCommands = new HBox(2, extrude, cut, splitBody);
         for (var group : List.of(historyCommands, sketchCommands, solidCommands))
             group.getStyleClass().add("command-group");
@@ -584,8 +572,6 @@ public final class Workbench extends BorderPane implements AutoCloseable {
                     String viewAction = action;
                     switch (action) {
                         case "constrained-sketch" -> constrainedSketch.fire();
-                        case "rectangle" -> rectangle.fire();
-                        case "circle" -> circle.fire();
                         case "extrude" -> extrude.fire();
                         case "cut" -> cut.fire();
                         case "split-body" -> splitBody.fire();
@@ -763,7 +749,6 @@ public final class Workbench extends BorderPane implements AutoCloseable {
             viewport.setBodyStyles(styles);
             synchronizeTreeSelection();
             viewport.showSketches(effective.subList(0, document.cursor()), selectedFeature);
-            if (tool == Tool.RECTANGLE || tool == Tool.CIRCLE) sketchPreview();
             if (tool == Tool.NONE && (changed || selectedBody != null && buildStateChanged))
                 inspect();
             lastRebuilding = controller.rebuilding();
@@ -806,8 +791,6 @@ public final class Workbench extends BorderPane implements AutoCloseable {
             boolean atEnd = document.cursor() == document.features().size() && !controller.ioBusy();
             customFeature.setDisable(!atEnd || tool != Tool.NONE || controller.rebuilding());
             constrainedSketch.setDisable(!atEnd || tool != Tool.NONE || controller.rebuilding());
-            rectangle.setDisable(!atEnd);
-            circle.setDisable(!atEnd);
             extrude.setDisable(
                     !atEnd
                             || !(selected() instanceof Feature.Sketch s
@@ -1380,162 +1363,6 @@ public final class Workbench extends BorderPane implements AutoCloseable {
         return number(fields.get(key), key);
     }
 
-    private void beginSketch(boolean isCircle) {
-        cancelTool();
-        tool = isCircle ? Tool.CIRCLE : Tool.RECTANGLE;
-        firstPoint = null;
-        form.getChildren().clear();
-        fields.clear();
-        selectionLabel.setText(
-                isCircle
-                        ? translations.text("gui.new_circle")
-                        : translations.text("gui.new_rectangle"));
-        field(
-                "sketch-x",
-                isCircle ? translations.text("gui.center_x_mm") : translations.text("gui.x_mm"),
-                isCircle ? 10 : 0);
-        field(
-                "sketch-y",
-                isCircle ? translations.text("gui.center_y_mm") : translations.text("gui.y_mm"),
-                isCircle ? 10 : 0);
-        if (isCircle) field("sketch-diameter", translations.text("gui.diameter_mm"), 4);
-        else {
-            field("sketch-width", translations.text("gui.width_mm"), 60);
-            field("sketch-height", translations.text("gui.height_mm"), 40);
-        }
-        var offset = field("sketch-offset", translations.text("gui.plane_offset_z_mm"), 0);
-        offset.textProperty()
-                .addListener(
-                        (o, a, b) ->
-                                attempt(
-                                        () ->
-                                                viewport.drawOnPlane(
-                                                        value("sketch-offset"),
-                                                        this::sketchPoint)));
-        fields.values()
-                .forEach(field -> field.textProperty().addListener((o, a, b) -> sketchPreview()));
-        finish =
-                button(
-                        translations.text("gui.finish_sketch"),
-                        "finish-sketch",
-                        () -> {
-                            double z = value("sketch-offset");
-                            String id = (isCircle ? "circle-" : "rectangle-") + UUID.randomUUID();
-                            var plane =
-                                    new Feature.Plane(
-                                            z == 0 && Expressions.isNumber(offset.getText())
-                                                    ? "origin-xy"
-                                                    : "plane-" + UUID.randomUUID(),
-                                            z);
-                            Feature.Profile profile =
-                                    isCircle
-                                            ? new Feature.Circle(
-                                                    value("sketch-x"),
-                                                    value("sketch-y"),
-                                                    value("sketch-diameter"))
-                                            : new Feature.Rectangle(
-                                                    value("sketch-x"),
-                                                    value("sketch-y"),
-                                                    value("sketch-width"),
-                                                    value("sketch-height"));
-                            var feature = new Feature.Sketch(id, id + ".profile", plane, profile);
-                            var parameters = formulaParameters();
-                            for (var dimension : FeatureDimensions.list(feature)) {
-                                String key =
-                                        switch (dimension.target().field()) {
-                                            case "x", "centerX" -> "x";
-                                            case "y", "centerY" -> "y";
-                                            case "offsetZ" -> "offset";
-                                            default -> dimension.target().field();
-                                        };
-                                String expression = fields.get("sketch-" + key).getText();
-                                if (!Expressions.isNumber(expression))
-                                    parameters = parameters.bind(dimension.target(), expression);
-                            }
-                            controller.add(feature, parameters);
-                            tool = Tool.NONE;
-                            viewport.stopDrawing();
-                            selectedFeature = id;
-                            inspect();
-                            refresh();
-                        });
-        finish.getStyleClass().add("primary");
-        toolActions
-                .getChildren()
-                .setAll(
-                        finish,
-                        button(
-                                translations.text("action.cancel"),
-                                "cancel-tool",
-                                this::cancelTool));
-        var hint = new Label(translations.text("gui.click_two_points_or_enter_exact_dimensions"));
-        hint.setWrapText(true);
-        form.getChildren().add(hint);
-        views.setValue("Top");
-        viewport.standardView("Top");
-        viewport.fit(meshes());
-        viewport.drawOnPlane(0, this::sketchPoint);
-        refresh();
-    }
-
-    private void sketchPreview() {
-        try {
-            Feature.Profile profile =
-                    tool == Tool.CIRCLE
-                            ? new Feature.Circle(
-                                    value("sketch-x"), value("sketch-y"), value("sketch-diameter"))
-                            : new Feature.Rectangle(
-                                    value("sketch-x"),
-                                    value("sketch-y"),
-                                    value("sketch-width"),
-                                    value("sketch-height"));
-            if (profile instanceof Feature.Rectangle r && (r.width() <= 0 || r.height() <= 0)
-                    || profile instanceof Feature.Circle c && c.diameter() <= 0) return;
-            var document = controller.snapshot().document();
-            var features = new ArrayList<>(document.features().subList(0, document.cursor()));
-            features.add(
-                    new Feature.Sketch(
-                            "preview-sketch",
-                            "preview-profile",
-                            new Feature.Plane("preview-plane", value("sketch-offset")),
-                            profile));
-            viewport.showSketches(features, "preview-sketch");
-        } catch (RuntimeException ignored) {
-            /* Incomplete input stays editable; Finish performs engine validation. */
-        }
-    }
-
-    private void sketchPoint(Point3D point) {
-        if (firstPoint == null) {
-            firstPoint = point;
-            fields.get("sketch-x").setText(format(point.getX()));
-            fields.get("sketch-y").setText(format(point.getY()));
-            status.setText(
-                    tool == Tool.CIRCLE
-                            ? translations.text("gui.choose_circle_radius")
-                            : translations.text("gui.choose_opposite_corner"));
-        } else {
-            if (tool == Tool.CIRCLE)
-                fields.get("sketch-diameter")
-                        .setText(
-                                format(
-                                        2
-                                                * Math.hypot(
-                                                        point.getX() - firstPoint.getX(),
-                                                        point.getY() - firstPoint.getY())));
-            else {
-                fields.get("sketch-x").setText(format(Math.min(point.getX(), firstPoint.getX())));
-                fields.get("sketch-y").setText(format(Math.min(point.getY(), firstPoint.getY())));
-                fields.get("sketch-width")
-                        .setText(format(Math.abs(point.getX() - firstPoint.getX())));
-                fields.get("sketch-height")
-                        .setText(format(Math.abs(point.getY() - firstPoint.getY())));
-            }
-            firstPoint = null;
-            status.setText(translations.text("gui.dimensions_captured_finish_sketch_to_commit"));
-        }
-    }
-
     private static String format(double value) {
         return String.format(Locale.ROOT, "%.3f", value);
     }
@@ -1774,7 +1601,6 @@ public final class Workbench extends BorderPane implements AutoCloseable {
         viewport.stopDrawing();
         viewport.clearHandle();
         controller.cancelPreview();
-        firstPoint = null;
         extrusionSketch = null;
         inspect();
         refresh();

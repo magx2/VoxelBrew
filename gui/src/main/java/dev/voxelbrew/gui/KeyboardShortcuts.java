@@ -53,8 +53,6 @@ final class KeyboardShortcuts {
                     binding(Scope.DOCUMENT, "workspace-print", true, "Shortcut+2"),
                     binding(Scope.DOCUMENT, "keyboard-shortcuts", true, "F1"),
                     binding(Scope.DESIGN, "constrained-sketch", false, "K"),
-                    binding(Scope.DESIGN, "rectangle", false, "R"),
-                    binding(Scope.DESIGN, "circle", false, "C"),
                     binding(Scope.DESIGN, "extrude", false, "E"),
                     binding(Scope.DESIGN, "cut", false, "H"),
                     binding(Scope.DESIGN, "split-body", false, "X"),

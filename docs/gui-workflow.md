@@ -96,6 +96,7 @@ evaluated revision; sketches continue to use stable XY-parallel plane references
 | Left drag on empty grid space   | Orbit the model                                        |
 | Middle drag                     | Orbit                                                  |
 | Shift + middle drag             | Pan                                                    |
+| Right drag                      | Pan the whole design view                              |
 | Mouse wheel                     | Zoom                                                   |
 | View selector / Fit             | Isometric and all six standard views / frame the model |
 | View cube face / edge / corner  | Snap to one of 26 viewing directions                   |

@@ -129,6 +129,35 @@ public final class Viewport extends StackPane {
         getChildren().add(viewCube);
         setDark(false);
         grid();
+        scene.addEventFilter(
+                MouseEvent.MOUSE_PRESSED,
+                e -> {
+                    if (e.getButton() != MouseButton.SECONDARY) return;
+                    lastX = e.getSceneX();
+                    lastY = e.getSceneY();
+                    primaryOrbit = false;
+                    pressedSketch = null;
+                    requestFocus();
+                    scene.setCursor(Cursor.CLOSED_HAND);
+                    e.consume();
+                });
+        scene.addEventFilter(
+                MouseEvent.MOUSE_DRAGGED,
+                e -> {
+                    if (!e.isSecondaryButtonDown()) return;
+                    pan.setX(pan.getX() + (e.getSceneX() - lastX) * distance / 700);
+                    pan.setY(pan.getY() + (e.getSceneY() - lastY) * distance / 700);
+                    lastX = e.getSceneX();
+                    lastY = e.getSceneY();
+                    e.consume();
+                });
+        scene.addEventFilter(
+                MouseEvent.MOUSE_RELEASED,
+                e -> {
+                    if (e.getButton() != MouseButton.SECONDARY) return;
+                    scene.setCursor(Cursor.DEFAULT);
+                    e.consume();
+                });
         scene.setOnMousePressed(
                 e -> {
                     lastX = e.getSceneX();

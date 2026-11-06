@@ -20,7 +20,10 @@ import javafx.scene.layout.Pane;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Line;
 import javafx.scene.shape.Polygon;
+import javafx.scene.shape.Rectangle;
 import javafx.scene.shape.SVGPath;
+import javafx.scene.shape.StrokeLineCap;
+import javafx.scene.shape.StrokeLineJoin;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
 import javafx.scene.text.Text;
@@ -28,7 +31,8 @@ import javafx.scene.transform.Affine;
 
 /** Beveled, orthographically projected navigation cube with 26 independently pickable regions. */
 final class ViewCube extends Pane {
-    private static final double SIZE = 176, CX = 88, CY = 91, OUTER = 36, INNER = 28;
+    private static final double WIDTH = 148, HEIGHT = 192, CX = 74, CY = 80;
+    private static final double OUTER = 30, INNER = 24, AXIS_Y = 164;
     private final Group surface = new Group(), axes = new Group(), labels = new Group();
     private final List<Patch> patches = new ArrayList<>();
     private final Consumer<ViewOrientation> navigate;
@@ -56,14 +60,20 @@ final class ViewCube extends Pane {
         this.navigate = navigate;
         this.translations = translations;
         setId("view-cube");
-        setMinSize(SIZE, SIZE);
-        setPrefSize(SIZE, SIZE);
-        setMaxSize(SIZE, SIZE);
+        setMinSize(WIDTH, HEIGHT);
+        setPrefSize(WIDTH, HEIGHT);
+        setMaxSize(WIDTH, HEIGHT);
         setPickOnBounds(false);
+        // The panel is visual only: empty space still belongs to the main viewport.
+        var panel = new Rectangle(WIDTH, HEIGHT);
+        panel.setArcWidth(24);
+        panel.setArcHeight(24);
+        panel.getStyleClass().add("view-cube-panel");
+        panel.setMouseTransparent(true);
         surface.setPickOnBounds(false);
         axes.setMouseTransparent(true);
         labels.setMouseTransparent(true);
-        getChildren().addAll(axes, surface, labels);
+        getChildren().addAll(panel, axes, surface, labels);
         for (int z = -1; z <= 1; z++)
             for (int y = -1; y <= 1; y++)
                 for (int x = -1; x <= 1; x++) if (x != 0 || y != 0 || z != 0) addPatch(x, y, z);
@@ -85,16 +95,19 @@ final class ViewCube extends Pane {
                 });
 
         var homeIcon = new SVGPath();
-        homeIcon.setContent("M1 9 L10 1 L19 9 M4 7 L4 19 L8 19 L8 12 L12 12 L12 19 L16 19 L16 7");
-        homeIcon.getStyleClass().add("view-cube-home-icon");
+        homeIcon.setContent("M1 7 L8 1 L15 7 M3 6 L3 15 L6 15 L6 10 L10 10 L10 15 L13 15 L13 6");
+        homeIcon.getStyleClass().add("view-cube-control-icon");
         var homeButton = new Button("", homeIcon);
         homeButton.setId("view-cube-home");
         homeButton.getStyleClass().add("view-cube-control");
         homeButton.setAccessibleText(translations.text("gui.home_view_and_fit_model"));
         UiHelp.install(homeButton, translations);
         homeButton.setOnAction(e -> home.run());
-        homeButton.relocate(14, 4);
-        var menu = new MenuButton();
+        homeButton.relocate(8, 6);
+        var menuIcon = new SVGPath();
+        menuIcon.setContent("M2 8 L2.01 8 M8 8 L8.01 8 M14 8 L14.01 8");
+        menuIcon.getStyleClass().addAll("view-cube-control-icon", "view-cube-menu-icon");
+        var menu = new MenuButton("", menuIcon);
         menu.setId("view-cube-menu");
         menu.getStyleClass().add("view-cube-control");
         menu.setAccessibleText(translations.text("gui.standard_views"));
@@ -110,7 +123,7 @@ final class ViewCube extends Pane {
         UiHelp.menuItem(fitItem, translations.text("help.fit"));
         fitItem.setOnAction(e -> fit.run());
         menu.getItems().add(fitItem);
-        menu.relocate(142, 143);
+        menu.relocate(WIDTH - 36, 6);
         getChildren().addAll(homeButton, menu);
         render();
     }
@@ -175,7 +188,7 @@ final class ViewCube extends Pane {
                                 UiText.view(translations, name).toUpperCase(translations.locale()))
                         : null;
         if (label != null) {
-            label.setFont(Font.font("SansSerif", FontWeight.BOLD, 11));
+            label.setFont(Font.font("SansSerif", FontWeight.SEMI_BOLD, 10));
             labels.getChildren().add(label);
         }
         var patch = new Patch(x, y, z, vertices, polygon, label);
@@ -204,17 +217,23 @@ final class ViewCube extends Pane {
         axes.getChildren().clear();
         for (int axis = 0; axis < 3; axis++) {
             double[] end = {0, 0, 0};
-            end[axis] = 27;
+            end[axis] = 20;
             var p = orientation.project(new Point3D(end[0], end[1], end[2]));
-            var color = Color.web(new String[] {"#d85b58", "#35a779", "#548de0"}[axis]);
-            var line = new Line(30, 144, 30 + p.getX(), 144 + p.getY());
+            var color =
+                    Color.web(
+                            (dark
+                                            ? new String[] {"#f08080", "#62c49a", "#82adf8"}
+                                            : new String[] {"#c24b52", "#25845f", "#3b73c8"})
+                                    [axis]);
+            var line = new Line(CX, AXIS_Y, CX + p.getX(), AXIS_Y + p.getY());
             line.setStroke(color);
-            line.setStrokeWidth(1.4);
+            line.setStrokeWidth(1.5);
+            line.setStrokeLineCap(StrokeLineCap.ROUND);
             var text = new Text("XYZ".substring(axis, axis + 1));
-            text.setFont(Font.font("SansSerif", FontWeight.BOLD, 12));
+            text.setFont(Font.font("SansSerif", FontWeight.BOLD, 10));
             text.setFill(color);
-            text.setX(30 + p.getX() + 3);
-            text.setY(144 + p.getY() - 3);
+            text.setX(CX + p.getX() + 4);
+            text.setY(AXIS_Y + p.getY() - 3);
             axes.getChildren().addAll(line, text);
         }
         for (var patch : patches) {
@@ -229,7 +248,7 @@ final class ViewCube extends Pane {
             if (patch.face()) {
                 var label = patch.label();
                 label.setVisible(visible);
-                label.setFill(Color.web(dark ? "#e6edf5" : "#334252"));
+                label.setFill(Color.web(dark ? "#edf2fa" : "#35445b"));
                 Point3D u =
                         patch.x() != 0
                                 ? new Point3D(0, patch.x(), 0)
@@ -281,9 +300,12 @@ final class ViewCube extends Pane {
         patch.shape()
                 .setFill(
                         highlighted
-                                ? Color.web(dark ? "#41698c" : "#a6cbea")
-                                : Color.gray((dark ? 0.23 : 0.67) + light * (dark ? 0.18 : 0.28)));
-        patch.shape().setStroke(Color.web(highlighted ? "#548de0" : dark ? "#a2aeba" : "#6d7c8b"));
-        patch.shape().setStrokeWidth(highlighted ? 1.2 : 0.65);
+                                ? Color.web(dark ? "#456b9b" : "#c8ddfa")
+                                : Color.web(dark ? "#353e4d" : "#d4dce7")
+                                        .interpolate(
+                                                Color.web(dark ? "#57667a" : "#f8faff"), light));
+        patch.shape().setStroke(Color.web(highlighted ? "#6498e8" : dark ? "#78889e" : "#9eacbf"));
+        patch.shape().setStrokeWidth(highlighted ? 1.2 : 0.6);
+        patch.shape().setStrokeLineJoin(StrokeLineJoin.ROUND);
     }
 }

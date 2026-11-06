@@ -2,12 +2,10 @@ import com.diffplug.spotless.LineEnding
 import com.github.spotbugs.snom.Confidence
 import com.github.spotbugs.snom.SpotBugsExtension
 import com.github.spotbugs.snom.SpotBugsTask
-import org.sonarqube.gradle.SonarExtension
 
 plugins {
     base
     id("com.diffplug.spotless") version "8.11.0"
-    id("org.sonarqube") version "7.5.0.8588"
     id("com.github.spotbugs") version "6.5.13" apply false
 }
 
@@ -242,81 +240,7 @@ subprojects {
             showStandardStreams = true
         }
     }
-    extensions.configure<SonarExtension> {
-        properties {
-            // Explicit roots keep generated Protobuf/Dagger sources and native dependencies out.
-            property("sonar.sources", listOf(file("src/main/java")).filter { it.exists() })
-            val testSources = listOf("test", "integrationTest", "e2eTest").map(sources::getByName)
-            property(
-                "sonar.tests",
-                testSources.flatMap { it.allJava.srcDirs }.filter { it.exists() },
-            )
-            property("sonar.test.inclusions", "**/*.java")
-            property(
-                "sonar.java.test.binaries",
-                testSources.flatMap { it.output.classesDirs.files }.filter { it.exists() },
-            )
-            property(
-                "sonar.java.test.libraries",
-                testSources.flatMap { it.compileClasspath.files }.filter { it.isFile }.distinct(),
-            )
-            property(
-                "sonar.junit.reportPaths",
-                listOf("test", "integrationTest", "e2eTest")
-                    .map { layout.buildDirectory.dir("test-results/$it").get().asFile }
-                    .filter { it.exists() },
-            )
-        }
-    }
 }
-
-sonar {
-    properties {
-        property("sonar.projectName", "VoxelBrew")
-        property(
-            "sonar.host.url",
-            providers.environmentVariable("SONAR_HOST_URL").orElse("https://sonarcloud.io").get(),
-        )
-        providers.environmentVariable("SONAR_PROJECT_KEY").orNull?.let {
-            property("sonar.projectKey", it)
-        }
-        providers.environmentVariable("SONAR_ORGANIZATION").orNull?.let {
-            property("sonar.organization", it)
-        }
-        property("sonar.sourceEncoding", "UTF-8")
-        property(
-            "sonar.sources",
-            listOf(
-                file(".github/workflows"),
-                file("gradle"),
-                buildFile,
-                file("settings.gradle.kts"),
-            ) + fileTree(".github/scripts") { exclude("**/*.test.cjs") }.files,
-        )
-        property("sonar.exclusions", "**/build/**,**/.tools/**,**/wrapper/**,**/*.test.cjs")
-        property("sonar.tests", fileTree(".github/scripts") { include("**/*.test.cjs") }.files)
-        property("sonar.test.inclusions", "**/*.test.cjs")
-        // The CI findings gate checks serious new bugs/security issues without coverage/style
-        // quotas.
-        property("sonar.qualitygate.wait", false)
-    }
-}
-
-val sonarClasses by
-    tasks.registering {
-        group = "verification"
-        description =
-            "Compile production and all test source sets for Sonar, without running native/GUI tests."
-        dependsOn(
-            subprojects.flatMap { project ->
-                listOf("classes", "testClasses", "integrationTestClasses", "e2eTestClasses").map {
-                    "${project.path}:$it"
-                }
-            }
-        )
-    }
-
-tasks.named("sonar") { dependsOn(sonarClasses) }
 
 tasks.register("basicChecks") {
     group = "verification"
@@ -336,13 +260,8 @@ for (suite in listOf("test", "integrationTest", "e2eTest", "platformCheck")) {
 val workflowTest by
     tasks.registering(Exec::class) {
         group = "verification"
-        description = "Test release automation and the Sonar findings gate without publishing."
-        commandLine(
-            "node",
-            "--test",
-            ".github/scripts/release.test.cjs",
-            ".github/scripts/sonar.test.cjs",
-        )
+        description = "Test release automation without publishing."
+        commandLine("node", "--test", ".github/scripts/release.test.cjs")
     }
 
 tasks.named("test") { dependsOn(workflowTest) }

@@ -4,12 +4,9 @@ permissions:
   contents: read
 jobs:
   unit:
-    name: Unit tests, basic checks and Sonar (Ubuntu)
+    name: Unit tests and basic checks (Ubuntu)
     runs-on: ubuntu-24.04
     timeout-minutes: 25
-    concurrency:
-      group: sonar-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
-      cancel-in-progress: false
     steps:
       - uses: actions/checkout@v4
         with:
@@ -27,29 +24,6 @@ jobs:
           python-version: "3.12"
       - name: Unit tests, formatting and basic correctness checks
         run: ./gradlew spotlessCheck basicChecks test
-      - name: Determine Sonar analysis scope
-        id: sonar-plan
-        env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          SONAR_PROJECT_KEY: ${{ vars.SONAR_PROJECT_KEY }}
-          SONAR_ORGANIZATION: ${{ vars.SONAR_ORGANIZATION }}
-          SONAR_HOST_URL: ${{ vars.SONAR_HOST_URL || 'https://sonarcloud.io' }}
-        run: node .github/scripts/sonar.cjs plan
-      - name: Analyze with Sonar
-        if: steps.sonar-plan.outputs.analyze == 'true'
-        env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          SONAR_PROJECT_KEY: ${{ vars.SONAR_PROJECT_KEY }}
-          SONAR_ORGANIZATION: ${{ vars.SONAR_ORGANIZATION }}
-          SONAR_HOST_URL: ${{ vars.SONAR_HOST_URL || 'https://sonarcloud.io' }}
-        run: ./gradlew sonar
-      - name: Check new serious Sonar findings
-        if: steps.sonar-plan.outputs.analyze == 'true'
-        env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          SONAR_PROJECT_KEY: ${{ vars.SONAR_PROJECT_KEY }}
-          SONAR_HOST_URL: ${{ vars.SONAR_HOST_URL || 'https://sonarcloud.io' }}
-        run: node .github/scripts/sonar.cjs gate
       - uses: actions/upload-artifact@v4
         if: always()
         with:

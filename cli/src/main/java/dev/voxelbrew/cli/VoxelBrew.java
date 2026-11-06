@@ -13,7 +13,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Locale;
 import java.util.Map;
-import java.util.UUID;
 import java.util.concurrent.Callable;
 import picocli.CommandLine;
 import picocli.CommandLine.Command;
@@ -342,7 +341,14 @@ public final class VoxelBrew implements Runnable {
         }
 
         @Option(names = "--id", description = "Stable feature ID (default: generated UUID)")
-        String id = UUID.randomUUID().toString();
+        String id;
+
+        @Override
+        ModelSession session() throws java.io.IOException {
+            var session = super.session();
+            if (id == null) id = Long.toString(session.document().uuidGenerator().next());
+            return session;
+        }
     }
 
     abstract static class AddSketch extends AddFeature {

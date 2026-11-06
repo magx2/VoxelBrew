@@ -21,13 +21,13 @@ class DocumentWriterTest {
     @TempDir Path directory;
 
     @Test
-    void legacySchemaSixUpgradesMetadataWithoutChangingDefinitions() throws Exception {
+    void currentSchemaUpdatesMetadataWithoutChangingDefinitions() throws Exception {
         byte[] baseline;
-        try (var input = getClass().getResourceAsStream("/fixtures/reference-schema6.jcad")) {
+        try (var input = getClass().getResourceAsStream("/fixtures/reference-schema9.jcad")) {
             baseline = Objects.requireNonNull(input).readAllBytes();
         }
         assertEquals(
-                "0481466803177edae0ca10582497b7e60b698fe2d15f347f78c0ba679aa80570",
+                "ee377084ceba2fe30348ffd54d91c04441b8fee542da9baadd142dcb8a58b8ff",
                 HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(baseline)));
         var document = DocumentCodec.decode(baseline);
         var upgradedDefinitions =
@@ -64,7 +64,7 @@ class DocumentWriterTest {
     @Test
     void olderApplicationVersionUpgradesOnExplicitSaveAndPreservesTheDesign() throws Exception {
         byte[] baseline;
-        try (var input = getClass().getResourceAsStream("/fixtures/reference-schema6.jcad")) {
+        try (var input = getClass().getResourceAsStream("/fixtures/reference-schema9.jcad")) {
             baseline = Objects.requireNonNull(input).readAllBytes();
         }
         byte[] older =

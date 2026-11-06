@@ -9,7 +9,8 @@ public record ParameterSet(
         List<Parameter> parameters,
         List<Configuration> configurations,
         String active,
-        List<Binding> bindings) {
+        List<Binding> bindings,
+        dev.voxelbrew.util.UuidGenerator uuidGenerator) {
     public record Parameter(
             String id, String name, ParameterUnit unit, String expression, String comment) {
         public Parameter {
@@ -66,7 +67,34 @@ public record ParameterSet(
         }
     }
 
+    public ParameterSet(
+            List<Parameter> parameters,
+            List<Configuration> configurations,
+            String active,
+            List<Binding> bindings) {
+        this(parameters, configurations, active, bindings, new dev.voxelbrew.util.UuidGenerator());
+    }
+
+    public ParameterSet withUuidGenerator(dev.voxelbrew.util.UuidGenerator generator) {
+        return new ParameterSet(parameters, configurations, active, bindings, generator);
+    }
+
+    @Override
+    public boolean equals(Object other) {
+        return other instanceof ParameterSet p
+                && parameters.equals(p.parameters)
+                && configurations.equals(p.configurations)
+                && active.equals(p.active)
+                && bindings.equals(p.bindings);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(parameters, configurations, active, bindings);
+    }
+
     public ParameterSet {
+        Objects.requireNonNull(uuidGenerator);
         parameters = List.copyOf(parameters);
         configurations = List.copyOf(configurations);
         bindings = List.copyOf(bindings);
@@ -158,14 +186,15 @@ public record ParameterSet(
     }
 
     public ParameterSet select(String nameOrId) {
-        return new ParameterSet(parameters, configurations, configurationId(nameOrId), bindings);
+        return new ParameterSet(
+                parameters, configurations, configurationId(nameOrId), bindings, uuidGenerator);
     }
 
     public ParameterSet bind(Target target, String expression) {
         var next =
                 new ArrayList<>(bindings.stream().filter(b -> !b.target().equals(target)).toList());
         if (!expression.isBlank()) next.add(new Binding(target, expression.strip()));
-        return new ParameterSet(parameters, configurations, active, next);
+        return new ParameterSet(parameters, configurations, active, next, uuidGenerator);
     }
 
     public ParameterSet put(String name, ParameterUnit unit, String expression, String comment) {
@@ -176,14 +205,18 @@ public record ParameterSet(
             next.set(
                     next.indexOf(old),
                     new Parameter(old.id(), name, unit, old.expression(), comment));
-            return new ParameterSet(next, configurations, active, bindings)
+            return new ParameterSet(next, configurations, active, bindings, uuidGenerator)
                     .override(name, active, expression);
         }
         var next = new ArrayList<>(parameters);
         next.add(
                 new Parameter(
-                        "parameter-" + UUID.randomUUID(), name, unit, expression.strip(), comment));
-        return new ParameterSet(next, configurations, active, bindings);
+                        "parameter-" + uuidGenerator.next(),
+                        name,
+                        unit,
+                        expression.strip(),
+                        comment));
+        return new ParameterSet(next, configurations, active, bindings, uuidGenerator);
     }
 
     public ParameterSet override(String nameOrId, String configuration, String expression) {
@@ -205,7 +238,8 @@ public record ParameterSet(
                             .toList(),
                     configurations,
                     active,
-                    bindings);
+                    bindings,
+                    uuidGenerator);
         return new ParameterSet(
                 parameters,
                 configurations.stream()
@@ -219,7 +253,8 @@ public record ParameterSet(
                                 })
                         .toList(),
                 active,
-                bindings);
+                bindings,
+                uuidGenerator);
     }
 
     public ParameterSet rename(String nameOrId, String nextName) {
@@ -265,7 +300,8 @@ public record ParameterSet(
                                                 b.target(),
                                                 Expressions.rename(
                                                         b.expression(), old.name(), nextName)))
-                        .toList());
+                        .toList(),
+                uuidGenerator);
     }
 
     public ParameterSet remove(String nameOrId) {
@@ -284,7 +320,8 @@ public record ParameterSet(
                         parameters.stream().filter(p -> !p.id().equals(removed.id())).toList(),
                         configs,
                         active,
-                        bindings);
+                        bindings,
+                        uuidGenerator);
         result.validate();
         return result;
     }
@@ -293,8 +330,8 @@ public record ParameterSet(
         var overrides = new LinkedHashMap<String, String>();
         if (copyActive) parameters.forEach(p -> overrides.put(p.id(), expression(p, active)));
         var next = new ArrayList<>(configurations);
-        next.add(new Configuration("configuration-" + UUID.randomUUID(), name, overrides));
-        return new ParameterSet(parameters, next, active, bindings);
+        next.add(new Configuration("configuration-" + uuidGenerator.next(), name, overrides));
+        return new ParameterSet(parameters, next, active, bindings, uuidGenerator);
     }
 
     public ParameterSet renameConfiguration(String nameOrId, String name) {
@@ -310,7 +347,8 @@ public record ParameterSet(
                                                 : c)
                         .toList(),
                 active,
-                bindings);
+                bindings,
+                uuidGenerator);
     }
 
     public ParameterSet removeConfiguration(String nameOrId) {
@@ -320,7 +358,8 @@ public record ParameterSet(
                 parameters,
                 configurations.stream().filter(c -> !c.id().equals(id)).toList(),
                 active.equals(id) ? "" : active,
-                bindings);
+                bindings,
+                uuidGenerator);
     }
 
     public Map<String, Quantity<?>> values() {

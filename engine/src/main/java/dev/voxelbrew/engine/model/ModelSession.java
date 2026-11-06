@@ -9,6 +9,7 @@ import java.util.List;
 @lombok.extern.slf4j.Slf4j
 public final class ModelSession {
     private final String id;
+    private final dev.voxelbrew.util.UuidGenerator uuidGenerator;
     private List<Feature> features;
     private dev.voxelbrew.engine.printing.PrintSetup printSetup;
     private dev.voxelbrew.engine.parameters.ParameterSet parameters;
@@ -29,6 +30,7 @@ public final class ModelSession {
 
     public ModelSession(CadDocument document) {
         id = document.id();
+        uuidGenerator = document.uuidGenerator();
         features = document.features();
         printSetup = document.printSetup();
         parameters = document.parameters();
@@ -397,7 +399,7 @@ public final class ModelSession {
         redo.clear();
         features = validated;
         printSetup = setup;
-        parameters = expressions;
+        parameters = expressions.withUuidGenerator(uuidGenerator);
         bodyStyles = java.util.Map.copyOf(styles);
         bodyNames = java.util.Map.copyOf(names);
         revision++;

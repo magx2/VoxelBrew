@@ -331,7 +331,10 @@ public final class DocumentController implements AutoCloseable {
 
     public void previewExtrusion(Feature.Sketch sketch, double distance) {
         previewExpression = "";
-        String id = preview == null ? "extrude-" + UUID.randomUUID() : preview.id();
+        String id =
+                preview == null
+                        ? "extrude-" + session.document().uuidGenerator().next()
+                        : preview.id();
         var candidate =
                 new Feature.Extrude(
                         id, new Feature.ProfileRef(sketch.id(), sketch.profileId()), distance);

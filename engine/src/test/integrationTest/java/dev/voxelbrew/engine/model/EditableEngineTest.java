@@ -305,7 +305,7 @@ class EditableEngineTest {
     }
 
     @Test
-    void schemaOneTwoAndThreeDocumentsRemainReadableAndEditable() throws Exception {
+    void olderSchemasAreRejectedWithoutRewritingTheSource() throws Exception {
         var original = reference().document();
         for (int version : new int[] {1, 2, 3, 4, 5}) {
             Path file = directory.resolve("legacy-" + version + ".jcad");
@@ -325,15 +325,11 @@ class EditableEngineTest {
                             .put(MessageDigest.getInstance("SHA-256").digest(payload))
                             .put(payload)
                             .array());
-            var reopened = new ModelSession(DocumentReader.load(file));
-            assertEquals(original, reopened.document());
-            reopened.editDimension("thickness", "distance", 8);
-            DocumentWriter.save(reopened.document(), file, true);
-            assertEquals(reopened.document(), DocumentReader.load(file));
-            try (var evaluation = reopened.evaluate()) {
-                assertEquals(
-                        19099.469035085127, evaluation.bodies().getFirst().solid().volume(), 0.01);
-            }
+            byte[] originalBytes = Files.readAllBytes(file);
+            assertThrows(DocumentFormatException.class, () -> DocumentReader.load(file));
+            assertThrows(
+                    DocumentFormatException.class, () -> DocumentWriter.save(original, file, true));
+            assertArrayEquals(originalBytes, Files.readAllBytes(file));
         }
     }
 

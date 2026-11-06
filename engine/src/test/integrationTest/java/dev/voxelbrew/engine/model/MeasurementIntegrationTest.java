@@ -91,11 +91,10 @@ class MeasurementIntegrationTest {
     }
 
     @Test
-    void preJsr385FixturePreservesMeasurementsWhenSavingWithCurrentWriterVersion()
-            throws Exception {
+    void currentFixturePreservesMeasurementsWhenSavingWithCurrentWriterVersion() throws Exception {
         byte[] original;
         try (var resource =
-                getClass().getResourceAsStream("/parameters/schema6-configurations.jcad")) {
+                getClass().getResourceAsStream("/parameters/schema9-configurations.jcad")) {
             assertNotNull(resource);
             original = resource.readAllBytes();
         }

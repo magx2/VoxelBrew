@@ -278,7 +278,8 @@ public final class FeatureDimensions {
                                                 || (!b.target().field().startsWith("constraint:")
                                                         && !FeatureText.isField(b.target().field()))
                                                 || fields.contains(b.target().field()))
-                        .toList());
+                        .toList(),
+                parameters.uuidGenerator());
     }
 
     public static SketchGeometry resolveSketch(
@@ -364,6 +365,7 @@ public final class FeatureDimensions {
                         parameters.parameters(),
                         parameters.configurations(),
                         parameters.active(),
-                        bindings));
+                        bindings,
+                        parameters.uuidGenerator()));
     }
 }

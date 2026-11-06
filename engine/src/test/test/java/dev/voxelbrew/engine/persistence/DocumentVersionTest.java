@@ -38,7 +38,7 @@ class DocumentVersionTest {
     }
 
     @Test
-    void legacySchemasAndOlderWritersUpgradeOnlyWhenEncodedAgain() throws Exception {
+    void olderSchemasAreRejectedAndCurrentSchemaPreservesOlderWriterMetadata() throws Exception {
         var original = CadDocument.empty();
         var current = message(DocumentCodec.encode(original));
         for (int schema = 1; schema <= DocumentCodec.SCHEMA_VERSION; schema++) {
@@ -50,6 +50,10 @@ class DocumentVersionTest {
                                         .setApplicationVersion(version)
                                         .build());
                 byte[] before = old.clone();
+                if (schema != DocumentCodec.SCHEMA_VERSION) {
+                    assertThrows(DocumentFormatException.class, () -> DocumentCodec.decode(old));
+                    continue;
+                }
                 var document = DocumentCodec.decode(old);
                 assertEquals(original, document);
                 assertArrayEquals(before, old);

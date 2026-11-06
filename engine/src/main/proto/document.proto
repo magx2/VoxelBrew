@@ -20,6 +20,8 @@ message Document {
   // Optional display labels keyed by stable body identity; never used as
   // references.
   map<string, string> body_names = 20;
+  // Next unused document identifier.
+  int64 next_uuid = 21;
   reserved 6 to 15;
 }
 // Stable body IDs, including inactive ancestors retained for split inheritance.

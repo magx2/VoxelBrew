@@ -94,10 +94,14 @@ cli inspect broken.jcad
 
 ## .jcad schema and safe writes
 
-`engine/src/main/proto/document.proto` is schema version 6 (versions 1–5 remain readable).
+`engine/src/main/proto/document.proto` is schema version 9. Earlier schemas are
+rejected. Each document owns a `util` `UuidGenerator`, starting at 1; generated
+IDs use its sequential `long` values. The Protobuf `next_uuid` field stores the
+next unused value, and loading resumes from that value. Undo does not rewind the
+sequence. Separately opened documents have independent counters.
 Each save also stores `Version.version()` in the Protobuf `application_version`
-field. Older application files and legacy files without this field open normally;
-their next explicit save upgrades them to the current schema and writer version.
+field. Current-schema files from older application versions open normally;
+their next explicit save updates the writer version.
 Opening never changes the source file. Files from a newer application version
 report an error with the saved/supported versions and cannot be overwritten.
 See [file version compatibility](file-io.md) for snapshot and IDE behavior.
@@ -110,7 +114,7 @@ length check and digest distinguish truncated/corrupt documents from an empty
 valid model. Field numbers are reserved for compatibility; removed tags must
 never be reused. Units must explicitly be `MILLIMETERS`.
 
-A newer schema or any unsupported Protobuf field is rejected as read-only. M1
+A different schema version or any unsupported Protobuf field is rejected as read-only. M1
 does not interpret or rewrite unknown data; the original bytes remain intact.
 Version 2 adds editable splitting and versioned print setups. Version 3 adds
 provider ID, feature type, payload version and opaque custom-feature bytes.

@@ -21,7 +21,7 @@ import java.util.List;
  * and writers live in the import/export projects.
  */
 public final class DocumentCodec {
-    public static final int SCHEMA_VERSION = 8;
+    public static final int SCHEMA_VERSION = 9;
     private static final byte[] MAGIC = {'J', 'C', 'A', 'D', 13, 10, 26, 10};
     private static final int HEADER = 44;
     private static final int MAX_PAYLOAD = 16 * 1024 * 1024;
@@ -56,7 +56,7 @@ public final class DocumentCodec {
         }
         try {
             DocumentProto.Document message = DocumentProto.Document.parseFrom(payload);
-            if (message.getSchemaVersion() < 1 || message.getSchemaVersion() > SCHEMA_VERSION) {
+            if (message.getSchemaVersion() != SCHEMA_VERSION) {
                 throw new DocumentFormatException(
                         "Unsupported .jcad schema "
                                 + message.getSchemaVersion()
@@ -82,7 +82,13 @@ public final class DocumentCodec {
                             : PrintSetup.empty(),
                     message.hasParameters()
                             ? ParameterCodec.fromProto(message.getParameters())
-                            : dev.voxelbrew.engine.parameters.ParameterSet.empty(),
+                                    .withUuidGenerator(
+                                            new dev.voxelbrew.util.UuidGenerator(
+                                                    message.getNextUuid()))
+                            : dev.voxelbrew.engine.parameters.ParameterSet.empty()
+                                    .withUuidGenerator(
+                                            new dev.voxelbrew.util.UuidGenerator(
+                                                    message.getNextUuid())),
                     message.getBodyStylesMap().entrySet().stream()
                             .collect(
                                     java.util.stream.Collectors.toMap(
@@ -214,6 +220,7 @@ public final class DocumentCodec {
         var message =
                 DocumentProto.Document.newBuilder()
                         .setSchemaVersion(SCHEMA_VERSION)
+                        .setNextUuid(document.uuidGenerator().nextValue())
                         .setDocumentId(document.id())
                         .setUnits(DocumentProto.Units.MILLIMETERS)
                         .setCursor(document.cursor())

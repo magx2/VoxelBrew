@@ -1660,7 +1660,12 @@ public final class Workbench extends BorderPane implements AutoCloseable {
                 return;
             }
         }
-        choosePlane(FaceSupport.attach(body.get().output(), body.get().planarFaces(), face));
+        choosePlane(
+                FaceSupport.attach(
+                        body.get().output(),
+                        body.get().planarFaces(),
+                        face,
+                        controller.snapshot().document().uuidGenerator()));
     }
 
     private void choosePlane(Feature.Plane plane) {
@@ -1688,7 +1693,7 @@ public final class Workbench extends BorderPane implements AutoCloseable {
             if (placement.isOrigin() && (placement.offsetZ() != 0 || boundOffset))
                 placement =
                         new Feature.Plane(
-                                "plane-" + UUID.randomUUID(),
+                                "plane-" + controller.snapshot().document().uuidGenerator().next(),
                                 placement.offsetZ(),
                                 placement.frame(),
                                 null);
@@ -1842,7 +1847,12 @@ public final class Workbench extends BorderPane implements AutoCloseable {
                                             .orElseThrow();
                             controller.add(
                                     new Feature.ThroughCut(
-                                            "cut-" + UUID.randomUUID(),
+                                            "cut-"
+                                                    + controller
+                                                            .snapshot()
+                                                            .document()
+                                                            .uuidGenerator()
+                                                            .next(),
                                             new Feature.ProfileRef(sketch.id(), sketch.profileId()),
                                             target.output()));
                             tool = Tool.NONE;
@@ -1905,7 +1915,8 @@ public final class Workbench extends BorderPane implements AutoCloseable {
                 javafx.event.ActionEvent.ACTION,
                 event -> {
                     try {
-                        String id = "split-" + UUID.randomUUID();
+                        String id =
+                                "split-" + controller.snapshot().document().uuidGenerator().next();
                         var feature =
                                 new Feature.SplitBody(
                                         id,

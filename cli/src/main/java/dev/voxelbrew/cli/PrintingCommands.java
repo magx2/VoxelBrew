@@ -180,7 +180,7 @@ final class PrintingCommands {
                 if (s.instanceId().equals(source))
                     supports.add(
                             new SupportVolume(
-                                    "support-" + UUID.randomUUID(),
+                                    "support-" + session.document().uuidGenerator().next(),
                                     id,
                                     s.role(),
                                     s.x(),

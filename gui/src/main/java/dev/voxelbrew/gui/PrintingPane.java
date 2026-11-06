@@ -459,7 +459,7 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
                         .mesh();
         var bounds = MeshGeometry.bounds(mesh);
         var all = new ArrayList<>(setup().instances());
-        String id = "part-" + UUID.randomUUID();
+        String id = "part-" + document.snapshot().document().uuidGenerator().next();
         all.add(
                 new BodyInstance(
                         id,
@@ -499,7 +499,7 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
 
     private void duplicate() {
         var source = selected();
-        String id = "part-" + UUID.randomUUID();
+        String id = "part-" + document.snapshot().document().uuidGenerator().next();
         var all = new ArrayList<>(setup().instances());
         all.add(
                 new BodyInstance(
@@ -511,7 +511,7 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
             if (s.instanceId().equals(source.id()))
                 supports.add(
                         new SupportVolume(
-                                "support-" + UUID.randomUUID(),
+                                "support-" + document.snapshot().document().uuidGenerator().next(),
                                 id,
                                 s.role(),
                                 s.x(),

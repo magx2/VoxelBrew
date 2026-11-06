@@ -1,5 +1,6 @@
 package dev.voxelbrew.util.logging;
 
+import dev.voxelbrew.util.UuidGenerator;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
@@ -10,13 +11,13 @@ import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
 import java.util.Comparator;
-import java.util.UUID;
 import java.util.logging.ErrorManager;
 import java.util.logging.Handler;
 import java.util.logging.LogRecord;
 
 /** Cooperating JVMs reopen app.log under a short lock so Windows can also rotate live sessions. */
 final class RollingAppLog extends Handler {
+    private static final UuidGenerator logIds = new UuidGenerator();
     private static final Object[] LOCKS = new Object[32];
     private static final DateTimeFormatter STAMP =
             DateTimeFormatter.ofPattern("uuuuMMdd-HHmmss-SSSSSSSSS").withZone(ZoneOffset.UTC);
@@ -103,7 +104,9 @@ final class RollingAppLog extends Handler {
                             "app-"
                                     + STAMP.format(Instant.now())
                                     + "-"
-                                    + UUID.randomUUID()
+                                    + ProcessHandle.current().pid()
+                                    + "-"
+                                    + logIds.next()
                                     + ".log");
             try {
                 Files.move(active, archive, StandardCopyOption.ATOMIC_MOVE);
@@ -119,7 +122,7 @@ final class RollingAppLog extends Handler {
                                             path.getFileName()
                                                     .toString()
                                                     .matches(
-                                                            "app-\\d{8}-\\d{6}-\\d{9}-[a-f0-9-]{36}\\.log"))
+                                                            "app-\\d{8}-\\d{6}-\\d{9}-[0-9]+-[0-9]+\\.log"))
                             .sorted(Comparator.reverseOrder())
                             .skip(archives)
                             .toList();

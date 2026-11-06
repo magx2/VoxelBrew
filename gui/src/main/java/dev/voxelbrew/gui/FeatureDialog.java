@@ -109,7 +109,7 @@ final class FeatureDialog {
                             var d = type.getValue();
                             result[0] =
                                     registry.create(
-                                            "custom-" + UUID.randomUUID(),
+                                            "custom-" + parameters.uuidGenerator().next(),
                                             d.providerId(),
                                             d.type(),
                                             values);

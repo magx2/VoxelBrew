@@ -26,6 +26,14 @@ public record FaceSupport(
 
     public static Feature.Plane attach(
             Feature.BodyRef body, List<PlanarFace> faces, int faceIndex) {
+        return attach(body, faces, faceIndex, new dev.voxelbrew.util.UuidGenerator());
+    }
+
+    public static Feature.Plane attach(
+            Feature.BodyRef body,
+            List<PlanarFace> faces,
+            int faceIndex,
+            dev.voxelbrew.util.UuidGenerator generator) {
         var face =
                 faces.stream()
                         .filter(f -> f.faceIndex() == faceIndex)
@@ -36,7 +44,7 @@ public record FaceSupport(
         int rank = 0;
         while (Math.abs(planes.get(rank) - face.offset()) > 1e-6) rank++;
         return new Feature.Plane(
-                "face-plane-" + java.util.UUID.randomUUID(),
+                "face-plane-" + generator.next(),
                 0,
                 face.frame(),
                 new FaceSupport(body, face.nx(), face.ny(), face.nz(), rank, planes.size()));

@@ -3,7 +3,6 @@ package dev.voxelbrew.engine.model;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 
 /** Immutable millimeter document. The cursor counts evaluated features. */
 public record CadDocument(
@@ -72,8 +71,18 @@ public record CadDocument(
         }
     }
 
+    public dev.voxelbrew.util.UuidGenerator uuidGenerator() {
+        return parameters.uuidGenerator();
+    }
+
     public static CadDocument empty() {
-        return new CadDocument(UUID.randomUUID().toString(), List.of(), 0);
+        var ids = new dev.voxelbrew.util.UuidGenerator();
+        return new CadDocument(
+                Long.toString(ids.next()),
+                List.of(),
+                0,
+                dev.voxelbrew.engine.printing.PrintSetup.empty(),
+                dev.voxelbrew.engine.parameters.ParameterSet.empty().withUuidGenerator(ids));
     }
 
     /** Display names never replace stable body identities or feature references. */

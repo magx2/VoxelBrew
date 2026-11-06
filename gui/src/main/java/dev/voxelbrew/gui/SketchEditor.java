@@ -45,6 +45,7 @@ final class SketchEditor extends BorderPane implements AutoCloseable {
     private record Badge(Constraint constraint, double x, double y) {}
 
     private final SketchController controller;
+    private final dev.voxelbrew.util.UuidGenerator uuidGenerator;
     private final dev.voxelbrew.util.i18n.Translations translations;
     private final Canvas canvas = new Canvas();
     private final LinkedHashSet<Ref> selection = new LinkedHashSet<>();
@@ -196,8 +197,9 @@ final class SketchEditor extends BorderPane implements AutoCloseable {
         undo.setText(translations.text("action.undo"));
         redo.setText(translations.text("action.redo"));
         this.original = sketch;
+        uuidGenerator = parameters.uuidGenerator();
         this.selectedPlane = sketch == null ? selectedPlane : sketch.plane();
-        featureId = sketch == null ? "sketch-" + UUID.randomUUID() : sketch.id();
+        featureId = sketch == null ? "sketch-" + parameters.uuidGenerator().next() : sketch.id();
         documentFeatures = List.copyOf(features);
         this.dark = dark;
         this.accept = accept;
@@ -1417,13 +1419,13 @@ final class SketchEditor extends BorderPane implements AutoCloseable {
                     new Feature.Sketch(
                             featureId,
                             original == null
-                                    ? "profile-" + UUID.randomUUID()
+                                    ? "profile-" + uuidGenerator.next()
                                     : original.profileId(),
                             original == null
                                     ? new Feature.Plane(
                                             offset == 0 && Expressions.isNumber(plane.getText())
                                                     ? selectedPlane.id()
-                                                    : "plane-" + UUID.randomUUID(),
+                                                    : "plane-" + uuidGenerator.next(),
                                             offset,
                                             selectedPlane.frame(),
                                             selectedPlane.support())

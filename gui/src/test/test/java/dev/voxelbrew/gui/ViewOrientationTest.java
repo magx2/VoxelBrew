@@ -52,9 +52,21 @@ class ViewOrientationTest {
     }
 
     @Test
+    void draggingMovesTheFacingSurfaceWithThePointer() {
+        var front = ViewOrientation.named("Front");
+        var facingPoint = new Point3D(0, -10, 0);
+        assertTrue(front.dragged(20, 0).project(facingPoint).getX() > 0, "Drag right");
+        assertTrue(front.dragged(-20, 0).project(facingPoint).getX() < 0, "Drag left");
+        assertTrue(front.dragged(0, 20).project(facingPoint).getY() > 0, "Drag down");
+        assertTrue(front.dragged(0, -20).project(facingPoint).getY() < 0, "Drag up");
+        assertEquals(front, front.dragged(20, 30).dragged(-20, -30));
+    }
+
+    @Test
     void orbitWrapsAndRejectsInvalidAngles() {
         assertEquals(new ViewOrientation(20, -35), new ViewOrientation(20, 685));
-        assertEquals(new ViewOrientation(89, 10), new ViewOrientation(0, 0).dragged(20, -1000));
+        assertEquals(new ViewOrientation(-89, -10), new ViewOrientation(0, 0).dragged(20, -1000));
+        assertEquals(new ViewOrientation(89, 10), new ViewOrientation(0, 0).dragged(-20, 1000));
         assertThrows(IllegalArgumentException.class, () -> new ViewOrientation(Double.NaN, 0));
         assertThrows(
                 IllegalArgumentException.class,

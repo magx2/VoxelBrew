@@ -45,7 +45,8 @@ record ViewOrientation(double tilt, double orbit) {
     }
 
     ViewOrientation dragged(double dx, double dy) {
-        return new ViewOrientation(Math.clamp(tilt - dy * 0.5, -89, 89), orbit + dx * 0.5);
+        // Rotate the visible scene with the pointer, as if grabbing its front surface.
+        return new ViewOrientation(Math.clamp(tilt + dy * 0.5, -89, 89), orbit - dx * 0.5);
     }
 
     /** Same Ry then Rx transform as the main viewport, including CAD (x,y,z) to FX (x,-z,y). */

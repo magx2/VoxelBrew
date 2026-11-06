@@ -40,6 +40,7 @@ public final class Viewport extends StackPane {
     private final ViewCube viewCube;
     private Map<String, MeshData> currentMeshes = Map.of();
     private double lastX, lastY;
+    private boolean primaryOrbit;
     private double distance = 180;
     private BiConsumer<String, Integer> selection = (id, face) -> {};
     private String selected;
@@ -67,6 +68,7 @@ public final class Viewport extends StackPane {
         scene =
                 new SubScene(
                         new Group(world, light, key), 800, 600, true, SceneAntialiasing.BALANCED);
+        scene.setId("viewport-scene");
         scene.setCamera(camera);
         camera.setNearClip(0.01);
         camera.setFarClip(100000);
@@ -91,6 +93,11 @@ public final class Viewport extends StackPane {
                 e -> {
                     lastX = e.getSceneX();
                     lastY = e.getSceneY();
+                    primaryOrbit =
+                            e.getButton() == MouseButton.PRIMARY
+                                    && planeClick == null
+                                    && isNavigationBackground(
+                                            e.getPickResult().getIntersectedNode());
                     requestFocus();
                 });
         scene.setOnMouseDragged(
@@ -105,7 +112,19 @@ public final class Viewport extends StackPane {
                         } else {
                             orbitBy(dx, dy);
                         }
+                    } else if (primaryOrbit
+                            && e.isPrimaryButtonDown()
+                            && planeClick == null
+                            && !e.isStillSincePress()) {
+                        scene.setCursor(Cursor.CLOSED_HAND);
+                        orbitBy(dx, dy);
+                        e.consume();
                     }
+                });
+        scene.setOnMouseReleased(
+                e -> {
+                    primaryOrbit = false;
+                    scene.setCursor(Cursor.DEFAULT);
                 });
         scene.setOnScroll(
                 e -> {
@@ -129,6 +148,12 @@ public final class Viewport extends StackPane {
 
     public static Point3D toView(double x, double y, double z) {
         return new Point3D(x, -z, y);
+    }
+
+    private boolean isNavigationBackground(Node picked) {
+        for (Node node = picked; node != null; node = node.getParent())
+            if (node == bodies || node == sketches || node == handle) return false;
+        return true;
     }
 
     public static Point3D toModel(Point3D p) {

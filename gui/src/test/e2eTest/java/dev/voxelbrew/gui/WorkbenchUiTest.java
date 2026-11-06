@@ -20,6 +20,7 @@ import java.util.*;
 import java.util.concurrent.*;
 import javafx.application.*;
 import javafx.event.EventHandler;
+import javafx.geometry.Point2D;
 import javafx.geometry.Point3D;
 import javafx.scene.*;
 import javafx.scene.control.*;
@@ -2465,6 +2466,97 @@ class WorkbenchUiTest {
     }
 
     @Test
+    void gridDragRotatesWithoutTakingOverPickingSketchesOrDocumentHistory() throws Exception {
+        ready();
+        var empty = fx(() -> workbench.controller().snapshot());
+        var background =
+                fx(
+                        () -> {
+                            var viewport = workbench.viewport();
+                            return viewport.localToScreen(
+                                    viewport.getWidth() * 0.25, viewport.getHeight() * 0.7);
+                        });
+        primaryDrag(background, 40, 24);
+        assertOrbit(
+                new ViewOrientation(40, -55),
+                "An empty document's grid can be grabbed and rotated right/down");
+        assertEquals(
+                Cursor.DEFAULT,
+                fx(() -> node("#viewport-scene").getCursor()),
+                "Releasing a grid drag restores the cursor");
+        primaryDrag(background, -40, -24);
+        assertOrbit(ViewOrientation.HOME, "Reverse drag returns to the original view");
+        assertEquals(empty, fx(() -> workbench.controller().snapshot()));
+        assertFalse(fx(() -> workbench.controller().dirty()));
+
+        rectangle(0);
+        var top = fx(() -> workbench.viewport().orientationProperty().get());
+        primaryDrag(fx(() -> workbench.viewport().modelToScreen(new Point3D(30, 20, 0))), 80, 24);
+        assertEquals(
+                top,
+                fx(() -> workbench.viewport().orientationProperty().get()),
+                "A drag that starts on a sketch does not become a grid orbit");
+        click("extrude");
+        ready();
+        key(KeyCode.ENTER);
+        ready();
+        save(directory.resolve("grid navigation.jcad"));
+        click("view-cube-home");
+        modelClick(30, 20, 5);
+        var selection = fx(() -> ((Label) workbench.lookup(".selection-title")).getText());
+        assertTrue(selection.startsWith("Face"), "Single-click still picks a face");
+        var saved = fx(() -> workbench.controller().snapshot());
+        primaryDrag(fx(() -> workbench.viewport().modelToScreen(new Point3D(30, 20, 5))), 40, 24);
+        assertEquals(
+                ViewOrientation.HOME,
+                fx(() -> workbench.viewport().orientationProperty().get()),
+                "Dragging from a body does not orbit, even when leaving its surface");
+        primaryDrag(fx(() -> workbench.viewport().modelToScreen(new Point3D(-15, 10, 0))), 40, 24);
+        assertOrbit(new ViewOrientation(40, -55), "Grid rotation also works with a model present");
+        assertEquals(
+                selection,
+                fx(() -> ((Label) workbench.lookup(".selection-title")).getText()),
+                "Releasing a grid drag does not change selection");
+        assertEquals(saved, fx(() -> workbench.controller().snapshot()));
+        assertFalse(fx(() -> workbench.controller().dirty()));
+        fx(
+                () -> {
+                    Screenshot.save(
+                            stage.getScene(),
+                            Path.of(
+                                    System.getProperty("voxelbrew.ui.artifacts"),
+                                    "grid-orbit.png"));
+                    return null;
+                });
+
+        click("rectangle");
+        var drawingView = fx(() -> workbench.viewport().orientationProperty().get());
+        var fields = List.of("sketch-x", "sketch-y", "sketch-width", "sketch-height");
+        var draft =
+                fx(
+                        () ->
+                                fields.stream()
+                                        .map(id -> ((TextField) node("#" + id)).getText())
+                                        .toList());
+        primaryDrag(fx(() -> workbench.viewport().modelToScreen(new Point3D(-15, 10, 0))), 40, 24);
+        assertEquals(
+                drawingView,
+                fx(() -> workbench.viewport().orientationProperty().get()),
+                "The active drawing tool owns left-button input");
+        assertEquals(
+                draft,
+                fx(
+                        () ->
+                                fields.stream()
+                                        .map(id -> ((TextField) node("#" + id)).getText())
+                                        .toList()),
+                "Dragging while drawing does not insert sketch points");
+        key(KeyCode.ESCAPE);
+        assertEquals(saved, fx(() -> workbench.controller().snapshot()));
+        assertFalse(fx(() -> workbench.controller().dirty()));
+    }
+
+    @Test
     void viewCubeSnapsOrbitsAndFitsWithoutChangingTheDocument() throws Exception {
         rectangle(0);
         click("extrude");
@@ -2548,10 +2640,9 @@ class WorkbenchUiTest {
         assertTrue(
                 beforeDrag.distance(fx(() -> workbench.viewport().modelToScreen(point))) > 2,
                 "Dragging cube orbits the main view");
-        assertEquals(
-                ViewOrientation.HOME.dragged(30, 20),
-                fx(() -> workbench.viewport().orientationProperty().get()),
-                "Drag must not also snap on release");
+        assertOrbit(
+                new ViewOrientation(38, -50),
+                "Right/down drag follows the pointer and must not also snap on release");
         click("view-cube-menu");
         assertTrue(fx(() -> ((MenuButton) node("#view-cube-menu")).isShowing()));
         key(KeyCode.DOWN);
@@ -2852,6 +2943,43 @@ class WorkbenchUiTest {
                                     "custom-spacer.png"));
                     return null;
                 });
+    }
+
+    private void assertOrbit(ViewOrientation expected, String message) throws Exception {
+        var actual = fx(() -> workbench.viewport().orientationProperty().get());
+        // Native mouse coordinates can accumulate sub-pixel floating-point rounding.
+        assertEquals(expected.tilt(), actual.tilt(), 1e-9, message + " (tilt)");
+        assertEquals(expected.orbit(), actual.orbit(), 1e-9, message + " (orbit)");
+    }
+
+    private void primaryDrag(Point2D start, double dx, double dy) throws Exception {
+        fx(
+                () -> {
+                    robot.mouseMove(start);
+                    return null;
+                });
+        Thread.sleep(120);
+        fx(
+                () -> {
+                    robot.mousePress(MouseButton.PRIMARY);
+                    return null;
+                });
+        try {
+            Thread.sleep(100);
+            fx(
+                    () -> {
+                        robot.mouseMove(start.add(dx, dy));
+                        return null;
+                    });
+            Thread.sleep(150);
+        } finally {
+            fx(
+                    () -> {
+                        robot.mouseRelease(MouseButton.PRIMARY);
+                        return null;
+                    });
+        }
+        Thread.sleep(180);
     }
 
     private void navigate(boolean pan) throws Exception {

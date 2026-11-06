@@ -98,8 +98,7 @@ class WorkbenchUiTest {
                     // Match the hosted Windows runner so clipped inspector fields require
                     // scrolling.
                     stage.setScene(
-                            new Scene(
-                                    workbench,
+                            workbench.createScene(
                                     Math.min(964, screen.getWidth() - 60),
                                     Math.min(648, screen.getHeight() - 80)));
                     stage.show();
@@ -119,12 +118,13 @@ class WorkbenchUiTest {
         try {
             fx(
                     () -> {
-                        Screenshot.save(
-                                stage.getScene(),
-                                Path.of(
-                                        System.getProperty("voxelbrew.ui.artifacts"),
-                                        info.getTestMethod().orElseThrow().getName()
-                                                + "-last.png"));
+                        if (stage.isShowing())
+                            Screenshot.save(
+                                    stage.getScene(),
+                                    Path.of(
+                                            System.getProperty("voxelbrew.ui.artifacts"),
+                                            info.getTestMethod().orElseThrow().getName()
+                                                    + "-last.png"));
                         int index = 0;
                         for (var window : new ArrayList<>(Window.getWindows()))
                             if (window != stage) {
@@ -154,6 +154,167 @@ class WorkbenchUiTest {
         var task = new FutureTask<>(action);
         Platform.runLater(task);
         return task.get(20, TimeUnit.SECONDS);
+    }
+
+    @Test
+    void integratedHeaderMovesResizesMaximizesAndMinimizesWithoutEditing() throws Exception {
+        ready();
+        assertEquals(StageStyle.UNDECORATED, fx(stage::getStyle));
+        assertEquals(0, fx(() -> stage.getScene().getY()), 0.1, "No duplicate native title row");
+        var snapshot = fx(() -> workbench.controller().snapshot());
+        var start = windowBounds();
+        primaryDrag(centerOf("document-title"), 45, 25);
+        var moved = windowBounds();
+        assertEquals(start.getMinX() + 45, moved.getMinX(), 2);
+        assertEquals(start.getMinY() + 25, moved.getMinY(), 2);
+        primaryDrag(new Point2D(moved.getMaxX() - 2, moved.getMaxY() - 2), 35, 25);
+        var resized = windowBounds();
+        assertEquals(moved.getWidth() + 35, resized.getWidth(), 2);
+        assertEquals(moved.getHeight() + 25, resized.getHeight(), 2);
+        assertEquals(moved.getMinX(), resized.getMinX(), 2);
+        primaryDrag(new Point2D(resized.getMinX() + 2, resized.getMinY() + 2), 15, 10);
+        var restored = windowBounds();
+        assertEquals(resized.getMaxX(), restored.getMaxX(), 2);
+        assertEquals(resized.getMaxY(), restored.getMaxY(), 2);
+        assertEquals(resized.getWidth() - 15, restored.getWidth(), 2);
+        click("window-maximize");
+        var screen = fx(() -> Screen.getPrimary().getVisualBounds());
+        assertWindowBounds(screen);
+        assertTrue(fx(() -> node("#window-maximize").getAccessibleHelp().startsWith("Restore")));
+        doubleClickHeader();
+        assertWindowBounds(restored);
+        doubleClickHeader();
+        assertWindowBounds(screen);
+        primaryDrag(centerOf("document-title"), 35, 40);
+        assertEquals(restored.getWidth(), windowBounds().getWidth(), 2);
+        assertEquals(restored.getHeight(), windowBounds().getHeight(), 2);
+        // Recenter before native input on the mixed-DPI Windows desktop.
+        fx(
+                () -> {
+                    stage.centerOnScreen();
+                    return null;
+                });
+        Thread.sleep(250);
+        click("window-minimize");
+        assertTrue(fx(stage::isIconified));
+        fx(
+                () -> {
+                    stage.setIconified(false);
+                    stage.toFront();
+                    stage.requestFocus();
+                    return null;
+                });
+        Thread.sleep(400);
+        assertFalse(fx(stage::isIconified));
+        assertEquals(snapshot, fx(() -> workbench.controller().snapshot()));
+        assertFalse(fx(() -> workbench.controller().dirty()));
+        assertButtonDescriptions();
+        for (int palette : List.of(1, 2)) {
+            choice("appearance", palette);
+            fx(
+                    () -> {
+                        Screenshot.save(
+                                stage.getScene(),
+                                Path.of(
+                                        System.getProperty("voxelbrew.ui.artifacts"),
+                                        "window-header-"
+                                                + (palette == 1 ? "light" : "dark")
+                                                + ".png"));
+                        return null;
+                    });
+        }
+    }
+
+    @Test
+    void integratedCloseRespectsModalCancelSketchDraftsAndSave() throws Exception {
+        rectangle(0);
+        var original = document();
+        click("window-close");
+        assertNotNull(fx(() -> node("#unsaved-cancel")));
+        assertFalse(fx(() -> node("#window-close").isDisabled()));
+        assertTrue(fx(() -> node("#main-menu").isDisabled()));
+        click("window-close"); // The topmost dialog handles Close as Cancel.
+        assertTrue(fx(stage::isShowing));
+        assertFalse(fx(workbench::isDisabled));
+        assertEquals(original, document());
+        click("constrained-sketch");
+        sketchReady();
+        assertFalse(fx(() -> node("#window-minimize").isDisabled()));
+        click("window-close"); // Dismiss the uncommitted sketch, keeping the document open.
+        assertTrue(fx(stage::isShowing));
+        assertEquals(original, document());
+        click("save-as");
+        assertNotNull(fx(() -> node("#file-path")));
+        click("window-close");
+        assertTrue(fx(stage::isShowing));
+        assertTrue(fx(() -> workbench.controller().dirty()));
+        click("window-close");
+        click("unsaved-cancel");
+        assertEquals(original, document());
+        click("window-close");
+        click("unsaved-save");
+        Path file = directory.resolve("Saved by integrated Close.jcad");
+        text("file-path", file.toString());
+        click("file-confirm");
+        awaitWindowClosed();
+        assertEquals(original, DocumentReader.load(file));
+    }
+
+    @Test
+    void integratedCloseDiscardsOnlyAfterTheExplicitChoice() throws Exception {
+        rectangle(0);
+        click("window-close");
+        assertTrue(fx(stage::isShowing));
+        click("unsaved-discard");
+        awaitWindowClosed();
+    }
+
+    private void awaitWindowClosed() throws Exception {
+        long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(10);
+        while (fx(stage::isShowing) && System.nanoTime() < deadline) Thread.sleep(30);
+        assertFalse(fx(stage::isShowing));
+        workbench.whenClosed().toCompletableFuture().get(20, TimeUnit.SECONDS);
+    }
+
+    private javafx.geometry.Rectangle2D windowBounds() throws Exception {
+        return fx(
+                () ->
+                        new javafx.geometry.Rectangle2D(
+                                stage.getX(), stage.getY(), stage.getWidth(), stage.getHeight()));
+    }
+
+    private void assertWindowBounds(javafx.geometry.Rectangle2D expected) throws Exception {
+        var actual = windowBounds();
+        assertEquals(expected.getMinX(), actual.getMinX(), 2);
+        assertEquals(expected.getMinY(), actual.getMinY(), 2);
+        assertEquals(expected.getWidth(), actual.getWidth(), 2);
+        assertEquals(expected.getHeight(), actual.getHeight(), 2);
+    }
+
+    private Point2D centerOf(String id) throws Exception {
+        return fx(
+                () -> {
+                    var control = node("#" + id);
+                    var bounds = control.localToScreen(control.getBoundsInLocal());
+                    return new Point2D(bounds.getCenterX(), bounds.getCenterY());
+                });
+    }
+
+    private void doubleClickHeader() throws Exception {
+        var point = centerOf("document-title");
+        fx(
+                () -> {
+                    robot.mouseMove(point);
+                    robot.mouseClick(MouseButton.PRIMARY);
+                    return null;
+                });
+        Thread.sleep(80);
+        fx(
+                () -> {
+                    robot.mouseClick(MouseButton.PRIMARY);
+                    return null;
+                });
+        Thread.sleep(250);
     }
 
     @Test
@@ -457,7 +618,7 @@ class WorkbenchUiTest {
                                             configuration, updates::service),
                                     new dev.voxelbrew.exporter.di.FileIoModule());
                     try {
-                        reopenedStage.setScene(new Scene(reopened, 964, 648));
+                        reopenedStage.setScene(reopened.createScene(964, 648));
                         reopenedStage.show();
                         assertEquals("Save", command(reopened, "save").getText());
                     } finally {
@@ -492,7 +653,7 @@ class WorkbenchUiTest {
                                             new dev.voxelbrew.exporter.di.FileIoModule());
                     var second = graph.workbench();
                     try {
-                        secondStage.setScene(new Scene(second, 964, 648));
+                        secondStage.setScene(second.createScene(964, 648));
                         secondStage.show();
                         assertSame(second, graph.workbench());
                         assertNotSame(workbench.controller(), second.controller());
@@ -529,7 +690,7 @@ class WorkbenchUiTest {
     }
 
     private static MenuItem command(Workbench workbench, String id) {
-        return ((MenuBar) workbench.lookup("#main-menu"))
+        return ((MenuBar) workbench.getScene().lookup("#main-menu"))
                 .getMenus().stream()
                         .flatMap(WorkbenchUiTest::menuItems)
                         .filter(item -> id.equals(item.getId()))
@@ -593,7 +754,7 @@ class WorkbenchUiTest {
         assertFalse(
                 fx(
                         () ->
-                                ((MenuBar) workbench.lookup("#main-menu"))
+                                ((MenuBar) workbench.getScene().lookup("#main-menu"))
                                         .getMenus()
                                         .getFirst()
                                         .isShowing()));
@@ -996,13 +1157,13 @@ class WorkbenchUiTest {
             long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(3);
             while (fx(
                             () ->
-                                    ((MenuBar) workbench.lookup("#main-menu"))
+                                    ((MenuBar) workbench.getScene().lookup("#main-menu"))
                                             .getMenus().stream().anyMatch(Menu::isShowing))
                     && System.nanoTime() < deadline) Thread.sleep(25);
             assertFalse(
                     fx(
                             () ->
-                                    ((MenuBar) workbench.lookup("#main-menu"))
+                                    ((MenuBar) workbench.getScene().lookup("#main-menu"))
                                             .getMenus().stream().anyMatch(Menu::isShowing)),
                     "Appearance menus closed after selection");
             assertTrue(
@@ -2886,7 +3047,7 @@ class WorkbenchUiTest {
         fx(
                 () -> {
                     workbench = Workbench.create(stage, plugins);
-                    stage.setScene(new Scene(workbench, 964, 648));
+                    stage.setScene(workbench.createScene(964, 648));
                     stage.toFront();
                     stage.requestFocus();
                     return null;

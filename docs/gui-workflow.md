@@ -20,6 +20,12 @@ path available on hover. Drag the panel dividers to give the model
 or inspector more space. The toolbar wraps on smaller windows and is hidden
 in the Print workspace. File actions do not take up modeling toolbar space.
 
+Window controls share the document header; there is no separate native title row.
+Drag the document name or empty header space to move the window, and double-click
+to maximize or restore it. Drag an edge or corner to resize. The header stays
+available during dialogs and sketch editing. Close dismisses the active dialog
+or sketch draft first; closing an edited document offers Save, Discard and Cancel.
+
 - **File**: New, Open, Save, Save As and Export. Save shortcuts are Ctrl+S and
   Ctrl+Shift+S; the document name and unsaved-change dot stay visible at the top.
 - **Edit**: Undo, Redo and Parameters. Undo/Redo also remain on the modeling toolbar.

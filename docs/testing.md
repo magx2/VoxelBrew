@@ -29,12 +29,12 @@ Root `test` and `check` also run `workflowTest`: release automation tests under
 temporary local repositories and never publish a GitHub release.
 Integration tests additionally need the native and slicer bootstraps from the
 README, but no display. End-to-end and platform checks require a 3D-capable
-desktop; Ubuntu CI uses Xvfb/Mesa:
+desktop; Ubuntu CI uses Xvfb/Mesa and Openbox so native minimize/restore is exercised:
 
 ```bash
 ./gradlew test
 env -u DISPLAY -u WAYLAND_DISPLAY ./gradlew integrationTest
-xvfb-run -a -s '-screen 0 1600x1000x24' env LIBGL_ALWAYS_SOFTWARE=1 ./gradlew check
+bash scripts/with-virtual-desktop.sh ./gradlew check
 ```
 
 `platformCheck` runs `e2eTest`, packaged-launcher and updater checks, and

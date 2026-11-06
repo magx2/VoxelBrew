@@ -237,11 +237,11 @@ gui/build/install/gui/bin/gui --open fixtures/reference-8mm.jcad
 ```
 
 Ubuntu needs GTK 3 and a 3D-capable display (WSLg locally). Linux CI runs the
-actual Robot interaction tests using Xvfb/Mesa:
+actual Robot interaction tests using Xvfb/Mesa and Openbox for window controls:
 
 ```bash
-sudo apt-get install xvfb xauth libgtk-3-0t64 libgl1-mesa-dri
-xvfb-run -a -s '-screen 0 1600x1000x24' env LIBGL_ALWAYS_SOFTWARE=1 ./gradlew check
+sudo apt-get install xvfb xauth openbox libgtk-3-0t64 libgl1-mesa-dri
+bash scripts/with-virtual-desktop.sh ./gradlew check
 ```
 
 The installed development distribution includes JavaFX and matching OCCT

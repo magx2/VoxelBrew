@@ -6,7 +6,6 @@ import java.nio.file.Path;
 import javafx.application.Application;
 import javafx.application.ConditionalFeature;
 import javafx.application.Platform;
-import javafx.scene.Scene;
 import javafx.stage.Screen;
 import javafx.stage.Stage;
 
@@ -40,8 +39,7 @@ public final class WorkbenchApplication extends Application {
         workbench = Workbench.create(stage, plugins);
         var screen = Screen.getPrimary().getVisualBounds();
         stage.setScene(
-                new Scene(
-                        workbench,
+                workbench.createScene(
                         Math.min(1400, screen.getWidth() - 60),
                         Math.min(900, screen.getHeight() - 80)));
         stage.setMinWidth(Math.min(1100, screen.getWidth() - 60));

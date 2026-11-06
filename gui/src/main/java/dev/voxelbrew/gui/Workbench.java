@@ -39,6 +39,8 @@ public final class Workbench extends BorderPane implements AutoCloseable {
     }
 
     private final Stage stage;
+    private final WindowFrame window;
+    private final javafx.beans.value.ChangeListener<Boolean> windowFocus;
 
     @Getter
     @Accessors(fluent = true)
@@ -353,6 +355,8 @@ public final class Workbench extends BorderPane implements AutoCloseable {
                                 () -> KeyboardShortcuts.show(stage, translations)));
         var menuBar = new MenuBar(fileMenu, editMenu, viewMenu, settingsMenu);
         menuBar.setId("main-menu");
+        menuBar.disableProperty().bind(disabledProperty());
+        menuBar.setMinWidth(Region.USE_PREF_SIZE);
         UiHelp.menuBar(menuBar);
         var brand = new Label("VoxelBrew");
         brand.getStyleClass().add("brand");
@@ -367,8 +371,9 @@ public final class Workbench extends BorderPane implements AutoCloseable {
         documentTitle.setMinWidth(100);
         documentTitle.setMaxWidth(Double.MAX_VALUE);
         HBox.setHgrow(documentTitle, Priority.ALWAYS);
-        var title = new HBox(16, brand, documentTitle, menuBar);
+        var title = new HBox(12, brand, documentTitle, menuBar);
         title.getStyleClass().add("title-strip");
+        window = new WindowFrame(stage, title, this, translations);
         var historyCommands = new HBox(2, undo, redo);
         var sketchCommands = new HBox(2, constrainedSketch, rectangle, circle);
         var solidCommands = new HBox(2, extrude, cut, splitBody);
@@ -389,7 +394,7 @@ public final class Workbench extends BorderPane implements AutoCloseable {
                                 "fit",
                                 () -> viewport.fit(meshes())));
         viewbar.getStyleClass().add("view-strip");
-        setTop(new VBox(title, toolbar));
+        setTop(toolbar);
         tree.setId("model-tree");
         tree.setShowRoot(false);
         tree.getSelectionModel()
@@ -528,13 +533,13 @@ public final class Workbench extends BorderPane implements AutoCloseable {
                     else selectBody(id, face);
                 });
         controller.onChanged(this::refresh);
-        stage.focusedProperty()
-                .addListener(
-                        (o, old, focused) -> {
-                            if (focused && appearanceChoice == Appearance.Choice.SYSTEM)
-                                applyAppearance();
-                        });
-        addEventFilter(
+        windowFocus =
+                (o, old, focused) -> {
+                    if (!closed && focused && appearanceChoice == Appearance.Choice.SYSTEM)
+                        applyAppearance();
+                };
+        stage.focusedProperty().addListener(windowFocus);
+        window.addEventFilter(
                 KeyEvent.KEY_PRESSED,
                 e -> {
                     if (isDisabled() || menuBar.getMenus().stream().anyMatch(Menu::isShowing))
@@ -602,7 +607,6 @@ public final class Workbench extends BorderPane implements AutoCloseable {
                             () -> {
                                 close();
                                 stage.hide();
-                                Platform.exit();
                             });
                 });
         applyAppearance();
@@ -613,6 +617,10 @@ public final class Workbench extends BorderPane implements AutoCloseable {
 
     private Stage stage() {
         return stage;
+    }
+
+    javafx.scene.Scene createScene(double width, double height) {
+        return new javafx.scene.Scene(window, width, height);
     }
 
     private ExporterRegistry registry() {
@@ -1867,6 +1875,8 @@ public final class Workbench extends BorderPane implements AutoCloseable {
     private void setDark(boolean dark) {
         getStyleClass().removeAll("light", "dark");
         getStyleClass().add(dark ? "dark" : "light");
+        window.getStyleClass().removeAll("light", "dark");
+        window.getStyleClass().add(dark ? "dark" : "light");
         viewport.setDark(dark);
         printing.setDark(dark);
     }
@@ -1883,6 +1893,8 @@ public final class Workbench extends BorderPane implements AutoCloseable {
     public void close() {
         if (closed) return;
         closed = true;
+        window.close();
+        stage.focusedProperty().removeListener(windowFocus);
         printing.close();
         controller.close();
         preferencesWorker.shutdown();

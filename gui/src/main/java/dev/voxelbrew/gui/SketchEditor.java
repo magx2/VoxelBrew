@@ -103,7 +103,7 @@ final class SketchEditor extends BorderPane implements AutoCloseable {
             dev.voxelbrew.util.i18n.Translations translations,
             java.util.function.BiConsumer<Feature.Sketch, ParameterSet> accept) {
         var scene = stage.getScene();
-        Parent previous = scene.getRoot();
+        Parent previous = WindowFrame.content(scene);
         Node previousFocus = scene.getFocusOwner();
         var previousClose = stage.getOnCloseRequest();
         var editor =
@@ -120,14 +120,14 @@ final class SketchEditor extends BorderPane implements AutoCloseable {
         var host = new StackPane();
         host.getStylesheets().setAll(previous.getStylesheets());
         host.getStyleClass().add(previous.getStyleClass().contains("dark") ? "dark" : "light");
-        scene.setRoot(host);
+        WindowFrame.content(scene, host);
         host.getChildren().addAll(previous, editor);
         StackPane.setMargin(editor, new Insets(8));
         boolean disabled = previous.isDisable();
         previous.setDisable(true);
         javafx.event.EventHandler<KeyEvent> escape =
                 event -> {
-                    if (event.getCode() == KeyCode.ESCAPE && scene.getRoot() == host) {
+                    if (event.getCode() == KeyCode.ESCAPE && WindowFrame.content(scene) == host) {
                         event.consume();
                         editor.cancelDrawing();
                     }
@@ -146,7 +146,7 @@ final class SketchEditor extends BorderPane implements AutoCloseable {
                     stage.removeEventHandler(WindowEvent.WINDOW_HIDDEN, hidden);
                     stage.setOnCloseRequest(previousClose);
                     host.getChildren().clear();
-                    scene.setRoot(previous);
+                    WindowFrame.content(scene, previous);
                     previous.setDisable(disabled);
                     if (previousFocus != null) previousFocus.requestFocus();
                 };
@@ -157,8 +157,10 @@ final class SketchEditor extends BorderPane implements AutoCloseable {
                 });
         Platform.runLater(
                 () -> {
-                    host.applyCss();
-                    host.layout();
+                    // The persistent window frame must allocate its center before fitting.
+                    // Laying out only the editor can leave the canvas at its minimum size.
+                    scene.getRoot().applyCss();
+                    scene.getRoot().layout();
                     editor.fit();
                     editor.canvas.requestFocus();
                 });

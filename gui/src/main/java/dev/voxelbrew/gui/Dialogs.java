@@ -25,7 +25,7 @@ final class Dialogs {
     static <T> Optional<T> show(
             Dialog<T> dialog, Window owner, dev.voxelbrew.util.i18n.Translations translations) {
         var scene = owner.getScene();
-        var content = scene.getRoot();
+        var content = WindowFrame.content(scene);
         var previousFocus = scene.getFocusOwner();
         boolean disabled = content.isDisable();
         var previousClose = owner.getOnCloseRequest();
@@ -74,7 +74,7 @@ final class Dialogs {
         var shade = new Region();
         shade.setStyle("-fx-background-color: rgba(0,0,0,0.38);");
         var host = new StackPane();
-        scene.setRoot(host);
+        WindowFrame.content(scene, host);
         host.getChildren().addAll(content, shade, panel);
         content.setDisable(true);
 
@@ -105,7 +105,7 @@ final class Dialogs {
                 e -> {
                     if (e.getCode() == KeyCode.ESCAPE
                             && cancelButton != null
-                            && scene.getRoot() == host) {
+                            && WindowFrame.content(scene) == host) {
                         e.consume();
                         cancelButton.fire();
                     }
@@ -134,7 +134,7 @@ final class Dialogs {
             owner.setOnCloseRequest(previousClose);
             owner.removeEventFilter(KeyEvent.KEY_PRESSED, escape);
             host.getChildren().clear();
-            scene.setRoot(content);
+            WindowFrame.content(scene, content);
             content.setDisable(disabled);
             if (previousFocus != null) previousFocus.requestFocus();
         }

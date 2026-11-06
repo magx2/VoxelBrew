@@ -235,6 +235,8 @@ subprojects {
             }
     tasks.withType<Test>().configureEach {
         useJUnitPlatform()
+        // Parallelize projects, not suite JVMs: homes and evidence are shared within a suite.
+        maxParallelForks = 1
         val temporaryDirectory = layout.buildDirectory.dir("test-tmp/$name")
         val testHome = layout.buildDirectory.dir("test-home/$name")
         systemProperty("java.io.tmpdir", temporaryDirectory.get().asFile.absolutePath)

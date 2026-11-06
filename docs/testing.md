@@ -52,6 +52,29 @@ and `build/reports/tests/{test,integrationTest,e2eTest}`. Screenshots remain in
 `gui/build/ui-artifacts`, slicer evidence in `export/build/printing-artifacts`,
 and packaged-app evidence in each frontend's `build/package-artifacts`.
 
+## Parallel execution
+
+The committed Gradle configuration enables parallel project execution with at most four
+workers. Ordinary commands such as `gradlew.bat test` and `./gradlew check` use this
+configuration automatically. Override it with `--max-workers=2` for a smaller machine,
+or `--no-parallel` to diagnose scheduling problems. This limit covers Gradle workers;
+native compilation, slicers and application CPU pools have their own thread budgets.
+
+| Work                                                  | Parallel execution policy                                                                                                                                                         |
+| ----------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Tests in different modules                            | Allowed after their build dependencies finish; homes, temporary directories and reports are isolated by module and suite.                                                         |
+| Unit, integration and end-to-end suites in one module | Ordered: unit tests before integration, then end-to-end when selected together. Gradle executes one task at a time per project.                                                   |
+| Test classes and methods within a suite               | Keep one test JVM and JUnit's sequential default. Suite homes, preferences, JavaFX state and acceptance evidence may be shared.                                                   |
+| GUI Robot and packaged GUI checks                     | Sequential: `e2eTest`, `packageCheck`, `updatePackageCheck`, then `releaseArchiveCheck` when selected together. They share desktop input and evidence.                            |
+| CLI and GUI packaging                                 | Different frontend projects may overlap. Within each frontend, `packageZip` waits for `packageCheck` to finish using the image; updater and archive checks retain their ordering. |
+| Native build and exporter fixture                     | Shared producer tasks run once before their consumers. Consumers may read the completed native runtime and fixture JAR concurrently.                                              |
+| Release workflow and cleanup-script tests             | May overlap module tests; they use separate temporary workspaces.                                                                                                                 |
+| Separate Gradle invocations in one checkout           | Never run concurrently. Gradle project scheduling does not isolate outputs between builds. Use separate Windows and Ubuntu filesystem checkouts.                                  |
+
+The ordering rules do not add unrequested suites: `test` still runs unit tests only,
+and `check` remains the complete gate. Keep formatting that writes sources
+(`spotlessApply`) separate from test and acceptance runs.
+
 Temporary files are deleted after successful **and failed** tests. Shared test-only
 fixtures in `util/src/test/fixtures` configure JUnit's `@TempDir` factory on the
 test classpath (including IDE runs). The factory logs deletion failures at ERROR

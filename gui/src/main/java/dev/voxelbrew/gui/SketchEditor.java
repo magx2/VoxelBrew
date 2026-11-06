@@ -403,6 +403,11 @@ final class SketchEditor extends BorderPane implements AutoCloseable {
                                 KeyboardShortcuts.match(KeyboardShortcuts.Scope.SKETCH, e, focus);
                         if (action != null) {
                             KeyboardShortcuts.consume(e, getScene());
+                            if (action.equals("sketch-remove-constraint")
+                                    && focus != constraints
+                                    && !selection.isEmpty()) {
+                                action = "sketch-delete-geometry";
+                            }
                             shortcutActions.get(action).fire();
                         }
                     }

@@ -55,7 +55,7 @@ final class FileDialog {
                 new VBox(
                         10,
                         new Label(translations.text("gui.editable_design_location")),
-                        new HBox(8, path, browse),
+                        Dialogs.pathRow(path, browse),
                         error);
         dialog.getDialogPane().setContent(box);
         var confirm =

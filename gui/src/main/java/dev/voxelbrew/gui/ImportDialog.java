@@ -40,7 +40,6 @@ final class ImportDialog {
         var path = FormulaField.text("", () -> parameters).localized(translations);
         path.setId("import-path");
         path.setPrefColumnCount(40);
-        HBox.setHgrow(path, Priority.ALWAYS);
         var browse = new Button(translations.text("gui.browse"));
         browse.setId("file-browse");
         UiHelp.install(browse, translations);
@@ -115,7 +114,7 @@ final class ImportDialog {
                         new Label(translations.text("gui.format")),
                         format,
                         new Label(translations.text("import.source")),
-                        new HBox(8, path, browse),
+                        Dialogs.pathRow(path, browse),
                         options,
                         diagnostic,
                         error);

@@ -181,7 +181,7 @@ final class ExportDialog {
                         new Label(translations.text("gui.contents_model_only_by_default")),
                         contents,
                         new Label(translations.text("gui.destination")),
-                        new HBox(8, path, browse),
+                        Dialogs.pathRow(path, browse),
                         new Label(translations.text("gui.chordal_tolerance_mm")),
                         chord,
                         new Label(translations.text("gui.angular_tolerance_degrees")),

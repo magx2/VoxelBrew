@@ -938,6 +938,7 @@ class WorkbenchUiTest {
         assertEquals(part, document());
         click("export");
         assertEquals("Eksportuj", fx(() -> ((Button) node("#export-confirm")).getText()));
+        assertPathRowLabels("export-path");
         assertEquals(
                 "PROJEKT",
                 fx(
@@ -1528,6 +1529,66 @@ class WorkbenchUiTest {
         Thread.sleep(120);
         assertEquals(
                 value, fx(() -> ((TextField) node("#" + id)).getText()), "Robot text entry: " + id);
+        if (Set.of("file-path", "import-path", "export-path").contains(id)) assertPathRowLabels(id);
+    }
+
+    private void assertPathRowLabels(String fieldId) throws Exception {
+        fx(
+                () -> {
+                    stage.getScene().getRoot().applyCss();
+                    stage.getScene().getRoot().layout();
+                    var field = (TextField) node("#" + fieldId);
+                    var browse = (Button) node("#file-browse");
+                    var row = browse.getParent();
+                    // Use control layout bounds rather than shadows for the overlap check.
+                    var fieldBounds = field.localToParent(field.getLayoutBounds());
+                    var buttonBounds = browse.localToParent(browse.getLayoutBounds());
+                    assertTrue(browse.getWidth() > 0);
+                    assertTrue(
+                            fieldBounds.getMaxX() <= buttonBounds.getMinX(),
+                            "Path field must not overlap Browse");
+                    Node panel = row;
+                    while (!panel.getStyleClass().contains("dialog-overlay"))
+                        panel = panel.getParent();
+                    for (var control : panel.lookupAll(".button")) {
+                        if (control instanceof Button button && !button.getText().isEmpty()) {
+                            var rendered =
+                                    assertInstanceOf(
+                                            javafx.scene.text.Text.class, button.lookup(".text"));
+                            assertEquals(
+                                    button.getText(),
+                                    rendered.getText(),
+                                    "The full translated button label must be displayed: "
+                                            + button.getId());
+                            var textBounds = rendered.localToScene(rendered.getLayoutBounds());
+                            assertTrue(
+                                    panel.localToScene(panel.getLayoutBounds())
+                                            .contains(textBounds),
+                                    "Button label must stay visible inside the dialog");
+                            for (var parent = button.getParent();
+                                    parent != panel;
+                                    parent = parent.getParent()) {
+                                if (parent instanceof ScrollPane scroll) {
+                                    var viewport = scroll.lookup(".viewport");
+                                    assertTrue(
+                                            viewport.localToScene(viewport.getLayoutBounds())
+                                                    .contains(textBounds),
+                                            "Button label must not be clipped by the scroll viewport");
+                                }
+                            }
+                        }
+                    }
+                    Screenshot.save(
+                            stage.getScene(),
+                            Path.of(
+                                    System.getProperty("voxelbrew.ui.artifacts"),
+                                    "dialog-"
+                                            + fieldId
+                                            + "-"
+                                            + (browse.getText().startsWith("Browse") ? "en" : "pl")
+                                            + ".png"));
+                    return null;
+                });
     }
 
     private void choice(String id, int index) throws Exception {

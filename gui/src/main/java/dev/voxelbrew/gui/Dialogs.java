@@ -11,6 +11,7 @@ import javafx.scene.control.*;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
 import javafx.scene.layout.HBox;
+import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
@@ -20,6 +21,17 @@ import javafx.stage.WindowEvent;
 /** Window-local modal controls keep keyboard focus within the document on WSLg. */
 final class Dialogs {
     private Dialogs() {}
+
+    /** Give the action its full translated label width; the editable path takes the remainder. */
+    static HBox pathRow(TextField path, Button browse) {
+        path.setMinWidth(0);
+        path.setMaxWidth(Double.MAX_VALUE);
+        HBox.setHgrow(path, Priority.ALWAYS);
+        browse.setMinWidth(Region.USE_PREF_SIZE);
+        var row = new HBox(8, path, browse);
+        row.setAlignment(Pos.CENTER_LEFT);
+        return row;
+    }
 
     @SuppressWarnings("unchecked") // Dialog's default result type is ButtonType, matching Alert.
     static <T> Optional<T> show(
@@ -49,6 +61,7 @@ final class Dialogs {
                                                                     ? "dialog.no"
                                                                     : null;
             if (key != null) buttons.get(type).setText(translations.text(key));
+            buttons.get(type).setMinWidth(Region.USE_PREF_SIZE);
             UiHelp.dialogButton(buttons.get(type), type, translations);
         }
         Node body = pane.getContent();

@@ -251,13 +251,15 @@ class DocumentControllerTest {
         })) {
             controller.add(sketch("old", 0));
             assertTrue(entered.await(5, TimeUnit.SECONDS));
-            String oldId = controller.snapshot().document().id();
+            var oldDocument = controller.snapshot().document();
             controller.newDocument();
             controller.add(sketch("new", 0));
             controller.add(new Feature.Extrude("new-solid", new Feature.ProfileRef("new", "new.profile"), 8));
             release.countDown();
             await(() -> !controller.rebuilding());
-            assertNotEquals(oldId, controller.snapshot().document().id());
+            assertNotSame(oldDocument, controller.snapshot().document());
+            // Document-local counters can reuse IDs; stale work must still be discarded.
+            assertEquals(oldDocument.id(), controller.snapshot().document().id());
             assertEquals(2, calls.get());
             assertEquals(
                     "new-solid.body", controller.build().bodies().getFirst().id());

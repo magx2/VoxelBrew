@@ -157,7 +157,7 @@ if kind == "gui":
     assert screenshot.is_file() and screenshot.stat().st_size > 10000
     assert screenshot.with_suffix(".txt").read_text().startswith("GUI_SMOKE_PASS")
 else:
-    assert run("--version").strip() == f"VoxelBrew {version} / jcad schema 8"
+    assert run("--version").strip() == f"VoxelBrew {version} / jcad schema 9"
     document = workspace / "reference.jcad"
     shutil.copy2(root / "fixtures/reference-8mm.jcad", document)
     history = run("history", document)

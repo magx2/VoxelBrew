@@ -701,10 +701,16 @@ class WorkbenchUiTest {
         assertEquals(0, fx(() -> stage.getScene().getY()), 0.1, "No duplicate native title row");
         var snapshot = fx(() -> workbench.controller().snapshot());
         var start = windowBounds();
-        primaryDrag(centerOf("document-title"), 45, 25);
+        // Leave room for the bottom-right resize on the runner's 1024 x 768 display.
+        // Moving right would put that corner off screen, beyond the native mouse's reach.
+        primaryDrag(centerOf("document-title"), -20, -10);
         var moved = windowBounds();
-        assertEquals(start.getMinX() + 45, moved.getMinX(), 2);
-        assertEquals(start.getMinY() + 25, moved.getMinY(), 2);
+        assertEquals(start.getMinX() - 20, moved.getMinX(), 2);
+        assertEquals(start.getMinY() - 10, moved.getMinY(), 2);
+        var screen = fx(() -> Screen.getPrimary().getVisualBounds());
+        assertTrue(
+                screen.contains(moved.getMaxX() + 33, moved.getMaxY() + 23),
+                "The complete resize gesture must stay inside the primary display");
         primaryDrag(new Point2D(moved.getMaxX() - 2, moved.getMaxY() - 2), 35, 25);
         var resized = windowBounds();
         assertEquals(moved.getWidth() + 35, resized.getWidth(), 2);
@@ -716,7 +722,6 @@ class WorkbenchUiTest {
         assertEquals(resized.getMaxY(), restored.getMaxY(), 2);
         assertEquals(resized.getWidth() - 15, restored.getWidth(), 2);
         click("window-maximize");
-        var screen = fx(() -> Screen.getPrimary().getVisualBounds());
         assertWindowBounds(screen);
         assertTrue(fx(() -> node("#window-maximize").getAccessibleHelp().startsWith("Restore")));
         doubleClickHeader();

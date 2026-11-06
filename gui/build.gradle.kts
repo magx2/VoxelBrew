@@ -16,6 +16,7 @@ dependencies {
     implementation(project(":util"))
     implementation(project(":engine"))
     testImplementation("org.apache.commons:commons-compress:1.28.0")
+    testImplementation("com.google.protobuf:protobuf-java:4.30.2")
     for (module in listOf("base", "graphics", "controls")) {
         implementation("org.openjfx:javafx-$module:21.0.13:$javafxPlatform") {
             isTransitive = false

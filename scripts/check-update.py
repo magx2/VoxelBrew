@@ -59,6 +59,10 @@ for module in ("engine", "util", "import", "export"):
     with zipfile.ZipFile(jar_path) as original, zipfile.ZipFile(temporary, "w") as changed:
         for entry in original.infolist():
             content = ("version=" + new_version + "\n").encode() if entry.filename == "voxelbrew-" + module + "-version.properties" else original.read(entry)
+            if module == "util" and entry.filename == "META-INF/MANIFEST.MF":
+                old_attribute = ("Implementation-Version: " + old_version).encode()
+                assert old_attribute in content.splitlines(), "Missing util manifest version"
+                content = content.replace(old_attribute, ("Implementation-Version: " + new_version).encode(), 1)
             changed.writestr(entry, content)
     temporary.replace(jar_path)
 release_dir = workspace / "downloads"
@@ -155,6 +159,9 @@ def wait_for(predicate, timeout=40):
 
 
 assert "PACKAGE_UTIL_PASS" in run(probe + ["utilities"])
+older_document = workspace / "older writer.jcad"
+assert "DOCUMENT_VERSION_PASS " + old_version in run(probe + ["write-document", old_version, older_document])
+older_document_bytes = older_document.read_bytes()
 
 if kind == "cli":
     cli = install / launcher_relative
@@ -200,6 +207,17 @@ try:
         assert "Update available" in run([install / launcher_relative, "update", "check", "--force"])
     else:
         assert new_version in run([java, "-cp", str(install / app_relative / "*"), "dev.voxelbrew.gui.Launcher", "--version"])
+    assert "DOCUMENT_READ_PASS" in run(probe + ["read-document", older_document])
+    assert older_document.read_bytes() == older_document_bytes, "Opening must not modify an older document"
+    newer_document = workspace / "newer writer.jcad"
+    assert "DOCUMENT_VERSION_PASS " + new_version in run(probe + ["write-document", new_version, newer_document])
+    newer_document_bytes = newer_document.read_bytes()
+    backup_java = backups[0] / runtime_relative / "bin" / ("java.exe" if os.name == "nt" else "java")
+    backup_probe = [backup_java, "-cp", str(classes) + os.pathsep + str(backups[0] / app_relative / "*"), "UpdateProbe", kind.upper()]
+    run(backup_probe + ["read-document", newer_document], expected=1)
+    assert "newer than supported version " + old_version in commands[-1]["stderr"]
+    assert new_version in commands[-1]["stderr"]
+    assert newer_document.read_bytes() == newer_document_bytes
 finally:
     if holder.poll() is None:
         (workspace / "release-holder").touch()
@@ -209,7 +227,8 @@ shutil.copy2(status_path.with_name("helper.log"), workspace / "helper.log")
 result = {"result": "PASS", "component": kind, "platform": platform, "oldVersion": old_version,
           "newVersion": new_version, "workspace": str(workspace), "status": str(workspace / "status.properties"),
           "sourceArchive": release_archive.name, "sourceArchiveSha256": hashlib.sha256(release_archive.read_bytes()).hexdigest(),
-          "transport": "anonymous HTTP fixture with CDN redirect", "ghAvailable": False, "credentials": False, "runtime": "real packaged JVM", "otherInstanceWait": True}
+          "transport": "anonymous HTTP fixture with CDN redirect", "ghAvailable": False, "credentials": False, "runtime": "real packaged JVM", "otherInstanceWait": True,
+          "documentVersions": [old_version, new_version], "olderDocumentReadable": True, "newerDocumentRejectedByBackup": True}
 assert all(request["authorization"] is None and request["cookie"] is None
            for request in map(json.loads, request_log.read_text(encoding="utf-8").splitlines()))
 (artifacts / "update-result.json").write_text(json.dumps(result, indent=2), encoding="utf-8")

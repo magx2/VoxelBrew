@@ -10,6 +10,7 @@ dependencies {
     implementation(project(":util"))
     implementation(project(":engine"))
     implementation("info.picocli:picocli:4.7.7")
+    testImplementation("com.google.protobuf:protobuf-java:4.30.2")
 }
 
 application { mainClass.set("dev.voxelbrew.cli.VoxelBrew") }

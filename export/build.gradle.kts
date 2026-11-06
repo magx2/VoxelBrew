@@ -9,6 +9,7 @@ dependencies {
     api(project(":engine"))
     implementation(project(":import"))
     implementation(project(":util"))
+    testImplementation("com.google.protobuf:protobuf-java:4.30.2")
 }
 
 val buildVersion = project.version.toString()

@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 import dev.voxelbrew.engine.model.*;
 import dev.voxelbrew.engine.parameters.*;
+import dev.voxelbrew.engine.persistence.proto.DocumentProto;
 import dev.voxelbrew.engine.printing.*;
 import dev.voxelbrew.engine.sketch.SketchGeometry;
 import dev.voxelbrew.engine.sketch.SketchTools;
@@ -11,7 +12,10 @@ import dev.voxelbrew.exporter.DocumentWriter;
 import dev.voxelbrew.exporter.printing.PrusaSlicerBackend;
 import dev.voxelbrew.importer.DocumentReader;
 import dev.voxelbrew.importer.GcodeReader;
+import dev.voxelbrew.util.Version;
+import java.nio.ByteBuffer;
 import java.nio.file.*;
+import java.security.MessageDigest;
 import java.util.*;
 import java.util.concurrent.*;
 import javafx.application.*;
@@ -3143,6 +3147,81 @@ class WorkbenchUiTest {
                 PrintController.State.OUTDATED,
                 fx(() -> ((PrintingPane) node("#printing-workspace")).jobs().state()));
         assertNull(fx(() -> ((PrintingPane) node("#printing-workspace")).jobs().result()));
+    }
+
+    @Test
+    void olderFilesUpgradeAndNewerFilesReportErrorWithoutReplacingTheDocument() throws Exception {
+        Path file = directory.resolve("older version design.jcad");
+        var original =
+                new CadDocument(
+                        "versioned-design",
+                        List.of(
+                                new Feature.Sketch(
+                                        "plate",
+                                        "plate.profile",
+                                        new Feature.Plane("origin-xy", 0),
+                                        new Feature.Rectangle(0, 0, 60, 40))),
+                        1);
+        DocumentWriter.save(original, file, false);
+        byte[] saved = Files.readAllBytes(file);
+        var message = DocumentProto.Document.parseFrom(Arrays.copyOfRange(saved, 44, saved.length));
+        assertEquals(Version.version(), message.getApplicationVersion());
+        byte[] older = versionedDocument(message, "0.0.0");
+        Files.write(file, older);
+        click("open");
+        text("file-path", file.toString());
+        click("file-confirm");
+        ready();
+        assertEquals(original, document());
+        assertFalse(fx(() -> workbench.controller().dirty()));
+        assertArrayEquals(older, Files.readAllBytes(file));
+        shortcut(KeyCode.S, false);
+        ready();
+        byte[] upgraded = Files.readAllBytes(file);
+        assertEquals(
+                Version.version(),
+                DocumentProto.Document.parseFrom(Arrays.copyOfRange(upgraded, 44, upgraded.length))
+                        .getApplicationVersion());
+        assertEquals(original, DocumentReader.load(file));
+        Path futureFile = directory.resolve("future version design.jcad");
+        byte[] future = versionedDocument(message, "65534.65534.65534");
+        Files.write(futureFile, future);
+        for (int palette : List.of(1, 2)) {
+            choice("appearance", palette);
+            click("open");
+            text("file-path", futureFile.toString());
+            click("file-confirm");
+            ready();
+            String error = fx(() -> ((Label) node("#status")).getText());
+            assertTrue(error.contains("VoxelBrew 65534.65534.65534"), error);
+            assertTrue(error.contains("supported version " + Version.version()), error);
+            assertTrue(error.contains("Update VoxelBrew"), error);
+            assertEquals(original, document());
+            assertEquals(file.toAbsolutePath(), fx(() -> workbench.controller().path()));
+            assertFalse(fx(() -> workbench.controller().dirty()));
+            assertArrayEquals(future, Files.readAllBytes(futureFile));
+            assertArrayEquals(upgraded, Files.readAllBytes(file));
+            fx(
+                    () -> {
+                        Screenshot.save(
+                                stage.getScene(),
+                                Path.of(
+                                        System.getProperty("voxelbrew.ui.artifacts"),
+                                        "document-version-" + palette + ".png"));
+                        return null;
+                    });
+        }
+    }
+
+    private static byte[] versionedDocument(DocumentProto.Document document, String version)
+            throws Exception {
+        byte[] payload = document.toBuilder().setApplicationVersion(version).build().toByteArray();
+        return ByteBuffer.allocate(44 + payload.length)
+                .put(new byte[] {'J', 'C', 'A', 'D', 13, 10, 26, 10})
+                .putInt(payload.length)
+                .put(MessageDigest.getInstance("SHA-256").digest(payload))
+                .put(payload)
+                .array();
     }
 
     private String cli(String... arguments) throws Exception {

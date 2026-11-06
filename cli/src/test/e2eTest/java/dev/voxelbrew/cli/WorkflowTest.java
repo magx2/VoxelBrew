@@ -3,10 +3,14 @@ package dev.voxelbrew.cli;
 import static org.junit.jupiter.api.Assertions.*;
 
 import dev.voxelbrew.engine.model.Feature;
+import dev.voxelbrew.engine.persistence.proto.DocumentProto;
 import dev.voxelbrew.exporter.DocumentWriter;
 import dev.voxelbrew.importer.DocumentReader;
+import dev.voxelbrew.util.Version;
+import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.security.MessageDigest;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.concurrent.TimeUnit;
@@ -16,6 +20,46 @@ import org.junit.jupiter.api.io.TempDir;
 /** Every command runs in a new JVM, proving that edits come from the saved definitions. */
 class WorkflowTest {
     @TempDir Path directory;
+
+    @Test
+    void olderApplicationFilesUpgradeAndFutureFilesAreRejectedWithoutWrites() throws Exception {
+        Path file = directory.resolve("versioned design.jcad");
+        run(0, "new", file.toString());
+        run(0, "rectangle", file.toString(), "--id", "plate", "--width", "60", "--height", "40");
+        byte[] saved = Files.readAllBytes(file);
+        var message = DocumentProto.Document.parseFrom(Arrays.copyOfRange(saved, 44, saved.length));
+        assertEquals(Version.version(), message.getApplicationVersion());
+        byte[] older = versioned(message, "0.0.0");
+        Files.write(file, older);
+        assertTrue(run(0, "history", file.toString()).contains("plate"));
+        assertArrayEquals(older, Files.readAllBytes(file));
+        run(0, "edit", file.toString(), "--feature", "plate", "--field", "width", "--value", "61");
+        byte[] upgraded = Files.readAllBytes(file);
+        var result =
+                DocumentProto.Document.parseFrom(Arrays.copyOfRange(upgraded, 44, upgraded.length));
+        assertEquals(Version.version(), result.getApplicationVersion());
+        assertEquals(message.getDocumentId(), result.getDocumentId());
+        assertEquals("plate", result.getFeatures(0).getId());
+        assertEquals(61, result.getFeatures(0).getSketch().getRectangle().getWidth());
+        byte[] future = versioned(result, "65534.65534.65534");
+        Files.write(file, future);
+        String error = run(1, "history", file.toString());
+        assertTrue(error.contains("VoxelBrew 65534.65534.65534"), error);
+        assertTrue(error.contains("supported version " + Version.version()), error);
+        assertTrue(run(1, "new", file.toString(), "--overwrite").contains("Update VoxelBrew"));
+        assertArrayEquals(future, Files.readAllBytes(file));
+    }
+
+    private static byte[] versioned(DocumentProto.Document document, String version)
+            throws Exception {
+        byte[] payload = document.toBuilder().setApplicationVersion(version).build().toByteArray();
+        return ByteBuffer.allocate(44 + payload.length)
+                .put(new byte[] {'J', 'C', 'A', 'D', 13, 10, 26, 10})
+                .putInt(payload.length)
+                .put(MessageDigest.getInstance("SHA-256").digest(payload))
+                .put(payload)
+                .array();
+    }
 
     private void assertVolume(double expected, String output) {
         var match = java.util.regex.Pattern.compile("volume=([0-9.eE+\\-]+)").matcher(output);

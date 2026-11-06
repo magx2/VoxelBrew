@@ -81,7 +81,14 @@ cli inspect broken.jcad
 
 ## .jcad schema and safe writes
 
-`engine/src/main/proto/document.proto` is schema version 6 (versions 1–5 remain readable). Named parameters,
+`engine/src/main/proto/document.proto` is schema version 6 (versions 1–5 remain readable).
+Each save also stores `Version.version()` in the Protobuf `application_version`
+field. Older application files and legacy files without this field open normally;
+their next explicit save upgrades them to the current schema and writer version.
+Opening never changes the source file. Files from a newer application version
+report an error with the saved/supported versions and cannot be overwritten.
+See [file version compatibility](file-io.md) for snapshot and IDE behavior.
+Named parameters,
 dimension expressions, configuration overrides and the active configuration are
 stored with the feature definitions. See [parameters](parameters.md). The binary envelope
 contains eight magic bytes (`JCAD`, CR, LF, 0x1A, LF), a big-endian 32-bit payload

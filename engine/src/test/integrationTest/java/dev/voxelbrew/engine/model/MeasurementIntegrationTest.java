@@ -5,9 +5,12 @@ import static org.junit.jupiter.api.Assertions.*;
 
 import dev.voxelbrew.engine.geometry.Solid;
 import dev.voxelbrew.engine.mesh.MeshOptions;
+import dev.voxelbrew.engine.persistence.proto.DocumentProto;
 import dev.voxelbrew.exporter.DocumentWriter;
 import dev.voxelbrew.importer.DocumentReader;
+import dev.voxelbrew.util.Version;
 import java.nio.file.*;
+import java.util.Arrays;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -88,7 +91,8 @@ class MeasurementIntegrationTest {
     }
 
     @Test
-    void preJsr385SchemaSixFixtureReopensAndWritesWithoutMigration() throws Exception {
+    void preJsr385FixturePreservesMeasurementsWhenSavingWithCurrentWriterVersion()
+            throws Exception {
         byte[] original;
         try (var resource =
                 getClass().getResourceAsStream("/parameters/schema6-configurations.jcad")) {
@@ -104,7 +108,12 @@ class MeasurementIntegrationTest {
             assertEquals(25600, e.bodies().getFirst().solid().volume(), .02);
         }
         DocumentWriter.save(document, file, true);
-        assertArrayEquals(original, Files.readAllBytes(file));
+        byte[] saved = Files.readAllBytes(file);
+        var before =
+                DocumentProto.Document.parseFrom(Arrays.copyOfRange(original, 44, original.length));
+        var after = DocumentProto.Document.parseFrom(Arrays.copyOfRange(saved, 44, saved.length));
+        assertEquals(before.toBuilder().setApplicationVersion(Version.version()).build(), after);
+        assertEquals(document, DocumentReader.load(file));
         session.selectConfiguration("Default");
         try (var e = session.evaluate()) {
             assertEquals(12000, e.bodies().getFirst().solid().volume(), .02);

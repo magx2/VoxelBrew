@@ -7,6 +7,8 @@ import dev.voxelbrew.engine.model.CadDocument;
 import dev.voxelbrew.engine.model.Feature;
 import dev.voxelbrew.engine.persistence.proto.DocumentProto;
 import dev.voxelbrew.engine.printing.*;
+import dev.voxelbrew.util.Version;
+import dev.voxelbrew.util.update.ReleaseVersion;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.security.MessageDigest;
@@ -62,6 +64,7 @@ public final class DocumentCodec {
                                 + SCHEMA_VERSION
                                 + ". File is read-only; no write performed.");
             }
+            requireSupportedApplicationVersion(message.getApplicationVersion());
             if (unknownFields(message)) {
                 throw new DocumentFormatException(
                         "Document contains unsupported fields; file is read-only to prevent data loss");
@@ -90,7 +93,11 @@ public final class DocumentCodec {
 
     /** Encodes the shared document schema without accessing the filesystem. */
     public static byte[] encode(CadDocument document) throws IOException {
-        byte[] payload = toProto(document).toByteArray();
+        byte[] payload =
+                toProto(document).toBuilder()
+                        .setApplicationVersion(Version.version())
+                        .build()
+                        .toByteArray();
         if (payload.length > MAX_PAYLOAD) {
             throw new IOException("Document exceeds 16 MiB limit");
         }
@@ -101,6 +108,29 @@ public final class DocumentCodec {
                         .put(sha256(payload))
                         .put(payload);
         return bytes.array();
+    }
+
+    private static void requireSupportedApplicationVersion(String savedVersion)
+            throws DocumentFormatException {
+        // Legacy documents have no writer version. Their schema still determines how to read them.
+        if (savedVersion.isEmpty()) return;
+        ReleaseVersion saved;
+        try {
+            saved = ReleaseVersion.parse(savedVersion);
+            if (!saved.toString().equals(savedVersion)) throw new IllegalArgumentException();
+        } catch (IllegalArgumentException invalid) {
+            throw new DocumentFormatException(
+                    "Invalid .jcad application version; expected A.B.C or A.B.C-SNAPSHOT", invalid);
+        }
+        String supportedVersion = Version.version();
+        if (saved.compareTo(ReleaseVersion.parse(supportedVersion)) > 0) {
+            throw new DocumentFormatException(
+                    "This file was saved by VoxelBrew "
+                            + savedVersion
+                            + ", which is newer than supported version "
+                            + supportedVersion
+                            + ". Update VoxelBrew to open it. No changes were made.");
+        }
     }
 
     private static Feature fromProto(DocumentProto.Feature feature) {
@@ -168,7 +198,7 @@ public final class DocumentCodec {
         };
     }
 
-    /** Includes geometry definitions and print setup; derived output is never part of identity. */
+    /** Includes CAD definitions and print setup, excluding writer version and derived output. */
     public static String fingerprint(CadDocument document) {
         return java.util.HexFormat.of().formatHex(sha256(toProto(document).toByteArray()));
     }

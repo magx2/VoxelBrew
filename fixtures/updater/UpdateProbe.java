@@ -8,6 +8,15 @@ public final class UpdateProbe {
     @SuppressWarnings("try")
     public static void main(String[] args) throws Exception {
         var component = ApplicationImage.Component.valueOf(args[0]);
+        if (args[1].equals("write-document")) {
+            verifyDocumentVersion(args[2], Path.of(args[3]));
+            return;
+        }
+        if (args[1].equals("read-document")) {
+            var document = dev.voxelbrew.importer.DocumentReader.load(Path.of(args[2]));
+            System.out.println("DOCUMENT_READ_PASS " + document.id());
+            return;
+        }
         try (var running = ApplicationImage.running(component)) {
             if (args[1].equals("utilities")) {
                 verifyUtilities(component);
@@ -63,5 +72,23 @@ public final class UpdateProbe {
         }
         if (!logged) throw new IllegalStateException("Bundled file logging is unavailable");
         System.out.println("PACKAGE_UTIL_PASS " + component);
+    }
+
+    private static void verifyDocumentVersion(String expectedVersion, Path path) throws Exception {
+        if (!expectedVersion.equals(dev.voxelbrew.util.Version.version()))
+            throw new IllegalStateException(
+                    "Packaged Version does not match the installed release");
+        var document = dev.voxelbrew.engine.model.CadDocument.empty();
+        dev.voxelbrew.exporter.DocumentWriter.save(document, path, false);
+        byte[] bytes = Files.readAllBytes(path);
+        var message =
+                dev.voxelbrew.engine.persistence.proto.DocumentProto.Document.parseFrom(
+                        java.util.Arrays.copyOfRange(bytes, 44, bytes.length));
+        if (!expectedVersion.equals(message.getApplicationVersion()))
+            throw new IllegalStateException(
+                    "Document writer version does not match Version.version()");
+        if (!document.equals(dev.voxelbrew.importer.DocumentReader.load(path)))
+            throw new IllegalStateException("Packaged document did not round-trip");
+        System.out.println("DOCUMENT_VERSION_PASS " + expectedVersion);
     }
 }

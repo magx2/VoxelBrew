@@ -81,6 +81,9 @@ Build the JavaFX viewport with orbit, pan, zoom, picking, sketch-plane coordinat
 
 Add a timeline with an editable cursor, a dimension inspector, undo/redo and feature diagnostics. Make the Export dialog use the export module plugin registry. Run expensive rebuilds away from the UI thread and discard stale results when newer edits finish first.
 
+The compact icon timeline follow-up adds an integrated rollback marker, ordered
+playback and translated feature help; see [qualification](acceptance/history-timeline.md).
+
 **Exit test:** Create the reference part entirely in the GUI, change thickness, roll back, redo and export it. Open the GUI-saved document with the CLI and verify identical model measurements. One drag creates one undo step. Cancelling a drag leaves the document intact.
 
 ### M4 — Split bodies and produce a printer job

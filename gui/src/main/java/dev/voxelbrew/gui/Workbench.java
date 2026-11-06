@@ -58,10 +58,9 @@ public final class Workbench extends BorderPane implements AutoCloseable {
     private final VBox inspector = new VBox(12), form = new VBox(9);
     private final VBox featureDiagnostics = new VBox(6);
     private final HBox toolActions = new HBox(8);
-    private final Label status, error, selectionLabel, cursorLabel;
-    private final Slider cursor = new Slider();
+    private final Label status, error, selectionLabel;
     private final ComboBox<String> views = new ComboBox<>();
-    private final HBox history = new HBox(6);
+    private final FeatureTimeline timeline;
     private final Button undo, redo;
     private final MenuItem export;
     private final javafx.beans.property.BooleanProperty exportUnavailable =
@@ -181,7 +180,6 @@ public final class Workbench extends BorderPane implements AutoCloseable {
         this.status = new Label(translations.text("status.ready"));
         this.error = new Label();
         this.selectionLabel = new Label(translations.text("status.noSelection"));
-        this.cursorLabel = new Label();
         this.undo =
                 button(
                         translations.text("action.undo"),
@@ -470,38 +468,12 @@ public final class Workbench extends BorderPane implements AutoCloseable {
         toolbar.visibleProperty().bind(designTab.selectedProperty());
         toolbar.managedProperty().bind(toolbar.visibleProperty());
         setCenter(workspaces);
-        cursor.setId("history-cursor");
-        UiHelp.install(cursor, translations);
-        cursor.setMin(0);
-        cursor.setBlockIncrement(1);
-        cursor.setMajorTickUnit(1);
-        cursor.setMinorTickCount(0);
-        cursor.setSnapToTicks(true);
-        cursor.valueProperty()
-                .addListener(
-                        (o, old, value) -> {
-                            int position = (int) Math.round(value.doubleValue());
-                            if (!refreshing
-                                    && position != controller.snapshot().document().cursor()) {
-                                cancelTool();
-                                controller.cursor(position);
-                            }
-                        });
-        var timeline =
-                new VBox(
-                        8,
-                        new HBox(12, heading(translations.text("gui.history")), cursorLabel),
-                        history,
-                        cursor);
-        timeline.getStyleClass().add("timeline");
-        var historyScroll = new ScrollPane(history);
-        historyScroll.setPrefViewportHeight(34);
-        historyScroll.setMinHeight(40);
-        historyScroll.setMaxHeight(50);
-        historyScroll.setFitToHeight(true);
-        historyScroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.AS_NEEDED);
-        historyScroll.setVbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
-        timeline.getChildren().set(1, historyScroll);
+        timeline =
+                new FeatureTimeline(
+                        translations,
+                        position -> attempt(() -> controller.cursor(position)),
+                        this::selectFeature,
+                        this::shortName);
         progress.setPrefSize(16, 16);
         progress.setMaxSize(16, 16);
         status.setId("status");
@@ -772,23 +744,13 @@ public final class Workbench extends BorderPane implements AutoCloseable {
             lastBodyStyles = document.bodyStyles();
             lastParameters = document.parameters();
             lastDocument = document.id();
-            cursor.setMax(document.features().size());
-            cursor.setValue(document.cursor());
-            cursorLabel.setText(document.cursor() + " / " + document.features().size());
-            history.getChildren().clear();
-            for (int i = 0; i < document.features().size(); i++) {
-                var feature = document.features().get(i);
-                var chip =
-                        button(
-                                (i + 1) + "  " + shortName(feature),
-                                "history-" + i,
-                                () -> selectFeature(feature.id()));
-                chip.getStyleClass()
-                        .add(i < document.cursor() ? "history-active" : "history-future");
-                if (feature.id().equals(selectedFeature))
-                    chip.getStyleClass().add("history-selected");
-                history.getChildren().add(chip);
-            }
+            timeline.update(
+                    document,
+                    selectedFeature,
+                    controller.build().diagnostics(),
+                    controller.ioBusy() || tool != Tool.NONE || controller.hasPreview(),
+                    controller.rebuilding(),
+                    controller.build().valid());
             undo.setDisable(!snapshot.canUndo() || controller.ioBusy());
             redo.setDisable(!snapshot.canRedo() || controller.ioBusy());
             parameters.setDisable(
@@ -826,7 +788,6 @@ public final class Workbench extends BorderPane implements AutoCloseable {
                                                             .hasProfile(c.geometry())))
                             || controller.rebuilding()
                             || controller.build().bodies().isEmpty());
-            cursor.setDisable(controller.ioBusy() || tool != Tool.NONE);
             progress.setVisible(controller.rebuilding() || controller.ioBusy());
             String diagnostics =
                     controller.build().diagnostics().stream()
@@ -966,6 +927,7 @@ public final class Workbench extends BorderPane implements AutoCloseable {
 
     private void selectFeature(String id) {
         if (tool != Tool.NONE) return;
+        timeline.stop();
         selectedFeature = id;
         selectedBody = null;
         viewport.select(null);
@@ -979,6 +941,7 @@ public final class Workbench extends BorderPane implements AutoCloseable {
     }
 
     private void selectBody(String id, int face) {
+        timeline.stop();
         selectedBody = id;
         controller.build().bodies().stream()
                 .filter(b -> b.id().equals(id))
@@ -1758,6 +1721,7 @@ public final class Workbench extends BorderPane implements AutoCloseable {
     }
 
     private void cancelTool() {
+        if (timeline != null) timeline.stop();
         tool = Tool.NONE;
         planeSnapshot = null;
         planeRepair = null;
@@ -1883,6 +1847,7 @@ public final class Workbench extends BorderPane implements AutoCloseable {
     public void close() {
         if (closed) return;
         closed = true;
+        timeline.close();
         window.close();
         stage.focusedProperty().removeListener(windowFocus);
         printing.close();

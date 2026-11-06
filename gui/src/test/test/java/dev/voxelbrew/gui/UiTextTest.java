@@ -66,6 +66,15 @@ class UiTextTest {
             }
         }
         assertTrue(ids.size() > 50, "Audit the actual production action factories");
+        ids.addAll(
+                List.of(
+                        "timeline-first",
+                        "timeline-previous",
+                        "timeline-play",
+                        "timeline-pause",
+                        "timeline-next",
+                        "timeline-last",
+                        "history-cursor"));
         for (var locale : List.of(Locale.ENGLISH, Locale.forLanguageTag("pl"))) {
             var translations = new Translations(locale);
             for (var id : ids) assertFalse(UiHelp.description(translations, id).isBlank(), id);

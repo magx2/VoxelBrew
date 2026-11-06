@@ -34,6 +34,187 @@ import org.junit.jupiter.api.io.TempDir;
 /** Actual JavaFX windows, rendering, picking, keyboard input and mouse gestures on both OSes. */
 class WorkbenchUiTest {
     @Test
+    void compactHistorySupportsPickingDraggingPlaybackAndIndependentUndo() throws Exception {
+        rectangle(0);
+        click("extrude");
+        text("extrude-distance", "8");
+        click("commit-extrusion");
+        ready();
+        circle();
+        click("cut");
+        click("cut-confirm");
+        ready();
+        var complete = document();
+        assertEquals(4, complete.cursor());
+        click("history-1");
+        assertEquals(complete, document(), "Selecting an icon must not roll back the model");
+        assertTrue(fx(() -> node("#history-1").getStyleClass().contains("history-selected")));
+        assertEquals(
+                ContentDisplay.GRAPHIC_ONLY,
+                fx(() -> ((Button) node("#history-1")).getContentDisplay()));
+        assertTrue(fx(() -> ((Button) node("#history-1")).getTooltip().getText().contains("2 ·")));
+        assertTrue(fx(() -> node("#feature-timeline").getBoundsInParent().getHeight()) < 80);
+        for (int palette : List.of(1, 2)) {
+            choice("appearance", palette);
+            fx(
+                    () -> {
+                        Screenshot.save(
+                                stage.getScene(),
+                                Path.of(
+                                        System.getProperty("voxelbrew.ui.artifacts"),
+                                        "timeline-" + (palette == 1 ? "light" : "dark") + ".png"));
+                        return null;
+                    });
+        }
+        click("timeline-first");
+        ready();
+        assertEquals(0, document().cursor());
+        assertTrue(fx(() -> node("#constrained-sketch").isDisabled()));
+        assertTrue(fx(() -> node("#history-0").getStyleClass().contains("history-future")));
+        click("timeline-next");
+        ready();
+        assertEquals(1, document().cursor());
+        click("timeline-last");
+        ready();
+        click("timeline-previous");
+        ready();
+        assertEquals(3, document().cursor());
+        assertEquals(19200, volume(), .01);
+        var start =
+                fx(
+                        () -> {
+                            var bounds =
+                                    node("#history-cursor")
+                                            .localToScreen(
+                                                    node("#history-cursor").getBoundsInLocal());
+                            return new Point2D(bounds.getCenterX(), bounds.getCenterY());
+                        });
+        fx(
+                () -> {
+                    robot.mouseMove(start);
+                    robot.mousePress(MouseButton.PRIMARY);
+                    return null;
+                });
+        try {
+            for (int step = 1; step <= 8; step++) {
+                double x = start.getX() - 76.0 * step / 8;
+                fx(
+                        () -> {
+                            robot.mouseMove(x, start.getY());
+                            return null;
+                        });
+                Thread.sleep(50);
+            }
+        } finally {
+            fx(
+                    () -> {
+                        robot.mouseRelease(MouseButton.PRIMARY);
+                        return null;
+                    });
+        }
+        ready();
+        assertEquals(1, document().cursor(), "Dragging the marker snaps between feature icons");
+        key(KeyCode.END);
+        ready();
+        assertEquals(complete, document());
+        click("undo");
+        ready();
+        assertEquals(3, document().features().size(), "Rollback must not create undo entries");
+        click("redo");
+        ready();
+        assertEquals(complete, document());
+        click("timeline-play");
+        click("timeline-play");
+        int paused = document().cursor();
+        Thread.sleep(1400);
+        assertEquals(paused, document().cursor(), "Pause cancels the pending playback tick");
+        click("history-cursor");
+        key(KeyCode.HOME);
+        ready();
+        key(KeyCode.RIGHT);
+        key(KeyCode.RIGHT);
+        key(KeyCode.RIGHT);
+        ready();
+        assertEquals(3, document().cursor(), "Arrow navigation keeps focus on the marker");
+        key(KeyCode.LEFT);
+        ready();
+        assertEquals(2, document().cursor());
+        key(KeyCode.HOME);
+        ready();
+        click("timeline-play");
+        var visited = new HashSet<Integer>();
+        long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(20);
+        while (System.nanoTime() < deadline) {
+            visited.add(document().cursor());
+            if (document().cursor() == 4
+                    && fx(
+                            () ->
+                                    !node("#timeline-play")
+                                            .getPseudoClassStates()
+                                            .contains(
+                                                    javafx.css.PseudoClass.getPseudoClass(
+                                                            "playing")))) break;
+            Thread.sleep(40);
+        }
+        ready();
+        assertEquals(Set.of(0, 1, 2, 3, 4), visited);
+        assertEquals(complete, document());
+        assertEquals(19099.469035085127, volume(), .01);
+    }
+
+    @Test
+    void historyScrollsLongDesignsAndStopsAtFailedOperations() throws Exception {
+        ready();
+        click("fit");
+        var session = new ModelSession(CadDocument.empty());
+        for (int i = 0; i < 26; i++)
+            session.add(
+                    new Feature.Sketch(
+                            "s" + i,
+                            "p" + i,
+                            Feature.Plane.origin("XY"),
+                            new Feature.Rectangle(0, 0, 20, 10)));
+        session.add(new Feature.Extrude("broken", new Feature.ProfileRef("missing", "missing"), 5));
+        Path file = directory.resolve("long history.jcad");
+        DocumentWriter.save(session.document(), file, false);
+        open(file);
+        assertTrue(fx(() -> node("#timeline-play").isDisabled()));
+        assertTrue(fx(() -> node("#history-26").getStyleClass().contains("history-error")));
+        click("timeline-previous");
+        ready();
+        assertEquals(26, document().cursor());
+        assertFalse(fx(() -> node("#timeline-play").isDisabled()));
+        assertTrue(fx(() -> ((ScrollPane) node("#timeline-scroll")).getHvalue()) > .9);
+        click("history-25");
+        assertTrue(fx(() -> node("#history-25").getStyleClass().contains("history-selected")));
+        click("timeline-play");
+        long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(10);
+        while (document().cursor() < 27 && System.nanoTime() < deadline) Thread.sleep(40);
+        ready();
+        assertEquals(27, document().cursor());
+        assertFalse(
+                fx(
+                        () ->
+                                node("#timeline-play")
+                                        .getPseudoClassStates()
+                                        .contains(
+                                                javafx.css.PseudoClass.getPseudoClass("playing"))));
+        assertTrue(fx(() -> node("#timeline-play").isDisabled()));
+        click("timeline-first");
+        ready();
+        assertEquals(0, fx(() -> ((ScrollPane) node("#timeline-scroll")).getHvalue()), .01);
+        click("history-0");
+        assertEquals(0, document().cursor());
+        click("timeline-play");
+        click("new");
+        click("unsaved-discard");
+        ready();
+        assertTrue(document().features().isEmpty());
+        Thread.sleep(900);
+        assertEquals(0, document().cursor(), "Changing documents cancels history playback");
+    }
+
+    @Test
     void sketchPlanePickerRejectsCurvedFacesAndObsoleteDocumentRevisions() throws Exception {
         ready();
         click("fit");
@@ -2935,6 +3116,14 @@ class WorkbenchUiTest {
                 top,
                 fx(() -> workbench.viewport().orientationProperty().get()),
                 "A drag that starts on a sketch does not become a grid orbit");
+        primaryDrag(
+                fx(() -> workbench.viewport().modelToScreen(new Point3D(30, 0, .04)).add(0, 2)),
+                40,
+                12);
+        assertEquals(
+                top,
+                fx(() -> workbench.viewport().orientationProperty().get()),
+                "A small screen-space picking tolerance protects thin curves after viewport resizing");
         click("fit");
         click("extrude");
         ready();

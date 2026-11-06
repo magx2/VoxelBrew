@@ -305,19 +305,123 @@
   -fx-opacity: 0.8;
 }
 .timeline {
-  -fx-padding: 8 12 5;
+  -fx-padding: 0 12;
   -fx-background-color: -fx-control-inner-background;
+  -fx-border-color: derive(-fx-base, -12%) transparent transparent;
+  -fx-border-width: 1 0 0;
 }
-.history-active {
-  -fx-border-color: derive(-fx-base, -20%);
-  -fx-border-radius: 4;
+.timeline-scroll,
+.timeline-scroll > .viewport {
+  -fx-background-color: transparent;
+  -fx-background-insets: 0;
+  -fx-padding: 0;
+}
+.timeline-count,
+.timeline-empty {
+  -fx-text-fill: -fx-text-background-color;
+  -fx-opacity: 0.65;
+  -fx-font-size: 11px;
+}
+.timeline-transport,
+.timeline-feature {
+  -fx-padding: 4;
+  -fx-background-color: transparent;
+  -fx-background-radius: 5;
+  -fx-border-radius: 5;
+  -fx-border-color: transparent;
+  -fx-border-width: 1;
+}
+.timeline-transport {
+  -fx-min-width: 28;
+  -fx-pref-width: 28;
+  -fx-max-width: 28;
+  -fx-min-height: 30;
+  -fx-pref-height: 30;
+}
+.timeline-transport:hover,
+.timeline-feature:hover,
+.timeline-transport:playing {
+  -fx-background-color: -fx-selection-bar;
+}
+.timeline-transport:focused,
+.timeline-feature:focused {
+  -fx-border-color: -fx-accent;
+}
+.timeline-transport-icon {
+  -fx-fill: -fx-text-background-color;
+}
+.timeline-rail,
+.timeline-tick {
+  -fx-background-color: derive(-fx-base, -23%);
+}
+.timeline-marker {
+  -fx-padding: 0;
+  -fx-background-color: transparent;
+  -fx-border-color: transparent;
+  -fx-min-width: 14;
+  -fx-max-width: 14;
+  -fx-min-height: 48;
+  -fx-max-height: 48;
+}
+.timeline-marker-shape {
+  -fx-fill: -fx-text-background-color;
+}
+.timeline-marker:hover .timeline-marker-shape,
+.timeline-marker:focused .timeline-marker-shape {
+  -fx-fill: -fx-accent;
 }
 .history-future {
-  -fx-opacity: 0.45;
+  -fx-opacity: 0.35;
 }
 .history-selected {
   -fx-background-color: -fx-selection-bar;
-  -fx-text-fill: -fx-text-background-color;
+  -fx-border-color: -fx-accent;
+}
+.history-error {
+  -fx-border-color: #d95c5c;
+  -fx-border-width: 0 0 2;
+}
+.timeline-sketch-icon {
+  -fx-fill: transparent;
+  -fx-stroke: #438bd0;
+  -fx-stroke-width: 1.5;
+  -fx-stroke-dash-array: 3 2;
+}
+.timeline-pencil-icon {
+  -fx-fill: #efb451;
+  -fx-stroke: #916728;
+  -fx-stroke-width: 0.75;
+}
+.timeline-cube-top {
+  -fx-fill: #9cd3f2;
+  -fx-stroke: #407eaa;
+  -fx-stroke-width: 0.75;
+}
+.timeline-cube-left {
+  -fx-fill: #62acdf;
+  -fx-stroke: #407eaa;
+  -fx-stroke-width: 0.75;
+}
+.timeline-cube-right {
+  -fx-fill: #3c89c0;
+  -fx-stroke: #407eaa;
+  -fx-stroke-width: 0.75;
+}
+.timeline-extrude-icon {
+  -fx-fill: -fx-text-background-color;
+}
+.timeline-cut-icon {
+  -fx-fill: #d45858;
+  -fx-stroke: #ac3535;
+  -fx-stroke-width: 1.2;
+}
+.timeline-split-icon {
+  -fx-stroke: #e6ac42;
+  -fx-stroke-width: 2;
+}
+.timeline-plugin-icon {
+  -fx-stroke: #a785d9;
+  -fx-stroke-width: 2;
 }
 .status-strip {
   -fx-padding: 5 12;

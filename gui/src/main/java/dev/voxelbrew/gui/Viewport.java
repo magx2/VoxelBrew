@@ -51,6 +51,11 @@ public final class Viewport extends StackPane {
     private String selected;
     private List<Feature> shownSketches = List.of();
     private String shownSketchSelection;
+
+    private record SketchPick(String featureId, Point3D a, Point3D b) {}
+
+    private final java.util.ArrayList<SketchPick> sketchPicks = new java.util.ArrayList<>();
+    private String pressedSketch;
     private Consumer<Point3D> planeClick;
     private double planeZ;
     private final Group handle = new Group();
@@ -109,11 +114,17 @@ public final class Viewport extends StackPane {
                 e -> {
                     lastX = e.getSceneX();
                     lastY = e.getSceneY();
+                    boolean background =
+                            isNavigationBackground(e.getPickResult().getIntersectedNode());
+                    pressedSketch =
+                            e.getButton() == MouseButton.PRIMARY && planeClick == null && background
+                                    ? nearbySketch(e.getScreenX(), e.getScreenY())
+                                    : null;
                     primaryOrbit =
                             e.getButton() == MouseButton.PRIMARY
                                     && planeClick == null
-                                    && isNavigationBackground(
-                                            e.getPickResult().getIntersectedNode());
+                                    && background
+                                    && pressedSketch == null;
                     requestFocus();
                 });
         scene.setOnMouseDragged(
@@ -158,6 +169,13 @@ public final class Viewport extends StackPane {
                         var point = pointOnPlane(local.getX(), local.getY(), planeZ);
                         if (point != null) planeClick.accept(point);
                         e.consume();
+                    } else if (pressedSketch != null
+                            && e.getButton() == MouseButton.PRIMARY
+                            && e.isStillSincePress()) {
+                        var featureId = pressedSketch;
+                        pressedSketch = null;
+                        selection.accept(featureId, -1);
+                        e.consume();
                     }
                 });
     }
@@ -171,6 +189,42 @@ public final class Viewport extends StackPane {
             if (node == bodies || node == sketches || node == handle || node == planeTargets)
                 return false;
         return true;
+    }
+
+    /** Thin visible curves remain pickable despite native mouse rounding and viewport resizing. */
+    private String nearbySketch(double x, double y) {
+        if (sketches.isMouseTransparent() || !sketches.isVisible()) return null;
+        double nearest = 4 * 4; // logical screen pixels, independent of zoom and CAD millimeters
+        String feature = null;
+        for (var candidate : sketchPicks) {
+            if (!inFrontOfCamera(candidate.a()) || !inFrontOfCamera(candidate.b())) continue;
+            var a = modelToScreen(candidate.a());
+            var b = modelToScreen(candidate.b());
+            if (a == null || b == null) continue;
+            double dx = b.getX() - a.getX(), dy = b.getY() - a.getY();
+            double lengthSquared = dx * dx + dy * dy;
+            double t =
+                    lengthSquared == 0
+                            ? 0
+                            : Math.clamp(
+                                    ((x - a.getX()) * dx + (y - a.getY()) * dy) / lengthSquared,
+                                    0,
+                                    1);
+            double px = x - a.getX() - t * dx, py = y - a.getY() - t * dy;
+            double squared = px * px + py * py;
+            if (squared < nearest) {
+                nearest = squared;
+                feature = candidate.featureId();
+            }
+        }
+        return feature;
+    }
+
+    private boolean inFrontOfCamera(Point3D model) {
+        var point =
+                camera.sceneToLocal(
+                        world.localToScene(toView(model.getX(), model.getY(), model.getZ())));
+        return point.getZ() >= camera.getNearClip() && point.getZ() <= camera.getFarClip();
     }
 
     public static Point3D toModel(Point3D p) {
@@ -362,6 +416,8 @@ public final class Viewport extends StackPane {
         shownSketches = List.copyOf(features);
         shownSketchSelection = selectedSketch;
         sketches.getChildren().clear();
+        sketchPicks.clear();
+        pressedSketch = null;
         for (var feature : features)
             if (feature instanceof Feature.Sketch sketch) {
                 if (sketch.profile() instanceof Feature.Constrained constrained) {
@@ -469,6 +525,13 @@ public final class Viewport extends StackPane {
                 }
             }
             if (!segments.isEmpty()) {
+                for (var segment : segments) {
+                    sketchPicks.add(
+                            new SketchPick(
+                                    sketch.id(),
+                                    sketchPoint(sketch.plane(), segment.a()),
+                                    sketchPoint(sketch.plane(), segment.b())));
+                }
                 var view =
                         meshView(
                                 SketchStrokes.mesh(
@@ -493,6 +556,12 @@ public final class Viewport extends StackPane {
                     }
                 });
         sketches.getChildren().add(group);
+    }
+
+    private static Point3D sketchPoint(
+            Feature.Plane plane, dev.voxelbrew.engine.sketch.SketchGeometry.Vec point) {
+        var model = plane.frame().apply(point.x(), point.y(), plane.offsetZ() + .04);
+        return new Point3D(model[0], model[1], model[2]);
     }
 
     private static Cylinder line(Point3D a, Point3D b, double radius, Color color) {

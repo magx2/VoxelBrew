@@ -8,7 +8,9 @@ and an editable headless CAD workflow. `engine` owns modeling, history and
 the versioned Protobuf `.jcad` schema; `cli` exposes the same engine operations;
 `gui` provides the JavaFX CAD workbench. M2 adds tessellation, binary STL,
 portable 3MF and external exporter plugins; M3 adds interactive sketching,
-extrusion, picking, editable history and export. The shared subproject
+extrusion, picking, editable history and export. The compact
+[history strip](docs/history-timeline.md) provides feature icons, a draggable rollback
+marker and step/playback controls. The shared subproject
 `util`, owns translations, user configuration, logging, application updates and
 generic CPU workers. It has no CAD or frontend dependencies; engine and both
 frontends depend on it. See [shared utilities and configuration](docs/shared-utilities.md).

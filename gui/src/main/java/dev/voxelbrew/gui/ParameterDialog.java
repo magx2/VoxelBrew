@@ -19,10 +19,10 @@ final class ParameterDialog {
     private final TableView<ParameterSet.Parameter> parameters = new TableView<>();
     private final TableView<String> configurations = new TableView<>();
     private final TableView<FeatureDimensions.Dimension> dimensions = new TableView<>();
-    private final FormulaField name = field("parameter-name"),
-            expression = field("parameter-expression"),
+    private final TextField name = textField("parameter-name"),
+            configName = textField("configuration-name");
+    private final FormulaField expression = field("parameter-expression"),
             comment = field("parameter-comment"),
-            configName = field("configuration-name"),
             override = field("configuration-expression"),
             binding = field("parameter-binding-expression");
     private final ComboBox<ParameterUnit> unit = new ComboBox<>();
@@ -66,8 +66,14 @@ final class ParameterDialog {
         this.translations = translations;
         this.features = List.copyOf(features);
         draft = initial;
-        for (var field : List.of(name, expression, comment, configName, override, binding))
+        for (var field : List.of(expression, comment, override, binding))
             field.localized(translations);
+    }
+
+    private static TextField textField(String id) {
+        var field = new TextField();
+        field.setId(id);
+        return field;
     }
 
     private FormulaField field(String id) {
@@ -219,14 +225,13 @@ final class ParameterDialog {
                                     if (selectedParameter != null
                                             && !next.parameter(selectedParameter)
                                                     .name()
-                                                    .equals(name.evaluatedText().strip()))
+                                                    .equals(name.getText().strip()))
                                         next =
                                                 next.rename(
-                                                        selectedParameter,
-                                                        name.evaluatedText().strip());
+                                                        selectedParameter, name.getText().strip());
                                     update(
                                             next.put(
-                                                    name.evaluatedText().strip(),
+                                                    name.getText().strip(),
                                                     unit.getValue(),
                                                     expression.getText().strip(),
                                                     comment.evaluatedText()));
@@ -246,7 +251,7 @@ final class ParameterDialog {
                                 translations.text("gui.remove"),
                                 "parameter-remove",
                                 () -> {
-                                    update(draft.remove(name.evaluatedText().strip()));
+                                    update(draft.remove(name.getText().strip()));
                                     selectedParameter = null;
                                 }));
         var parameterPane =
@@ -291,15 +296,14 @@ final class ParameterDialog {
                                 () ->
                                         update(
                                                 draft.addConfiguration(
-                                                        configName.evaluatedText().strip(),
-                                                        false))),
+                                                        configName.getText().strip(), false))),
                         button(
                                 translations.text("gui.duplicate_active"),
                                 "configuration-copy",
                                 () ->
                                         update(
                                                 draft.addConfiguration(
-                                                        configName.evaluatedText().strip(), true))),
+                                                        configName.getText().strip(), true))),
                         button(
                                 translations.text("gui.rename"),
                                 "configuration-rename",
@@ -307,7 +311,7 @@ final class ParameterDialog {
                                         update(
                                                 draft.renameConfiguration(
                                                         selectedConfig(),
-                                                        configName.evaluatedText().strip()))),
+                                                        configName.getText().strip()))),
                         button(
                                 translations.text("gui.remove"),
                                 "configuration-remove",

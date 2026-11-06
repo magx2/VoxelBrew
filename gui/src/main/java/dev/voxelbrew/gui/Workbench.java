@@ -1461,10 +1461,7 @@ public final class Workbench extends BorderPane implements AutoCloseable {
         }
         var bodies = new ComboBox<String>();
         bodies.setId("repair-body");
-        var output =
-                FormulaField.text(
-                                body == null ? "body" : body.outputName(), this::formulaParameters)
-                        .localized(translations);
+        var output = new TextField(body == null ? "body" : body.outputName());
         output.setId("repair-output");
         if (body != null) {
             earlier.stream()
@@ -1495,7 +1492,7 @@ public final class Workbench extends BorderPane implements AutoCloseable {
                                                                         bodies.getValue(),
                                                                         translations.text(
                                                                                 "gui.choose_an_earlier_body")),
-                                                                output.evaluatedText()),
+                                                                output.getText()),
                                                         split.plane()));
                                         return;
                                     }
@@ -1530,7 +1527,7 @@ public final class Workbench extends BorderPane implements AutoCloseable {
                                                                             bodies.getValue(),
                                                                             translations.text(
                                                                                     "gui.choose_an_earlier_body")),
-                                                                    output.evaluatedText())));
+                                                                    output.getText())));
                                 }));
     }
 

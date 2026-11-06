@@ -55,6 +55,18 @@ message Plane {
   string id = 1;
   double offset_z = 2;
   reserved 3 to 7;
+  // Local sketch XY coordinates to model coordinates, 3x4 row-major rigid
+  // frame.
+  repeated double frame = 8;
+  FaceSupport support = 9;
+}
+message FaceSupport {
+  BodyRef body = 1;
+  double normal_x = 2;
+  double normal_y = 3;
+  double normal_z = 4;
+  uint32 rank = 5;
+  uint32 count = 6;
 }
 message ProfileRef {
   string sketch_id = 1;

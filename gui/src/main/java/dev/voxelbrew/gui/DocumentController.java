@@ -21,7 +21,20 @@ import lombok.experimental.Accessors;
 @javax.inject.Singleton
 @lombok.extern.slf4j.Slf4j
 public final class DocumentController implements AutoCloseable {
-    public record Body(String id, Feature.BodyRef output, MeshData mesh, double volume) {}
+    public record Body(
+            String id,
+            Feature.BodyRef output,
+            MeshData mesh,
+            double volume,
+            List<dev.voxelbrew.engine.geometry.PlanarFace> planarFaces) {
+        public Body(String id, Feature.BodyRef output, MeshData mesh, double volume) {
+            this(id, output, mesh, volume, List.of());
+        }
+
+        public Body {
+            planarFaces = List.copyOf(planarFaces);
+        }
+    }
 
     public record Build(
             List<Body> bodies,
@@ -599,7 +612,8 @@ public final class DocumentController implements AutoCloseable {
                                             b.id(),
                                             b.output(),
                                             b.solid().tessellate(MeshOptions.DEFAULT),
-                                            b.solid().volume()));
+                                            b.solid().volume(),
+                                            b.solid().planarFaces()));
             return new Build(bodies, evaluation.diagnostics(), true, evaluation.resolvedFeatures());
         }
     }

@@ -15,6 +15,9 @@
 #include <TopoDS_Wire.hxx>
 #include <gp_Circ.hxx>
 #include <BRepBuilderAPI_Copy.hxx>
+#include <BRepBuilderAPI_Transform.hxx>
+#include <BRepAdaptor_Surface.hxx>
+#include <gp_Trsf.hxx>
 #include <BRepMesh_IncrementalMesh.hxx>
 #include <BRep_Tool.hxx>
 #include <Poly_Triangulation.hxx>
@@ -448,6 +451,49 @@ JNIEXPORT jdouble JNICALL Java_dev_voxelbrew_engine_geometry_NativeKernel_volume
         GProp_GProps properties;
         BRepGProp::VolumeProperties(*lookup(id), properties, true, false, false);
         return properties.Mass();
+    });
+}
+
+JNIEXPORT jlong JNICALL Java_dev_voxelbrew_engine_geometry_NativeKernel_transform(
+    JNIEnv* env, jclass, jlong id, jdoubleArray values) {
+    return guarded<jlong>(env, "rigid transform", 0, [&] {
+        if (!values || env->GetArrayLength(values) != 12)
+            throw std::invalid_argument("rigid transform requires 12 values");
+        jdouble m[12];
+        env->GetDoubleArrayRegion(values, 0, 12, m);
+        for (double value : m) requireFinite(value);
+        gp_Trsf transform;
+        transform.SetValues(m[0], m[1], m[2], m[3], m[4], m[5], m[6], m[7], m[8], m[9], m[10],
+                            m[11]);
+        BRepBuilderAPI_Transform operation(*lookup(id), transform, true);
+        if (!operation.IsDone()) throw std::runtime_error("rigid transform failed");
+        return own(operation.Shape());
+    });
+}
+
+JNIEXPORT jdoubleArray JNICALL
+Java_dev_voxelbrew_engine_geometry_NativeKernel_planarFaces(JNIEnv* env, jclass, jlong id) {
+    return guarded<jdoubleArray>(env, "planar face query", nullptr, [&]() -> jdoubleArray {
+        const auto shape = lookup(id);
+        std::vector<jdouble> planes;
+        int index = 0;
+        for (TopExp_Explorer it(*shape, TopAbs_FACE); it.More(); it.Next(), ++index) {
+            const auto face = TopoDS::Face(it.Current());
+            BRepAdaptor_Surface surface(face);
+            if (surface.GetType() != GeomAbs_Plane) continue;
+            const gp_Pln plane = surface.Plane();
+            gp_Dir normal = plane.Axis().Direction();
+            if (face.Orientation() == TopAbs_REVERSED) normal.Reverse();
+            const auto origin = plane.Location();
+            const double offset =
+                normal.X() * origin.X() + normal.Y() * origin.Y() + normal.Z() * origin.Z();
+            planes.insert(planes.end(),
+                          {static_cast<double>(index), normal.X(), normal.Y(), normal.Z(), offset});
+        }
+        auto result = env->NewDoubleArray(static_cast<jsize>(planes.size()));
+        if (result)
+            env->SetDoubleArrayRegion(result, 0, static_cast<jsize>(planes.size()), planes.data());
+        return result;
     });
 }
 

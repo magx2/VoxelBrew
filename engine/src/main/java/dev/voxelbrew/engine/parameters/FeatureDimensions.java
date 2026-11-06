@@ -45,7 +45,7 @@ public final class FeatureDimensions {
                                         ParameterUnit.MM,
                                         value));
         if (feature instanceof Feature.Sketch s) {
-            if (!s.plane().id().equals("origin-xy")) length.accept("offsetZ", s.plane().offsetZ());
+            if (!s.plane().isOrigin()) length.accept("offsetZ", s.plane().offsetZ());
             if (s.profile() instanceof Feature.Rectangle r) {
                 length.accept("x", r.x());
                 length.accept("y", r.y());
@@ -99,9 +99,7 @@ public final class FeatureDimensions {
                             s.plane().normalZ(),
                             changes.getOrDefault("offset", s.plane().offset())));
         var s = (Feature.Sketch) feature;
-        var plane =
-                new Feature.Plane(
-                        s.plane().id(), changes.getOrDefault("offsetZ", s.plane().offsetZ()));
+        var plane = s.plane().withOffset(changes.getOrDefault("offsetZ", s.plane().offsetZ()));
         Feature.Profile profile = s.profile();
         if (profile instanceof Feature.Rectangle r)
             profile =

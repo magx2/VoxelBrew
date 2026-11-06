@@ -148,6 +148,24 @@ public final class Solid implements AutoCloseable {
         return NativeKernel.volume(token);
     }
 
+    /** Independently owned rigid copy; the source geometry is never changed. */
+    public synchronized Solid transformed(dev.voxelbrew.engine.model.Transform placement) {
+        requireOpen();
+        return new Solid(NativeKernel.transform(token, placement.matrix()));
+    }
+
+    /** Detached exact planes, using the same face order as tessellation. */
+    public synchronized java.util.List<PlanarFace> planarFaces() {
+        requireOpen();
+        double[] data = NativeKernel.planarFaces(token);
+        var result = new java.util.ArrayList<PlanarFace>();
+        for (int i = 0; i < data.length; i += 5)
+            result.add(
+                    new PlanarFace(
+                            (int) data[i], data[i + 1], data[i + 2], data[i + 3], data[i + 4]));
+        return java.util.List.copyOf(result);
+    }
+
     public record Split(Solid negative, Solid positive) implements AutoCloseable {
         @Override
         public void close() {

@@ -9,9 +9,21 @@ final class FeatureValidation {
             CadDocument.identifier(sketch.profileId(), "profile ID");
             CadDocument.identifier(sketch.plane().id(), "plane ID");
             finite(feature.id(), "plane.offsetZ", sketch.plane().offsetZ());
-            if (sketch.plane().id().equals("origin-xy") && sketch.plane().offsetZ() != 0) {
+            if (sketch.plane().isOrigin()
+                    && (sketch.plane().offsetZ() != 0
+                            || sketch.plane().support() != null
+                            || !sketch.plane()
+                                    .frame()
+                                    .equals(
+                                            Feature.Plane.origin(
+                                                            sketch.plane()
+                                                                    .id()
+                                                                    .substring(7)
+                                                                    .toUpperCase(
+                                                                            java.util.Locale.ROOT))
+                                                    .frame()))) {
                 throw new ModelException(
-                        feature.id(), "origin-xy is fixed at 0 mm; use an offset plane ID");
+                        feature.id(), "Origin planes are fixed; use an offset plane ID");
             }
             if (sketch.profile() instanceof Feature.Rectangle r) {
                 finite(feature.id(), "x", r.x());

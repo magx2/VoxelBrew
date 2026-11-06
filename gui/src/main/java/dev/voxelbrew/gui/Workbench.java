@@ -22,6 +22,7 @@ import lombok.experimental.Accessors;
 
 /** CAD workbench: model state stays in engine; scene graph and tool previews stay here. */
 @javax.inject.Singleton
+@lombok.extern.slf4j.Slf4j
 public final class Workbench extends BorderPane implements AutoCloseable {
     private record Entry(String id, String label, boolean body) {
         @Override
@@ -32,6 +33,7 @@ public final class Workbench extends BorderPane implements AutoCloseable {
 
     private enum Tool {
         NONE,
+        PLANE,
         EXTRUDE
     }
 
@@ -98,6 +100,8 @@ public final class Workbench extends BorderPane implements AutoCloseable {
     private String lastDocument = "";
     private boolean fitNext = true;
     private Feature.Sketch extrusionSketch;
+    private ModelSession.Snapshot planeSnapshot;
+    private Feature.Sketch planeRepair;
     private Button finish;
     private final UpdateDialog.Factory updates;
 
@@ -208,7 +212,7 @@ public final class Workbench extends BorderPane implements AutoCloseable {
                 button(
                         translations.text("action.sketch"),
                         "constrained-sketch",
-                        () -> editSketch(null));
+                        () -> beginPlaneSelection(null));
         this.extrude = button(translations.text("action.extrude"), "extrude", this::beginExtrusion);
         this.cut = button(translations.text("action.cut"), "cut", this::beginCut);
         this.splitBody = button(translations.text("action.split"), "split-body", this::beginSplit);
@@ -515,6 +519,10 @@ public final class Workbench extends BorderPane implements AutoCloseable {
         setBottom(new VBox(timeline, statusbar));
         viewport.onSelection(
                 (id, face) -> {
+                    if (tool == Tool.PLANE) {
+                        chooseBodyPlane(id, face);
+                        return;
+                    }
                     if (tool != Tool.NONE || controller.rebuilding()) return;
                     if (controller.snapshot().document().features().stream()
                             .anyMatch(f -> f.id().equals(id))) selectFeature(id);
@@ -710,6 +718,13 @@ public final class Workbench extends BorderPane implements AutoCloseable {
         refreshing = true;
         try {
             var snapshot = controller.snapshot();
+            if (tool == Tool.PLANE && !planeSelectionCurrent()) {
+                tool = Tool.NONE;
+                planeSnapshot = null;
+                planeRepair = null;
+                viewport.stopPlaneSelection();
+                inspect();
+            }
             var document = snapshot.document();
             var effective = controller.effectiveFeatures();
             boolean buildStateChanged =
@@ -786,19 +801,24 @@ public final class Workbench extends BorderPane implements AutoCloseable {
             configuration.setDisable(controller.ioBusy() || tool != Tool.NONE);
             exportUnavailable.set(!controller.canExport());
             fileBusy.set(controller.ioBusy());
-            splitBody.setDisable(!controller.canExport() || controller.build().bodies().isEmpty());
+            splitBody.setDisable(
+                    tool != Tool.NONE
+                            || !controller.canExport()
+                            || controller.build().bodies().isEmpty());
             printing.documentChanged();
             boolean atEnd = document.cursor() == document.features().size() && !controller.ioBusy();
             customFeature.setDisable(!atEnd || tool != Tool.NONE || controller.rebuilding());
             constrainedSketch.setDisable(!atEnd || tool != Tool.NONE || controller.rebuilding());
             extrude.setDisable(
                     !atEnd
+                            || tool != Tool.NONE
                             || !(selected() instanceof Feature.Sketch s
                                     && (!(s.profile() instanceof Feature.Constrained c)
                                             || dev.voxelbrew.engine.sketch.SketchProfiles
                                                     .hasProfile(c.geometry()))));
             cut.setDisable(
                     !atEnd
+                            || tool != Tool.NONE
                             || !(selected() instanceof Feature.Sketch s
                                     && (s.profile() instanceof Feature.Circle
                                             || s.profile() instanceof Feature.Constrained c
@@ -1032,6 +1052,12 @@ public final class Workbench extends BorderPane implements AutoCloseable {
                                     () -> editSketch(s)));
             dimension(feature, "offsetZ", s.plane().offsetZ());
             form.getChildren().add(new Label(translations.text("feature.plane", s.plane().id())));
+            form.getChildren()
+                    .add(
+                            button(
+                                    translations.text("plane.change"),
+                                    "change-sketch-plane",
+                                    () -> beginPlaneSelection(s)));
         } else if (feature instanceof Feature.Extrude e) {
             dimension(feature, "distance", e.distance());
             referenceEditor(feature, e.profile(), null);
@@ -1368,6 +1394,137 @@ public final class Workbench extends BorderPane implements AutoCloseable {
     }
 
     private void editSketch(Feature.Sketch sketch) {
+        openSketch(sketch, sketch.plane());
+    }
+
+    private void beginPlaneSelection(Feature.Sketch repair) {
+        cancelTool();
+        if (controller.ioBusy() || controller.rebuilding()) return;
+        planeSnapshot = controller.snapshot();
+        planeRepair = repair;
+        tool = Tool.PLANE;
+        selectionLabel.setText(translations.text("plane.choose"));
+        form.getChildren().clear();
+        fields.clear();
+        var hint = new Label(translations.text("plane.hint"));
+        hint.setWrapText(true);
+        hint.setId("sketch-plane-hint");
+        form.getChildren().add(hint);
+        var origins = new HBox(6);
+        for (var name : List.of("XY", "XZ", "YZ"))
+            origins.getChildren()
+                    .add(
+                            button(
+                                    name,
+                                    "choose-plane-" + name.toLowerCase(Locale.ROOT),
+                                    () -> choosePlane(Feature.Plane.origin(name))));
+        form.getChildren().add(origins);
+        toolActions
+                .getChildren()
+                .setAll(
+                        button(
+                                translations.text("action.cancel"),
+                                "cancel-tool",
+                                this::cancelTool));
+        viewport.pickSketchPlane(
+                this::choosePlane,
+                (id, face) -> {
+                    boolean flat =
+                            controller.build().bodies().stream()
+                                    .filter(b -> b.id().equals(id))
+                                    .flatMap(b -> b.planarFaces().stream())
+                                    .anyMatch(p -> p.faceIndex() == face);
+                    viewport.highlightFace(id, flat ? face : -1);
+                });
+        log.info("Selecting a sketch plane{}", repair == null ? "" : " for " + repair.id());
+        refresh();
+    }
+
+    private boolean planeSelectionCurrent() {
+        var current = controller.snapshot();
+        return planeSnapshot != null
+                && !controller.rebuilding()
+                && !controller.ioBusy()
+                && current.revision() == planeSnapshot.revision()
+                && current.document().id().equals(planeSnapshot.document().id());
+    }
+
+    private void chooseBodyPlane(String id, int face) {
+        if (!planeSelectionCurrent()) {
+            cancelTool();
+            return;
+        }
+        var body = controller.build().bodies().stream().filter(b -> b.id().equals(id)).findFirst();
+        if (body.isEmpty()
+                || body.get().planarFaces().stream().noneMatch(p -> p.faceIndex() == face)) {
+            error.setText(translations.text("plane.flat_only"));
+            return;
+        }
+        if (planeRepair != null) {
+            var features = planeSnapshot.document().features();
+            int sketchIndex =
+                    java.util.stream.IntStream.range(0, features.size())
+                            .filter(i -> features.get(i).id().equals(planeRepair.id()))
+                            .findFirst()
+                            .orElse(-1);
+            int bodyIndex =
+                    java.util.stream.IntStream.range(0, features.size())
+                            .filter(
+                                    i ->
+                                            features.get(i)
+                                                    .id()
+                                                    .equals(body.get().output().featureId()))
+                            .findFirst()
+                            .orElse(Integer.MAX_VALUE);
+            if (bodyIndex >= sketchIndex) {
+                error.setText(translations.text("plane.upstream_only"));
+                return;
+            }
+        }
+        choosePlane(FaceSupport.attach(body.get().output(), body.get().planarFaces(), face));
+    }
+
+    private void choosePlane(Feature.Plane plane) {
+        if (tool != Tool.PLANE || !planeSelectionCurrent()) {
+            cancelTool();
+            return;
+        }
+        var repair = planeRepair;
+        log.info(
+                "Selected sketch plane {}{}",
+                plane.id(),
+                plane.support() == null ? "" : " on " + plane.support().body());
+        cancelTool();
+        if (repair == null) {
+            openSketch(null, plane);
+        } else {
+            // Keep identities, geometry and parameter bindings; reattachment is one undoable edit.
+            var placement = plane.withOffset(repair.plane().offsetZ());
+            boolean boundOffset =
+                    controller.snapshot().document().parameters().bindings().stream()
+                            .anyMatch(
+                                    b ->
+                                            b.target().featureId().equals(repair.id())
+                                                    && b.target().field().equals("offsetZ"));
+            if (placement.isOrigin() && (placement.offsetZ() != 0 || boundOffset))
+                placement =
+                        new Feature.Plane(
+                                "plane-" + UUID.randomUUID(),
+                                placement.offsetZ(),
+                                placement.frame(),
+                                null);
+            controller.sketch(
+                    new Feature.Sketch(
+                            repair.id(), repair.profileId(), placement, repair.profile()),
+                    controller.snapshot().document().parameters(),
+                    false);
+            selectedFeature = repair.id();
+            selectedBody = null;
+            refresh();
+        }
+    }
+
+    private void openSketch(Feature.Sketch sketch, Feature.Plane plane) {
         cancelTool();
         var before = controller.snapshot();
         if (controller.ioBusy() || controller.rebuilding())
@@ -1377,6 +1534,7 @@ public final class Workbench extends BorderPane implements AutoCloseable {
                 stage,
                 sketches,
                 sketch,
+                plane,
                 controller.effectiveFeatures(),
                 before.document().parameters(),
                 translations,
@@ -1471,6 +1629,9 @@ public final class Workbench extends BorderPane implements AutoCloseable {
     private void commitExtrusion() {
         controller.commitPreview();
         tool = Tool.NONE;
+        planeSnapshot = null;
+        planeRepair = null;
+        viewport.stopPlaneSelection();
         viewport.clearHandle();
         var features = controller.snapshot().document().features();
         selectedFeature = features.getLast().id();
@@ -1598,6 +1759,9 @@ public final class Workbench extends BorderPane implements AutoCloseable {
 
     private void cancelTool() {
         tool = Tool.NONE;
+        planeSnapshot = null;
+        planeRepair = null;
+        viewport.stopPlaneSelection();
         viewport.stopDrawing();
         viewport.clearHandle();
         controller.cancelPreview();

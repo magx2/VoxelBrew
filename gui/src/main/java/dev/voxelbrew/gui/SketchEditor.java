@@ -93,11 +93,13 @@ final class SketchEditor extends BorderPane implements AutoCloseable {
     private boolean moving, panning, refreshing, closed;
     private final boolean dark;
     private int nextId = 1;
+    private final Feature.Plane selectedPlane;
 
     static void show(
             Stage stage,
             SketchController.Factory controllers,
             Feature.Sketch sketch,
+            Feature.Plane selectedPlane,
             List<Feature> features,
             ParameterSet parameters,
             dev.voxelbrew.util.i18n.Translations translations,
@@ -110,6 +112,7 @@ final class SketchEditor extends BorderPane implements AutoCloseable {
                 new SketchEditor(
                         controllers,
                         sketch,
+                        selectedPlane,
                         features,
                         parameters,
                         previous.getStyleClass().contains("dark"),
@@ -169,6 +172,7 @@ final class SketchEditor extends BorderPane implements AutoCloseable {
     private SketchEditor(
             SketchController.Factory controllers,
             Feature.Sketch sketch,
+            Feature.Plane selectedPlane,
             List<Feature> features,
             ParameterSet parameters,
             boolean dark,
@@ -189,6 +193,7 @@ final class SketchEditor extends BorderPane implements AutoCloseable {
         undo.setText(translations.text("action.undo"));
         redo.setText(translations.text("action.redo"));
         this.original = sketch;
+        this.selectedPlane = sketch == null ? selectedPlane : sketch.plane();
         featureId = sketch == null ? "sketch-" + UUID.randomUUID() : sketch.id();
         documentFeatures = List.copyOf(features);
         this.dark = dark;
@@ -218,7 +223,8 @@ final class SketchEditor extends BorderPane implements AutoCloseable {
         getStyleClass().add("sketch-editor");
         plane.setId("constraint-plane");
         plane.setPrefColumnCount(5);
-        if (sketch != null) plane.setText(number(sketch.plane().offsetZ()));
+        plane.setText(
+                this.selectedPlane.offsetZ() == 0 ? "0" : number(this.selectedPlane.offsetZ()));
         plane.setDisable(
                 sketch != null); // Shared planes remain edited through the document inspector.
         var title =
@@ -234,7 +240,7 @@ final class SketchEditor extends BorderPane implements AutoCloseable {
                 new HBox(
                         10,
                         title,
-                        new Label(translations.text("gui.plane_z_mm")),
+                        new Label(translations.text("plane.offset")),
                         plane,
                         button(
                                 translations.text("action.parameters"),
@@ -1319,7 +1325,7 @@ final class SketchEditor extends BorderPane implements AutoCloseable {
                 new Feature.Sketch(
                         featureId,
                         original == null ? "profile" : original.profileId(),
-                        original == null ? new Feature.Plane("origin-xy", 0) : original.plane(),
+                        selectedPlane,
                         new Feature.Constrained(controller.definition())));
         ParameterDialog.show(
                         getScene().getWindow(), features, controller.parameters(), translations)
@@ -1407,9 +1413,11 @@ final class SketchEditor extends BorderPane implements AutoCloseable {
                             original == null
                                     ? new Feature.Plane(
                                             offset == 0 && Expressions.isNumber(plane.getText())
-                                                    ? "origin-xy"
+                                                    ? selectedPlane.id()
                                                     : "plane-" + UUID.randomUUID(),
-                                            offset)
+                                            offset,
+                                            selectedPlane.frame(),
+                                            selectedPlane.support())
                                     : original.plane(),
                             new Feature.Constrained(controller.definition()));
             var parameters = controller.parameters();

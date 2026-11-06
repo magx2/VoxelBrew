@@ -33,23 +33,28 @@ class DocumentWriterTest {
         var upgradedDefinitions =
                 message(baseline).toBuilder()
                         .setSchemaVersion(DocumentCodec.SCHEMA_VERSION)
-                        .clearApplicationVersion()
-                        .build();
+                        .clearApplicationVersion();
+        for (var feature : upgradedDefinitions.getFeaturesBuilderList())
+            if (feature.hasSketch())
+                feature.getSketchBuilder()
+                        .getPlaneBuilder()
+                        .addAllFrame(
+                                Arrays.stream(
+                                                dev.voxelbrew.engine.model.Transform.IDENTITY
+                                                        .matrix())
+                                        .boxed()
+                                        .toList());
         assertEquals(
                 HexFormat.of()
                         .formatHex(
                                 MessageDigest.getInstance("SHA-256")
-                                        .digest(upgradedDefinitions.toByteArray())),
+                                        .digest(upgradedDefinitions.build().toByteArray())),
                 DocumentCodec.fingerprint(document));
         Path file = directory.resolve("saved with spaces.jcad");
         DocumentWriter.save(document, file, false);
         byte[] saved = Files.readAllBytes(file);
-        var legacy = message(baseline);
         assertEquals(
-                legacy.toBuilder()
-                        .setSchemaVersion(DocumentCodec.SCHEMA_VERSION)
-                        .setApplicationVersion(Version.version())
-                        .build(),
+                upgradedDefinitions.setApplicationVersion(Version.version()).build(),
                 message(saved));
         assertEquals(document, DocumentReader.load(file));
         DocumentWriter.save(document, file, true);

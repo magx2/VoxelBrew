@@ -38,12 +38,15 @@ Both profiles can be extruded as new bodies, with signed distances. The M1 cut
 operation is a circular through-all subtraction across the complete current Z
 extent, normal to the XY-parallel sketch plane. M7 extends sketches with
 [geometric constraints and general closed profiles](sketch-constraints.md),
-including through cuts. Arbitrary planes and generated-face supports remain
-outside the current sketch workflow.
+including through cuts. The GUI now starts New sketch with a viewport choice of
+XY, XZ, YZ or a flat body face; see [sketch plane selection](sketch-planes.md).
+Extrusions and through cuts follow that plane's local normal. CLI-created
+primitive sketches still default to XY; CLI replay and export support all saved
+orientations.
 
 Dimension fields: `width`, `height`, `x`, `y`, `centerX`, `centerY`, `diameter`,
 `distance`, `offsetZ`. A shared offset-plane edit updates all sketches with that
-plane ID in one transaction. `origin-xy` is fixed at zero. New offset planes have
+plane ID in one transaction. Origin planes are fixed at zero. New offset planes have
 their own stable IDs. Conflicting definitions of one plane ID fail replay.
 
 ## Identity, history and failure behavior

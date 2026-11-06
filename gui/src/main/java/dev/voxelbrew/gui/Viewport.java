@@ -20,6 +20,7 @@ import javafx.scene.layout.StackPane;
 import javafx.scene.paint.Color;
 import javafx.scene.paint.PhongMaterial;
 import javafx.scene.shape.*;
+import javafx.scene.transform.Affine;
 import javafx.scene.transform.Rotate;
 import javafx.scene.transform.Translate;
 
@@ -38,6 +39,10 @@ public final class Viewport extends StackPane {
     private final ReadOnlyObjectWrapper<ViewOrientation> orientation =
             new ReadOnlyObjectWrapper<>(ViewOrientation.HOME);
     private final ViewCube viewCube;
+    private final dev.voxelbrew.util.i18n.Translations translations;
+    private final javafx.scene.layout.Pane planeLabels = new javafx.scene.layout.Pane();
+    private final Map<javafx.scene.control.Label, Feature.Plane> originLabels =
+            new LinkedHashMap<>();
     private Map<String, MeshData> currentMeshes = Map.of();
     private double lastX, lastY;
     private boolean primaryOrbit;
@@ -49,16 +54,24 @@ public final class Viewport extends StackPane {
     private Consumer<Point3D> planeClick;
     private double planeZ;
     private final Group handle = new Group();
-    private double handleDistance, handlePlane;
+    private double handleDistance;
+    private Point3D handleAnchor, handleNormal;
+    private final Group planeTargets = new Group(), faceHighlight = new Group();
+    private BiConsumer<String, Integer> planeHover;
+    private String highlightedBody;
+    private int highlightedFace = -1;
 
     public Viewport() {
         this(new dev.voxelbrew.util.i18n.Translations(java.util.Locale.ENGLISH));
     }
 
     public Viewport(dev.voxelbrew.util.i18n.Translations translations) {
+        this.translations = translations;
         setId("viewport");
         setMinSize(300, 250);
-        world.getChildren().addAll(aids, bodies, sketches, handle);
+        world.getChildren().addAll(aids, bodies, sketches, handle, planeTargets, faceHighlight);
+        faceHighlight.setMouseTransparent(true);
+        faceHighlight.setDepthTest(DepthTest.DISABLE);
         world.getTransforms().addAll(pan, tilt, orbit, center);
         var light = new AmbientLight(Color.gray(0.45));
         var key = new PointLight(Color.gray(0.7));
@@ -76,7 +89,10 @@ public final class Viewport extends StackPane {
         camera.setFieldOfView(35);
         scene.widthProperty().bind(widthProperty());
         scene.heightProperty().bind(heightProperty());
-        getChildren().add(scene);
+        planeLabels.setPickOnBounds(false);
+        getChildren().addAll(scene, planeLabels);
+        world.localToSceneTransformProperty().addListener((o, a, b) -> positionPlaneLabels());
+        camera.translateZProperty().addListener((o, a, b) -> positionPlaneLabels());
         viewCube =
                 new ViewCube(
                         this::setOrientation,
@@ -152,7 +168,8 @@ public final class Viewport extends StackPane {
 
     private boolean isNavigationBackground(Node picked) {
         for (Node node = picked; node != null; node = node.getParent())
-            if (node == bodies || node == sketches || node == handle) return false;
+            if (node == bodies || node == sketches || node == handle || node == planeTargets)
+                return false;
         return true;
     }
 
@@ -171,6 +188,140 @@ public final class Viewport extends StackPane {
 
     public void stopDrawing() {
         planeClick = null;
+    }
+
+    /** Convert a CAD placement to FX axes without changing handedness or millimeter scale. */
+    static Affine viewTransform(dev.voxelbrew.engine.model.Transform frame) {
+        var m = frame.matrix();
+        return new Affine(
+                m[0], -m[2], m[1], m[3], -m[8], m[10], -m[9], -m[11], m[4], -m[6], m[5], m[7]);
+    }
+
+    public void pickSketchPlane(Consumer<Feature.Plane> choose, BiConsumer<String, Integer> hover) {
+        stopPlaneSelection();
+        planeHover = hover;
+        sketches.setMouseTransparent(true);
+        home();
+        String[] names = {"XY", "XZ", "YZ"};
+        String[] colors = {"#df9e35", "#5297d8", "#42a783"};
+        for (int i = 0; i < names.length; i++) {
+            var plane = Feature.Plane.origin(names[i]);
+            var color = Color.web(colors[i]);
+            var mesh = new TriangleMesh();
+            mesh.getPoints().setAll(2, 0, 2, 30, 0, 2, 30, 0, 30, 2, 0, 30);
+            mesh.getTexCoords().setAll(0, 0);
+            mesh.getFaces().setAll(0, 0, 1, 0, 2, 0, 0, 0, 2, 0, 3, 0);
+            var face = new MeshView(mesh);
+            face.setCullFace(CullFace.NONE);
+            face.setId("sketch-plane-" + names[i].toLowerCase(java.util.Locale.ROOT));
+            face.setMaterial(new PhongMaterial(color.deriveColor(0, 1, 1, .32)));
+            var group = new Group(face);
+            group.getTransforms().add(viewTransform(plane.frame()));
+            Point3D[] corners = {
+                new Point3D(2, 0, 2),
+                new Point3D(30, 0, 2),
+                new Point3D(30, 0, 30),
+                new Point3D(2, 0, 30)
+            };
+            for (int c = 0; c < 4; c++) {
+                var edge = line(corners[c], corners[(c + 1) % 4], .10, color);
+                edge.setMouseTransparent(true);
+                group.getChildren().add(edge);
+            }
+            var label = new javafx.scene.control.Label(names[i]);
+            label.setId("sketch-plane-label-" + names[i].toLowerCase(java.util.Locale.ROOT));
+            label.getStyleClass().add("sketch-plane-label");
+            label.setStyle("-fx-border-color: " + colors[i] + ";");
+            label.setManaged(false);
+            label.setCursor(Cursor.HAND);
+            UiHelp.describe(label, translations.text("help.choose-plane"));
+            label.setOnMouseClicked(
+                    e -> {
+                        if (e.getButton() == MouseButton.PRIMARY && e.isStillSincePress()) {
+                            choose.accept(plane);
+                            e.consume();
+                        }
+                    });
+            originLabels.put(label, plane);
+            planeLabels.getChildren().add(label);
+            face.setOnMouseEntered(
+                    e -> face.setMaterial(new PhongMaterial(color.deriveColor(0, 1, 1, .70))));
+            face.setOnMouseExited(
+                    e -> face.setMaterial(new PhongMaterial(color.deriveColor(0, 1, 1, .32))));
+            face.setCursor(Cursor.HAND);
+            face.setOnMouseClicked(
+                    e -> {
+                        if (e.getButton() == MouseButton.PRIMARY && e.isStillSincePress()) {
+                            choose.accept(plane);
+                            e.consume();
+                        }
+                    });
+            planeTargets.getChildren().add(group);
+        }
+        requestLayout();
+    }
+
+    @Override
+    protected void layoutChildren() {
+        super.layoutChildren();
+        positionPlaneLabels();
+    }
+
+    private void positionPlaneLabels() {
+        originLabels.forEach(
+                (label, plane) -> {
+                    var p = plane.frame().apply(16, 16, 0);
+                    var screen = modelToScreen(new Point3D(p[0], p[1], p[2]));
+                    if (screen == null) {
+                        label.setVisible(false);
+                        return;
+                    }
+                    var point = screenToLocal(screen);
+                    label.autosize();
+                    label.setVisible(
+                            point != null
+                                    && point.getX() >= 0
+                                    && point.getX() <= getWidth()
+                                    && point.getY() >= 0
+                                    && point.getY() <= getHeight());
+                    if (point != null)
+                        label.relocate(
+                                point.getX() - label.getWidth() / 2,
+                                point.getY() - label.getHeight() / 2);
+                });
+    }
+
+    public void stopPlaneSelection() {
+        planeTargets.getChildren().clear();
+        originLabels.clear();
+        planeLabels.getChildren().clear();
+        highlightFace(null, -1);
+        planeHover = null;
+        sketches.setMouseTransparent(false);
+    }
+
+    public void highlightFace(String body, int face) {
+        if (java.util.Objects.equals(body, highlightedBody) && face == highlightedFace) return;
+        highlightedBody = body;
+        highlightedFace = face;
+        faceHighlight.getChildren().clear();
+        if (body == null) return;
+        var data = currentMeshes.get(body);
+        if (data == null || face < 0) return;
+        var indices = new java.util.ArrayList<Integer>();
+        for (int t = 0; t < data.triangleCount(); t++)
+            if (data.faceIndex(t) == face)
+                for (int c = 0; c < 3; c++) indices.add(data.vertexIndex(t, c));
+        if (indices.isEmpty()) return;
+        var overlay =
+                meshView(
+                        new MeshData(
+                                data.vertices(),
+                                indices.stream().mapToInt(Integer::intValue).toArray(),
+                                new int[indices.size() / 3]));
+        overlay.setMaterial(new PhongMaterial(Color.web("#efa93e", .55)));
+        overlay.setCullFace(CullFace.NONE);
+        faceHighlight.getChildren().add(overlay);
     }
 
     javafx.geometry.Point2D modelToScreen(Point3D point) {
@@ -271,7 +422,9 @@ public final class Viewport extends StackPane {
                                 e.consume();
                             }
                         });
-                sketches.getChildren().add(profile);
+                var group = new Group(profile);
+                group.getTransforms().add(viewTransform(sketch.plane().frame()));
+                sketches.getChildren().add(group);
                 for (int i = 0; i < count; i++) {
                     var line =
                             line(
@@ -286,7 +439,7 @@ public final class Viewport extends StackPane {
                                     chosen ? 0.14 : 0.065,
                                     chosen ? Color.web("#dc8d18") : Color.web("#2d839f"));
                     line.setMouseTransparent(true);
-                    sketches.getChildren().add(line);
+                    group.getChildren().add(line);
                 }
             }
     }
@@ -296,6 +449,7 @@ public final class Viewport extends StackPane {
             dev.voxelbrew.engine.sketch.SketchGeometry geometry,
             boolean chosen) {
         var group = new Group();
+        group.getTransforms().add(viewTransform(sketch.plane().frame()));
         for (var entity : geometry.entities()) {
             java.util.List<dev.voxelbrew.engine.sketch.SketchGeometry.Entity> curves;
             try {
@@ -361,12 +515,15 @@ public final class Viewport extends StackPane {
     public void updateExtrusionDistance(double value) {
         handleDistance = value;
         if (handle.getChildren().isEmpty()) return;
-        var shaft = (Cylinder) handle.getChildren().getFirst();
         var tip = handle.getChildren().getLast();
         double end = value + Math.copySign(5, value);
-        tip.setTranslateY(-handlePlane - end);
-        shaft.setHeight(Math.abs(end));
-        shaft.setTranslateY(-handlePlane - end / 2);
+        var endpoint = handleAnchor.add(handleNormal.multiply(end));
+        tip.setTranslateX(endpoint.getX());
+        tip.setTranslateY(endpoint.getY());
+        tip.setTranslateZ(endpoint.getZ());
+        var shaft = line(handleAnchor, endpoint, .35, Color.web("#f3ad3d"));
+        shaft.setMouseTransparent(true);
+        handle.getChildren().set(0, shaft);
     }
 
     public void extrusionHandle(
@@ -397,34 +554,44 @@ public final class Viewport extends StackPane {
                             .average()
                             .orElse(0);
         }
-        var anchor = toView(x, y, sketch.plane().offsetZ());
+        var point = sketch.plane().placement().apply(x, y, 0);
+        var matrix = sketch.plane().frame().matrix();
+        var anchor = toView(point[0], point[1], point[2]);
+        handleAnchor = anchor;
+        handleNormal = toView(matrix[2], matrix[6], matrix[10]);
         var tip = new Sphere(1.5, 12);
         tip.setId("extrusion-handle");
         tip.setMaterial(new PhongMaterial(Color.web("#f3ad3d")));
         var shaft =
                 line(
                         anchor,
-                        toView(x, y, sketch.plane().offsetZ() + value + Math.copySign(5, value)),
+                        anchor.add(handleNormal.multiply(value + Math.copySign(5, value))),
                         0.35,
                         Color.web("#f3ad3d"));
         shaft.setMouseTransparent(true);
-        tip.setTranslateX(anchor.getX());
-        tip.setTranslateY(-sketch.plane().offsetZ() - value - Math.copySign(5, value));
-        tip.setTranslateZ(anchor.getZ());
-        final double[] start = new double[2];
+        final double[] start = new double[5];
         tip.setOnMousePressed(
                 e -> {
-                    start[0] = e.getScreenY();
-                    start[1] = handleDistance;
+                    start[0] = e.getScreenX();
+                    start[1] = e.getScreenY();
+                    start[2] = handleDistance;
+                    var a = world.localToScreen(handleAnchor);
+                    var b = world.localToScreen(handleAnchor.add(handleNormal));
+                    start[3] = b.getX() - a.getX();
+                    start[4] = b.getY() - a.getY();
+                    if (Math.hypot(start[3], start[4]) < .1) {
+                        start[3] = 0;
+                        start[4] = -Math.max(scene.getHeight(), 1) / distance;
+                    }
                     e.consume();
                 });
         tip.setOnMouseDragged(
                 e -> {
                     double next =
-                            start[1]
-                                    + (start[0] - e.getScreenY())
-                                            * distance
-                                            / Math.max(scene.getHeight(), 1);
+                            start[2]
+                                    + ((e.getScreenX() - start[0]) * start[3]
+                                                    + (e.getScreenY() - start[1]) * start[4])
+                                            / (start[3] * start[3] + start[4] * start[4]);
                     if (Math.abs(next) < 0.01) next = 0.01;
                     updateExtrusionDistance(next);
                     preview.accept(next);
@@ -436,7 +603,6 @@ public final class Viewport extends StackPane {
                     e.consume();
                 });
         handle.getChildren().addAll(shaft, tip);
-        handlePlane = sketch.plane().offsetZ();
         updateExtrusionDistance(value);
     }
 
@@ -454,6 +620,15 @@ public final class Viewport extends StackPane {
                     MeshView view = meshView(data);
                     bodyViews.put(id, view);
                     view.setId("body-" + id);
+                    view.setOnMouseMoved(
+                            e -> {
+                                if (planeHover != null) {
+                                    int triangle = e.getPickResult().getIntersectedFace();
+                                    planeHover.accept(
+                                            id, triangle >= 0 ? data.faceIndex(triangle) : -1);
+                                }
+                            });
+                    view.setOnMouseExited(e -> highlightFace(null, -1));
                     view.setOnMouseClicked(
                             e -> {
                                 if (e.getButton() == MouseButton.PRIMARY && e.isStillSincePress()) {

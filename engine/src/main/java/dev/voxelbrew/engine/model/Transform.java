@@ -34,6 +34,16 @@ public final class Transform {
         return m.clone();
     }
 
+    /** Inverse of this rigid placement, including its translation. */
+    public Transform inverse() {
+        double[] out = new double[12];
+        for (int r = 0; r < 3; r++) {
+            for (int c = 0; c < 3; c++) out[4 * r + c] = m[4 * c + r];
+            for (int c = 0; c < 3; c++) out[4 * r + 3] -= out[4 * r + c] * m[4 * c + 3];
+        }
+        return new Transform(out);
+    }
+
     /** Apply this placement after the supplied placement. */
     public Transform compose(Transform before) {
         double[] b = before.m, out = new double[12];

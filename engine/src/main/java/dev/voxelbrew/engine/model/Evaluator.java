@@ -106,6 +106,23 @@ public final class Evaluator {
                     resolved.set(index, feature);
                     FeatureValidation.validate(feature);
                     if (feature instanceof Feature.Sketch s) {
+                        if (s.plane().support() != null) {
+                            var support = s.plane().support();
+                            var source = outputs.get(support.body());
+                            if (source == null)
+                                throw new ModelException(
+                                        s.id(), "Missing supporting body output " + support.body());
+                            var plane =
+                                    new Feature.Plane(
+                                            s.plane().id(),
+                                            s.plane().offsetZ(),
+                                            support.resolve(
+                                                    source.solid().planarFaces(),
+                                                    s.plane().frame()),
+                                            support);
+                            s = new Feature.Sketch(s.id(), s.profileId(), plane, s.profile());
+                            resolved.set(index, s);
+                        }
                         var earlier = planes.get(s.plane().id());
                         if (earlier != null && !earlier.equals(s.plane())) {
                             throw new ModelException(
@@ -130,38 +147,46 @@ public final class Evaluator {
                         var additionalBodies = new ArrayList<Evaluation.Body>();
                         if (sketch.profile() instanceof Feature.Rectangle r) {
                             solid =
-                                    Solid.rectanglePrism(
-                                            r.x(),
-                                            r.y(),
-                                            sketch.plane().offsetZ(),
-                                            r.width(),
-                                            r.height(),
-                                            e.distance());
+                                    place(
+                                            Solid.rectanglePrism(
+                                                    r.x(),
+                                                    r.y(),
+                                                    sketch.plane().offsetZ(),
+                                                    r.width(),
+                                                    r.height(),
+                                                    e.distance()),
+                                            sketch.plane().frame());
                         } else if (sketch.profile() instanceof Feature.Circle c) {
                             solid =
-                                    Solid.circlePrism(
-                                            c.centerX(),
-                                            c.centerY(),
-                                            sketch.plane().offsetZ(),
-                                            c.diameter(),
-                                            e.distance());
+                                    place(
+                                            Solid.circlePrism(
+                                                    c.centerX(),
+                                                    c.centerY(),
+                                                    sketch.plane().offsetZ(),
+                                                    c.diameter(),
+                                                    e.distance()),
+                                            sketch.plane().frame());
                         } else if (sketch.profile() instanceof Feature.Constrained c) {
                             var regions =
                                     dev.voxelbrew.engine.sketch.SketchProfiles.regions(
                                             c.geometry());
                             solid =
-                                    Solid.profilePrism(
-                                            regions.getFirst().profile(),
-                                            sketch.plane().offsetZ(),
-                                            e.distance());
+                                    place(
+                                            Solid.profilePrism(
+                                                    regions.getFirst().profile(),
+                                                    sketch.plane().offsetZ(),
+                                                    e.distance()),
+                                            sketch.plane().frame());
                             owned.add(solid);
                             for (int region = 1; region < regions.size(); region++) {
                                 var r = regions.get(region);
                                 var extra =
-                                        Solid.profilePrism(
-                                                r.profile(),
-                                                sketch.plane().offsetZ(),
-                                                e.distance());
+                                        place(
+                                                Solid.profilePrism(
+                                                        r.profile(),
+                                                        sketch.plane().offsetZ(),
+                                                        e.distance()),
+                                                sketch.plane().frame());
                                 owned.add(extra);
                                 String name = "body-" + r.id();
                                 var body =
@@ -227,18 +252,22 @@ public final class Evaluator {
                         if (active.get(input.id()) != input)
                             throw new ModelException(
                                     cut.id(), "body input has been superseded by a later feature");
-                        // M1 through-all is the complete Z extent normal to any XY-parallel plane.
+                        // Evaluate through-all in sketch coordinates, then restore model
+                        // coordinates.
+                        var frame = sketch.plane().frame();
+                        Solid local = input.solid();
+                        if (!frame.equals(Transform.IDENTITY)) {
+                            local = local.transformed(frame.inverse());
+                            owned.add(local);
+                        }
                         Solid solid;
                         if (sketch.profile() instanceof Feature.Circle circle) {
                             solid =
-                                    input.solid()
-                                            .cutThroughCircle(
-                                                    circle.centerX(),
-                                                    circle.centerY(),
-                                                    circle.diameter());
+                                    local.cutThroughCircle(
+                                            circle.centerX(), circle.centerY(), circle.diameter());
                         } else {
                             var constrained = (Feature.Constrained) sketch.profile();
-                            solid = input.solid();
+                            solid = local;
                             for (var region :
                                     dev.voxelbrew.engine.sketch.SketchProfiles.regions(
                                             constrained.geometry())) {
@@ -247,6 +276,10 @@ public final class Evaluator {
                             }
                         }
                         if (!owned.contains(solid)) owned.add(solid);
+                        if (!frame.equals(Transform.IDENTITY)) {
+                            solid = solid.transformed(frame);
+                            owned.add(solid);
+                        }
                         var body =
                                 new Evaluation.Body(
                                         input.id(), new Feature.BodyRef(cut.id(), "body"), solid);
@@ -297,7 +330,16 @@ public final class Evaluator {
         return sketch;
     }
 
+    private static Solid place(Solid local, Transform frame) {
+        if (frame.equals(Transform.IDENTITY)) return local;
+        try (local) {
+            return local.transformed(frame);
+        }
+    }
+
     private static List<String> references(Feature feature) {
+        if (feature instanceof Feature.Sketch s && s.plane().support() != null)
+            return List.of(s.plane().support().body().featureId());
         if (feature instanceof Feature.Extrude e) {
             return List.of(e.profile().sketchId());
         }

@@ -19,6 +19,7 @@ final class UiHelp {
 
     static String baseDescription(Translations translations, String id) {
         String key = id;
+        if (id.startsWith("choose-plane-")) return translations.text("help.choose-plane");
         if (id.startsWith("view-") && !id.startsWith("view-cube-"))
             return translations.text("help.standard-view");
         if (id.equals("menu-undo")

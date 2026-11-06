@@ -21,7 +21,7 @@ import java.util.List;
  * and writers live in the import/export projects.
  */
 public final class DocumentCodec {
-    public static final int SCHEMA_VERSION = 7;
+    public static final int SCHEMA_VERSION = 8;
     private static final byte[] MAGIC = {'J', 'C', 'A', 'D', 13, 10, 26, 10};
     private static final int HEADER = 44;
     private static final int MAX_PAYLOAD = 16 * 1024 * 1024;
@@ -146,9 +146,7 @@ public final class DocumentCodec {
         return switch (feature.getDefinitionCase()) {
             case SKETCH -> {
                 var sketch = feature.getSketch();
-                var plane =
-                        new Feature.Plane(
-                                sketch.getPlane().getId(), sketch.getPlane().getOffsetZ());
+                var plane = plane(sketch.getPlane());
                 Feature.Profile profile =
                         switch (sketch.getProfileCase()) {
                             case RECTANGLE -> {
@@ -346,10 +344,7 @@ public final class DocumentCodec {
             var sketch =
                     DocumentProto.Sketch.newBuilder()
                             .setProfileId(s.profileId())
-                            .setPlane(
-                                    DocumentProto.Plane.newBuilder()
-                                            .setId(s.plane().id())
-                                            .setOffsetZ(s.plane().offsetZ()));
+                            .setPlane(plane(s.plane()));
             if (s.profile() instanceof Feature.Rectangle r) {
                 sketch.setRectangle(
                         DocumentProto.Rectangle.newBuilder()
@@ -403,6 +398,50 @@ public final class DocumentCodec {
                                 .setPayload(
                                         com.google.protobuf.ByteString.copyFrom(custom.payload())));
             } else throw new IllegalArgumentException("Unsupported feature " + feature.id());
+        }
+        return out.build();
+    }
+
+    private static Feature.Plane plane(DocumentProto.Plane value) {
+        var frame =
+                value.getFrameCount() == 0
+                        ? dev.voxelbrew.engine.model.Transform.IDENTITY
+                        : new dev.voxelbrew.engine.model.Transform(
+                                value.getFrameList().stream()
+                                        .mapToDouble(Double::doubleValue)
+                                        .toArray());
+        dev.voxelbrew.engine.model.FaceSupport support = null;
+        if (value.hasSupport()) {
+            var s = value.getSupport();
+            support =
+                    new dev.voxelbrew.engine.model.FaceSupport(
+                            new Feature.BodyRef(
+                                    s.getBody().getFeatureId(), s.getBody().getOutputName()),
+                            s.getNormalX(),
+                            s.getNormalY(),
+                            s.getNormalZ(),
+                            s.getRank(),
+                            s.getCount());
+        }
+        return new Feature.Plane(value.getId(), value.getOffsetZ(), frame, support);
+    }
+
+    private static DocumentProto.Plane plane(Feature.Plane value) {
+        var out = DocumentProto.Plane.newBuilder().setId(value.id()).setOffsetZ(value.offsetZ());
+        for (double coordinate : value.frame().matrix()) out.addFrame(coordinate);
+        if (value.support() != null) {
+            var s = value.support();
+            out.setSupport(
+                    DocumentProto.FaceSupport.newBuilder()
+                            .setBody(
+                                    DocumentProto.BodyRef.newBuilder()
+                                            .setFeatureId(s.body().featureId())
+                                            .setOutputName(s.body().outputName()))
+                            .setNormalX(s.nx())
+                            .setNormalY(s.ny())
+                            .setNormalZ(s.nz())
+                            .setRank(s.rank())
+                            .setCount(s.count()));
         }
         return out.build();
     }

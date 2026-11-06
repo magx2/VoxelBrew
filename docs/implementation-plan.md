@@ -142,6 +142,10 @@ inspect it through CLI, and exercise spline curvature and polygons through
 Robot. Run full Windows and Ubuntu gates; preserve both palettes and reports.
 See [M7 evidence](acceptance/M7.md) and [the workflow](sketch-constraints.md).
 
+The viewport plane-selection follow-up extends this workflow to XY, XZ, YZ and
+analytic flat body faces, with saved local frames and repairable plane supports.
+See [sketch planes](sketch-planes.md) and [qualification](acceptance/sketch-planes.md).
+
 ### M8 — Expanded 2D sketch geometry
 
 Audit Autodesk's current 2D sketch geometry families and implement the missing

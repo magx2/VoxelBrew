@@ -73,6 +73,10 @@ final class NativeKernel {
 
     static native long[] split(long body, double nx, double ny, double nz, double offset);
 
+    static native long transform(long body, double[] matrix);
+
+    static native double[] planarFaces(long body);
+
     static native double volume(long body);
 
     static native double[] bounds(long body);

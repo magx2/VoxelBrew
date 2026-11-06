@@ -33,6 +33,171 @@ import org.junit.jupiter.api.io.TempDir;
 
 /** Actual JavaFX windows, rendering, picking, keyboard input and mouse gestures on both OSes. */
 class WorkbenchUiTest {
+    @Test
+    void sketchPlanePickerRejectsCurvedFacesAndObsoleteDocumentRevisions() throws Exception {
+        ready();
+        click("fit");
+        var session = new ModelSession(CadDocument.empty());
+        session.add(
+                new Feature.Sketch(
+                        "round",
+                        "profile",
+                        Feature.Plane.origin("XY"),
+                        new Feature.Circle(40, 30, 20)));
+        session.add(
+                new Feature.Extrude("cylinder", new Feature.ProfileRef("round", "profile"), 15));
+        var file = directory.resolve("curved support.jcad");
+        DocumentWriter.save(session.document(), file, false);
+        open(file);
+        var before = fx(() -> workbench.controller().snapshot());
+        click("constrained-sketch");
+        choice("standard-view", 2);
+        modelClick(40, 20, 8);
+        assertNull(fx(() -> stage.getScene().lookup("#sketch-editor")));
+        assertNotNull(fx(() -> node("#sketch-plane-hint")));
+        assertEquals(before, fx(() -> workbench.controller().snapshot()));
+        // An asynchronous external change must invalidate all picks, including origin targets.
+        fx(
+                () -> {
+                    workbench.controller().edit("cylinder", "distance", 20);
+                    return null;
+                });
+        ready();
+        assertNull(fx(() -> workbench.lookup("#sketch-plane-hint")));
+        assertNull(
+                fx(
+                        () ->
+                                ((SubScene) node("#viewport-scene"))
+                                        .getRoot()
+                                        .lookup("#sketch-plane-xy")));
+        assertEquals(2, document().features().size());
+        assertEquals(20, ((Feature.Extrude) document().features().getLast()).distance());
+    }
+
+    @Test
+    void sketchPlanePickerCreatesAllOriginOrientationsAndCancelsWithoutHistory() throws Exception {
+        ready();
+        var empty = fx(() -> workbench.controller().snapshot());
+        click("constrained-sketch");
+        assertNotNull(fx(() -> node("#sketch-plane-hint")));
+        assertNull(fx(() -> stage.getScene().lookup("#sketch-editor")));
+        fx(
+                () -> {
+                    Screenshot.save(
+                            stage.getScene(),
+                            Path.of(
+                                    System.getProperty("voxelbrew.ui.artifacts"),
+                                    "sketch-origin-planes.png"));
+                    return null;
+                });
+        key(KeyCode.ESCAPE);
+        assertEquals(empty, fx(() -> workbench.controller().snapshot()));
+        int index = 0;
+        for (String name : List.of("XY", "XZ", "YZ")) {
+            click("constrained-sketch");
+            // View perpendicular to the actual 3D pick target, then use a native mouse click.
+            choice("standard-view", ++index);
+            var pick = Feature.Plane.origin(name).frame().apply(12, 12, 0);
+            modelClick(pick[0], pick[1], pick[2]);
+            sketchReady();
+            sketchType(SketchTools.Tool.RECTANGLE_TWO_POINT);
+            sketchNumericPoint(0, 0);
+            sketchNumericPoint(20, 10);
+            click("constraint-finish");
+            ready();
+            assertEquals(
+                    Feature.Plane.origin(name),
+                    ((Feature.Sketch) document().features().getFirst()).plane());
+            click("extrude");
+            text("extrude-distance", "-5");
+            click("commit-extrusion");
+            ready();
+            assertEquals(1000, volume(), .01);
+            assertEquals(2, document().features().size());
+            var p = Feature.Plane.origin(name).frame().apply(10, 5, -2);
+            try (var result = new ModelSession(document()).evaluate()) {
+                assertTrue(result.bodies().getFirst().solid().contains(p[0], p[1], p[2]));
+            }
+            click("undo");
+            ready();
+            click("undo");
+            ready();
+            assertTrue(document().features().isEmpty());
+        }
+    }
+
+    @Test
+    void bodyFaceSketchFollowsUpstreamEditAndSupportsPlaneRepair() throws Exception {
+        rectangle(0);
+        click("extrude");
+        text("extrude-distance", "5");
+        click("commit-extrusion");
+        ready();
+        for (int palette : List.of(1, 2)) {
+            choice("appearance", palette);
+            click("constrained-sketch");
+            choice("standard-view", 1);
+            fx(
+                    () -> {
+                        robot.mouseMove(workbench.viewport().modelToScreen(new Point3D(40, 30, 5)));
+                        return null;
+                    });
+            Thread.sleep(180);
+            fx(
+                    () -> {
+                        Screenshot.save(
+                                stage.getScene(),
+                                Path.of(
+                                        System.getProperty("voxelbrew.ui.artifacts"),
+                                        "sketch-plane-picker-"
+                                                + (palette == 1 ? "light" : "dark")
+                                                + ".png"));
+                        return null;
+                    });
+            if (palette == 1) key(KeyCode.ESCAPE);
+        }
+        modelClick(40, 30, 5);
+        sketchReady();
+        sketchType(SketchTools.Tool.RECTANGLE_TWO_POINT);
+        sketchNumericPoint(30, 25);
+        sketchNumericPoint(40, 35);
+        click("constraint-finish");
+        ready();
+        var attached = (Feature.Sketch) document().features().get(2);
+        assertNotNull(attached.plane().support());
+        click("extrude");
+        text("extrude-distance", "3");
+        click("commit-extrusion");
+        ready();
+        Path saved = directory.resolve("face sketch.jcad");
+        save(saved);
+        open(saved);
+        click("history-1");
+        text("dimension-distance", "8");
+        click("apply-distance");
+        ready();
+        assertEquals(19500, volume(), .01);
+        try (var result = new ModelSession(document()).evaluate()) {
+            var boss = result.bodies().getLast().solid();
+            assertEquals(8, boss.bounds().minZ(), .001);
+            assertEquals(11, boss.bounds().maxZ(), .001);
+        }
+        click("history-2");
+        click("change-sketch-plane");
+        click("choose-plane-yz");
+        ready();
+        var repaired = (Feature.Sketch) document().features().get(2);
+        assertEquals(attached.id(), repaired.id());
+        assertEquals(attached.profile(), repaired.profile());
+        assertEquals(Feature.Plane.origin("YZ"), repaired.plane());
+        click("undo");
+        ready();
+        assertEquals(attached.plane(), ((Feature.Sketch) document().features().get(2)).plane());
+        click("redo");
+        ready();
+        assertEquals(repaired, document().features().get(2));
+    }
+
     @TempDir Path directory;
     private Stage stage;
     private Workbench workbench;
@@ -248,6 +413,7 @@ class WorkbenchUiTest {
         assertFalse(fx(workbench::isDisabled));
         assertEquals(original, document());
         click("constrained-sketch");
+        click("choose-plane-xy");
         sketchReady();
         assertFalse(fx(() -> node("#window-minimize").isDisabled()));
         click("window-close"); // Dismiss the uncommitted sketch, keeping the document open.
@@ -515,6 +681,7 @@ class WorkbenchUiTest {
                                                                 .equals("PROJEKTOWANIE 3D"))));
         closeShortcutHelp();
         click("constrained-sketch");
+        click("choose-plane-xy");
         sketchReady();
         text("constraint-plane", "=$");
         assertEquals(List.of(), completionNames());
@@ -536,6 +703,7 @@ class WorkbenchUiTest {
         assertEquals("Widok: Góra", fx(() -> node("#view-cube-top").getAccessibleText()));
         choice("appearance", 1);
         click("constrained-sketch");
+        click("choose-plane-xy");
         sketchReady();
         assertButtonDescriptions();
         assertEquals("Prostokąt", fx(() -> ((Button) node("#sketch-tool-rectangle")).getText()));
@@ -797,16 +965,19 @@ class WorkbenchUiTest {
         key(KeyCode.ESCAPE);
         hoverHelp("constrained-sketch");
         click("constrained-sketch");
+        click("choose-plane-xy");
         sketchReady();
         assertNotNull(fx(() -> node("#sketch-editor")), "Help must not consume the modeling click");
         click("constraint-cancel");
         hoverHelp("menu-file");
         click("constrained-sketch");
+        click("choose-plane-xy");
         sketchReady();
         assertNotNull(
                 fx(() -> node("#sketch-editor")), "Menu help must not cover a neighboring action");
         click("constraint-cancel");
         click("constrained-sketch");
+        click("choose-plane-xy");
         sketchReady();
         assertButtonDescriptions();
         click("constraint-cancel");
@@ -1404,6 +1575,7 @@ class WorkbenchUiTest {
 
     private void rectangleDraft(double width, double height, double offset) throws Exception {
         click("constrained-sketch");
+        click("choose-plane-xy");
         sketchReady();
         text("constraint-plane", Double.toString(offset));
         sketchType(SketchTools.Tool.RECTANGLE_TWO_POINT);
@@ -1414,6 +1586,7 @@ class WorkbenchUiTest {
 
     private void circle() throws Exception {
         click("constrained-sketch");
+        click("choose-plane-xy");
         sketchReady();
         sketchType(SketchTools.Tool.CIRCLE_CENTER);
         sketchNumericPoint(10, 10);
@@ -1574,6 +1747,7 @@ class WorkbenchUiTest {
         ready();
         var original = document();
         click("constrained-sketch");
+        click("choose-plane-xy");
         sketchReady();
         sketchType(SketchTools.Tool.RECTANGLE_TWO_POINT);
         text("constraint-plane", "=$");
@@ -1659,6 +1833,7 @@ class WorkbenchUiTest {
         assertEquals(part, document());
 
         click("constrained-sketch");
+        click("choose-plane-xy");
         sketchReady();
         text("constraint-plane", "=$foo");
         assertEquals(List.of("fooHeight", "fooWidth"), completionNames());
@@ -1770,6 +1945,7 @@ class WorkbenchUiTest {
         ready();
         choice("appearance", 2);
         click("constrained-sketch");
+        click("choose-plane-xy");
         sketchReady();
         sketchType(SketchTools.Tool.TEXT);
         text("sketch-text-content", "=\"Width: \" + 5");
@@ -1864,6 +2040,7 @@ class WorkbenchUiTest {
     void namedSketchParametersAnd3dConfigurationsDriveOneDesign() throws Exception {
         choice("appearance", 2);
         click("constrained-sketch");
+        click("choose-plane-xy");
         sketchReady();
         click("sketch-parameters");
         choice("parameter-unit", 1); // centimeters, converted to model millimeters by JSR 385
@@ -2088,6 +2265,7 @@ class WorkbenchUiTest {
     void ellipseSlotsAndConicsUseRealSketchTools() throws Exception {
         choice("appearance", 1);
         click("constrained-sketch");
+        click("choose-plane-xy");
         sketchReady();
         sketchType(SketchTools.Tool.ELLIPSE);
         sketchClick(15, 10, false);
@@ -2141,6 +2319,7 @@ class WorkbenchUiTest {
     void fitControlSplinesAndTextUseRealSketchTools() throws Exception {
         choice("appearance", 2);
         click("constrained-sketch");
+        click("choose-plane-xy");
         sketchReady();
         sketchType(SketchTools.Tool.FIT_SPLINE);
         click("sketch-closed-curve");
@@ -2224,6 +2403,7 @@ class WorkbenchUiTest {
     @Test
     void tangentCirclesAndAssociativeTextPathsUseRealControls() throws Exception {
         click("constrained-sketch");
+        click("choose-plane-xy");
         sketchReady();
         click("sketch-construction");
         click("sketch-tool-line");
@@ -2303,6 +2483,7 @@ class WorkbenchUiTest {
         assertEquals(4, fx(() -> workbench.controller().build().bodies().size()));
         var saved = document();
         click("constrained-sketch");
+        click("choose-plane-xy");
         sketchReady();
         sketchType(SketchTools.Tool.CONIC);
         sketchClick(0, 0, false);
@@ -2315,6 +2496,7 @@ class WorkbenchUiTest {
     void constrainedSketchDimensionsConflictsHistoryAndFilesUseRealControls() throws Exception {
         choice("appearance", 1);
         click("constrained-sketch");
+        click("choose-plane-xy");
         sketchReady();
         click("sketch-tool-rectangle");
         sketchClick(0, 0, false);
@@ -2432,6 +2614,7 @@ class WorkbenchUiTest {
         assertEquals((80 * 40 - 4 * Math.PI) * 8, volume(), 0.01);
         var beforeCancel = fx(() -> workbench.controller().snapshot());
         click("constrained-sketch");
+        click("choose-plane-xy");
         sketchReady();
         click("sketch-tool-line");
         sketchClick(10, 10, false);
@@ -2527,6 +2710,7 @@ class WorkbenchUiTest {
     void sketchPointDragsCurvatureAndRegularPolygonsUseRealControls() throws Exception {
         choice("appearance", 1);
         click("constrained-sketch");
+        click("choose-plane-xy");
         sketchReady();
         click("sketch-tool-line");
         sketchClick(10, 10, false);
@@ -2553,6 +2737,7 @@ class WorkbenchUiTest {
         click("constraint-cancel");
         assertTrue(document().features().isEmpty());
         click("constrained-sketch");
+        click("choose-plane-xy");
         sketchReady();
         click("sketch-tool-arc");
         sketchClick(0, 0, false);
@@ -2622,6 +2807,7 @@ class WorkbenchUiTest {
         assertTrue(volume() > 100);
         choice("appearance", 2);
         click("constrained-sketch");
+        click("choose-plane-xy");
         sketchReady();
         click("sketch-tool-polygon");
         sketchClick(30, 20, false);
@@ -2784,6 +2970,7 @@ class WorkbenchUiTest {
                 });
 
         click("constrained-sketch");
+        click("choose-plane-xy");
         sketchReady();
         var drawingView = fx(() -> workbench.viewport().orientationProperty().get());
         click("sketch-tool-rectangle");
@@ -2900,6 +3087,7 @@ class WorkbenchUiTest {
                 fx(() -> workbench.viewport().orientationProperty().get()));
         // The sketch editor owns input while the design viewport is disabled.
         click("constrained-sketch");
+        click("choose-plane-xy");
         sketchReady();
         assertTrue(fx(workbench::isDisabled));
         assertEquals(snapshot, fx(() -> workbench.controller().snapshot()));
@@ -3390,6 +3578,7 @@ class WorkbenchUiTest {
         assertEquals(empty, fx(() -> workbench.controller().snapshot()));
         assertFalse(fx(workbench::isDisabled), "R/C cannot open a standalone design tool");
         key(KeyCode.K);
+        click("choose-plane-xy");
         sketchReady();
         sketchType(SketchTools.Tool.RECTANGLE_TWO_POINT);
         sketchNumericPoint(0, 0);
@@ -3475,6 +3664,7 @@ class WorkbenchUiTest {
         key(KeyCode.ESCAPE);
         click("fit");
         key(KeyCode.K);
+        click("choose-plane-xy");
         sketchReady();
         assertEquals(
                 "0",

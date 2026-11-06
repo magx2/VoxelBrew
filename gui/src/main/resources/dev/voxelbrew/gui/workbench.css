@@ -460,3 +460,22 @@
   -fx-padding: 9 12;
   -fx-background-radius: 5;
 }
+.sketch-plane-label {
+  -fx-font-size: 12px;
+  -fx-font-weight: bold;
+  -fx-padding: 3px 7px;
+  -fx-border-width: 1.5px;
+  -fx-border-radius: 5px;
+  -fx-background-radius: 5px;
+}
+.light .sketch-plane-label {
+  -fx-background-color: rgba(255, 255, 255, 0.95);
+  -fx-text-fill: #26313c;
+}
+.dark .sketch-plane-label {
+  -fx-background-color: rgba(38, 40, 45, 0.95);
+  -fx-text-fill: #f2f3f5;
+}
+.sketch-plane-label:hover {
+  -fx-border-width: 2.5px;
+}

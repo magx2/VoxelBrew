@@ -152,7 +152,7 @@ public final class ModelSession {
                             new Feature.Sketch(
                                     sketch.id(),
                                     sketch.profileId(),
-                                    new Feature.Plane(sketch.plane().id(), value),
+                                    sketch.plane().withOffset(value),
                                     sketch.profile());
                     FeatureValidation.validate(changed);
                     next.set(i, changed);

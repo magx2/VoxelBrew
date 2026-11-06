@@ -8,6 +8,29 @@ import org.junit.jupiter.api.Test;
 
 class ViewOrientationTest {
     @Test
+    void sketchFrameConversionPreservesModelCoordinatesForAllPlanesAndArbitraryFaces() {
+        var frames = new java.util.ArrayList<dev.voxelbrew.engine.model.Transform>();
+        for (String name : new String[] {"XY", "XZ", "YZ"})
+            frames.add(dev.voxelbrew.engine.model.Feature.Plane.origin(name).frame());
+        frames.add(
+                dev.voxelbrew.engine.model.Transform.translation(3, 7, -9)
+                        .compose(dev.voxelbrew.engine.model.Transform.rotation(21, 33, 47)));
+        for (var frame : frames) {
+            var model = frame.apply(4, -8, 12);
+            assertEquals(
+                    0,
+                    Viewport.viewTransform(frame)
+                            .transform(Viewport.toView(4, -8, 12))
+                            .distance(Viewport.toView(model[0], model[1], model[2])),
+                    1e-12);
+            assertArrayEquals(
+                    new double[] {4, -8, 12},
+                    frame.inverse().apply(model[0], model[1], model[2]),
+                    1e-12);
+        }
+    }
+
+    @Test
     void allFacesEdgesAndCornersPointTowardsCameraInTheCadBasis() {
         for (int x = -1; x <= 1; x++)
             for (int y = -1; y <= 1; y++)

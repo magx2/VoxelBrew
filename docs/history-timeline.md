@@ -25,3 +25,9 @@ controls and help are available in English and Polish.
 Run the development GUI with `gradlew.bat :gui:run` on Windows or
 `./gradlew :gui:run` on Ubuntu. See [qualification](acceptance/history-timeline.md)
 for the real-window regression checks.
+
+Right-click an evaluated feature (including the last one) and choose **Delete feature**.
+Choose **Delete all after this** to keep that feature and remove its successors,
+including rolled-back operations. Right-click the marker for **Delete all before
+history line**. Each deletion is one undoable edit. Surviving dependent operations
+remain editable and report missing-reference diagnostics until repaired or removed.

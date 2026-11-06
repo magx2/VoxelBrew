@@ -90,6 +90,29 @@ public final class ModelSession {
         commit(next, printSetup, expressions);
     }
 
+    /** Deletes a range in one undoable transaction, preserving repairable surviving references. */
+    public synchronized void deleteFeatures(int from, int to) {
+        java.util.Objects.checkFromToIndex(from, to, features.size());
+        if (from == to) return;
+        int nextCursor = cursor - Math.max(0, Math.min(cursor, to) - from);
+        var removed =
+                features.subList(from, to).stream()
+                        .map(Feature::id)
+                        .collect(java.util.stream.Collectors.toSet());
+        var next = new ArrayList<>(features);
+        next.subList(from, to).clear();
+        var expressions =
+                new dev.voxelbrew.engine.parameters.ParameterSet(
+                        parameters.parameters(),
+                        parameters.configurations(),
+                        parameters.active(),
+                        parameters.bindings().stream()
+                                .filter(b -> !removed.contains(b.target().featureId()))
+                                .toList());
+        commit(next, printSetup, expressions);
+        cursor = nextCursor;
+    }
+
     public synchronized void setParameters(dev.voxelbrew.engine.parameters.ParameterSet next) {
         dev.voxelbrew.engine.parameters.FeatureDimensions.validateBindings(features, next);
         commit(features, printSetup, next);

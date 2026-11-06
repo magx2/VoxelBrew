@@ -272,6 +272,13 @@ public final class DocumentController implements AutoCloseable {
         schedule(session.document(), false);
     }
 
+    public void deleteFeatures(int from, int to) {
+        if (ioBusy || rebuilding || hasPreview())
+            throw new IllegalStateException("Wait for the current operation");
+        session.deleteFeatures(from, to);
+        schedule(session.document(), false);
+    }
+
     public void rebuild() {
         preview = null;
         schedule(session.document(), false);

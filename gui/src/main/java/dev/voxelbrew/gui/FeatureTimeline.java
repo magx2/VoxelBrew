@@ -30,6 +30,7 @@ final class FeatureTimeline extends HBox implements AutoCloseable {
     private final Translations translations;
     private final IntConsumer moveCursor;
     private final Consumer<String> select;
+    private final java.util.function.BiConsumer<Integer, Integer> delete;
     private final Function<Feature, String> name;
     private final Pane track = new Pane();
     private final Pane ticks = new Pane();
@@ -51,11 +52,13 @@ final class FeatureTimeline extends HBox implements AutoCloseable {
             Translations translations,
             IntConsumer moveCursor,
             Consumer<String> select,
-            Function<Feature, String> name) {
+            Function<Feature, String> name,
+            java.util.function.BiConsumer<Integer, Integer> delete) {
         this.translations = translations;
         this.moveCursor = moveCursor;
         this.select = select;
         this.name = name;
+        this.delete = delete;
         setId("feature-timeline");
         getStyleClass().add("timeline");
         setAlignment(Pos.CENTER_LEFT);
@@ -132,6 +135,15 @@ final class FeatureTimeline extends HBox implements AutoCloseable {
                     e.consume();
                 });
         marker.setOnMouseReleased(e -> dragging = false);
+        marker.setOnContextMenuRequested(
+                e -> {
+                    stop();
+                    var item = new MenuItem(translations.text("timeline.deleteBefore"));
+                    item.setDisable(unavailable || rebuilding || position == 0);
+                    item.setOnAction(action -> delete.accept(0, position));
+                    new ContextMenu(item).show(marker, e.getScreenX(), e.getScreenY());
+                    e.consume();
+                });
         marker.addEventFilter(
                 KeyEvent.KEY_PRESSED,
                 e -> {
@@ -259,6 +271,20 @@ final class FeatureTimeline extends HBox implements AutoCloseable {
             var feature = definitions.get(i);
             var button = new Button(name.apply(feature), featureIcon(feature));
             button.setId("history-" + i);
+            final int index = i;
+            button.setOnContextMenuRequested(
+                    e -> {
+                        stop();
+                        var remove = new MenuItem(translations.text("timeline.deleteFeature"));
+                        remove.setDisable(unavailable || rebuilding || index >= position);
+                        remove.setOnAction(action -> delete.accept(index, index + 1));
+                        var after = new MenuItem(translations.text("timeline.deleteAfter"));
+                        after.setDisable(
+                                unavailable || rebuilding || index + 1 == definitions.size());
+                        after.setOnAction(action -> delete.accept(index + 1, definitions.size()));
+                        new ContextMenu(remove, after).show(button, e.getScreenX(), e.getScreenY());
+                        e.consume();
+                    });
             button.setContentDisplay(ContentDisplay.GRAPHIC_ONLY);
             button.setAccessibleText((i + 1) + ". " + name.apply(feature));
             button.setOnAction(

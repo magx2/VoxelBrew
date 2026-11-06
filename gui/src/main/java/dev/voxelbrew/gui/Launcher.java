@@ -12,9 +12,8 @@ public final class Launcher {
     @SuppressWarnings("try") // The update helper waits until all app instances release this lease.
     public static void main(String[] args) throws java.io.IOException {
         dev.voxelbrew.util.logging.Logging.initialize("gui");
-        try (var lease =
-                dev.voxelbrew.util.update.ApplicationImage.running(
-                        dev.voxelbrew.util.update.ApplicationImage.Component.GUI)) {
+        try (var lease = dev.voxelbrew.util.update.ApplicationImage.running(
+                dev.voxelbrew.util.update.ApplicationImage.Component.GUI)) {
             if (args.length == 1 && args[0].equals("--version")) {
                 System.out.println("VoxelBrew " + dev.voxelbrew.util.update.BuildVersion.current());
                 return;
@@ -33,18 +32,15 @@ public final class Launcher {
         configureGraphics();
         if (System.getProperty("voxelbrew.native.path") == null) {
             try {
-                Path jar =
-                        Path.of(
-                                Launcher.class
-                                        .getProtectionDomain()
-                                        .getCodeSource()
-                                        .getLocation()
-                                        .toURI());
+                Path jar = Path.of(Launcher.class
+                        .getProtectionDomain()
+                        .getCodeSource()
+                        .getLocation()
+                        .toURI());
                 Path runtime = jar.getParent().resolve("native");
                 if (!Files.isDirectory(runtime))
                     runtime = jar.getParent().getParent().resolve("native");
-                if (Files.isDirectory(runtime))
-                    System.setProperty("voxelbrew.native.path", runtime.toString());
+                if (Files.isDirectory(runtime)) System.setProperty("voxelbrew.native.path", runtime.toString());
             } catch (java.net.URISyntaxException ignored) {
                 /* Kernel supplies the load diagnostic. */
             }
@@ -56,8 +52,7 @@ public final class Launcher {
         // WSLg's llvmpipe OpenGL implementation supports 3D but is not on Prism's hardware
         // whitelist.
         if (System.getenv("WSL_DISTRO_NAME") != null) {
-            if (System.getProperty("prism.forceGPU") == null)
-                System.setProperty("prism.forceGPU", "true");
+            if (System.getProperty("prism.forceGPU") == null) System.setProperty("prism.forceGPU", "true");
             if (System.getProperty("prism.order") == null) System.setProperty("prism.order", "es2");
         }
     }

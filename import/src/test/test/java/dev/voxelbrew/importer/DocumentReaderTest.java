@@ -11,7 +11,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 class DocumentReaderTest {
-    @TempDir Path directory;
+    @TempDir
+    Path directory;
 
     @Test
     void opensCurrentReferenceThroughTheImportModule() throws Exception {
@@ -22,12 +23,11 @@ class DocumentReaderTest {
         var document = DocumentReader.load(file);
         assertEquals(4, document.features().size());
         assertEquals(4, document.cursor());
-        var extrusion =
-                document.features().stream()
-                        .filter(Feature.Extrude.class::isInstance)
-                        .map(Feature.Extrude.class::cast)
-                        .findFirst()
-                        .orElseThrow();
+        var extrusion = document.features().stream()
+                .filter(Feature.Extrude.class::isInstance)
+                .map(Feature.Extrude.class::cast)
+                .findFirst()
+                .orElseThrow();
         assertEquals(8, extrusion.distance());
         assertTrue(document.features().getLast() instanceof Feature.ThroughCut);
     }
@@ -49,10 +49,9 @@ class DocumentReaderTest {
         }
         data[data.length - 1] ^= 1;
         Files.write(file, data);
-        assertTrue(
-                assertThrows(DocumentFormatException.class, () -> DocumentReader.load(file))
-                        .getMessage()
-                        .contains("checksum"));
+        assertTrue(assertThrows(DocumentFormatException.class, () -> DocumentReader.load(file))
+                .getMessage()
+                .contains("checksum"));
         assertArrayEquals(data, Files.readAllBytes(file));
     }
 }

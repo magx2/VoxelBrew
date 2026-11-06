@@ -12,8 +12,7 @@ import javax.measure.quantity.Temperature;
 public record PrintProfile(Printer printer, Material material, ProcessSettings process) {
     public record Point(double x, double y) {
         public Point {
-            if (!Double.isFinite(x) || !Double.isFinite(y))
-                throw new IllegalArgumentException("nonfinite bed point");
+            if (!Double.isFinite(x) || !Double.isFinite(y)) throw new IllegalArgumentException("nonfinite bed point");
         }
     }
 
@@ -42,23 +41,14 @@ public record PrintProfile(Printer printer, Material material, ProcessSettings p
             bed = List.copyOf(bed);
             excludedZones = excludedZones.stream().map(List::copyOf).toList();
             if (bed.size() < 3 || excludedZones.stream().anyMatch(p -> p.size() < 3))
-                throw new IllegalArgumentException(
-                        "bed and exclusion polygons require at least three points");
-            if (!Double.isFinite(nozzleMm)
-                    || nozzleMm <= 0
-                    || !Double.isFinite(usableHeight)
-                    || usableHeight <= 0)
+                throw new IllegalArgumentException("bed and exclusion polygons require at least three points");
+            if (!Double.isFinite(nozzleMm) || nozzleMm <= 0 || !Double.isFinite(usableHeight) || usableHeight <= 0)
                 throw new IllegalArgumentException("invalid nozzle or build height");
         }
     }
 
-    public record Material(
-            String id, double filamentDiameter, double nozzleTemperature, double bedTemperature) {
-        public Material(
-                String id,
-                Quantity<Length> diameter,
-                Quantity<Temperature> nozzle,
-                Quantity<Temperature> bed) {
+    public record Material(String id, double filamentDiameter, double nozzleTemperature, double bedTemperature) {
+        public Material(String id, Quantity<Length> diameter, Quantity<Temperature> nozzle, Quantity<Temperature> bed) {
             this(id, value(diameter, MILLIMETRE), value(nozzle, CELSIUS), value(bed, CELSIUS));
         }
 
@@ -82,8 +72,7 @@ public record PrintProfile(Printer printer, Material material, ProcessSettings p
                     || !Double.isFinite(nozzleTemperature)
                     || nozzleTemperature <= 0
                     || !Double.isFinite(bedTemperature)
-                    || bedTemperature < 0)
-                throw new IllegalArgumentException("Invalid material profile");
+                    || bedTemperature < 0) throw new IllegalArgumentException("Invalid material profile");
         }
     }
 
@@ -96,38 +85,22 @@ public record PrintProfile(Printer printer, Material material, ProcessSettings p
     public static PrintProfile resolve(PrintSetup setup) {
         if (!setup.printerId().equals("generic-marlin-200-0.4"))
             throw new IllegalArgumentException("Missing printer profile: " + setup.printerId());
-        var printer =
-                new Printer(
-                        setup.printerId(),
-                        "Generic Marlin 200 × 200 × 200 mm / 0.4 mm",
-                        0.4,
-                        List.of(
-                                new Point(0, 0),
-                                new Point(200, 0),
-                                new Point(200, 200),
-                                new Point(0, 200)),
-                        List.of(),
-                        200,
-                        "marlin2",
-                        "gcode");
-        var material =
-                switch (setup.materialId()) {
-                    case "PLA" ->
-                            new Material(
-                                    "PLA",
-                                    quantity(1.75, MILLIMETRE),
-                                    quantity(210, CELSIUS),
-                                    quantity(60, CELSIUS));
-                    case "PETG" ->
-                            new Material(
-                                    "PETG",
-                                    quantity(1.75, MILLIMETRE),
-                                    quantity(240, CELSIUS),
-                                    quantity(80, CELSIUS));
-                    default ->
-                            throw new IllegalArgumentException(
-                                    "Missing material profile: " + setup.materialId());
-                };
+        var printer = new Printer(
+                setup.printerId(),
+                "Generic Marlin 200 × 200 × 200 mm / 0.4 mm",
+                0.4,
+                List.of(new Point(0, 0), new Point(200, 0), new Point(200, 200), new Point(0, 200)),
+                List.of(),
+                200,
+                "marlin2",
+                "gcode");
+        var material = switch (setup.materialId()) {
+            case "PLA" ->
+                new Material("PLA", quantity(1.75, MILLIMETRE), quantity(210, CELSIUS), quantity(60, CELSIUS));
+            case "PETG" ->
+                new Material("PETG", quantity(1.75, MILLIMETRE), quantity(240, CELSIUS), quantity(80, CELSIUS));
+            default -> throw new IllegalArgumentException("Missing material profile: " + setup.materialId());
+        };
         return new PrintProfile(printer, material, setup.process());
     }
 }

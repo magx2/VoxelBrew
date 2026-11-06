@@ -14,11 +14,7 @@ import javafx.stage.Window;
 final class LanguageDialog {
     private LanguageDialog() {}
 
-    static void show(
-            Window owner,
-            Translations translations,
-            UserConfiguration configuration,
-            ExecutorService worker) {
+    static void show(Window owner, Translations translations, UserConfiguration configuration, ExecutorService worker) {
         var dialog = new Dialog<Void>();
         dialog.setTitle(translations.text("language.title"));
         var choice = new ComboBox<String>();
@@ -33,9 +29,7 @@ final class LanguageDialog {
             choice.setValue(
                     saved.isEmpty() || saved.equalsIgnoreCase("system")
                             ? "system"
-                            : Locale.forLanguageTag(saved).getLanguage().equals("pl")
-                                    ? "pl"
-                                    : "en");
+                            : Locale.forLanguageTag(saved).getLanguage().equals("pl") ? "pl" : "en");
         } catch (IOException failure) {
             choice.setValue("en");
             message.setText(translations.text("language.readFailed", failure.getMessage()));
@@ -43,31 +37,26 @@ final class LanguageDialog {
         var save = new Button(translations.text("action.save"));
         save.setId("language-save");
         UiHelp.install(save, translations);
-        save.setOnAction(
-                event -> {
-                    String language = choice.getValue();
-                    save.setDisable(true);
-                    choice.setDisable(true);
-                    worker.execute(
-                            () -> {
-                                String result;
-                                try {
-                                    configuration.set("language", language);
-                                    result = translations.text("language.saved");
-                                } catch (IOException failure) {
-                                    result =
-                                            translations.text(
-                                                    "language.saveFailed", failure.getMessage());
-                                }
-                                String status = result;
-                                Platform.runLater(
-                                        () -> {
-                                            message.setText(status);
-                                            save.setDisable(false);
-                                            choice.setDisable(false);
-                                        });
-                            });
+        save.setOnAction(event -> {
+            String language = choice.getValue();
+            save.setDisable(true);
+            choice.setDisable(true);
+            worker.execute(() -> {
+                String result;
+                try {
+                    configuration.set("language", language);
+                    result = translations.text("language.saved");
+                } catch (IOException failure) {
+                    result = translations.text("language.saveFailed", failure.getMessage());
+                }
+                String status = result;
+                Platform.runLater(() -> {
+                    message.setText(status);
+                    save.setDisable(false);
+                    choice.setDisable(false);
                 });
+            });
+        });
         dialog.getDialogPane().setContent(new VBox(10, choice, message, save));
         dialog.getDialogPane().getButtonTypes().setAll(ButtonType.CLOSE);
         dialog.getDialogPane().lookupButton(ButtonType.CLOSE).setId("language-close");

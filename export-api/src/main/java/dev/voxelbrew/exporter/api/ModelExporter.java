@@ -11,10 +11,6 @@ public interface ModelExporter {
 
     ExporterDescriptor descriptor();
 
-    void write(
-            ModelView model,
-            MeshOptions meshOptions,
-            Map<String, String> options,
-            OutputStream output)
+    void write(ModelView model, MeshOptions meshOptions, Map<String, String> options, OutputStream output)
             throws IOException;
 }

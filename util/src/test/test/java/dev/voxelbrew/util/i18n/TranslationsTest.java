@@ -10,7 +10,9 @@ import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.io.TempDir;
 
 class TranslationsTest {
-    @TempDir Path directory;
+    @TempDir
+    Path directory;
+
     private Locale previousDefault, previousDisplay, previousFormat;
 
     @BeforeEach
@@ -49,8 +51,7 @@ class TranslationsTest {
     }
 
     @Test
-    void missingUnsupportedAndInvalidLanguagesFallBackWhileSavedChoicesOverrideSystem()
-            throws Exception {
+    void missingUnsupportedAndInvalidLanguagesFallBackWhileSavedChoicesOverrideSystem() throws Exception {
         var config = new UserConfiguration(directory.resolve("config.properties"));
         Locale.setDefault(Locale.forLanguageTag("pl-PL"));
         for (var unsupported : List.of(Locale.ROOT, Locale.GERMAN, Locale.JAPANESE)) {
@@ -77,19 +78,18 @@ class TranslationsTest {
         var logger = Logger.getLogger(Translations.class.getName());
         var previousLevel = logger.getLevel();
         boolean previousParents = logger.getUseParentHandlers();
-        var capture =
-                new Handler() {
-                    @Override
-                    public void publish(LogRecord record) {
-                        records.add(record);
-                    }
+        var capture = new Handler() {
+            @Override
+            public void publish(LogRecord record) {
+                records.add(record);
+            }
 
-                    @Override
-                    public void flush() {}
+            @Override
+            public void flush() {}
 
-                    @Override
-                    public void close() {}
-                };
+            @Override
+            public void close() {}
+        };
         logger.setLevel(Level.INFO);
         logger.setUseParentHandlers(false);
         logger.addHandler(capture);
@@ -106,11 +106,10 @@ class TranslationsTest {
             Translations.configured(config);
             config.set("language", "not_a_tag");
             Translations.configured(config);
-            var messages =
-                    records.stream()
-                            .filter(r -> r.getLevel() == Level.INFO)
-                            .map(LogRecord::getMessage)
-                            .toList();
+            var messages = records.stream()
+                    .filter(r -> r.getLevel() == Level.INFO)
+                    .map(LogRecord::getMessage)
+                    .toList();
             assertEquals(5, messages.size());
             assertTrue(messages.get(0).contains("language pl from system display locale (pl-PL)"));
             assertTrue(messages.get(1).contains("language en from saved language preference (en)"));
@@ -137,9 +136,7 @@ class TranslationsTest {
             assertEquals("Open…", new Translations(Locale.JAPANESE).text("action.open"));
             assertEquals(Locale.ENGLISH, new Translations(Locale.JAPANESE).locale());
             assertEquals("Widok: Góra", polish.text("view.accessible", "Góra"));
-            assertEquals(
-                    "Provider-owned caption",
-                    polish.textOrDefault("external.caption", "Provider-owned caption"));
+            assertEquals("Provider-owned caption", polish.textOrDefault("external.caption", "Provider-owned caption"));
             assertEquals("Otwórz…", polish.textOrDefault("action.open", "ignored"));
             assertThrows(MissingResourceException.class, () -> polish.text("missing.key"));
         } finally {
@@ -148,8 +145,7 @@ class TranslationsTest {
     }
 
     @Test
-    void configurationSelectsLanguageAndEveryCatalogHasTheSameKeysAndValidFormats()
-            throws Exception {
+    void configurationSelectsLanguageAndEveryCatalogHasTheSameKeysAndValidFormats() throws Exception {
         var config = new UserConfiguration(directory.resolve("config.properties"));
         config.set("language", "en");
         assertEquals("Save", Translations.configured(config).text("action.save"));
@@ -164,22 +160,16 @@ class TranslationsTest {
         var translated = new Properties();
         try (var base = Translations.class.getResourceAsStream("messages_en.properties");
                 var local = Translations.class.getResourceAsStream("messages_pl.properties")) {
-            keys.load(
-                    new java.io.InputStreamReader(
-                            Objects.requireNonNull(base), java.nio.charset.StandardCharsets.UTF_8));
-            translated.load(
-                    new java.io.InputStreamReader(
-                            Objects.requireNonNull(local),
-                            java.nio.charset.StandardCharsets.UTF_8));
+            keys.load(new java.io.InputStreamReader(
+                    Objects.requireNonNull(base), java.nio.charset.StandardCharsets.UTF_8));
+            translated.load(new java.io.InputStreamReader(
+                    Objects.requireNonNull(local), java.nio.charset.StandardCharsets.UTF_8));
         }
         assertEquals(keys.keySet(), translated.keySet());
         for (String key : keys.stringPropertyNames()) {
             assertFalse(english.text(key, "test").isBlank());
             assertFalse(polish.text(key, "test").isBlank());
-            assertEquals(
-                    placeholders(keys.getProperty(key)),
-                    placeholders(translated.getProperty(key)),
-                    key);
+            assertEquals(placeholders(keys.getProperty(key)), placeholders(translated.getProperty(key)), key);
         }
     }
 
@@ -191,8 +181,7 @@ class TranslationsTest {
     }
 
     @Test
-    void configuredCatalogsAreIndependentAndOnlyNewInstancesReadPreferenceChanges()
-            throws Exception {
+    void configuredCatalogsAreIndependentAndOnlyNewInstancesReadPreferenceChanges() throws Exception {
         var config = new UserConfiguration(directory.resolve("config.properties"));
         config.set("language", "en");
         var english = Translations.configured(config);

@@ -30,10 +30,8 @@ final class WindowFrame extends BorderPane {
     private final Button maximize;
     private final javafx.beans.value.ChangeListener<Boolean> windowState =
             (observable, before, after) -> updateMaximize();
-    private final javafx.beans.value.ChangeListener<Boolean> windowFocus =
-            (observable, before, focused) ->
-                    pseudoClassStateChanged(
-                            javafx.css.PseudoClass.getPseudoClass("inactive"), !focused);
+    private final javafx.beans.value.ChangeListener<Boolean> windowFocus = (observable, before, focused) ->
+            pseudoClassStateChanged(javafx.css.PseudoClass.getPseudoClass("inactive"), !focused);
     private Rectangle2D restoreBounds, pressedBounds;
     private double pressX, pressY, dragOffsetX, dragOffsetY;
     private int resizeEdges;
@@ -66,66 +64,53 @@ final class WindowFrame extends BorderPane {
         header.addEventHandler(MouseEvent.MOUSE_PRESSED, this::beginMove);
         header.addEventHandler(MouseEvent.MOUSE_DRAGGED, this::move);
         header.addEventHandler(MouseEvent.MOUSE_RELEASED, e -> moving = false);
-        header.addEventHandler(
-                MouseEvent.MOUSE_CLICKED,
-                e -> {
-                    if (e.getButton() == MouseButton.PRIMARY
-                            && e.getClickCount() == 2
-                            && e.isStillSincePress()
-                            && dragTarget(e.getTarget())) {
-                        toggleMaximize();
-                        e.consume();
-                    }
-                });
+        header.addEventHandler(MouseEvent.MOUSE_CLICKED, e -> {
+            if (e.getButton() == MouseButton.PRIMARY
+                    && e.getClickCount() == 2
+                    && e.isStillSincePress()
+                    && dragTarget(e.getTarget())) {
+                toggleMaximize();
+                e.consume();
+            }
+        });
         addEventFilter(MouseEvent.MOUSE_MOVED, e -> setCursor(resizeCursor(edges(e))));
-        addEventFilter(
-                MouseEvent.MOUSE_EXITED,
-                e -> {
-                    if (resizeEdges == 0) setCursor(Cursor.DEFAULT);
-                });
-        addEventFilter(
-                MouseEvent.MOUSE_PRESSED,
-                e -> {
-                    if (e.getButton() != MouseButton.PRIMARY) return;
-                    resizeEdges = edges(e);
-                    if (resizeEdges == 0) return;
-                    pressedBounds = bounds();
-                    pressX = e.getScreenX();
-                    pressY = e.getScreenY();
-                    e.consume();
-                });
-        addEventFilter(
-                MouseEvent.MOUSE_DRAGGED,
-                e -> {
-                    if (resizeEdges == 0 || !e.isPrimaryButtonDown()) return;
-                    apply(
-                            resize(
-                                    pressedBounds,
-                                    resizeEdges,
-                                    e.getScreenX() - pressX,
-                                    e.getScreenY() - pressY,
-                                    stage.getMinWidth(),
-                                    stage.getMinHeight(),
-                                    stage.getMaxWidth(),
-                                    stage.getMaxHeight()));
-                    e.consume();
-                });
-        addEventFilter(
-                MouseEvent.MOUSE_RELEASED,
-                e -> {
-                    if (resizeEdges == 0) return;
-                    resizeEdges = 0;
-                    setCursor(Cursor.DEFAULT);
-                    e.consume();
-                });
-        addEventFilter(
-                KeyEvent.KEY_PRESSED,
-                e -> {
-                    if (e.isAltDown() && e.getCode() == KeyCode.F4) {
-                        e.consume();
-                        requestClose();
-                    }
-                });
+        addEventFilter(MouseEvent.MOUSE_EXITED, e -> {
+            if (resizeEdges == 0) setCursor(Cursor.DEFAULT);
+        });
+        addEventFilter(MouseEvent.MOUSE_PRESSED, e -> {
+            if (e.getButton() != MouseButton.PRIMARY) return;
+            resizeEdges = edges(e);
+            if (resizeEdges == 0) return;
+            pressedBounds = bounds();
+            pressX = e.getScreenX();
+            pressY = e.getScreenY();
+            e.consume();
+        });
+        addEventFilter(MouseEvent.MOUSE_DRAGGED, e -> {
+            if (resizeEdges == 0 || !e.isPrimaryButtonDown()) return;
+            apply(resize(
+                    pressedBounds,
+                    resizeEdges,
+                    e.getScreenX() - pressX,
+                    e.getScreenY() - pressY,
+                    stage.getMinWidth(),
+                    stage.getMinHeight(),
+                    stage.getMaxWidth(),
+                    stage.getMaxHeight()));
+            e.consume();
+        });
+        addEventFilter(MouseEvent.MOUSE_RELEASED, e -> {
+            if (resizeEdges == 0) return;
+            resizeEdges = 0;
+            setCursor(Cursor.DEFAULT);
+            e.consume();
+        });
+        addEventFilter(KeyEvent.KEY_PRESSED, e -> {
+            if (e.isAltDown() && e.getCode() == KeyCode.F4) {
+                e.consume();
+                requestClose();
+            }
+        });
         updateMaximize();
     }
 
@@ -160,12 +145,9 @@ final class WindowFrame extends BorderPane {
             // Client-side maximize also works on WSL/Xvfb without a window manager.
             // Visual bounds keep the taskbar/dock accessible on the current monitor.
             var screen =
-                    Screen.getScreensForRectangle(
-                                    stage.getX(), stage.getY(), stage.getWidth(), stage.getHeight())
+                    Screen.getScreensForRectangle(stage.getX(), stage.getY(), stage.getWidth(), stage.getHeight())
                             .stream()
-                            .max(
-                                    java.util.Comparator.comparingDouble(
-                                            s -> intersection(bounds(), s.getBounds())))
+                            .max(java.util.Comparator.comparingDouble(s -> intersection(bounds(), s.getBounds())))
                             .orElse(Screen.getPrimary());
             apply(screen.getVisualBounds());
         }
@@ -174,8 +156,7 @@ final class WindowFrame extends BorderPane {
 
     private static double intersection(Rectangle2D a, Rectangle2D b) {
         return Math.max(0, Math.min(a.getMaxX(), b.getMaxX()) - Math.max(a.getMinX(), b.getMinX()))
-                * Math.max(
-                        0, Math.min(a.getMaxY(), b.getMaxY()) - Math.max(a.getMinY(), b.getMinY()));
+                * Math.max(0, Math.min(a.getMaxY(), b.getMaxY()) - Math.max(a.getMinY(), b.getMinY()));
     }
 
     private void restore() {
@@ -187,8 +168,7 @@ final class WindowFrame extends BorderPane {
 
     private void updateMaximize() {
         boolean restored = !maximized();
-        ((SVGPath) maximize.getGraphic())
-                .setContent(restored ? "M2 2 H12 V12 H2 Z" : "M4 1 H13 V10 M1 4 H10 V13 H1 Z");
+        ((SVGPath) maximize.getGraphic()).setContent(restored ? "M2 2 H12 V12 H2 Z" : "M4 1 H13 V10 M1 4 H10 V13 H1 Z");
         String help = translations.text(restored ? "help.window-maximize" : "help.window-restore");
         maximize.setAccessibleText(help);
         UiHelp.describe(maximize, help);
@@ -204,9 +184,7 @@ final class WindowFrame extends BorderPane {
     }
 
     private void beginMove(MouseEvent event) {
-        if (event.getButton() != MouseButton.PRIMARY
-                || stage.isFullScreen()
-                || !dragTarget(event.getTarget())) return;
+        if (event.getButton() != MouseButton.PRIMARY || stage.isFullScreen() || !dragTarget(event.getTarget())) return;
         moving = true;
         pressedBounds = bounds();
         pressX = event.getScreenX();
@@ -242,8 +220,7 @@ final class WindowFrame extends BorderPane {
     private int edges(MouseEvent event) {
         if (maximized() || stage.isFullScreen() || !stage.isResizable()) return 0;
         double x = event.getSceneX(), y = event.getSceneY();
-        return (x < 6 ? LEFT : x > getWidth() - 6 ? RIGHT : 0)
-                | (y < 6 ? TOP : y > getHeight() - 6 ? BOTTOM : 0);
+        return (x < 6 ? LEFT : x > getWidth() - 6 ? RIGHT : 0) | (y < 6 ? TOP : y > getHeight() - 6 ? BOTTOM : 0);
     }
 
     private static Cursor resizeCursor(int edges) {
@@ -269,18 +246,10 @@ final class WindowFrame extends BorderPane {
             double minHeight,
             double maxWidth,
             double maxHeight) {
-        double width =
-                Math.clamp(
-                        start.getWidth()
-                                + ((edges & LEFT) != 0 ? -dx : (edges & RIGHT) != 0 ? dx : 0),
-                        minWidth,
-                        maxWidth);
-        double height =
-                Math.clamp(
-                        start.getHeight()
-                                + ((edges & TOP) != 0 ? -dy : (edges & BOTTOM) != 0 ? dy : 0),
-                        minHeight,
-                        maxHeight);
+        double width = Math.clamp(
+                start.getWidth() + ((edges & LEFT) != 0 ? -dx : (edges & RIGHT) != 0 ? dx : 0), minWidth, maxWidth);
+        double height = Math.clamp(
+                start.getHeight() + ((edges & TOP) != 0 ? -dy : (edges & BOTTOM) != 0 ? dy : 0), minHeight, maxHeight);
         return new Rectangle2D(
                 (edges & LEFT) != 0 ? start.getMaxX() - width : start.getMinX(),
                 (edges & TOP) != 0 ? start.getMaxY() - height : start.getMinY(),
@@ -289,9 +258,7 @@ final class WindowFrame extends BorderPane {
     }
 
     static Parent content(Scene scene) {
-        return scene.getRoot() instanceof WindowFrame frame
-                ? (Parent) frame.getCenter()
-                : scene.getRoot();
+        return scene.getRoot() instanceof WindowFrame frame ? (Parent) frame.getCenter() : scene.getRoot();
     }
 
     void close() {

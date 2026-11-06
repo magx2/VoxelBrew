@@ -24,9 +24,7 @@ final class GuiModule {
     }
 
     @Provides
-    static Function<
-                    dev.voxelbrew.engine.sketch.SketchGeometry,
-                    dev.voxelbrew.engine.sketch.SketchSolver.Result>
+    static Function<dev.voxelbrew.engine.sketch.SketchGeometry, dev.voxelbrew.engine.sketch.SketchSolver.Result>
             sketchSolver() {
         return dev.voxelbrew.engine.sketch.SketchSolver::solve;
     }

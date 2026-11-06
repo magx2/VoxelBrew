@@ -12,22 +12,20 @@ final class UiText {
     private UiText() {}
 
     static <T> void choices(ComboBox<T> control, Function<T, String> display) {
-        control.setConverter(
-                new StringConverter<>() {
-                    @Override
-                    public String toString(T value) {
-                        return value == null ? "" : display.apply(value);
-                    }
+        control.setConverter(new StringConverter<>() {
+            @Override
+            public String toString(T value) {
+                return value == null ? "" : display.apply(value);
+            }
 
-                    @Override
-                    public T fromString(String value) {
-                        throw new UnsupportedOperationException("Read-only choices");
-                    }
-                });
+            @Override
+            public T fromString(String value) {
+                throw new UnsupportedOperationException("Read-only choices");
+            }
+        });
     }
 
-    static <E extends Enum<E>> void enums(
-            ComboBox<E> control, Translations translations, String prefix) {
+    static <E extends Enum<E>> void enums(ComboBox<E> control, Translations translations, String prefix) {
         choices(control, value -> translations.text(prefix + value.name()));
     }
 

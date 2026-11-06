@@ -16,9 +16,14 @@ import lombok.RequiredArgsConstructor;
 @Module
 @RequiredArgsConstructor
 public final class FileIoModule {
-    @NonNull private final DocumentSource source;
-    @NonNull private final DocumentSink sink;
-    @NonNull private final GcodeSource gcode;
+    @NonNull
+    private final DocumentSource source;
+
+    @NonNull
+    private final DocumentSink sink;
+
+    @NonNull
+    private final GcodeSource gcode;
 
     public FileIoModule() {
         this(DocumentReader::load, DocumentWriter::save, GcodeReader::read);

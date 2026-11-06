@@ -34,8 +34,7 @@ final class Dialogs {
     }
 
     @SuppressWarnings("unchecked") // Dialog's default result type is ButtonType, matching Alert.
-    static <T> Optional<T> show(
-            Dialog<T> dialog, Window owner, dev.voxelbrew.util.i18n.Translations translations) {
+    static <T> Optional<T> show(Dialog<T> dialog, Window owner, dev.voxelbrew.util.i18n.Translations translations) {
         var scene = owner.getScene();
         var content = WindowFrame.content(scene);
         var previousFocus = scene.getFocusOwner();
@@ -46,20 +45,17 @@ final class Dialogs {
         var buttons = new LinkedHashMap<ButtonType, ButtonBase>();
         for (var type : pane.getButtonTypes()) {
             buttons.put(type, (ButtonBase) pane.lookupButton(type));
-            String key =
-                    type == ButtonType.OK
-                            ? "dialog.ok"
-                            : type == ButtonType.CANCEL
-                                    ? "action.cancel"
-                                    : type == ButtonType.APPLY
-                                            ? "dialog.apply"
-                                            : type == ButtonType.CLOSE
-                                                    ? "dialog.close"
-                                                    : type == ButtonType.YES
-                                                            ? "dialog.yes"
-                                                            : type == ButtonType.NO
-                                                                    ? "dialog.no"
-                                                                    : null;
+            String key = type == ButtonType.OK
+                    ? "dialog.ok"
+                    : type == ButtonType.CANCEL
+                            ? "action.cancel"
+                            : type == ButtonType.APPLY
+                                    ? "dialog.apply"
+                                    : type == ButtonType.CLOSE
+                                            ? "dialog.close"
+                                            : type == ButtonType.YES
+                                                    ? "dialog.yes"
+                                                    : type == ButtonType.NO ? "dialog.no" : null;
             if (key != null) buttons.get(type).setText(translations.text(key));
             buttons.get(type).setMinWidth(Region.USE_PREF_SIZE);
             UiHelp.dialogButton(buttons.get(type), type, translations);
@@ -72,8 +68,7 @@ final class Dialogs {
             label.setWrapText(true);
             body = label;
         }
-        var title =
-                new Label(pane.getHeaderText() == null ? dialog.getTitle() : pane.getHeaderText());
+        var title = new Label(pane.getHeaderText() == null ? dialog.getTitle() : pane.getHeaderText());
         title.getStyleClass().add("selection-title");
         var actions = new HBox(10);
         actions.setAlignment(Pos.CENTER_RIGHT);
@@ -93,16 +88,12 @@ final class Dialogs {
 
         Object loop = new Object();
         boolean[] completed = {false};
-        Consumer<ButtonType> finish =
-                button -> {
-                    if (completed[0]) return;
-                    T result =
-                            button == null
-                                    ? null
-                                    : converter == null ? (T) button : converter.call(button);
-                    completed[0] = true;
-                    Platform.exitNestedEventLoop(loop, result);
-                };
+        Consumer<ButtonType> finish = button -> {
+            if (completed[0]) return;
+            T result = button == null ? null : converter == null ? (T) button : converter.call(button);
+            completed[0] = true;
+            Platform.exitNestedEventLoop(loop, result);
+        };
         ButtonBase cancel = null, initial = null;
         for (var entry : buttons.entrySet()) {
             var type = entry.getKey();
@@ -110,36 +101,31 @@ final class Dialogs {
             // Existing action filters still validate inputs before this handler runs.
             button.setOnAction(e -> finish.accept(type));
             if (type.getButtonData().isDefaultButton()) initial = button;
-            if (type.getButtonData().isCancelButton()
-                    || type.getButtonData() == ButtonBar.ButtonData.NO) cancel = button;
+            if (type.getButtonData().isCancelButton() || type.getButtonData() == ButtonBar.ButtonData.NO)
+                cancel = button;
         }
         ButtonBase cancelButton = cancel;
-        EventHandler<KeyEvent> escape =
-                e -> {
-                    if (e.getCode() == KeyCode.ESCAPE
-                            && cancelButton != null
-                            && WindowFrame.content(scene) == host) {
-                        e.consume();
-                        cancelButton.fire();
-                    }
-                };
+        EventHandler<KeyEvent> escape = e -> {
+            if (e.getCode() == KeyCode.ESCAPE && cancelButton != null && WindowFrame.content(scene) == host) {
+                e.consume();
+                cancelButton.fire();
+            }
+        };
         // MenuBarSkin retains a scene-level Escape filter even when its workbench is
         // disabled behind this overlay. Only the topmost modal owns this window filter.
         owner.addEventFilter(KeyEvent.KEY_PRESSED, escape);
-        owner.setOnCloseRequest(
-                e -> {
-                    e.consume();
-                    if (cancelButton != null) cancelButton.fire();
-                });
+        owner.setOnCloseRequest(e -> {
+            e.consume();
+            if (cancelButton != null) cancelButton.fire();
+        });
         EventHandler<WindowEvent> hidden = e -> finish.accept(null);
         owner.addEventHandler(WindowEvent.WINDOW_HIDDEN, hidden);
         Node initialFocus = initial != null ? initial : cancel != null ? cancel : panel;
         initialFocus.requestFocus();
         // A newly attached overlay may not yet be focusable until its first scene pulse.
-        Platform.runLater(
-                () -> {
-                    if (!completed[0] && !panel.isDisabled()) initialFocus.requestFocus();
-                });
+        Platform.runLater(() -> {
+            if (!completed[0] && !panel.isDisabled()) initialFocus.requestFocus();
+        });
         try {
             return Optional.ofNullable((T) Platform.enterNestedEventLoop(loop));
         } finally {

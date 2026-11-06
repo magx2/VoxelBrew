@@ -24,7 +24,6 @@ public record PlanarFace(int faceIndex, double nx, double ny, double nz, double 
         uy /= length;
         uz /= length;
         double vx = ny * uz - nz * uy, vy = nz * ux - nx * uz, vz = nx * uy - ny * ux;
-        return new Transform(
-                ux, vx, nx, nx * offset, uy, vy, ny, ny * offset, uz, vz, nz, nz * offset);
+        return new Transform(ux, vx, nx, nx * offset, uy, vy, ny, ny * offset, uz, vz, nz, nz * offset);
     }
 }

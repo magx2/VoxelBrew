@@ -14,32 +14,20 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 class PrintingTest {
-    @TempDir Path directory;
+    @TempDir
+    Path directory;
 
     static ModelSession reference() {
         var s = new ModelSession(CadDocument.empty());
         var xy = new Feature.Plane("origin-xy", 0);
-        s.add(
-                new Feature.Sketch(
-                        "plate", "plate.profile", xy, new Feature.Rectangle(0, 0, 60, 40)));
-        s.add(
-                new Feature.Extrude(
-                        "thickness", new Feature.ProfileRef("plate", "plate.profile"), 8));
+        s.add(new Feature.Sketch("plate", "plate.profile", xy, new Feature.Rectangle(0, 0, 60, 40)));
+        s.add(new Feature.Extrude("thickness", new Feature.ProfileRef("plate", "plate.profile"), 8));
         s.add(new Feature.Sketch("hole", "hole.profile", xy, new Feature.Circle(10, 10, 4)));
-        s.add(
-                new Feature.ThroughCut(
-                        "cut",
-                        new Feature.ProfileRef("hole", "hole.profile"),
-                        new Feature.BodyRef("thickness", "body")));
-        s.setPrintSetup(
-                s.document()
-                        .printSetup()
-                        .withInstances(
-                                List.of(
-                                        new BodyInstance(
-                                                "part",
-                                                "thickness.body",
-                                                Transform.translation(20, 30, 0)))));
+        s.add(new Feature.ThroughCut(
+                "cut", new Feature.ProfileRef("hole", "hole.profile"), new Feature.BodyRef("thickness", "body")));
+        s.setPrintSetup(s.document()
+                .printSetup()
+                .withInstances(List.of(new BodyInstance("part", "thickness.body", Transform.translation(20, 30, 0)))));
         return s;
     }
 
@@ -48,16 +36,15 @@ class PrintingTest {
         var session = reference();
         var model = ManufacturingModel.evaluate(session.document(), MeshOptions.DEFAULT);
         var output = directory.resolve("real reference job.gcode");
-        var result =
-                SliceService.slice(
-                        new PrusaSlicerBackend(),
-                        model,
-                        PrusaSlicerBackend.defaultExecutable(),
-                        output,
-                        false,
-                        new Cancellation(),
-                        System.out::println,
-                        SliceService.DIRECT);
+        var result = SliceService.slice(
+                new PrusaSlicerBackend(),
+                model,
+                PrusaSlicerBackend.defaultExecutable(),
+                output,
+                false,
+                new Cancellation(),
+                System.out::println,
+                SliceService.DIRECT);
         var job = result.job();
         assertEquals(40, job.modelLayers().size());
         assertEquals(0.2, job.modelLayers().getFirst(), 1e-6);
@@ -66,59 +53,32 @@ class PrintingTest {
         assertEquals(model.revision(), job.report().get("revision"));
         assertTrue(job.filamentMm().orElseThrow() > 0);
         assertTrue(job.estimatedTime().isPresent());
-        var layer =
-                job.segments().stream()
-                        .filter(
-                                s ->
-                                        s.deposits()
-                                                && s.role().model()
-                                                && Math.abs(s.z1() - 4) < 1e-6)
-                        .toList();
+        var layer = job.segments().stream()
+                .filter(s -> s.deposits() && s.role().model() && Math.abs(s.z1() - 4) < 1e-6)
+                .toList();
         assertFalse(layer.isEmpty());
         for (var segment : layer) {
             assertTrue(segment.x1() >= 19.999 && segment.x1() <= 80.001, segment.toString());
             assertTrue(segment.y1() >= 29.999 && segment.y1() <= 70.001, segment.toString());
             double dx = segment.x1() - segment.x0(), dy = segment.y1() - segment.y0();
-            double t =
-                    Math.max(
-                            0,
-                            Math.min(
-                                    1,
-                                    ((30 - segment.x0()) * dx + (40 - segment.y0()) * dy)
-                                            / (dx * dx + dy * dy)));
+            double t = Math.max(
+                    0, Math.min(1, ((30 - segment.x0()) * dx + (40 - segment.y0()) * dy) / (dx * dx + dy * dy)));
             double distance = Math.hypot(segment.x0() + t * dx - 30, segment.y0() + t * dy - 40);
-            assertTrue(
-                    distance - segment.width() / 2 >= 1.95,
-                    "deposited bead enters hole: " + segment);
+            assertTrue(distance - segment.width() / 2 >= 1.95, "deposited bead enters hole: " + segment);
         }
     }
 
     @Test
-    void placementsAndModifiersPersistAndTrackEditsWithoutChangingCadCoordinates()
-            throws Exception {
+    void placementsAndModifiersPersistAndTrackEditsWithoutChangingCadCoordinates() throws Exception {
         var session = reference();
         var first = session.document().printSetup().instances().getFirst();
-        var second =
-                new BodyInstance(
-                        "copy",
-                        first.bodyId(),
-                        Transform.translation(150, 30, 0).compose(Transform.rotation(0, 0, 90)));
-        var setup =
-                session.document()
-                        .printSetup()
-                        .withInstances(List.of(first, second))
-                        .withSupports(
-                                List.of(
-                                        new SupportVolume(
-                                                "block",
-                                                "part",
-                                                SupportVolume.Role.BLOCKER,
-                                                0,
-                                                0,
-                                                0,
-                                                10,
-                                                10,
-                                                8)));
+        var second = new BodyInstance(
+                "copy", first.bodyId(), Transform.translation(150, 30, 0).compose(Transform.rotation(0, 0, 90)));
+        var setup = session.document()
+                .printSetup()
+                .withInstances(List.of(first, second))
+                .withSupports(
+                        List.of(new SupportVolume("block", "part", SupportVolume.Role.BLOCKER, 0, 0, 0, 10, 10, 8)));
         session.setPrintSetup(setup);
         Path file = directory.resolve("placements.jcad");
         DocumentWriter.save(session.document(), file, false);

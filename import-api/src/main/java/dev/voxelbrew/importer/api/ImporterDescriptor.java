@@ -12,8 +12,7 @@ public record ImporterDescriptor(
         ImportResult.Kind resultKind,
         List<ImportOption> options) {
     public ImporterDescriptor {
-        if (id == null || !id.matches("[a-z0-9][a-z0-9.-]*"))
-            throw new IllegalArgumentException("Invalid importer ID");
+        if (id == null || !id.matches("[a-z0-9][a-z0-9.-]*")) throw new IllegalArgumentException("Invalid importer ID");
         Objects.requireNonNull(name);
         Objects.requireNonNull(resultKind);
         extensions = List.copyOf(extensions);
@@ -22,7 +21,6 @@ public record ImporterDescriptor(
             throw new IllegalArgumentException("Invalid extensions");
         var keys = new HashSet<String>();
         for (var option : options)
-            if (!keys.add(option.key()))
-                throw new IllegalArgumentException("Duplicate option " + option.key());
+            if (!keys.add(option.key())) throw new IllegalArgumentException("Duplicate option " + option.key());
     }
 }

@@ -20,23 +20,16 @@ final class UiHelp {
     static String baseDescription(Translations translations, String id) {
         String key = id;
         if (id.startsWith("choose-plane-")) return translations.text("help.choose-plane");
-        if (id.startsWith("view-") && !id.startsWith("view-cube-"))
-            return translations.text("help.standard-view");
-        if (id.equals("menu-undo")
-                || id.equals("menu-redo")
-                || id.equals("menu-parameters")
-                || id.equals("menu-fit")) key = id.substring(5);
+        if (id.startsWith("view-") && !id.startsWith("view-cube-")) return translations.text("help.standard-view");
+        if (id.equals("menu-undo") || id.equals("menu-redo") || id.equals("menu-parameters") || id.equals("menu-fit"))
+            key = id.substring(5);
         if (id.startsWith("history-") && !id.equals("history-cursor")) key = "history-feature";
         else if (id.startsWith("apply-")) key = "apply-dimension";
         else if (id.startsWith("print-role-")) key = "print-role";
         else if (id.startsWith("constraint-menu-"))
-            return translations.text(
-                    "constraint.hint." + id.substring(16).toUpperCase(Locale.ROOT));
-        else if (id.startsWith("constraint-")
-                && !id.equals("constraint-finish")
-                && !id.equals("constraint-cancel"))
-            return translations.text(
-                    "constraint.hint." + id.substring(11).toUpperCase(Locale.ROOT));
+            return translations.text("constraint.hint." + id.substring(16).toUpperCase(Locale.ROOT));
+        else if (id.startsWith("constraint-") && !id.equals("constraint-finish") && !id.equals("constraint-cancel"))
+            return translations.text("constraint.hint." + id.substring(11).toUpperCase(Locale.ROOT));
         return translations.text("help." + key);
     }
 
@@ -44,14 +37,13 @@ final class UiHelp {
         String key = button.getId() == null ? null : "help." + button.getId();
         String description = key == null ? null : translations.textOrDefault(key, null);
         if (description == null)
-            description =
-                    translations.text(
-                            switch (type.getButtonData()) {
-                                case CANCEL_CLOSE -> "help.dialog-cancel";
-                                case NO -> "help.dialog-no";
-                                case YES, OK_DONE, APPLY -> "help.dialog-apply";
-                                default -> "help.dialog-close";
-                            });
+            description = translations.text(
+                    switch (type.getButtonData()) {
+                        case CANCEL_CLOSE -> "help.dialog-cancel";
+                        case NO -> "help.dialog-no";
+                        case YES, OK_DONE, APPLY -> "help.dialog-apply";
+                        default -> "help.dialog-close";
+                    });
         if (type == ButtonType.CLOSE) description = translations.text("help.dialog-close");
         describe(button, description);
     }
@@ -62,8 +54,8 @@ final class UiHelp {
     }
 
     static void describe(Control control, String description) {
-        if (control.getTooltip() != null && description.equals(control.getTooltip().getText()))
-            return;
+        if (control.getTooltip() != null
+                && description.equals(control.getTooltip().getText())) return;
         control.setTooltip(tooltip(description));
         control.setAccessibleHelp(description);
     }
@@ -92,8 +84,7 @@ final class UiHelp {
     static void menu(Menu menu, Translations translations) {
         menuItem(menu, description(translations, menu.getId()));
         menu.addEventHandler(
-                Menu.ON_SHOWN,
-                event -> Platform.runLater(() -> menu.getItems().forEach(UiHelp::attach)));
+                Menu.ON_SHOWN, event -> Platform.runLater(() -> menu.getItems().forEach(UiHelp::attach)));
     }
 
     static void menu(MenuButton menu, Translations translations) {
@@ -108,17 +99,13 @@ final class UiHelp {
     }
 
     private static void observeMenu(MenuButton menu) {
-        menu.showingProperty()
-                .addListener(
-                        (o, before, showing) -> {
-                            if (showing)
-                                Platform.runLater(() -> menu.getItems().forEach(UiHelp::attach));
-                        });
+        menu.showingProperty().addListener((o, before, showing) -> {
+            if (showing) Platform.runLater(() -> menu.getItems().forEach(UiHelp::attach));
+        });
     }
 
     static void menuBar(MenuBar bar) {
-        bar.skinProperty()
-                .addListener((o, before, after) -> Platform.runLater(() -> attachMenuHeaders(bar)));
+        bar.skinProperty().addListener((o, before, after) -> Platform.runLater(() -> attachMenuHeaders(bar)));
     }
 
     private static void attachMenuHeaders(MenuBar bar) {
@@ -143,8 +130,7 @@ final class UiHelp {
                 String stylesheet = UiHelp.class.getResource("workbench.css").toExternalForm();
                 if (!popup.getScene().getStylesheets().contains(stylesheet))
                     popup.getScene().getStylesheets().add(stylesheet);
-                boolean dark =
-                        owner.getStyleClass().contains("dark") || owner.lookup(".dark") != null;
+                boolean dark = owner.getStyleClass().contains("dark") || owner.lookup(".dark") != null;
                 root.getStyleClass().removeAll("light", "dark");
                 root.getStyleClass().add(dark ? "dark" : "light");
             }
@@ -166,34 +152,27 @@ final class UiHelp {
         var delay = new PauseTransition(tooltip.getShowDelay());
         var expiry = new PauseTransition(tooltip.getShowDuration());
         double[] pointer = new double[2];
-        Runnable hide =
-                () -> {
-                    delay.stop();
-                    expiry.stop();
-                    tooltip.hide();
-                };
-        delay.setOnFinished(
-                event -> {
-                    if (node.getScene() != null && node.getScene().getWindow().isShowing()) {
-                        tooltip.show(node, pointer[0] + 12, pointer[1] + 20);
-                        expiry.playFromStart();
-                    }
-                });
+        Runnable hide = () -> {
+            delay.stop();
+            expiry.stop();
+            tooltip.hide();
+        };
+        delay.setOnFinished(event -> {
+            if (node.getScene() != null && node.getScene().getWindow().isShowing()) {
+                tooltip.show(node, pointer[0] + 12, pointer[1] + 20);
+                expiry.playFromStart();
+            }
+        });
         expiry.setOnFinished(event -> tooltip.hide());
-        node.addEventFilter(
-                MouseEvent.MOUSE_MOVED,
-                event -> {
-                    pointer[0] = event.getScreenX();
-                    pointer[1] = event.getScreenY();
-                    if (!tooltip.isShowing()) delay.playFromStart();
-                });
+        node.addEventFilter(MouseEvent.MOUSE_MOVED, event -> {
+            pointer[0] = event.getScreenX();
+            pointer[1] = event.getScreenY();
+            if (!tooltip.isShowing()) delay.playFromStart();
+        });
         node.addEventFilter(MouseEvent.MOUSE_EXITED, event -> hide.run());
         node.addEventFilter(MouseEvent.MOUSE_PRESSED, event -> hide.run());
-        item.getParentPopup()
-                .showingProperty()
-                .addListener(
-                        (o, before, showing) -> {
-                            if (!showing) hide.run();
-                        });
+        item.getParentPopup().showingProperty().addListener((o, before, showing) -> {
+            if (!showing) hide.run();
+        });
     }
 }

@@ -36,13 +36,12 @@ public final class ImporterRegistry implements AutoCloseable {
     public ImporterRegistry(Path directory) throws IOException {
         var urls = new ArrayList<URL>();
         if (Files.exists(directory)) {
-            if (!Files.isDirectory(directory))
-                throw new IOException("Plugin path is not a directory: " + directory);
+            if (!Files.isDirectory(directory)) throw new IOException("Plugin path is not a directory: " + directory);
             try (var paths = Files.list(directory)) {
-                for (var jar :
-                        paths.filter(p -> Files.isRegularFile(p) && p.toString().endsWith(".jar"))
-                                .sorted()
-                                .toList()) urls.add(jar.toUri().toURL());
+                for (var jar : paths.filter(
+                                p -> Files.isRegularFile(p) && p.toString().endsWith(".jar"))
+                        .sorted()
+                        .toList()) urls.add(jar.toUri().toURL());
             }
         }
         loader = new URLClassLoader(urls.toArray(URL[]::new), FileImporter.class.getClassLoader());
@@ -53,10 +52,7 @@ public final class ImporterRegistry implements AutoCloseable {
                 if (!iterator.hasNext()) break;
                 register(iterator.next());
                 failures = 0;
-            } catch (ServiceConfigurationError
-                    | LinkageError
-                    | RuntimeException
-                    | AssertionError failure) {
+            } catch (ServiceConfigurationError | LinkageError | RuntimeException | AssertionError failure) {
                 diagnostics.add("Provider load failed: " + failure);
                 if (++failures >= 100) {
                     diagnostics.add("Stopped after 100 consecutive provider failures");
@@ -71,11 +67,7 @@ public final class ImporterRegistry implements AutoCloseable {
     private void register(FileImporter provider) {
         var descriptor = provider.descriptor();
         if (descriptor.apiVersion() != FileImporter.API_VERSION) {
-            diagnostics.add(
-                    "Incompatible importer "
-                            + descriptor.id()
-                            + ": API "
-                            + descriptor.apiVersion());
+            diagnostics.add("Incompatible importer " + descriptor.id() + ": API " + descriptor.apiVersion());
             return;
         }
         if (entries.putIfAbsent(descriptor.id(), new Entry(descriptor, provider)) != null)
@@ -96,8 +88,7 @@ public final class ImporterRegistry implements AutoCloseable {
     public Entry require(String id) {
         var entry = entries.get(id);
         if (entry == null)
-            throw new IllegalArgumentException(
-                    "Unknown importer '" + id + "'. Available: " + entries.keySet());
+            throw new IllegalArgumentException("Unknown importer '" + id + "'. Available: " + entries.keySet());
         return entry;
     }
 

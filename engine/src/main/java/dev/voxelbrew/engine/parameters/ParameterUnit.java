@@ -52,8 +52,7 @@ public enum ParameterUnit {
 
     public static ParameterUnit parse(String text) {
         for (var unit : values())
-            if (unit.symbol.equalsIgnoreCase(text) || unit.name().equalsIgnoreCase(text))
-                return unit;
+            if (unit.symbol.equalsIgnoreCase(text) || unit.name().equalsIgnoreCase(text)) return unit;
         throw new IllegalArgumentException("Unknown unit: " + text);
     }
 }

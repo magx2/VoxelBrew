@@ -13,12 +13,14 @@ import lombok.RequiredArgsConstructor;
 @Module
 @RequiredArgsConstructor
 public final class ApplicationModule {
-    @NonNull private final UserConfiguration configuration;
-    @NonNull private final UpdateServiceFactory updates;
+    @NonNull
+    private final UserConfiguration configuration;
+
+    @NonNull
+    private final UpdateServiceFactory updates;
 
     public static ApplicationModule system(ApplicationImage.Component component) {
-        return new ApplicationModule(
-                UserConfiguration.user(), () -> UpdateService.system(component));
+        return new ApplicationModule(UserConfiguration.user(), () -> UpdateService.system(component));
     }
 
     @Provides

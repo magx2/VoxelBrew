@@ -13,7 +13,9 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 class InjectedDocumentIoTest {
-    @TempDir Path directory;
+    @TempDir
+    Path directory;
+
     private final Queue<Runnable> callbacks = new ConcurrentLinkedQueue<>();
 
     @Test
@@ -24,29 +26,27 @@ class InjectedDocumentIoTest {
         var written = new AtomicReference<CadDocument>();
         var entered = new CountDownLatch(1);
         var release = new CountDownLatch(1);
-        var controller =
-                new DocumentController(
-                        callbacks::add,
-                        doc -> new DocumentController.Build(List.of(), List.of(), true),
-                        directory,
-                        rebuild,
-                        files,
-                        path -> {
-                            if (path.getFileName().toString().equals("bad.jcad"))
-                                throw new IOException("Injected read failure");
-                            return loaded;
-                        },
-                        (doc, path, overwrite) -> {
-                            entered.countDown();
-                            try {
-                                if (!release.await(10, TimeUnit.SECONDS))
-                                    throw new IOException("Test write timed out");
-                            } catch (InterruptedException failure) {
-                                Thread.currentThread().interrupt();
-                                throw new IOException(failure);
-                            }
-                            written.set(doc);
-                        });
+        var controller = new DocumentController(
+                callbacks::add,
+                doc -> new DocumentController.Build(List.of(), List.of(), true),
+                directory,
+                rebuild,
+                files,
+                path -> {
+                    if (path.getFileName().toString().equals("bad.jcad"))
+                        throw new IOException("Injected read failure");
+                    return loaded;
+                },
+                (doc, path, overwrite) -> {
+                    entered.countDown();
+                    try {
+                        if (!release.await(10, TimeUnit.SECONDS)) throw new IOException("Test write timed out");
+                    } catch (InterruptedException failure) {
+                        Thread.currentThread().interrupt();
+                        throw new IOException(failure);
+                    }
+                    written.set(doc);
+                });
         try {
             var open = controller.open(directory.resolve("virtual.jcad"));
             await(() -> open.isDone() && !controller.rebuilding());
@@ -63,9 +63,7 @@ class InjectedDocumentIoTest {
             assertTrue(files.awaitTermination(10, TimeUnit.SECONDS));
             await(save::isDone);
             assertEquals(loaded, written.get());
-            assertTrue(
-                    save.isCancelled(),
-                    "Closed window must not adopt the captured write as current state");
+            assertTrue(save.isCancelled(), "Closed window must not adopt the captured write as current state");
             assertTrue(rebuild.isShutdown());
             assertFalse(Files.exists(directory.resolve("saved.jcad")));
         } finally {

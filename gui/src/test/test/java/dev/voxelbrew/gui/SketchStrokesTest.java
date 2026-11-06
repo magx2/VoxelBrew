@@ -11,14 +11,13 @@ class SketchStrokesTest {
     void batchedStrokesKeepClosedOutwardGeometryAtTheSketchElevation() {
         var a = new Vec(1, 2);
         var b = new Vec(5, 6);
-        var mesh =
-                SketchStrokes.mesh(
-                        List.of(
-                                new SketchStrokes.Segment(a, b),
-                                new SketchStrokes.Segment(b, a),
-                                new SketchStrokes.Segment(a, a)),
-                        10,
-                        .5);
+        var mesh = SketchStrokes.mesh(
+                List.of(
+                        new SketchStrokes.Segment(a, b),
+                        new SketchStrokes.Segment(b, a),
+                        new SketchStrokes.Segment(a, a)),
+                10,
+                .5);
         var edges = new HashMap<String, Integer>();
         double volume = 0;
         for (int t = 0; t < mesh.triangleCount(); t++) {
@@ -32,11 +31,10 @@ class SketchStrokesTest {
             var p = vertices[0];
             var q = vertices[1];
             var r = vertices[2];
-            volume +=
-                    (p[0] * (q[1] * r[2] - q[2] * r[1])
-                                    + p[1] * (q[2] * r[0] - q[0] * r[2])
-                                    + p[2] * (q[0] * r[1] - q[1] * r[0]))
-                            / 6;
+            volume += (p[0] * (q[1] * r[2] - q[2] * r[1])
+                            + p[1] * (q[2] * r[0] - q[0] * r[2])
+                            + p[2] * (q[0] * r[1] - q[1] * r[0]))
+                    / 6;
         }
         assertTrue(edges.values().stream().allMatch(count -> count == 2));
         assertEquals(2 * 3 * Math.sqrt(3) / 2 * .25 * a.distance(b), volume, 1e-9);

@@ -18,9 +18,7 @@ class VersionTest {
     void builtJarReturnsGradleVersion() throws Exception {
         var artifact = Path.of(System.getProperty("voxelbrew.test.utilJar"));
         try (var loader =
-                new URLClassLoader(
-                        new URL[] {artifact.toUri().toURL()},
-                        ClassLoader.getPlatformClassLoader())) {
+                new URLClassLoader(new URL[] {artifact.toUri().toURL()}, ClassLoader.getPlatformClassLoader())) {
             var version = loader.loadClass("dev.voxelbrew.util.Version");
             assertEquals(
                     System.getProperty("voxelbrew.test.buildVersion"),

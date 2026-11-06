@@ -18,13 +18,12 @@ class UiTextTest {
         for (var locale : List.of(Locale.ENGLISH, Locale.forLanguageTag("pl"))) {
             var t = new Translations(locale);
             try (var sources = Files.list(Path.of("src/main/java/dev/voxelbrew/gui"))) {
-                for (var file : sources.filter(p -> p.toString().endsWith(".java")).toList()) {
-                    var matcher =
-                            Pattern.compile("translations\\.text\\(\"([^\"]+)\"\\s*[,)]")
-                                    .matcher(Files.readString(file));
+                for (var file :
+                        sources.filter(p -> p.toString().endsWith(".java")).toList()) {
+                    var matcher = Pattern.compile("translations\\.text\\(\"([^\"]+)\"\\s*[,)]")
+                            .matcher(Files.readString(file));
                     while (matcher.find())
-                        assertFalse(
-                                t.text(matcher.group(1)).isBlank(), file + ": " + matcher.group(1));
+                        assertFalse(t.text(matcher.group(1)).isBlank(), file + ": " + matcher.group(1));
                 }
             }
             choices(t, "constraint.", SketchGeometry.Type.values());
@@ -49,9 +48,7 @@ class UiTextTest {
     void compositeViewNamesTranslateWithoutChangingNavigationIdentifiers() {
         var pl = new Translations(Locale.forLanguageTag("pl"));
         assertEquals("Góra Przód Prawo", UiText.view(pl, "Top Front Right"));
-        assertEquals(
-                "Top Front Right",
-                UiText.view(new Translations(Locale.ENGLISH), "Top Front Right"));
+        assertEquals("Top Front Right", UiText.view(new Translations(Locale.ENGLISH), "Top Front Right"));
     }
 
     private static void choices(Translations t, String prefix, Enum<?>[] values) {
@@ -63,40 +60,37 @@ class UiTextTest {
         var ids = new java.util.HashSet<String>();
         try (var sources = Files.list(Path.of("src/main/java/dev/voxelbrew/gui"))) {
             for (var file : sources.filter(p -> p.toString().endsWith(".java")).toList()) {
-                var matcher =
-                        Pattern.compile(
-                                        "button\\(\\s*(?:translations\\.text\\(\"[^\"]+\"\\)|\"[^\"]*\"),\\s*\"([^\"]+)\"\\s*,")
-                                .matcher(Files.readString(file));
+                var matcher = Pattern.compile(
+                                "button\\(\\s*(?:translations\\.text\\(\"[^\"]+\"\\)|\"[^\"]*\"),\\s*\"([^\"]+)\"\\s*,")
+                        .matcher(Files.readString(file));
                 while (matcher.find()) ids.add(matcher.group(1));
             }
         }
         assertTrue(ids.size() > 50, "Audit the actual production action factories");
-        ids.addAll(
-                List.of(
-                        "timeline-first",
-                        "timeline-previous",
-                        "timeline-play",
-                        "timeline-pause",
-                        "timeline-next",
-                        "timeline-last",
-                        "history-cursor"));
+        ids.addAll(List.of(
+                "timeline-first",
+                "timeline-previous",
+                "timeline-play",
+                "timeline-pause",
+                "timeline-next",
+                "timeline-last",
+                "history-cursor"));
         for (var locale : List.of(Locale.ENGLISH, Locale.forLanguageTag("pl"))) {
             var translations = new Translations(locale);
             for (var id : ids) assertFalse(UiHelp.description(translations, id).isBlank(), id);
             for (var draw : SketchEditor.Draw.values()) {
                 if (draw != SketchEditor.Draw.ADVANCED)
-                    assertFalse(
-                            UiHelp.description(
-                                            translations,
-                                            "sketch-tool-" + draw.name().toLowerCase(Locale.ROOT))
-                                    .isBlank());
+                    assertFalse(UiHelp.description(
+                                    translations, "sketch-tool-" + draw.name().toLowerCase(Locale.ROOT))
+                            .isBlank());
             }
             for (var type : SketchGeometry.Type.values()) {
                 if (!type.dimension()) {
                     var id = type.name().toLowerCase(Locale.ROOT);
-                    assertFalse(UiHelp.description(translations, "constraint-" + id).isBlank());
                     assertFalse(
-                            UiHelp.description(translations, "constraint-menu-" + id).isBlank());
+                            UiHelp.description(translations, "constraint-" + id).isBlank());
+                    assertFalse(UiHelp.description(translations, "constraint-menu-" + id)
+                            .isBlank());
                 }
             }
             assertFalse(UiHelp.description(translations, "history-52").isBlank());

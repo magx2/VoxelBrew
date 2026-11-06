@@ -21,10 +21,7 @@ public final class MeshValidation {
             long inconsistentEdges,
             long degenerateTriangles) {
         public boolean closed() {
-            return boundaryEdges == 0
-                    && nonManifoldEdges == 0
-                    && inconsistentEdges == 0
-                    && degenerateTriangles == 0;
+            return boundaryEdges == 0 && nonManifoldEdges == 0 && inconsistentEdges == 0 && degenerateTriangles == 0;
         }
     }
 
@@ -34,11 +31,8 @@ public final class MeshValidation {
         var coordinates = new java.util.ArrayList<Double>();
         int[] remap = new int[mesh.vertexCount()];
         for (int v = 0; v < remap.length; v++) {
-            var point =
-                    new Point(
-                            quantize(mesh.coordinate(v, 0)),
-                            quantize(mesh.coordinate(v, 1)),
-                            quantize(mesh.coordinate(v, 2)));
+            var point = new Point(
+                    quantize(mesh.coordinate(v, 0)), quantize(mesh.coordinate(v, 1)), quantize(mesh.coordinate(v, 2)));
             Integer index = unique.get(point);
             if (index == null) {
                 index = unique.size();
@@ -49,11 +43,8 @@ public final class MeshValidation {
         }
         int[] triangles = mesh.triangles();
         for (int i = 0; i < triangles.length; i++) triangles[i] = remap[triangles[i]];
-        var result =
-                new MeshData(
-                        coordinates.stream().mapToDouble(Double::doubleValue).toArray(),
-                        triangles,
-                        mesh.faceIndices());
+        var result = new MeshData(
+                coordinates.stream().mapToDouble(Double::doubleValue).toArray(), triangles, mesh.faceIndices());
         requireClosed(result);
         return result;
     }
@@ -61,19 +52,15 @@ public final class MeshValidation {
     public static void requireClosed(MeshData mesh) {
         var report = inspect(mesh);
         if (!report.closed())
-            throw new IllegalArgumentException(
-                    "Mesh is not closed and consistently oriented: " + report);
+            throw new IllegalArgumentException("Mesh is not closed and consistently oriented: " + report);
     }
 
     public static Report inspect(MeshData mesh) {
         Map<Point, Integer> points = new HashMap<>();
         int[] welded = new int[mesh.vertexCount()];
         for (int v = 0; v < welded.length; v++) {
-            var p =
-                    new Point(
-                            quantize(mesh.coordinate(v, 0)),
-                            quantize(mesh.coordinate(v, 1)),
-                            quantize(mesh.coordinate(v, 2)));
+            var p = new Point(
+                    quantize(mesh.coordinate(v, 0)), quantize(mesh.coordinate(v, 1)), quantize(mesh.coordinate(v, 2)));
             welded[v] = points.computeIfAbsent(p, ignored -> points.size());
         }
         Map<Edge, int[]> edges = new HashMap<>();
@@ -83,10 +70,7 @@ public final class MeshValidation {
                     b = welded[mesh.vertexIndex(t, 1)],
                     c = welded[mesh.vertexIndex(t, 2)];
             double[] normal = normal(mesh, t);
-            if (a == b
-                    || b == c
-                    || c == a
-                    || Math.hypot(Math.hypot(normal[0], normal[1]), normal[2]) < 1e-15) {
+            if (a == b || b == c || c == a || Math.hypot(Math.hypot(normal[0], normal[1]), normal[2]) < 1e-15) {
                 degenerate++;
                 continue;
             }
@@ -110,17 +94,13 @@ public final class MeshValidation {
     }
 
     private static void edge(Map<Edge, int[]> edges, int a, int b) {
-        var counts =
-                edges.computeIfAbsent(
-                        new Edge(Math.min(a, b), Math.max(a, b)), ignored -> new int[2]);
+        var counts = edges.computeIfAbsent(new Edge(Math.min(a, b), Math.max(a, b)), ignored -> new int[2]);
         counts[0]++;
         counts[1] += a < b ? 1 : -1;
     }
 
     public static double[] normal(MeshData mesh, int triangle) {
-        int a = mesh.vertexIndex(triangle, 0),
-                b = mesh.vertexIndex(triangle, 1),
-                c = mesh.vertexIndex(triangle, 2);
+        int a = mesh.vertexIndex(triangle, 0), b = mesh.vertexIndex(triangle, 1), c = mesh.vertexIndex(triangle, 2);
         double ux = mesh.coordinate(b, 0) - mesh.coordinate(a, 0),
                 uy = mesh.coordinate(b, 1) - mesh.coordinate(a, 1),
                 uz = mesh.coordinate(b, 2) - mesh.coordinate(a, 2);

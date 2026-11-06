@@ -24,27 +24,20 @@ final class ParameterSuggestions {
     private Label heading, hint, empty;
     private boolean queued, changing, dismissed;
 
-    ParameterSuggestions(
-            FormulaField field,
-            Supplier<ParameterSet> parameters,
-            Supplier<Translations> translations) {
+    ParameterSuggestions(FormulaField field, Supplier<ParameterSet> parameters, Supplier<Translations> translations) {
         this.field = field;
         this.parameters = parameters;
         this.translations = translations;
         field.textProperty().addListener(o -> edited());
         field.caretPositionProperty().addListener(o -> edited());
         field.selectionProperty().addListener(o -> edited());
-        field.focusedProperty()
-                .addListener(
-                        (o, before, focused) -> {
-                            if (focused) edited();
-                            else hide();
-                        });
-        field.disabledProperty()
-                .addListener(
-                        o -> {
-                            if (field.isDisabled()) hide();
-                        });
+        field.focusedProperty().addListener((o, before, focused) -> {
+            if (focused) edited();
+            else hide();
+        });
+        field.disabledProperty().addListener(o -> {
+            if (field.isDisabled()) hide();
+        });
         field.sceneProperty().addListener(o -> hide());
     }
 
@@ -53,11 +46,10 @@ final class ParameterSuggestions {
         dismissed = false;
         if (queued) return;
         queued = true;
-        Platform.runLater(
-                () -> {
-                    queued = false;
-                    refresh();
-                });
+        Platform.runLater(() -> {
+            queued = false;
+            refresh();
+        });
     }
 
     private void refresh() {
@@ -116,27 +108,23 @@ final class ParameterSuggestions {
         names.setFocusTraversable(false);
         names.setFixedCellSize(28);
         names.setPlaceholder(empty);
-        names.setCellFactory(
-                list ->
-                        new ListCell<>() {
-                            @Override
-                            protected void updateItem(String item, boolean unused) {
-                                super.updateItem(item, unused);
-                                setText(unused ? null : item);
-                                setId(unused ? null : "formula-suggestion-" + item);
-                            }
+        names.setCellFactory(list -> new ListCell<>() {
+            @Override
+            protected void updateItem(String item, boolean unused) {
+                super.updateItem(item, unused);
+                setText(unused ? null : item);
+                setId(unused ? null : "formula-suggestion-" + item);
+            }
 
-                            {
-                                setOnMousePressed(
-                                        e -> {
-                                            if (e.getButton() == MouseButton.PRIMARY
-                                                    && !isEmpty()) {
-                                                e.consume();
-                                                accept(getItem());
-                                            }
-                                        });
-                            }
-                        });
+            {
+                setOnMousePressed(e -> {
+                    if (e.getButton() == MouseButton.PRIMARY && !isEmpty()) {
+                        e.consume();
+                        accept(getItem());
+                    }
+                });
+            }
+        });
         content = new VBox(6, heading, names, hint);
         content.getStyleClass().add("parameter-completion");
         content.getStylesheets()
@@ -144,44 +132,35 @@ final class ParameterSuggestions {
         popup.getContent().add(content);
         // PopupWindow forwards owner key events here before window-level modal Escape handlers.
         // Leave printable keys untouched so they continue to edit the original TextField.
-        popup.getScene()
-                .addEventFilter(
-                        KeyEvent.KEY_PRESSED,
-                        e -> {
-                            if (e.isControlDown()
-                                    || e.isAltDown()
-                                    || e.isMetaDown()
-                                    || e.isShiftDown()) return;
-                            switch (e.getCode()) {
-                                case ESCAPE -> {
-                                    e.consume();
-                                    dismiss();
-                                }
-                                case DOWN, UP -> {
-                                    if (names.getItems().isEmpty()) return;
-                                    e.consume();
-                                    int direction =
-                                            e.getCode() == javafx.scene.input.KeyCode.DOWN ? 1 : -1;
-                                    int index =
-                                            Math.floorMod(
-                                                    names.getSelectionModel().getSelectedIndex()
-                                                            + direction,
-                                                    names.getItems().size());
-                                    names.getSelectionModel().select(index);
-                                    names.scrollTo(index);
-                                }
-                                case ENTER, TAB -> {
-                                    var name = names.getSelectionModel().getSelectedItem();
-                                    if (name == null) {
-                                        dismiss();
-                                        return;
-                                    }
-                                    e.consume();
-                                    accept(name);
-                                }
-                                default -> {}
-                            }
-                        });
+        popup.getScene().addEventFilter(KeyEvent.KEY_PRESSED, e -> {
+            if (e.isControlDown() || e.isAltDown() || e.isMetaDown() || e.isShiftDown()) return;
+            switch (e.getCode()) {
+                case ESCAPE -> {
+                    e.consume();
+                    dismiss();
+                }
+                case DOWN, UP -> {
+                    if (names.getItems().isEmpty()) return;
+                    e.consume();
+                    int direction = e.getCode() == javafx.scene.input.KeyCode.DOWN ? 1 : -1;
+                    int index = Math.floorMod(
+                            names.getSelectionModel().getSelectedIndex() + direction,
+                            names.getItems().size());
+                    names.getSelectionModel().select(index);
+                    names.scrollTo(index);
+                }
+                case ENTER, TAB -> {
+                    var name = names.getSelectionModel().getSelectedItem();
+                    if (name == null) {
+                        dismiss();
+                        return;
+                    }
+                    e.consume();
+                    accept(name);
+                }
+                default -> {}
+            }
+        });
     }
 
     private void accept(String name) {

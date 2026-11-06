@@ -21,16 +21,11 @@ import javax.xml.stream.XMLStreamException;
 public final class ThreeMfExporter implements ModelExporter {
     @Override
     public ExporterDescriptor descriptor() {
-        return new ExporterDescriptor(
-                "3mf", "Portable 3MF Core", API_VERSION, List.of("3mf"), true, List.of());
+        return new ExporterDescriptor("3mf", "Portable 3MF Core", API_VERSION, List.of("3mf"), true, List.of());
     }
 
     @Override
-    public void write(
-            ModelView model,
-            MeshOptions meshOptions,
-            Map<String, String> options,
-            OutputStream output)
+    public void write(ModelView model, MeshOptions meshOptions, Map<String, String> options, OutputStream output)
             throws IOException {
         try (var zip = new ZipOutputStream(output, StandardCharsets.UTF_8)) {
             text(
@@ -56,9 +51,7 @@ public final class ThreeMfExporter implements ModelExporter {
                 ids.put(body.id(), id);
                 xml.writeStartElement("object");
                 xml.writeAttribute("id", Integer.toString(id));
-                xml.writeAttribute(
-                        "type",
-                        body.role() == ModelView.Role.SOLID_SUPPORT ? "solidsupport" : "model");
+                xml.writeAttribute("type", body.role() == ModelView.Role.SOLID_SUPPORT ? "solidsupport" : "model");
                 xml.writeAttribute("name", body.name());
                 xml.writeStartElement("mesh");
                 xml.writeStartElement("vertices");
@@ -99,8 +92,7 @@ public final class ThreeMfExporter implements ModelExporter {
     private static String transformValues(Transform transform) {
         var matrix = transform.matrix();
         var values = new StringJoiner(" ");
-        for (int index : new int[] {0, 4, 8, 1, 5, 9, 2, 6, 10, 3, 7, 11})
-            values.add(Double.toString(matrix[index]));
+        for (int index : new int[] {0, 4, 8, 1, 5, 9, 2, 6, 10, 3, 7, 11}) values.add(Double.toString(matrix[index]));
         return values.toString();
     }
 

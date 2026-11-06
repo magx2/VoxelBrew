@@ -77,18 +77,8 @@ final class SketchController implements AutoCloseable {
         this(geometry, dispatch, SketchSolver::solve);
     }
 
-    SketchController(
-            SketchGeometry geometry,
-            ParameterSet parameters,
-            String featureId,
-            Consumer<Runnable> dispatch) {
-        this(
-                geometry,
-                parameters,
-                featureId,
-                dispatch,
-                SketchSolver::solve,
-                WindowResources.worker("sketch-solver"));
+    SketchController(SketchGeometry geometry, ParameterSet parameters, String featureId, Consumer<Runnable> dispatch) {
+        this(geometry, parameters, featureId, dispatch, SketchSolver::solve, WindowResources.worker("sketch-solver"));
     }
 
     @dagger.assisted.AssistedInject
@@ -98,8 +88,7 @@ final class SketchController implements AutoCloseable {
             @dagger.assisted.Assisted String featureId,
             @javax.inject.Named("ui") Consumer<Runnable> dispatch,
             Function<SketchGeometry, SketchSolver.Result> solver,
-            @javax.inject.Named("sketchWorkers")
-                    java.util.function.Supplier<ExecutorService> workers) {
+            @javax.inject.Named("sketchWorkers") java.util.function.Supplier<ExecutorService> workers) {
         this(geometry, parameters, featureId, dispatch, solver, workers.get());
     }
 
@@ -123,13 +112,7 @@ final class SketchController implements AutoCloseable {
             SketchGeometry geometry,
             Consumer<Runnable> dispatch,
             Function<SketchGeometry, SketchSolver.Result> solver) {
-        this(
-                geometry,
-                ParameterSet.empty(),
-                "sketch",
-                dispatch,
-                solver,
-                WindowResources.worker("sketch-solver"));
+        this(geometry, ParameterSet.empty(), "sketch", dispatch, solver, WindowResources.worker("sketch-solver"));
     }
 
     boolean canUndo() {
@@ -221,56 +204,44 @@ final class SketchController implements AutoCloseable {
             }
             SketchSolver.Result solved;
             try {
-                var geometry =
-                        FeatureDimensions.resolveSketch(
-                                request.geometry(), featureId, request.parameters());
-                solved =
-                        request.point() == null
-                                ? solver.apply(geometry)
-                                : Sketches.drag(geometry, request.point(), request.target());
+                var geometry = FeatureDimensions.resolveSketch(request.geometry(), featureId, request.parameters());
+                solved = request.point() == null
+                        ? solver.apply(geometry)
+                        : Sketches.drag(geometry, request.point(), request.target());
             } catch (CancellationException cancelled) {
                 if (closed) return;
                 continue;
             } catch (RuntimeException failure) {
-                log.debug(
-                        "Sketch solve failed for feature {} request {}",
-                        featureId,
-                        request.sequence(),
-                        failure);
-                solved =
-                        new SketchSolver.Result(
-                                request.geometry(),
-                                -1,
-                                0,
-                                java.util.List.of(
-                                        new SketchSolver.Problem(
-                                                "", "Solver failed: " + failure.getMessage())));
+                log.debug("Sketch solve failed for feature {} request {}", featureId, request.sequence(), failure);
+                solved = new SketchSolver.Result(
+                        request.geometry(),
+                        -1,
+                        0,
+                        java.util.List.of(new SketchSolver.Problem("", "Solver failed: " + failure.getMessage())));
             }
             var completed = solved;
-            dispatch.accept(
-                    () -> {
-                        if (closed || request.sequence() != sequence) return;
-                        busy = false;
-                        result = completed;
-                        displayed = completed.solved() ? completed.geometry() : definition;
-                        if (request.point() == null && completed.solved())
-                            definition = completed.geometry();
-                        if (request.commitDrag()) {
-                            dragging = false;
-                            if (completed.solved()) {
-                                remember();
-                                definition = displayed = completed.geometry();
-                                submit(null, null, false);
-                                return;
-                            }
-                            interactionError =
-                                    "That point cannot move to the requested position while its constraints are active.";
-                            displayed = definition;
-                            submit(null, null, false);
-                            return;
-                        }
-                        onChanged.run();
-                    });
+            dispatch.accept(() -> {
+                if (closed || request.sequence() != sequence) return;
+                busy = false;
+                result = completed;
+                displayed = completed.solved() ? completed.geometry() : definition;
+                if (request.point() == null && completed.solved()) definition = completed.geometry();
+                if (request.commitDrag()) {
+                    dragging = false;
+                    if (completed.solved()) {
+                        remember();
+                        definition = displayed = completed.geometry();
+                        submit(null, null, false);
+                        return;
+                    }
+                    interactionError =
+                            "That point cannot move to the requested position while its constraints are active.";
+                    displayed = definition;
+                    submit(null, null, false);
+                    return;
+                }
+                onChanged.run();
+            });
         }
     }
 

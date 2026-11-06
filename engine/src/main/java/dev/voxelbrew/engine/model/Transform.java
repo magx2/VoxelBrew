@@ -10,8 +10,7 @@ public final class Transform {
     public Transform(double... matrix) {
         if (matrix.length != 12) throw new IllegalArgumentException("Placement requires 12 values");
         m = matrix.clone();
-        for (double v : m)
-            if (!Double.isFinite(v)) throw new IllegalArgumentException("Nonfinite placement");
+        for (double v : m) if (!Double.isFinite(v)) throw new IllegalArgumentException("Nonfinite placement");
         for (int r = 0; r < 3; r++)
             for (int s = 0; s < 3; s++) {
                 double dot = 0;
@@ -19,10 +18,9 @@ public final class Transform {
                 if (Math.abs(dot - (r == s ? 1 : 0)) > 1e-9)
                     throw new IllegalArgumentException("Placement must be rigid");
             }
-        double det =
-                m[0] * (m[5] * m[10] - m[6] * m[9])
-                        - m[1] * (m[4] * m[10] - m[6] * m[8])
-                        + m[2] * (m[4] * m[9] - m[5] * m[8]);
+        double det = m[0] * (m[5] * m[10] - m[6] * m[9])
+                - m[1] * (m[4] * m[10] - m[6] * m[8])
+                + m[2] * (m[4] * m[9] - m[5] * m[8]);
         if (det < 0) throw new IllegalArgumentException("Placement must preserve orientation");
     }
 
@@ -48,8 +46,7 @@ public final class Transform {
     public Transform compose(Transform before) {
         double[] b = before.m, out = new double[12];
         for (int r = 0; r < 3; r++) {
-            for (int c = 0; c < 3; c++)
-                for (int k = 0; k < 3; k++) out[4 * r + c] += m[4 * r + k] * b[4 * k + c];
+            for (int c = 0; c < 3; c++) for (int k = 0; k < 3; k++) out[4 * r + c] += m[4 * r + k] * b[4 * k + c];
             out[4 * r + 3] = m[4 * r + 3];
             for (int k = 0; k < 3; k++) out[4 * r + 3] += m[4 * r + k] * b[4 * k + 3];
         }
@@ -60,48 +57,9 @@ public final class Transform {
         double x = dev.voxelbrew.engine.units.Measurements.radians(xDegrees),
                 y = dev.voxelbrew.engine.units.Measurements.radians(yDegrees),
                 z = dev.voxelbrew.engine.units.Measurements.radians(zDegrees);
-        var rx =
-                new Transform(
-                        1,
-                        0,
-                        0,
-                        0,
-                        0,
-                        Math.cos(x),
-                        -Math.sin(x),
-                        0,
-                        0,
-                        Math.sin(x),
-                        Math.cos(x),
-                        0);
-        var ry =
-                new Transform(
-                        Math.cos(y),
-                        0,
-                        Math.sin(y),
-                        0,
-                        0,
-                        1,
-                        0,
-                        0,
-                        -Math.sin(y),
-                        0,
-                        Math.cos(y),
-                        0);
-        var rz =
-                new Transform(
-                        Math.cos(z),
-                        -Math.sin(z),
-                        0,
-                        0,
-                        Math.sin(z),
-                        Math.cos(z),
-                        0,
-                        0,
-                        0,
-                        0,
-                        1,
-                        0);
+        var rx = new Transform(1, 0, 0, 0, 0, Math.cos(x), -Math.sin(x), 0, 0, Math.sin(x), Math.cos(x), 0);
+        var ry = new Transform(Math.cos(y), 0, Math.sin(y), 0, 0, 1, 0, 0, -Math.sin(y), 0, Math.cos(y), 0);
+        var rz = new Transform(Math.cos(z), -Math.sin(z), 0, 0, Math.sin(z), Math.cos(z), 0, 0, 0, 0, 1, 0);
         return rz.compose(ry).compose(rx);
     }
 

@@ -29,18 +29,15 @@ public final class FeatureRegistry implements AutoCloseable {
     public FeatureRegistry(Path directory) throws IOException {
         var urls = new ArrayList<URL>();
         if (Files.exists(directory)) {
-            if (!Files.isDirectory(directory))
-                throw new IOException("Plugin path is not a directory: " + directory);
+            if (!Files.isDirectory(directory)) throw new IOException("Plugin path is not a directory: " + directory);
             try (var files = Files.list(directory)) {
-                for (var jar :
-                        files.filter(p -> Files.isRegularFile(p) && p.toString().endsWith(".jar"))
-                                .sorted()
-                                .toList()) urls.add(jar.toUri().toURL());
+                for (var jar : files.filter(
+                                p -> Files.isRegularFile(p) && p.toString().endsWith(".jar"))
+                        .sorted()
+                        .toList()) urls.add(jar.toUri().toURL());
             }
         }
-        loader =
-                new URLClassLoader(
-                        urls.toArray(URL[]::new), FeatureProvider.class.getClassLoader());
+        loader = new URLClassLoader(urls.toArray(URL[]::new), FeatureProvider.class.getClassLoader());
         var providers = ServiceLoader.load(FeatureProvider.class, loader).iterator();
         int failures = 0;
         while (true) {
@@ -49,18 +46,11 @@ public final class FeatureRegistry implements AutoCloseable {
                 var provider = providers.next();
                 var descriptor = Objects.requireNonNull(provider.descriptor());
                 if (descriptor.apiVersion() != FeatureProvider.API_VERSION)
-                    diagnostics.add(
-                            "Incompatible feature "
-                                    + descriptor.key()
-                                    + ": API "
-                                    + descriptor.apiVersion());
-                else if (entries.putIfAbsent(descriptor.key(), new Entry(descriptor, provider))
-                        != null) diagnostics.add("Duplicate feature ID: " + descriptor.key());
+                    diagnostics.add("Incompatible feature " + descriptor.key() + ": API " + descriptor.apiVersion());
+                else if (entries.putIfAbsent(descriptor.key(), new Entry(descriptor, provider)) != null)
+                    diagnostics.add("Duplicate feature ID: " + descriptor.key());
                 failures = 0;
-            } catch (ServiceConfigurationError
-                    | LinkageError
-                    | RuntimeException
-                    | AssertionError failure) {
+            } catch (ServiceConfigurationError | LinkageError | RuntimeException | AssertionError failure) {
                 diagnostics.add("Feature provider load failed: " + failure);
                 if (++failures >= 100) {
                     diagnostics.add("Stopped after 100 consecutive provider failures");
@@ -86,13 +76,12 @@ public final class FeatureRegistry implements AutoCloseable {
     private Entry require(String provider, String type) {
         var entry = entries.get(provider + "/" + type);
         if (entry == null)
-            throw new IllegalArgumentException(
-                    "Missing feature provider '"
-                            + provider
-                            + "/"
-                            + type
-                            + "'. Install a compatible trusted JAR and rebuild; the saved payload is preserved."
-                            + (diagnostics.isEmpty() ? "" : " " + String.join("; ", diagnostics)));
+            throw new IllegalArgumentException("Missing feature provider '"
+                    + provider
+                    + "/"
+                    + type
+                    + "'. Install a compatible trusted JAR and rebuild; the saved payload is preserved."
+                    + (diagnostics.isEmpty() ? "" : " " + String.join("; ", diagnostics)));
         return entry;
     }
 
@@ -100,15 +89,11 @@ public final class FeatureRegistry implements AutoCloseable {
         return require(feature.providerId(), feature.type()).descriptor();
     }
 
-    public Feature.Custom create(
-            String id, String provider, String type, Map<String, Double> values) {
+    public Feature.Custom create(String id, String provider, String type, Map<String, Double> values) {
         try {
             var entry = require(provider, type);
             return encoded(id, entry, values);
-        } catch (RuntimeException
-                | LinkageError
-                | ServiceConfigurationError
-                | AssertionError failure) {
+        } catch (RuntimeException | LinkageError | ServiceConfigurationError | AssertionError failure) {
             throw failure(id, failure);
         }
     }
@@ -116,13 +101,12 @@ public final class FeatureRegistry implements AutoCloseable {
     private Feature.Custom encoded(String id, Entry entry, Map<String, Double> values) {
         var descriptor = entry.descriptor();
         var normalized = normalize(descriptor, values, true);
-        var feature =
-                new Feature.Custom(
-                        id,
-                        descriptor.providerId(),
-                        descriptor.type(),
-                        descriptor.payloadVersion(),
-                        entry.provider().encode(normalized));
+        var feature = new Feature.Custom(
+                id,
+                descriptor.providerId(),
+                descriptor.type(),
+                descriptor.payloadVersion(),
+                entry.provider().encode(normalized));
         // A provider must be able to reopen exactly the parameters it just encoded.
         if (!normalized.equals(parameters(feature)))
             throw new IllegalArgumentException("Feature codec did not preserve parameters");
@@ -133,13 +117,8 @@ public final class FeatureRegistry implements AutoCloseable {
         try {
             var entry = require(feature.providerId(), feature.type());
             return normalize(
-                    entry.descriptor(),
-                    entry.provider().decode(feature.payloadVersion(), feature.payload()),
-                    false);
-        } catch (RuntimeException
-                | LinkageError
-                | ServiceConfigurationError
-                | AssertionError failure) {
+                    entry.descriptor(), entry.provider().decode(feature.payloadVersion(), feature.payload()), false);
+        } catch (RuntimeException | LinkageError | ServiceConfigurationError | AssertionError failure) {
             throw failure(feature.id(), failure);
         }
     }
@@ -149,10 +128,7 @@ public final class FeatureRegistry implements AutoCloseable {
             var values = new LinkedHashMap<>(parameters(feature));
             values.putAll(changes);
             return encoded(feature.id(), require(feature.providerId(), feature.type()), values);
-        } catch (RuntimeException
-                | LinkageError
-                | ServiceConfigurationError
-                | AssertionError failure) {
+        } catch (RuntimeException | LinkageError | ServiceConfigurationError | AssertionError failure) {
             throw failure(feature.id(), failure);
         }
     }
@@ -160,28 +136,21 @@ public final class FeatureRegistry implements AutoCloseable {
     public Solid evaluate(Feature.Custom feature) {
         try {
             parameters(feature); // Validate version, payload and field ranges before native work.
-            var solid =
-                    Objects.requireNonNull(
-                            require(feature.providerId(), feature.type())
-                                    .provider()
-                                    .evaluate(feature.payloadVersion(), feature.payload()),
-                            "Provider returned no solid");
+            var solid = Objects.requireNonNull(
+                    require(feature.providerId(), feature.type())
+                            .provider()
+                            .evaluate(feature.payloadVersion(), feature.payload()),
+                    "Provider returned no solid");
             try {
                 double volume = solid.volume();
                 if (!Double.isFinite(volume) || volume <= 0)
                     throw new IllegalArgumentException("Provider returned an invalid volume");
                 return solid;
-            } catch (RuntimeException
-                    | LinkageError
-                    | ServiceConfigurationError
-                    | AssertionError failure) {
+            } catch (RuntimeException | LinkageError | ServiceConfigurationError | AssertionError failure) {
                 solid.close();
                 throw failure;
             }
-        } catch (RuntimeException
-                | LinkageError
-                | ServiceConfigurationError
-                | AssertionError failure) {
+        } catch (RuntimeException | LinkageError | ServiceConfigurationError | AssertionError failure) {
             throw failure(feature.id(), failure);
         }
     }
@@ -191,23 +160,18 @@ public final class FeatureRegistry implements AutoCloseable {
         var result = new LinkedHashMap<String, Double>();
         for (var parameter : descriptor.parameters()) {
             Double value = values.get(parameter.key());
-            if (value == null && defaults && !values.containsKey(parameter.key()))
-                value = parameter.defaultValue();
-            if (value == null)
-                throw new IllegalArgumentException("Missing parameter " + parameter.key());
+            if (value == null && defaults && !values.containsKey(parameter.key())) value = parameter.defaultValue();
+            if (value == null) throw new IllegalArgumentException("Missing parameter " + parameter.key());
             parameter.validate(value);
             result.put(parameter.key(), value);
         }
         for (var key : values.keySet())
-            if (!result.containsKey(key))
-                throw new IllegalArgumentException("Unknown parameter " + key);
+            if (!result.containsKey(key)) throw new IllegalArgumentException("Unknown parameter " + key);
         return Collections.unmodifiableMap(result);
     }
 
     private static ModelException failure(String id, Throwable failure) {
-        return failure instanceof ModelException model
-                ? model
-                : new ModelException(id, "Feature provider: " + failure);
+        return failure instanceof ModelException model ? model : new ModelException(id, "Feature provider: " + failure);
     }
 
     @Override

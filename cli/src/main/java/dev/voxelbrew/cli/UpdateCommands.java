@@ -29,37 +29,28 @@ final class UpdateCommands {
                 description = "Show this help message and exit")
         boolean help;
 
-        @Option(
-                names = "--version",
-                description = "Select a published A.B.C release (allows downgrade)")
+        @Option(names = "--version", description = "Select a published A.B.C release (allows downgrade)")
         String version;
 
-        @Option(
-                names = "--force",
-                description = "Reinstall the selected version even if already current")
+        @Option(names = "--force", description = "Reinstall the selected version even if already current")
         boolean force;
 
-        @Spec CommandSpec spec;
+        @Spec
+        CommandSpec spec;
 
         int execute(boolean checkOnly) throws Exception {
             var service = updates.create();
             var cancellation = new UpdateCancellation();
-            var request =
-                    new UpdateService.Request(
-                            version == null ? null : ReleaseVersion.release(version), force);
+            var request = new UpdateService.Request(version == null ? null : ReleaseVersion.release(version), force);
             var result = service.check(request, cancellation);
             spec.commandLine().getOut().println(result.message());
             if (checkOnly || !result.available()) return 0;
-            try (var prepared =
-                    service.prepare(
-                            result,
-                            cancellation,
-                            text -> spec.commandLine().getErr().println(text))) {
+            try (var prepared = service.prepare(
+                    result, cancellation, text -> spec.commandLine().getErr().println(text))) {
                 prepared.handOff();
                 spec.commandLine()
                         .getOut()
-                        .println(
-                                "Update scheduled after exit. Close other instances, then reopen VoxelBrewCLI.");
+                        .println("Update scheduled after exit. Close other instances, then reopen VoxelBrewCLI.");
                 spec.commandLine().getOut().println("Status: " + prepared.statusFile());
                 spec.commandLine().getOut().println("Log: " + prepared.logFile());
             }

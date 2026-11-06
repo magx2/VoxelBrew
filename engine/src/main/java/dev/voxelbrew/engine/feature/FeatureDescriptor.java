@@ -15,13 +15,11 @@ public record FeatureDescriptor(
         CadDocument.identifier(providerId, "provider ID");
         CadDocument.identifier(type, "feature type");
         Objects.requireNonNull(name);
-        if (payloadVersion < 1)
-            throw new IllegalArgumentException("Payload version must be positive");
+        if (payloadVersion < 1) throw new IllegalArgumentException("Payload version must be positive");
         parameters = List.copyOf(parameters);
         var keys = new HashSet<String>();
         for (var p : parameters)
-            if (!keys.add(p.key()))
-                throw new IllegalArgumentException("Duplicate parameter " + p.key());
+            if (!keys.add(p.key())) throw new IllegalArgumentException("Duplicate parameter " + p.key());
     }
 
     public String key() {

@@ -19,37 +19,28 @@ public final class Translations {
 
     public Translations(Locale locale) {
         Objects.requireNonNull(locale);
-        this.locale =
-                locale.getLanguage().equals("pl") ? Locale.forLanguageTag("pl") : Locale.ENGLISH;
-        var control =
-                ResourceBundle.Control.getNoFallbackControl(
-                        ResourceBundle.Control.FORMAT_PROPERTIES);
-        var english =
-                ResourceBundle.getBundle(
-                        "dev.voxelbrew.util.i18n.messages", Locale.ENGLISH, control);
-        var selected =
-                ResourceBundle.getBundle("dev.voxelbrew.util.i18n.messages", this.locale, control);
-        messages =
-                new ResourceBundle() {
-                    @Override
-                    public Locale getLocale() {
-                        return Translations.this.locale;
-                    }
+        this.locale = locale.getLanguage().equals("pl") ? Locale.forLanguageTag("pl") : Locale.ENGLISH;
+        var control = ResourceBundle.Control.getNoFallbackControl(ResourceBundle.Control.FORMAT_PROPERTIES);
+        var english = ResourceBundle.getBundle("dev.voxelbrew.util.i18n.messages", Locale.ENGLISH, control);
+        var selected = ResourceBundle.getBundle("dev.voxelbrew.util.i18n.messages", this.locale, control);
+        messages = new ResourceBundle() {
+            @Override
+            public Locale getLocale() {
+                return Translations.this.locale;
+            }
 
-                    @Override
-                    protected Object handleGetObject(String key) {
-                        return selected.containsKey(key)
-                                ? selected.getObject(key)
-                                : english.getObject(key);
-                    }
+            @Override
+            protected Object handleGetObject(String key) {
+                return selected.containsKey(key) ? selected.getObject(key) : english.getObject(key);
+            }
 
-                    @Override
-                    public Enumeration<String> getKeys() {
-                        var keys = new HashSet<>(english.keySet());
-                        keys.addAll(selected.keySet());
-                        return Collections.enumeration(keys);
-                    }
-                };
+            @Override
+            public Enumeration<String> getKeys() {
+                var keys = new HashSet<>(english.keySet());
+                keys.addAll(selected.keySet());
+                return Collections.enumeration(keys);
+            }
+        };
     }
 
     public ResourceBundle bundle() {
@@ -58,9 +49,7 @@ public final class Translations {
 
     public String text(String key, Object... arguments) {
         String pattern = messages.getString(key);
-        return arguments.length == 0
-                ? pattern
-                : new MessageFormat(pattern, locale).format(arguments);
+        return arguments.length == 0 ? pattern : new MessageFormat(pattern, locale).format(arguments);
     }
 
     /** Provider descriptions without a bundled translation retain their original text. */
@@ -72,10 +61,9 @@ public final class Translations {
         try {
             String language = configuration.get("language", "system").strip();
             boolean system = language.isEmpty() || language.equalsIgnoreCase("system");
-            Locale selected =
-                    system
-                            ? Locale.getDefault(Locale.Category.DISPLAY)
-                            : new Locale.Builder().setLanguageTag(language).build();
+            Locale selected = system
+                    ? Locale.getDefault(Locale.Category.DISPLAY)
+                    : new Locale.Builder().setLanguageTag(language).build();
             var translations = new Translations(selected);
             String source = system ? "system display locale" : "saved language preference";
             if (selected.getLanguage().equals(translations.locale().getLanguage()))

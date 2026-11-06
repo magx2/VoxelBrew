@@ -14,14 +14,12 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 class ConstrainedSketchTest {
-    @TempDir Path directory;
+    @TempDir
+    Path directory;
 
     private static Feature.Sketch sketch(SketchGeometry geometry) {
         return new Feature.Sketch(
-                "sketch",
-                "profile",
-                new Feature.Plane("origin-xy", 0),
-                new Feature.Constrained(geometry));
+                "sketch", "profile", new Feature.Plane("origin-xy", 0), new Feature.Constrained(geometry));
     }
 
     private static double volume(ModelSession session) {
@@ -43,8 +41,7 @@ class ConstrainedSketchTest {
         g = g.add(SketchConstraints.create(g, "hole-fixed", Type.FIX, List.of(circle.ref()), 0));
         var session = new ModelSession(CadDocument.empty());
         session.add(sketch(g));
-        session.add(
-                new Feature.Extrude("thickness", new Feature.ProfileRef("sketch", "profile"), 8));
+        session.add(new Feature.Extrude("thickness", new Feature.ProfileRef("sketch", "profile"), 8));
         assertEquals(19099.469035085127, volume(session), 0.01);
         var file = directory.resolve("constrained plate.jcad");
         DocumentWriter.save(session.document(), file, false);
@@ -52,8 +49,7 @@ class ConstrainedSketchTest {
         session = new ModelSession(DocumentReader.load(file));
         session.editDimension("sketch", "width", 80);
         assertEquals((80 * 40 - 4 * Math.PI) * 8, volume(session), 0.01);
-        assertEquals(
-                "profile", ((Feature.Sketch) session.document().features().getFirst()).profileId());
+        assertEquals("profile", ((Feature.Sketch) session.document().features().getFirst()).profileId());
         assertTrue(session.undo());
         assertEquals(19099.469035085127, volume(session), 0.01);
         assertTrue(session.redo());
@@ -109,28 +105,21 @@ class ConstrainedSketchTest {
     @Test
     void invalidAndConflictingDefinitionsStayEditableAndNeverPublishGeometry() throws Exception {
         var g = Sketches.rectangle("plate", 0, 0, 60, 40, true);
-        var wrong =
-                SketchConstraints.create(
-                        g, "conflict", Type.LENGTH, List.of(g.entities().getFirst().ref()), 80);
-        var broken =
-                new CadDocument(
-                        "document",
-                        List.of(
-                                sketch(g.add(wrong)),
-                                new Feature.Extrude(
-                                        "extrude", new Feature.ProfileRef("sketch", "profile"), 5)),
-                        2);
+        var wrong = SketchConstraints.create(
+                g, "conflict", Type.LENGTH, List.of(g.entities().getFirst().ref()), 80);
+        var broken = new CadDocument(
+                "document",
+                List.of(
+                        sketch(g.add(wrong)),
+                        new Feature.Extrude("extrude", new Feature.ProfileRef("sketch", "profile"), 5)),
+                2);
         var file = directory.resolve("repairable constraints.jcad");
         DocumentWriter.save(broken, file, false);
         assertEquals(broken, DocumentReader.load(file));
         try (var result = Evaluator.evaluate(DocumentReader.load(file))) {
             assertThrows(IllegalStateException.class, result::requireCompleteDocument);
-            assertTrue(
-                    result.diagnostics().stream()
-                            .anyMatch(
-                                    d ->
-                                            d.featureId().equals("sketch")
-                                                    && d.message().contains("conflict")));
+            assertTrue(result.diagnostics().stream()
+                    .anyMatch(d -> d.featureId().equals("sketch") && d.message().contains("conflict")));
         }
         var session = new ModelSession(broken);
         session.replace(sketch(g));
@@ -139,15 +128,13 @@ class ConstrainedSketchTest {
         var open = g.withBoundary(List.of(g.entities().getFirst().id()));
         assertThrows(IllegalArgumentException.class, () -> SketchProfiles.profile(open));
         var other = Sketches.entity("separate", Kind.CIRCLE, false, 100, 100, 4);
-        var disjoint =
-                g.add(other)
-                        .withBoundary(
-                                List.of(
-                                        other.id(),
-                                        g.entities().get(0).id(),
-                                        g.entities().get(1).id(),
-                                        g.entities().get(2).id(),
-                                        g.entities().get(3).id()));
+        var disjoint = g.add(other)
+                .withBoundary(List.of(
+                        other.id(),
+                        g.entities().get(0).id(),
+                        g.entities().get(1).id(),
+                        g.entities().get(2).id(),
+                        g.entities().get(3).id()));
         assertThrows(IllegalArgumentException.class, () -> SketchProfiles.profile(disjoint));
         assertEquals(handles, NativeKernel.liveHandles());
     }

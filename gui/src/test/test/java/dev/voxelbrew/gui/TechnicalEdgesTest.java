@@ -11,8 +11,7 @@ class TechnicalEdgesTest {
     void weldedFaceBoundariesExcludePlanarTriangleDiagonals() {
         double[] points = {0, 0, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 0, 0, 1, 1, 0, 1, 1, 1, 1, 0, 1, 1};
         int[] triangles = {
-            0, 2, 1, 0, 3, 2, 4, 5, 6, 4, 6, 7, 0, 1, 5, 0, 5, 4, 1, 2, 6, 1, 6, 5, 2, 3, 7, 2, 7,
-            6, 3, 0, 4, 3, 4, 7
+            0, 2, 1, 0, 3, 2, 4, 5, 6, 4, 6, 7, 0, 1, 5, 0, 5, 4, 1, 2, 6, 1, 6, 5, 2, 3, 7, 2, 7, 6, 3, 0, 4, 3, 4, 7
         };
         // Duplicate vertices at every triangle, as face-local native tessellations can do.
         double[] detached = new double[triangles.length * 3];
@@ -26,11 +25,10 @@ class TechnicalEdgesTest {
         var edges = TechnicalEdges.from(mesh).edges();
         assertEquals(18, edges.size());
         assertEquals(12, edges.stream().filter(TechnicalEdges.Edge::boundary).count());
-        for (var eye :
-                List.of(new TechnicalEdges.Point(3, 4, 5), new TechnicalEdges.Point(-3, -4, -5)))
-            assertEquals(12, edges.stream().filter(edge -> edge.visibleFrom(eye)).count());
-        assertArrayEquals(
-                detached, mesh.vertices(), "Rendering adjacency must not change exported geometry");
+        for (var eye : List.of(new TechnicalEdges.Point(3, 4, 5), new TechnicalEdges.Point(-3, -4, -5)))
+            assertEquals(
+                    12, edges.stream().filter(edge -> edge.visibleFrom(eye)).count());
+        assertArrayEquals(detached, mesh.vertices(), "Rendering adjacency must not change exported geometry");
     }
 
     @Test
@@ -46,9 +44,7 @@ class TechnicalEdgesTest {
                 points[v + 2] = z;
             }
             int next = (i + 1) % n;
-            int[] patch = {
-                i, next, i + n, next, next + n, i + n, 2 * n, next, i, 2 * n + 1, i + n, next + n
-            };
+            int[] patch = {i, next, i + n, next, next + n, i + n, 2 * n, next, i, 2 * n + 1, i + n, next + n};
             System.arraycopy(patch, 0, triangles, i * 12, 12);
             faces[4 * i + 2] = 1;
             faces[4 * i + 3] = 2;
@@ -57,19 +53,14 @@ class TechnicalEdgesTest {
         var edges = TechnicalEdges.from(new MeshData(points, triangles, faces)).edges();
         assertEquals(2 * n, edges.stream().filter(TechnicalEdges.Edge::boundary).count());
         var eye = new TechnicalEdges.Point(10, 3, 2);
-        var silhouettes = edges.stream().filter(e -> !e.boundary() && e.visibleFrom(eye)).toList();
+        var silhouettes =
+                edges.stream().filter(e -> !e.boundary() && e.visibleFrom(eye)).toList();
         assertEquals(2, silhouettes.size());
-        assertTrue(
-                silhouettes.stream()
-                        .allMatch(e -> e.a().x() == e.b().x() && e.a().y() == e.b().y()));
+        assertTrue(silhouettes.stream().allMatch(e -> e.a().x() == e.b().x() && e.a().y() == e.b().y()));
         assertNotEquals(
                 silhouettes,
                 edges.stream()
-                        .filter(
-                                e ->
-                                        !e.boundary()
-                                                && e.visibleFrom(
-                                                        new TechnicalEdges.Point(3, 10, 2)))
+                        .filter(e -> !e.boundary() && e.visibleFrom(new TechnicalEdges.Point(3, 10, 2)))
                         .toList());
     }
 }

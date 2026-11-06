@@ -14,16 +14,14 @@ public final class SketchText {
 
     public record Glyph(double advance, List<List<Entity>> contours) {
         public Glyph {
-            if (!Double.isFinite(advance) || advance < -1)
-                throw new IllegalArgumentException("Invalid glyph advance");
+            if (!Double.isFinite(advance) || advance < -1) throw new IllegalArgumentException("Invalid glyph advance");
             contours = contours.stream().map(List::copyOf).toList();
             if (contours.stream().mapToInt(List::size).sum() > 512)
                 throw new IllegalArgumentException("Glyph is too complex");
             for (var contour : contours)
                 for (var curve : contour)
                     if (curve.kind() != Kind.LINE && curve.kind() != Kind.SPLINE)
-                        throw new IllegalArgumentException(
-                                "Glyph outlines must contain lines and cubic curves");
+                        throw new IllegalArgumentException("Glyph outlines must contain lines and cubic curves");
         }
     }
 
@@ -38,10 +36,8 @@ public final class SketchText {
                     || glyphs.size() != content.codePointCount(0, content.length())
                     || style < 0
                     || style > 3)
-                throw new IllegalArgumentException(
-                        "Text needs 1–32 characters and valid glyph outlines");
-            if (!pathId.isEmpty())
-                dev.voxelbrew.engine.model.CadDocument.identifier(pathId, "text path ID");
+                throw new IllegalArgumentException("Text needs 1–32 characters and valid glyph outlines");
+            if (!pathId.isEmpty()) dev.voxelbrew.engine.model.CadDocument.identifier(pathId, "text path ID");
         }
     }
 
@@ -62,8 +58,7 @@ public final class SketchText {
         var font = new Font(fontName, style, 1000);
         if (!fontName.equalsIgnoreCase(font.getFamily())
                 && !Set.of("SansSerif", "Serif", "Monospaced", "Dialog", "DialogInput")
-                        .contains(fontName))
-            throw new IllegalArgumentException("Font is not installed: " + fontName);
+                        .contains(fontName)) throw new IllegalArgumentException("Font is not installed: " + fontName);
         var context = new FontRenderContext(new AffineTransform(), true, true);
         var glyphs = new ArrayList<Glyph>();
         for (int code : content.codePoints().toArray()) {
@@ -72,8 +67,7 @@ public final class SketchText {
                 continue;
             }
             if (!font.canDisplay(code))
-                throw new IllegalArgumentException(
-                        "The font cannot display U+" + Integer.toHexString(code));
+                throw new IllegalArgumentException("The font cannot display U+" + Integer.toHexString(code));
             var vector = font.createGlyphVector(context, new String(Character.toChars(code)));
             var iterator = vector.getOutline().getPathIterator(null);
             var contours = new ArrayList<List<Entity>>();
@@ -89,12 +83,10 @@ public final class SketchText {
                     contours.add(current);
                     previous = start = next;
                 } else if (kind == PathIterator.SEG_CLOSE) {
-                    if (previous.distance(start) > 1e-8)
-                        current.add(line("g" + index++, previous, start));
+                    if (previous.distance(start) > 1e-8) current.add(line("g" + index++, previous, start));
                     previous = start;
                 } else if (kind == PathIterator.SEG_LINETO) {
-                    if (previous.distance(next) > 1e-8)
-                        current.add(line("g" + index++, previous, next));
+                    if (previous.distance(next) > 1e-8) current.add(line("g" + index++, previous, next));
                     previous = next;
                 } else {
                     Vec a = next, b, end;
@@ -106,27 +98,25 @@ public final class SketchText {
                         b = new Vec(coordinates[2], -coordinates[3]);
                         end = new Vec(coordinates[4], -coordinates[5]);
                     }
-                    current.add(
-                            Sketches.entity(
-                                    "g" + index++,
-                                    Kind.SPLINE,
-                                    false,
-                                    previous.x(),
-                                    previous.y(),
-                                    a.x(),
-                                    a.y(),
-                                    b.x(),
-                                    b.y(),
-                                    end.x(),
-                                    end.y()));
+                    current.add(Sketches.entity(
+                            "g" + index++,
+                            Kind.SPLINE,
+                            false,
+                            previous.x(),
+                            previous.y(),
+                            a.x(),
+                            a.y(),
+                            b.x(),
+                            b.y(),
+                            end.x(),
+                            end.y()));
                     previous = end;
                 }
                 iterator.next();
             }
-            glyphs.add(
-                    new Glyph(
-                            vector.getGlyphPosition(vector.getNumGlyphs()).getX(),
-                            contours.stream().filter(c -> !c.isEmpty()).toList()));
+            glyphs.add(new Glyph(
+                    vector.getGlyphPosition(vector.getNumGlyphs()).getX(),
+                    contours.stream().filter(c -> !c.isEmpty()).toList()));
         }
         return new Entity(
                 id,
@@ -177,25 +167,18 @@ public final class SketchText {
                 for (var curve : contour) {
                     var values = new ArrayList<Double>();
                     for (int i = 0; i < curve.values().size(); i += 2) {
-                        var p =
-                                SketchCurves.rotate(
-                                                new Vec(
-                                                                curve.value(i) + localX,
-                                                                curve.value(i + 1) + localY)
-                                                        .times(scale),
-                                                angle)
-                                        .plus(origin);
+                        var p = SketchCurves.rotate(
+                                        new Vec(curve.value(i) + localX, curve.value(i + 1) + localY).times(scale),
+                                        angle)
+                                .plus(origin);
                         values.add(p.x());
                         values.add(p.y());
                     }
-                    result.add(
-                            new Entity(
-                                    SketchGeometry.derivedId(
-                                            text.id(),
-                                            "-glyph-" + glyphIndex + "-outline-" + index++),
-                                    curve.kind(),
-                                    values,
-                                    text.construction()));
+                    result.add(new Entity(
+                            SketchGeometry.derivedId(text.id(), "-glyph-" + glyphIndex + "-outline-" + index++),
+                            curve.kind(),
+                            values,
+                            text.construction()));
                 }
             x += glyph.advance() + text.value(4) * 1000;
         }
@@ -208,12 +191,10 @@ public final class SketchText {
         for (int i = 1; i < points.size(); i++) length += points.get(i - 1).distance(points.get(i));
         if (curve.loop()) distance = ((distance % length) + length) % length;
         if (distance < 0 || distance > length)
-            throw new IllegalArgumentException(
-                    "Text extends beyond its path; reduce height, spacing or offset");
+            throw new IllegalArgumentException("Text extends beyond its path; reduce height, spacing or offset");
         for (int i = 1; i < points.size(); i++) {
             double span = points.get(i - 1).distance(points.get(i));
-            if (distance <= span)
-                return (i - 1 + (span == 0 ? 0 : distance / span)) / (points.size() - 1);
+            if (distance <= span) return (i - 1 + (span == 0 ? 0 : distance / span)) / (points.size() - 1);
             distance -= span;
         }
         return 1;

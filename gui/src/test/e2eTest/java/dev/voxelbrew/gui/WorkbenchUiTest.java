@@ -36,44 +36,19 @@ class WorkbenchUiTest {
     @Test
     void technicalDrawingRenderingHidesRearEdgesKeepsPickingAndRemembersStyle() throws Exception {
         var session = new ModelSession(CadDocument.empty());
-        session.add(
-                new Feature.Sketch(
-                        "plate",
-                        "profile",
-                        Feature.Plane.origin("XY"),
-                        new Feature.Rectangle(0, 0, 60, 40)));
-        session.add(
-                new Feature.Extrude("thickness", new Feature.ProfileRef("plate", "profile"), 8));
-        session.add(
-                new Feature.Sketch(
-                        "hole",
-                        "profile",
-                        Feature.Plane.origin("XY"),
-                        new Feature.Circle(10, 10, 4)));
-        session.add(
-                new Feature.ThroughCut(
-                        "cut",
-                        new Feature.ProfileRef("hole", "profile"),
-                        new Feature.BodyRef("thickness", "body")));
+        session.add(new Feature.Sketch(
+                "plate", "profile", Feature.Plane.origin("XY"), new Feature.Rectangle(0, 0, 60, 40)));
+        session.add(new Feature.Extrude("thickness", new Feature.ProfileRef("plate", "profile"), 8));
+        session.add(new Feature.Sketch("hole", "profile", Feature.Plane.origin("XY"), new Feature.Circle(10, 10, 4)));
+        session.add(new Feature.ThroughCut(
+                "cut", new Feature.ProfileRef("hole", "profile"), new Feature.BodyRef("thickness", "body")));
         // A separate body completely behind the plate tests occlusion across bodies.
-        session.add(
-                new Feature.Sketch(
-                        "hidden",
-                        "profile",
-                        new Feature.Plane("offset", -5),
-                        new Feature.Rectangle(20, 10, 10, 10)));
-        session.add(
-                new Feature.Extrude(
-                        "hidden-solid", new Feature.ProfileRef("hidden", "profile"), 2));
+        session.add(new Feature.Sketch(
+                "hidden", "profile", new Feature.Plane("offset", -5), new Feature.Rectangle(20, 10, 10, 10)));
+        session.add(new Feature.Extrude("hidden-solid", new Feature.ProfileRef("hidden", "profile"), 2));
         session.setBodyStyle("thickness.body", new BodyStyle("PETG", "#FF0000"));
-        session.add(
-                new Feature.Sketch(
-                        "boss",
-                        "profile",
-                        new Feature.Plane("top", 8),
-                        new Feature.Circle(42, 22, 12)));
-        session.add(
-                new Feature.Extrude("boss-solid", new Feature.ProfileRef("boss", "profile"), 10));
+        session.add(new Feature.Sketch("boss", "profile", new Feature.Plane("top", 8), new Feature.Circle(42, 22, 12)));
+        session.add(new Feature.Extrude("boss-solid", new Feature.ProfileRef("boss", "profile"), 10));
         Path file = directory.resolve("technical rendering.jcad");
         DocumentWriter.save(session.document(), file, false);
         open(file);
@@ -83,81 +58,65 @@ class WorkbenchUiTest {
         standardView(1);
         click("history-3");
         Thread.sleep(250);
-        fx(
-                () -> {
-                    var view = workbench.viewport();
-                    assertEquals(Rendering.Style.TECHNICAL, view.rendering());
-                    var scene = (SubScene) node("#viewport-scene");
-                    assertEquals(javafx.scene.paint.Color.WHITE, scene.getFill());
-                    var image = scene.snapshot(null, null);
-                    for (var point :
-                            List.of(
-                                    new Point3D(30, 20, 8),
-                                    new Point3D(20, 15, -3),
-                                    new Point3D(25, 10, -3))) {
-                        var screen = view.modelToScreen(point);
-                        var pixel = scene.screenToLocal(screen);
-                        var color =
-                                image.getPixelReader()
-                                        .getColor((int) pixel.getX(), (int) pixel.getY());
-                        assertTrue(
-                                color.getBrightness() > .97,
-                                "White face conceals internal triangles, grid and rear-body edges: "
-                                        + color);
-                    }
-                    var start = scene.screenToLocal(view.modelToScreen(new Point3D(0, 0, 8)));
-                    var end = scene.screenToLocal(view.modelToScreen(new Point3D(60, 0, 8)));
-                    for (int step = 1; step < 20; step++) {
-                        var pixel = start.add(end.subtract(start).multiply(step / 20.0));
-                        boolean ink = false;
-                        for (int dx = -1; dx <= 1; dx++)
-                            for (int dy = -1; dy <= 1; dy++)
-                                ink |=
-                                        image.getPixelReader()
-                                                        .getColor(
-                                                                (int) pixel.getX() + dx,
-                                                                (int) pixel.getY() + dy)
-                                                        .getBrightness()
-                                                < .6;
-                        assertTrue(ink, "Visible outline is continuous at sample " + step);
-                    }
-                    var outline = findBodyView(view, "outline-thickness.body");
-                    assertNotNull(outline);
-                    assertTrue(
-                            ((javafx.scene.shape.TriangleMesh) outline.getMesh()).getFaces().size()
-                                    > 0);
-                    return null;
-                });
+        fx(() -> {
+            var view = workbench.viewport();
+            assertEquals(Rendering.Style.TECHNICAL, view.rendering());
+            var scene = (SubScene) node("#viewport-scene");
+            assertEquals(javafx.scene.paint.Color.WHITE, scene.getFill());
+            var image = scene.snapshot(null, null);
+            for (var point : List.of(new Point3D(30, 20, 8), new Point3D(20, 15, -3), new Point3D(25, 10, -3))) {
+                var screen = view.modelToScreen(point);
+                var pixel = scene.screenToLocal(screen);
+                var color = image.getPixelReader().getColor((int) pixel.getX(), (int) pixel.getY());
+                assertTrue(
+                        color.getBrightness() > .97,
+                        "White face conceals internal triangles, grid and rear-body edges: " + color);
+            }
+            var start = scene.screenToLocal(view.modelToScreen(new Point3D(0, 0, 8)));
+            var end = scene.screenToLocal(view.modelToScreen(new Point3D(60, 0, 8)));
+            for (int step = 1; step < 20; step++) {
+                var pixel = start.add(end.subtract(start).multiply(step / 20.0));
+                boolean ink = false;
+                for (int dx = -1; dx <= 1; dx++)
+                    for (int dy = -1; dy <= 1; dy++)
+                        ink |= image.getPixelReader()
+                                        .getColor((int) pixel.getX() + dx, (int) pixel.getY() + dy)
+                                        .getBrightness()
+                                < .6;
+                assertTrue(ink, "Visible outline is continuous at sample " + step);
+            }
+            var outline = findBodyView(view, "outline-thickness.body");
+            assertNotNull(outline);
+            assertTrue(((javafx.scene.shape.TriangleMesh) outline.getMesh())
+                            .getFaces()
+                            .size()
+                    > 0);
+            return null;
+        });
         assertEquals(snapshot, fx(() -> workbench.controller().snapshot()));
         assertFalse(fx(() -> workbench.controller().dirty()));
         modelClick(35, 25, 8);
-        assertNotNull(
-                fx(() -> node("#body-material-name")),
-                "Visible solid remains pickable through its outlines");
+        assertNotNull(fx(() -> node("#body-material-name")), "Visible solid remains pickable through its outlines");
         click("history-3");
         standardView(0);
-        fx(
-                () -> {
-                    var bounds = Screen.getPrimary().getVisualBounds();
-                    stage.setWidth(Math.min(1400, bounds.getWidth() - 60));
-                    stage.setHeight(Math.min(900, bounds.getHeight() - 80));
-                    stage.centerOnScreen();
-                    return null;
-                });
+        fx(() -> {
+            var bounds = Screen.getPrimary().getVisualBounds();
+            stage.setWidth(Math.min(1400, bounds.getWidth() - 60));
+            stage.setHeight(Math.min(900, bounds.getHeight() - 80));
+            stage.centerOnScreen();
+            return null;
+        });
         Thread.sleep(250);
         for (int palette : List.of(1, 2)) {
             choice("appearance", palette);
-            fx(
-                    () -> {
-                        Screenshot.save(
-                                stage.getScene(),
-                                Path.of(
-                                        System.getProperty("voxelbrew.ui.artifacts"),
-                                        "technical-drawing-"
-                                                + (palette == 1 ? "light" : "dark")
-                                                + ".png"));
-                        return null;
-                    });
+            fx(() -> {
+                Screenshot.save(
+                        stage.getScene(),
+                        Path.of(
+                                System.getProperty("voxelbrew.ui.artifacts"),
+                                "technical-drawing-" + (palette == 1 ? "light" : "dark") + ".png"));
+                return null;
+            });
         }
         // The normal creation path remains available while this style is active.
         click("constrained-sketch");
@@ -169,37 +128,28 @@ class WorkbenchUiTest {
         assertEquals(Rendering.Style.SHADED, fx(() -> workbench.viewport().rendering()));
         assertEquals(
                 javafx.scene.paint.Color.RED,
-                fx(
-                        () ->
-                                ((javafx.scene.paint.PhongMaterial)
-                                                findBodyView(
-                                                                workbench.viewport(),
-                                                                "body-thickness.body")
-                                                        .getMaterial())
-                                        .getDiffuseColor()));
+                fx(() -> ((javafx.scene.paint.PhongMaterial) findBodyView(workbench.viewport(), "body-thickness.body")
+                                .getMaterial())
+                        .getDiffuseColor()));
         renderStyle("technical");
         assertEquals("TECHNICAL", configuration.get("rendering.style", ""));
         assertEquals("preserve me", configuration.get("external.setting", ""));
-        fx(
-                () -> {
-                    workbench.close();
-                    return null;
-                });
+        fx(() -> {
+            workbench.close();
+            return null;
+        });
         workbench.whenClosed().toCompletableFuture().get(20, TimeUnit.SECONDS);
-        fx(
-                () -> {
-                    workbench =
-                            Workbench.create(
-                                    stage,
-                                    directory.resolve("plugins with spaces"),
-                                    new dev.voxelbrew.util.di.ApplicationModule(
-                                            configuration, updates::service),
-                                    new dev.voxelbrew.exporter.di.FileIoModule());
-                    stage.setScene(workbench.createScene(964, 648));
-                    stage.toFront();
-                    stage.requestFocus();
-                    return null;
-                });
+        fx(() -> {
+            workbench = Workbench.create(
+                    stage,
+                    directory.resolve("plugins with spaces"),
+                    new dev.voxelbrew.util.di.ApplicationModule(configuration, updates::service),
+                    new dev.voxelbrew.exporter.di.FileIoModule());
+            stage.setScene(workbench.createScene(964, 648));
+            stage.toFront();
+            stage.requestFocus();
+            return null;
+        });
         Thread.sleep(400);
         open(file);
         assertEquals(Rendering.Style.TECHNICAL, fx(() -> workbench.viewport().rendering()));
@@ -211,8 +161,7 @@ class WorkbenchUiTest {
         click("menu-rendering");
         click("rendering-" + style);
         Thread.sleep(200);
-        assertTrue(
-                fx(() -> ((RadioMenuItem) command(workbench, "rendering-" + style)).isSelected()));
+        assertTrue(fx(() -> ((RadioMenuItem) command(workbench, "rendering-" + style)).isSelected()));
     }
 
     @Test
@@ -231,22 +180,19 @@ class WorkbenchUiTest {
         click("history-1");
         assertEquals(complete, document(), "Selecting an icon must not roll back the model");
         assertTrue(fx(() -> node("#history-1").getStyleClass().contains("history-selected")));
-        assertEquals(
-                ContentDisplay.GRAPHIC_ONLY,
-                fx(() -> ((Button) node("#history-1")).getContentDisplay()));
+        assertEquals(ContentDisplay.GRAPHIC_ONLY, fx(() -> ((Button) node("#history-1")).getContentDisplay()));
         assertTrue(fx(() -> ((Button) node("#history-1")).getTooltip().getText().contains("2 ·")));
         assertTrue(fx(() -> node("#feature-timeline").getBoundsInParent().getHeight()) < 80);
         for (int palette : List.of(1, 2)) {
             choice("appearance", palette);
-            fx(
-                    () -> {
-                        Screenshot.save(
-                                stage.getScene(),
-                                Path.of(
-                                        System.getProperty("voxelbrew.ui.artifacts"),
-                                        "timeline-" + (palette == 1 ? "light" : "dark") + ".png"));
-                        return null;
-                    });
+            fx(() -> {
+                Screenshot.save(
+                        stage.getScene(),
+                        Path.of(
+                                System.getProperty("voxelbrew.ui.artifacts"),
+                                "timeline-" + (palette == 1 ? "light" : "dark") + ".png"));
+                return null;
+            });
         }
         click("timeline-first");
         ready();
@@ -262,37 +208,30 @@ class WorkbenchUiTest {
         ready();
         assertEquals(3, document().cursor());
         assertEquals(19200, volume(), .01);
-        var start =
-                fx(
-                        () -> {
-                            var bounds =
-                                    node("#history-cursor")
-                                            .localToScreen(
-                                                    node("#history-cursor").getBoundsInLocal());
-                            return new Point2D(bounds.getCenterX(), bounds.getCenterY());
-                        });
-        fx(
-                () -> {
-                    robot.mouseMove(start);
-                    robot.mousePress(MouseButton.PRIMARY);
-                    return null;
-                });
+        var start = fx(() -> {
+            var bounds = node("#history-cursor")
+                    .localToScreen(node("#history-cursor").getBoundsInLocal());
+            return new Point2D(bounds.getCenterX(), bounds.getCenterY());
+        });
+        fx(() -> {
+            robot.mouseMove(start);
+            robot.mousePress(MouseButton.PRIMARY);
+            return null;
+        });
         try {
             for (int step = 1; step <= 8; step++) {
                 double x = start.getX() - 76.0 * step / 8;
-                fx(
-                        () -> {
-                            robot.mouseMove(x, start.getY());
-                            return null;
-                        });
+                fx(() -> {
+                    robot.mouseMove(x, start.getY());
+                    return null;
+                });
                 Thread.sleep(50);
             }
         } finally {
-            fx(
-                    () -> {
-                        robot.mouseRelease(MouseButton.PRIMARY);
-                        return null;
-                    });
+            fx(() -> {
+                robot.mouseRelease(MouseButton.PRIMARY);
+                return null;
+            });
         }
         ready();
         assertEquals(1, document().cursor(), "Dragging the marker snaps between feature icons");
@@ -329,13 +268,9 @@ class WorkbenchUiTest {
         while (System.nanoTime() < deadline) {
             visited.add(document().cursor());
             if (document().cursor() == 4
-                    && fx(
-                            () ->
-                                    !node("#timeline-play")
-                                            .getPseudoClassStates()
-                                            .contains(
-                                                    javafx.css.PseudoClass.getPseudoClass(
-                                                            "playing")))) break;
+                    && fx(() -> !node("#timeline-play")
+                            .getPseudoClassStates()
+                            .contains(javafx.css.PseudoClass.getPseudoClass("playing")))) break;
             Thread.sleep(40);
         }
         ready();
@@ -350,12 +285,8 @@ class WorkbenchUiTest {
         click("menu-fit");
         var session = new ModelSession(CadDocument.empty());
         for (int i = 0; i < 26; i++)
-            session.add(
-                    new Feature.Sketch(
-                            "s" + i,
-                            "p" + i,
-                            Feature.Plane.origin("XY"),
-                            new Feature.Rectangle(0, 0, 20, 10)));
+            session.add(new Feature.Sketch(
+                    "s" + i, "p" + i, Feature.Plane.origin("XY"), new Feature.Rectangle(0, 0, 20, 10)));
         session.add(new Feature.Extrude("broken", new Feature.ProfileRef("missing", "missing"), 5));
         Path file = directory.resolve("long history.jcad");
         DocumentWriter.save(session.document(), file, false);
@@ -374,13 +305,9 @@ class WorkbenchUiTest {
         while (document().cursor() < 27 && System.nanoTime() < deadline) Thread.sleep(40);
         ready();
         assertEquals(27, document().cursor());
-        assertFalse(
-                fx(
-                        () ->
-                                node("#timeline-play")
-                                        .getPseudoClassStates()
-                                        .contains(
-                                                javafx.css.PseudoClass.getPseudoClass("playing"))));
+        assertFalse(fx(() -> node("#timeline-play")
+                .getPseudoClassStates()
+                .contains(javafx.css.PseudoClass.getPseudoClass("playing"))));
         assertTrue(fx(() -> node("#timeline-play").isDisabled()));
         click("timeline-first");
         ready();
@@ -401,14 +328,8 @@ class WorkbenchUiTest {
         ready();
         click("menu-fit");
         var session = new ModelSession(CadDocument.empty());
-        session.add(
-                new Feature.Sketch(
-                        "round",
-                        "profile",
-                        Feature.Plane.origin("XY"),
-                        new Feature.Circle(40, 30, 20)));
-        session.add(
-                new Feature.Extrude("cylinder", new Feature.ProfileRef("round", "profile"), 15));
+        session.add(new Feature.Sketch("round", "profile", Feature.Plane.origin("XY"), new Feature.Circle(40, 30, 20)));
+        session.add(new Feature.Extrude("cylinder", new Feature.ProfileRef("round", "profile"), 15));
         var file = directory.resolve("curved support.jcad");
         DocumentWriter.save(session.document(), file, false);
         open(file);
@@ -420,19 +341,13 @@ class WorkbenchUiTest {
         assertNotNull(fx(() -> node("#sketch-plane-hint")));
         assertEquals(before, fx(() -> workbench.controller().snapshot()));
         // An asynchronous external change must invalidate all picks, including origin targets.
-        fx(
-                () -> {
-                    workbench.controller().edit("cylinder", "distance", 20);
-                    return null;
-                });
+        fx(() -> {
+            workbench.controller().edit("cylinder", "distance", 20);
+            return null;
+        });
         ready();
         assertNull(fx(() -> workbench.lookup("#sketch-plane-hint")));
-        assertNull(
-                fx(
-                        () ->
-                                ((SubScene) node("#viewport-scene"))
-                                        .getRoot()
-                                        .lookup("#sketch-plane-xy")));
+        assertNull(fx(() -> ((SubScene) node("#viewport-scene")).getRoot().lookup("#sketch-plane-xy")));
         assertEquals(2, document().features().size());
         assertEquals(20, ((Feature.Extrude) document().features().getLast()).distance());
     }
@@ -444,15 +359,12 @@ class WorkbenchUiTest {
         click("constrained-sketch");
         assertNotNull(fx(() -> node("#sketch-plane-hint")));
         assertNull(fx(() -> stage.getScene().lookup("#sketch-editor")));
-        fx(
-                () -> {
-                    Screenshot.save(
-                            stage.getScene(),
-                            Path.of(
-                                    System.getProperty("voxelbrew.ui.artifacts"),
-                                    "sketch-origin-planes.png"));
-                    return null;
-                });
+        fx(() -> {
+            Screenshot.save(
+                    stage.getScene(),
+                    Path.of(System.getProperty("voxelbrew.ui.artifacts"), "sketch-origin-planes.png"));
+            return null;
+        });
         key(KeyCode.ESCAPE);
         assertEquals(empty, fx(() -> workbench.controller().snapshot()));
         int index = 0;
@@ -500,23 +412,19 @@ class WorkbenchUiTest {
             choice("appearance", palette);
             click("constrained-sketch");
             standardView(1);
-            fx(
-                    () -> {
-                        robot.mouseMove(workbench.viewport().modelToScreen(new Point3D(40, 30, 5)));
-                        return null;
-                    });
+            fx(() -> {
+                robot.mouseMove(workbench.viewport().modelToScreen(new Point3D(40, 30, 5)));
+                return null;
+            });
             Thread.sleep(180);
-            fx(
-                    () -> {
-                        Screenshot.save(
-                                stage.getScene(),
-                                Path.of(
-                                        System.getProperty("voxelbrew.ui.artifacts"),
-                                        "sketch-plane-picker-"
-                                                + (palette == 1 ? "light" : "dark")
-                                                + ".png"));
-                        return null;
-                    });
+            fx(() -> {
+                Screenshot.save(
+                        stage.getScene(),
+                        Path.of(
+                                System.getProperty("voxelbrew.ui.artifacts"),
+                                "sketch-plane-picker-" + (palette == 1 ? "light" : "dark") + ".png"));
+                return null;
+            });
             if (palette == 1) key(KeyCode.ESCAPE);
         }
         modelClick(40, 30, 5);
@@ -561,7 +469,9 @@ class WorkbenchUiTest {
         assertEquals(repaired, document().features().get(2));
     }
 
-    @TempDir Path directory;
+    @TempDir
+    Path directory;
+
     private Stage stage;
     private Workbench workbench;
     private static Robot robot;
@@ -574,20 +484,18 @@ class WorkbenchUiTest {
         originalAppearance = new Appearance().load();
         var started = new CountDownLatch(1);
         Launcher.configureGraphics();
-        Platform.startup(
-                () -> {
-                    Platform.setImplicitExit(false);
-                    started.countDown();
-                });
+        Platform.startup(() -> {
+            Platform.setImplicitExit(false);
+            started.countDown();
+        });
         assertTrue(started.await(20, TimeUnit.SECONDS));
-        fx(
-                () -> {
-                    assertTrue(
-                            Platform.isSupported(ConditionalFeature.SCENE3D),
-                            "Real JavaFX 3D is required; use WSLg or Xvfb/Mesa");
-                    robot = new Robot();
-                    return null;
-                });
+        fx(() -> {
+            assertTrue(
+                    Platform.isSupported(ConditionalFeature.SCENE3D),
+                    "Real JavaFX 3D is required; use WSLg or Xvfb/Mesa");
+            robot = new Robot();
+            return null;
+        });
     }
 
     @AfterAll
@@ -599,89 +507,73 @@ class WorkbenchUiTest {
     @BeforeEach
     void window(TestInfo info) throws Exception {
         updates = new UpdateFixture(directory.resolve("update fixture"));
-        configuration =
-                new dev.voxelbrew.util.config.UserConfiguration(
-                        directory.resolve("preferences.properties"));
+        configuration = new dev.voxelbrew.util.config.UserConfiguration(directory.resolve("preferences.properties"));
         String testName = info.getTestMethod().orElseThrow().getName();
         boolean firstLaunch = testName.startsWith("firstLaunch");
-        if (!firstLaunch)
-            configuration.set("language", testName.startsWith("polish") ? "pl" : "en");
+        if (!firstLaunch) configuration.set("language", testName.startsWith("polish") ? "pl" : "en");
         configuration.set("external.setting", "preserve me");
         Path plugins = Files.createDirectory(directory.resolve("plugins with spaces"));
-        Files.copy(
-                Path.of(System.getProperty("voxelbrew.test.plugin")),
-                plugins.resolve("provider.jar"));
-        fx(
-                () -> {
-                    stage = new Stage();
-                    if (System.getProperty("os.name").startsWith("Windows"))
-                        stage.setAlwaysOnTop(true);
-                    Locale previousDisplay = Locale.getDefault(Locale.Category.DISPLAY);
-                    try {
-                        if (firstLaunch)
-                            Locale.setDefault(
-                                    Locale.Category.DISPLAY, Locale.forLanguageTag("pl-PL"));
-                        workbench =
-                                Workbench.create(
-                                        stage,
-                                        plugins,
-                                        new dev.voxelbrew.util.di.ApplicationModule(
-                                                configuration, updates::service),
-                                        new dev.voxelbrew.exporter.di.FileIoModule());
-                    } finally {
-                        Locale.setDefault(Locale.Category.DISPLAY, previousDisplay);
-                    }
-                    var screen = Screen.getPrimary().getVisualBounds();
-                    // Match the hosted Windows runner so clipped inspector fields require
-                    // scrolling.
-                    stage.setScene(
-                            workbench.createScene(
-                                    Math.min(964, screen.getWidth() - 60),
-                                    Math.min(648, screen.getHeight() - 80)));
-                    stage.show();
-                    // JavaFX 21's Windows Robot converts coordinates using the nearest monitor
-                    // center. Keep the fixture away from edges shared with a different DPI screen.
-                    stage.setX(screen.getMinX() + (screen.getWidth() - stage.getWidth()) / 2);
-                    stage.setY(screen.getMinY() + (screen.getHeight() - stage.getHeight()) / 2);
-                    stage.toFront();
-                    stage.requestFocus();
-                    return null;
-                });
+        Files.copy(Path.of(System.getProperty("voxelbrew.test.plugin")), plugins.resolve("provider.jar"));
+        fx(() -> {
+            stage = new Stage();
+            if (System.getProperty("os.name").startsWith("Windows")) stage.setAlwaysOnTop(true);
+            Locale previousDisplay = Locale.getDefault(Locale.Category.DISPLAY);
+            try {
+                if (firstLaunch) Locale.setDefault(Locale.Category.DISPLAY, Locale.forLanguageTag("pl-PL"));
+                workbench = Workbench.create(
+                        stage,
+                        plugins,
+                        new dev.voxelbrew.util.di.ApplicationModule(configuration, updates::service),
+                        new dev.voxelbrew.exporter.di.FileIoModule());
+            } finally {
+                Locale.setDefault(Locale.Category.DISPLAY, previousDisplay);
+            }
+            var screen = Screen.getPrimary().getVisualBounds();
+            // Match the hosted Windows runner so clipped inspector fields require
+            // scrolling.
+            stage.setScene(workbench.createScene(
+                    Math.min(964, screen.getWidth() - 60), Math.min(648, screen.getHeight() - 80)));
+            stage.show();
+            // JavaFX 21's Windows Robot converts coordinates using the nearest monitor
+            // center. Keep the fixture away from edges shared with a different DPI screen.
+            stage.setX(screen.getMinX() + (screen.getWidth() - stage.getWidth()) / 2);
+            stage.setY(screen.getMinY() + (screen.getHeight() - stage.getHeight()) / 2);
+            stage.toFront();
+            stage.requestFocus();
+            return null;
+        });
         Thread.sleep(1200);
     }
 
     @AfterEach
     void close(TestInfo info) throws Exception {
         try {
-            fx(
-                    () -> {
-                        if (stage != null && stage.isShowing())
+            fx(() -> {
+                if (stage != null && stage.isShowing())
+                    Screenshot.save(
+                            stage.getScene(),
+                            Path.of(
+                                    System.getProperty("voxelbrew.ui.artifacts"),
+                                    info.getTestMethod().orElseThrow().getName() + "-last.png"));
+                int index = 0;
+                for (var window : new ArrayList<>(Window.getWindows()))
+                    if (window != stage) {
+                        if (window.getScene() != null)
                             Screenshot.save(
-                                    stage.getScene(),
+                                    window.getScene(),
                                     Path.of(
                                             System.getProperty("voxelbrew.ui.artifacts"),
                                             info.getTestMethod().orElseThrow().getName()
-                                                    + "-last.png"));
-                        int index = 0;
-                        for (var window : new ArrayList<>(Window.getWindows()))
-                            if (window != stage) {
-                                if (window.getScene() != null)
-                                    Screenshot.save(
-                                            window.getScene(),
-                                            Path.of(
-                                                    System.getProperty("voxelbrew.ui.artifacts"),
-                                                    info.getTestMethod().orElseThrow().getName()
-                                                            + "-dialog-"
-                                                            + (index++)
-                                                            + ".png"));
-                                window.hide();
-                            }
-                        if (workbench != null) workbench.close();
-                        if (stage != null) stage.hide();
-                        return null;
-                    });
-            if (workbench != null)
-                workbench.whenClosed().toCompletableFuture().get(20, TimeUnit.SECONDS);
+                                                    + "-dialog-"
+                                                    + (index++)
+                                                    + ".png"));
+                        window.hide();
+                    }
+                if (workbench != null) workbench.close();
+                if (stage != null) stage.hide();
+                return null;
+            });
+            if (workbench != null) workbench.whenClosed().toCompletableFuture().get(20, TimeUnit.SECONDS);
         } finally {
             if (updates != null) updates.close();
         }
@@ -732,21 +624,19 @@ class WorkbenchUiTest {
         assertEquals(restored.getWidth(), windowBounds().getWidth(), 2);
         assertEquals(restored.getHeight(), windowBounds().getHeight(), 2);
         // Recenter before native input on the mixed-DPI Windows desktop.
-        fx(
-                () -> {
-                    stage.centerOnScreen();
-                    return null;
-                });
+        fx(() -> {
+            stage.centerOnScreen();
+            return null;
+        });
         Thread.sleep(250);
         click("window-minimize");
         assertTrue(fx(stage::isIconified));
-        fx(
-                () -> {
-                    stage.setIconified(false);
-                    stage.toFront();
-                    stage.requestFocus();
-                    return null;
-                });
+        fx(() -> {
+            stage.setIconified(false);
+            stage.toFront();
+            stage.requestFocus();
+            return null;
+        });
         Thread.sleep(400);
         assertFalse(fx(stage::isIconified));
         assertEquals(snapshot, fx(() -> workbench.controller().snapshot()));
@@ -754,17 +644,14 @@ class WorkbenchUiTest {
         assertButtonDescriptions();
         for (int palette : List.of(1, 2)) {
             choice("appearance", palette);
-            fx(
-                    () -> {
-                        Screenshot.save(
-                                stage.getScene(),
-                                Path.of(
-                                        System.getProperty("voxelbrew.ui.artifacts"),
-                                        "window-header-"
-                                                + (palette == 1 ? "light" : "dark")
-                                                + ".png"));
-                        return null;
-                    });
+            fx(() -> {
+                Screenshot.save(
+                        stage.getScene(),
+                        Path.of(
+                                System.getProperty("voxelbrew.ui.artifacts"),
+                                "window-header-" + (palette == 1 ? "light" : "dark") + ".png"));
+                return null;
+            });
         }
     }
 
@@ -822,9 +709,7 @@ class WorkbenchUiTest {
 
     private javafx.geometry.Rectangle2D windowBounds() throws Exception {
         return fx(
-                () ->
-                        new javafx.geometry.Rectangle2D(
-                                stage.getX(), stage.getY(), stage.getWidth(), stage.getHeight()));
+                () -> new javafx.geometry.Rectangle2D(stage.getX(), stage.getY(), stage.getWidth(), stage.getHeight()));
     }
 
     private void assertWindowBounds(javafx.geometry.Rectangle2D expected) throws Exception {
@@ -836,28 +721,25 @@ class WorkbenchUiTest {
     }
 
     private Point2D centerOf(String id) throws Exception {
-        return fx(
-                () -> {
-                    var control = node("#" + id);
-                    var bounds = control.localToScreen(control.getBoundsInLocal());
-                    return new Point2D(bounds.getCenterX(), bounds.getCenterY());
-                });
+        return fx(() -> {
+            var control = node("#" + id);
+            var bounds = control.localToScreen(control.getBoundsInLocal());
+            return new Point2D(bounds.getCenterX(), bounds.getCenterY());
+        });
     }
 
     private void doubleClickHeader() throws Exception {
         var point = centerOf("document-title");
-        fx(
-                () -> {
-                    robot.mouseMove(point);
-                    robot.mouseClick(MouseButton.PRIMARY);
-                    return null;
-                });
+        fx(() -> {
+            robot.mouseMove(point);
+            robot.mouseClick(MouseButton.PRIMARY);
+            return null;
+        });
         Thread.sleep(80);
-        fx(
-                () -> {
-                    robot.mouseClick(MouseButton.PRIMARY);
-                    return null;
-                });
+        fx(() -> {
+            robot.mouseClick(MouseButton.PRIMARY);
+            return null;
+        });
         Thread.sleep(250);
     }
 
@@ -866,27 +748,21 @@ class WorkbenchUiTest {
         createRenameBodies();
         var original = document();
         long before = fx(() -> workbench.controller().snapshot().revision());
-        var ids =
-                fx(
-                        () ->
-                                workbench.controller().build().bodies().stream()
-                                        .map(DocumentController.Body::id)
-                                        .toList());
-        double volume = fx(() -> workbench.controller().build().bodies().getFirst().volume());
+        var ids = fx(() -> workbench.controller().build().bodies().stream()
+                .map(DocumentController.Body::id)
+                .toList());
+        double volume =
+                fx(() -> workbench.controller().build().bodies().getFirst().volume());
         bodyTreeClick("Body 1", MouseButton.SECONDARY, 1);
         assertFalse(fx(() -> node("#body-rename").getAccessibleHelp().isBlank()));
         click("body-rename");
         assertEquals("Body 1", fx(() -> ((TextField) node("#body-rename-field")).getText()));
         text("body-rename-field", "Mounting plate");
-        fx(
-                () -> {
-                    Screenshot.save(
-                            stage.getScene(),
-                            Path.of(
-                                    System.getProperty("voxelbrew.ui.artifacts"),
-                                    "body-rename-light.png"));
-                    return null;
-                });
+        fx(() -> {
+            Screenshot.save(
+                    stage.getScene(), Path.of(System.getProperty("voxelbrew.ui.artifacts"), "body-rename-light.png"));
+            return null;
+        });
         key(KeyCode.ENTER);
         ready();
         assertEquals(Map.of("named0.body", "Mounting plate"), document().bodyNames());
@@ -894,11 +770,9 @@ class WorkbenchUiTest {
         assertEquals(original.features(), document().features());
         assertEquals(
                 ids,
-                fx(
-                        () ->
-                                workbench.controller().build().bodies().stream()
-                                        .map(DocumentController.Body::id)
-                                        .toList()));
+                fx(() -> workbench.controller().build().bodies().stream()
+                        .map(DocumentController.Body::id)
+                        .toList()));
         assertEquals(
                 volume,
                 fx(() -> workbench.controller().build().bodies().getFirst().volume()),
@@ -946,55 +820,46 @@ class WorkbenchUiTest {
         assertEquals("Mounting plate", document().bodyNames().get("named0.body"));
         assertEquals(
                 ids,
-                fx(
-                        () ->
-                                workbench.controller().build().bodies().stream()
-                                        .map(DocumentController.Body::id)
-                                        .toList()));
+                fx(() -> workbench.controller().build().bodies().stream()
+                        .map(DocumentController.Body::id)
+                        .toList()));
         bodyTreeClick("Mounting plate", MouseButton.PRIMARY, 2);
         text("body-rename-field", "Stale draft");
-        fx(
-                () -> {
-                    workbench.controller().cursor(3);
-                    return null;
-                });
+        fx(() -> {
+            workbench.controller().cursor(3);
+            return null;
+        });
         ready();
         assertNull(fx(() -> ((TreeView<?>) node("#model-tree")).getEditingItem()));
         bodyTreeClick("Mounting plate", MouseButton.SECONDARY, 1);
         assertTrue(
-                fx(
-                        () ->
-                                Window.getWindows().stream()
-                                        .filter(ContextMenu.class::isInstance)
-                                        .map(ContextMenu.class::cast)
-                                        .filter(Window::isShowing)
-                                        .flatMap(menu -> menu.getItems().stream())
-                                        .filter(item -> "body-rename".equals(item.getId()))
-                                        .findFirst()
-                                        .orElseThrow()
-                                        .isDisable()),
+                fx(() -> Window.getWindows().stream()
+                        .filter(ContextMenu.class::isInstance)
+                        .map(ContextMenu.class::cast)
+                        .filter(Window::isShowing)
+                        .flatMap(menu -> menu.getItems().stream())
+                        .filter(item -> "body-rename".equals(item.getId()))
+                        .findFirst()
+                        .orElseThrow()
+                        .isDisable()),
                 "Cannot rename while rolled back");
         key(KeyCode.ESCAPE);
         bodyTreeClick("Mounting plate", MouseButton.PRIMARY, 2);
         assertNull(fx(() -> ((TreeView<?>) node("#model-tree")).getEditingItem()));
-        fx(
-                () -> {
-                    workbench.controller().cursor(4);
-                    return null;
-                });
+        fx(() -> {
+            workbench.controller().cursor(4);
+            return null;
+        });
         ready();
         assertEquals("Mounting plate", document().bodyNames().get("named0.body"));
-        String featureLabel =
-                fx(
-                        () ->
-                                ((TreeView<?>) node("#model-tree"))
-                                        .getRoot()
-                                        .getChildren()
-                                        .getFirst()
-                                        .getChildren()
-                                        .getFirst()
-                                        .getValue()
-                                        .toString());
+        String featureLabel = fx(() -> ((TreeView<?>) node("#model-tree"))
+                .getRoot()
+                .getChildren()
+                .getFirst()
+                .getChildren()
+                .getFirst()
+                .getValue()
+                .toString());
         bodyTreeClick(featureLabel, MouseButton.PRIMARY, 2);
         assertNull(
                 fx(() -> ((TreeView<?>) node("#model-tree")).getEditingItem()),
@@ -1007,41 +872,32 @@ class WorkbenchUiTest {
         choice("appearance", 2);
         var translations = new dev.voxelbrew.util.i18n.Translations(Locale.forLanguageTag("pl"));
         bodyTreeClick(translations.text("feature.body", 2), MouseButton.SECONDARY, 1);
-        assertEquals(
-                "Zmień nazwę", fx(() -> ((Label) node("#body-rename").lookup(".label")).getText()));
-        fx(
-                () -> {
-                    Screenshot.save(
-                            node("#body-rename").getScene(),
-                            Path.of(
-                                    System.getProperty("voxelbrew.ui.artifacts"),
-                                    "body-context-pl.png"));
-                    return null;
-                });
+        assertEquals("Zmień nazwę", fx(() -> ((Label) node("#body-rename").lookup(".label")).getText()));
+        fx(() -> {
+            Screenshot.save(
+                    node("#body-rename").getScene(),
+                    Path.of(System.getProperty("voxelbrew.ui.artifacts"), "body-context-pl.png"));
+            return null;
+        });
         click("body-rename");
         text("body-rename-field", "Obudowa");
-        fx(
-                () -> {
-                    var editor = node("#body-rename-field");
-                    var clip = node("#model-tree").lookup(".clipped-container");
-                    assertNotNull(clip);
-                    var fieldBounds = editor.localToScene(editor.getLayoutBounds());
-                    var visibleBounds = clip.localToScene(clip.getLayoutBounds());
-                    assertTrue(fieldBounds.getMinY() >= visibleBounds.getMinY() - 1);
-                    assertTrue(
-                            fieldBounds.getMaxY() <= visibleBounds.getMaxY() + 1,
-                            "The entire inline editor must remain visible on the last row");
-                    return null;
-                });
-        fx(
-                () -> {
-                    Screenshot.save(
-                            stage.getScene(),
-                            Path.of(
-                                    System.getProperty("voxelbrew.ui.artifacts"),
-                                    "body-rename-dark.png"));
-                    return null;
-                });
+        fx(() -> {
+            var editor = node("#body-rename-field");
+            var clip = node("#model-tree").lookup(".clipped-container");
+            assertNotNull(clip);
+            var fieldBounds = editor.localToScene(editor.getLayoutBounds());
+            var visibleBounds = clip.localToScene(clip.getLayoutBounds());
+            assertTrue(fieldBounds.getMinY() >= visibleBounds.getMinY() - 1);
+            assertTrue(
+                    fieldBounds.getMaxY() <= visibleBounds.getMaxY() + 1,
+                    "The entire inline editor must remain visible on the last row");
+            return null;
+        });
+        fx(() -> {
+            Screenshot.save(
+                    stage.getScene(), Path.of(System.getProperty("voxelbrew.ui.artifacts"), "body-rename-dark.png"));
+            return null;
+        });
         key(KeyCode.ENTER);
         ready();
         assertEquals(Map.of("named1.body", "Obudowa"), document().bodyNames());
@@ -1050,96 +906,75 @@ class WorkbenchUiTest {
         click("body-fit");
         assertEquals(revision, fx(() -> workbench.controller().snapshot().revision()));
         bodyTreeClick("Obudowa", MouseButton.PRIMARY, 2);
-        fx(
-                () -> {
-                    workbench.controller().newDocument();
-                    return null;
-                });
+        fx(() -> {
+            workbench.controller().newDocument();
+            return null;
+        });
         ready();
         assertTrue(document().bodyNames().isEmpty());
         assertNull(fx(() -> ((TreeView<?>) node("#model-tree")).getEditingItem()));
     }
 
     private void createRenameBodies() throws Exception {
-        fx(
-                () -> {
-                    for (int i = 0; i < 2; i++) {
-                        workbench
-                                .controller()
-                                .add(
-                                        new Feature.Sketch(
-                                                "named-sketch" + i,
-                                                "profile" + i,
-                                                new Feature.Plane("origin-xy", 0),
-                                                new Feature.Rectangle(i * 40, 0, 30, 30)));
-                        workbench
-                                .controller()
-                                .add(
-                                        new Feature.Extrude(
-                                                "named" + i,
-                                                new Feature.ProfileRef(
-                                                        "named-sketch" + i, "profile" + i),
-                                                5));
-                    }
-                    return null;
-                });
+        fx(() -> {
+            for (int i = 0; i < 2; i++) {
+                workbench
+                        .controller()
+                        .add(new Feature.Sketch(
+                                "named-sketch" + i,
+                                "profile" + i,
+                                new Feature.Plane("origin-xy", 0),
+                                new Feature.Rectangle(i * 40, 0, 30, 30)));
+                workbench
+                        .controller()
+                        .add(new Feature.Extrude(
+                                "named" + i, new Feature.ProfileRef("named-sketch" + i, "profile" + i), 5));
+            }
+            return null;
+        });
         ready();
     }
 
     private void bodyTreeClick(String label, MouseButton button, int count) throws Exception {
         focus(stage);
-        int targetRow =
-                fx(
-                        () -> {
-                            var view = (TreeView<?>) node("#model-tree");
-                            for (int row = 0; row < view.getExpandedItemCount(); row++) {
-                                if (label.equals(view.getTreeItem(row).getValue().toString())) {
-                                    view.scrollTo(row);
-                                    return row;
-                                }
-                            }
-                            throw new AssertionError("Missing body item " + label);
-                        });
+        int targetRow = fx(() -> {
+            var view = (TreeView<?>) node("#model-tree");
+            for (int row = 0; row < view.getExpandedItemCount(); row++) {
+                if (label.equals(view.getTreeItem(row).getValue().toString())) {
+                    view.scrollTo(row);
+                    return row;
+                }
+            }
+            throw new AssertionError("Missing body item " + label);
+        });
         Thread.sleep(150);
-        var point =
-                fx(
-                        () -> {
-                            stage.getScene().getRoot().applyCss();
-                            stage.getScene().getRoot().layout();
-                            var cell =
-                                    node("#model-tree").lookupAll(".tree-cell").stream()
-                                            .filter(
-                                                    n ->
-                                                            n instanceof TreeCell<?> row
-                                                                    && row.getIndex() == targetRow
-                                                                    && label.equals(row.getText()))
-                                            .findFirst()
-                                            .orElseThrow(
-                                                    () ->
-                                                            new AssertionError(
-                                                                    "Missing body label " + label));
-                            var bounds = cell.localToScreen(cell.getBoundsInLocal());
-                            return new Point2D(bounds.getCenterX(), bounds.getCenterY());
-                        });
+        var point = fx(() -> {
+            stage.getScene().getRoot().applyCss();
+            stage.getScene().getRoot().layout();
+            var cell = node("#model-tree").lookupAll(".tree-cell").stream()
+                    .filter(n ->
+                            n instanceof TreeCell<?> row && row.getIndex() == targetRow && label.equals(row.getText()))
+                    .findFirst()
+                    .orElseThrow(() -> new AssertionError("Missing body label " + label));
+            var bounds = cell.localToScreen(cell.getBoundsInLocal());
+            return new Point2D(bounds.getCenterX(), bounds.getCenterY());
+        });
         for (int i = 0; i < count; i++) {
-            fx(
-                    () -> {
-                        robot.mouseMove(point);
-                        robot.mouseClick(button);
-                        return null;
-                    });
+            fx(() -> {
+                robot.mouseMove(point);
+                robot.mouseClick(button);
+                return null;
+            });
             Thread.sleep(80);
         }
         Thread.sleep(250);
         assertEquals(
                 label,
-                fx(
-                        () ->
-                                ((TreeView<?>) node("#model-tree"))
-                                        .getSelectionModel()
-                                        .getSelectedItem()
-                                        .getValue()
-                                        .toString()),
+                fx(() -> ((TreeView<?>) node("#model-tree"))
+                        .getSelectionModel()
+                        .getSelectedItem()
+                        .getValue()
+                        .toString()),
                 "Native click selects the intended row");
     }
 
@@ -1147,15 +982,12 @@ class WorkbenchUiTest {
     void bodyMaterialAndColorPickingUndoSaveAndBothPalettes() throws Exception {
         var session = new ModelSession(CadDocument.empty());
         for (int i = 0; i < 2; i++) {
-            session.add(
-                    new Feature.Sketch(
-                            "sketch" + i,
-                            "profile" + i,
-                            new Feature.Plane("origin-xy", 0),
-                            new Feature.Rectangle(i * 40, 0, 30, 30)));
-            session.add(
-                    new Feature.Extrude(
-                            "solid" + i, new Feature.ProfileRef("sketch" + i, "profile" + i), 5));
+            session.add(new Feature.Sketch(
+                    "sketch" + i,
+                    "profile" + i,
+                    new Feature.Plane("origin-xy", 0),
+                    new Feature.Rectangle(i * 40, 0, 30, 30)));
+            session.add(new Feature.Extrude("solid" + i, new Feature.ProfileRef("sketch" + i, "profile" + i), 5));
         }
         Path file = directory.resolve("red PETG and blue PLA.jcad");
         DocumentWriter.save(session.document(), file, false);
@@ -1197,26 +1029,19 @@ class WorkbenchUiTest {
             choice("appearance", palette);
             // Selecting a feature clears body highlighting and exposes the exact chosen colors.
             click("history-0");
-            fx(
-                    () -> {
-                        for (int i = 0; i < 2; i++) {
-                            var view =
-                                    findBodyView(workbench.viewport(), "body-solid" + i + ".body");
-                            assertNotNull(view);
-                            assertEquals(
-                                    i == 0
-                                            ? javafx.scene.paint.Color.RED
-                                            : javafx.scene.paint.Color.BLUE,
-                                    ((javafx.scene.paint.PhongMaterial) view.getMaterial())
-                                            .getDiffuseColor());
-                        }
-                        Screenshot.save(
-                                stage.getScene(),
-                                Path.of(
-                                        System.getProperty("voxelbrew.ui.artifacts"),
-                                        "body-colors-" + palette + ".png"));
-                        return null;
-                    });
+            fx(() -> {
+                for (int i = 0; i < 2; i++) {
+                    var view = findBodyView(workbench.viewport(), "body-solid" + i + ".body");
+                    assertNotNull(view);
+                    assertEquals(
+                            i == 0 ? javafx.scene.paint.Color.RED : javafx.scene.paint.Color.BLUE,
+                            ((javafx.scene.paint.PhongMaterial) view.getMaterial()).getDiffuseColor());
+                }
+                Screenshot.save(
+                        stage.getScene(),
+                        Path.of(System.getProperty("voxelbrew.ui.artifacts"), "body-colors-" + palette + ".png"));
+                return null;
+            });
         }
         modelClick(55, 15, 5);
         assertEquals("PLA", fx(() -> ((TextField) node("#body-material-name")).getText()));
@@ -1228,8 +1053,7 @@ class WorkbenchUiTest {
     }
 
     private static javafx.scene.shape.MeshView findBodyView(Node node, String id) {
-        if (node instanceof javafx.scene.shape.MeshView mesh && id.equals(mesh.getId()))
-            return mesh;
+        if (node instanceof javafx.scene.shape.MeshView mesh && id.equals(mesh.getId())) return mesh;
         if (node instanceof SubScene scene) return findBodyView(scene.getRoot(), id);
         if (node instanceof Parent parent) {
             for (var child : parent.getChildrenUnmodifiable()) {
@@ -1242,57 +1066,31 @@ class WorkbenchUiTest {
 
     private void pickBodyColor(javafx.scene.paint.Color color) throws Exception {
         click("body-color");
-        fx(
-                () -> {
-                    Node square =
-                            Window.getWindows().stream()
-                                    .filter(Window::isShowing)
-                                    .filter(w -> w.getScene() != null)
-                                    .flatMap(
-                                            w ->
-                                                    w
-                                                            .getScene()
-                                                            .getRoot()
-                                                            .lookupAll(".color-square")
-                                                            .stream())
-                                    .filter(
-                                            n ->
-                                                    n instanceof Parent p
-                                                            && p.getChildrenUnmodifiable().stream()
-                                                                    .anyMatch(
-                                                                            c ->
-                                                                                    c
-                                                                                                    instanceof
-                                                                                                    javafx
-                                                                                                                    .scene
-                                                                                                                    .shape
-                                                                                                                    .Rectangle
-                                                                                                            r
-                                                                                            && color
-                                                                                                    .equals(
-                                                                                                            r
-                                                                                                                    .getFill())))
-                                    .findFirst()
-                                    .orElseThrow(
-                                            () ->
-                                                    new AssertionError(
-                                                            "Missing palette color " + color));
-                    var bounds = square.localToScreen(square.getBoundsInLocal());
-                    robot.mouseMove(bounds.getCenterX(), bounds.getCenterY());
-                    return null;
-                });
+        fx(() -> {
+            Node square = Window.getWindows().stream()
+                    .filter(Window::isShowing)
+                    .filter(w -> w.getScene() != null)
+                    .flatMap(w -> w.getScene().getRoot().lookupAll(".color-square").stream())
+                    .filter(n -> n instanceof Parent p
+                            && p.getChildrenUnmodifiable().stream()
+                                    .anyMatch(c ->
+                                            c instanceof javafx.scene.shape.Rectangle r && color.equals(r.getFill())))
+                    .findFirst()
+                    .orElseThrow(() -> new AssertionError("Missing palette color " + color));
+            var bounds = square.localToScreen(square.getBoundsInLocal());
+            robot.mouseMove(bounds.getCenterX(), bounds.getCenterY());
+            return null;
+        });
         Thread.sleep(100);
-        fx(
-                () -> {
-                    robot.mousePress(MouseButton.PRIMARY);
-                    return null;
-                });
+        fx(() -> {
+            robot.mousePress(MouseButton.PRIMARY);
+            return null;
+        });
         Thread.sleep(60);
-        fx(
-                () -> {
-                    robot.mouseRelease(MouseButton.PRIMARY);
-                    return null;
-                });
+        fx(() -> {
+            robot.mouseRelease(MouseButton.PRIMARY);
+            return null;
+        });
         Thread.sleep(150);
         assertEquals(color, fx(() -> ((ColorPicker) node("#body-color")).getValue()));
     }
@@ -1313,22 +1111,15 @@ class WorkbenchUiTest {
     }
 
     @Test
-    void polishWorkbenchDialogsSketchPrintingAndLanguagePreferenceUseRealControls()
-            throws Exception {
+    void polishWorkbenchDialogsSketchPrintingAndLanguagePreferenceUseRealControls() throws Exception {
         ready();
         key(KeyCode.ALT); // A focused background menu must not swallow modal Escape.
         openShortcutHelp();
         assertNotNull(fx(() -> node("#keyboard-shortcuts-list")));
-        assertTrue(
-                fx(
-                        () ->
-                                node("#keyboard-shortcuts-list").lookupAll(".label").stream()
-                                        .filter(Label.class::isInstance)
-                                        .map(Label.class::cast)
-                                        .anyMatch(
-                                                label ->
-                                                        label.getText()
-                                                                .equals("PROJEKTOWANIE 3D"))));
+        assertTrue(fx(() -> node("#keyboard-shortcuts-list").lookupAll(".label").stream()
+                .filter(Label.class::isInstance)
+                .map(Label.class::cast)
+                .anyMatch(label -> label.getText().equals("PROJEKTOWANIE 3D"))));
         closeShortcutHelp();
         click("constrained-sketch");
         click("choose-plane-xy");
@@ -1337,16 +1128,10 @@ class WorkbenchUiTest {
         assertEquals(List.of(), completionNames());
         assertEquals(
                 "Brak pasujących parametrów",
-                fx(
-                        () ->
-                                ((Label)
-                                                ((ListView<?>) node("#formula-suggestions"))
-                                                        .getPlaceholder())
-                                        .getText()));
+                fx(() -> ((Label) ((ListView<?>) node("#formula-suggestions")).getPlaceholder()).getText()));
         key(KeyCode.ESCAPE);
         assertNoCompletion();
-        assertNotNull(
-                fx(() -> node("#constraint-plane")), "Escape closes suggestions before the tool");
+        assertNotNull(fx(() -> node("#constraint-plane")), "Escape closes suggestions before the tool");
         click("constraint-cancel");
         assertEquals("Zapisz", fx(() -> command(workbench, "save").getText()));
         assertButtonDescriptions();
@@ -1362,22 +1147,14 @@ class WorkbenchUiTest {
         assertShortcutCaption("sketch-tool-arc", "Łuk (A)", "A");
         saveShortcutLabels("pl-light");
         assertEquals("Zakończ szkic", fx(() -> ((Button) node("#constraint-finish")).getText()));
-        assertTrue(
-                fx(
-                        () ->
-                                ((Button) node("#constraint-horizontal"))
-                                        .getTooltip()
-                                        .getText()
-                                        .contains("Wybierz linię")));
+        assertTrue(fx(() ->
+                ((Button) node("#constraint-horizontal")).getTooltip().getText().contains("Wybierz linię")));
         choice("sketch-create-type", SketchTools.Tool.ELLIPSE.ordinal());
-        assertEquals(
-                "Elipsa",
-                fx(
-                        () -> {
-                            @SuppressWarnings("unchecked")
-                            var combo = (ComboBox<SketchTools.Tool>) node("#sketch-create-type");
-                            return combo.getConverter().toString(combo.getValue());
-                        }));
+        assertEquals("Elipsa", fx(() -> {
+            @SuppressWarnings("unchecked")
+            var combo = (ComboBox<SketchTools.Tool>) node("#sketch-create-type");
+            return combo.getConverter().toString(combo.getValue());
+        }));
         click("constraint-cancel");
         click("parameters");
         assertEquals("Zastosuj", fx(() -> ((Button) node("#parameters-apply")).getText()));
@@ -1387,18 +1164,9 @@ class WorkbenchUiTest {
         click("extrude");
         text("extrude-distance", "=1+2/3");
         assertTrue(
-                fx(
-                        () ->
-                                ((TextField) node("#extrude-distance"))
-                                        .getPromptText()
-                                        .startsWith("Liczba")));
-        assertTrue(
-                fx(
-                        () ->
-                                ((TextField) node("#extrude-distance"))
-                                        .getTooltip()
-                                        .getText()
-                                        .startsWith("ƒx  Wynik:")));
+                fx(() -> ((TextField) node("#extrude-distance")).getPromptText().startsWith("Liczba")));
+        assertTrue(fx(() ->
+                ((TextField) node("#extrude-distance")).getTooltip().getText().startsWith("ƒx  Wynik:")));
         click("commit-extrusion");
         ready();
         var part = document();
@@ -1412,34 +1180,26 @@ class WorkbenchUiTest {
         click("export");
         assertEquals("Eksportuj", fx(() -> ((Button) node("#export-confirm")).getText()));
         assertPathRowLabels("export-path");
-        assertEquals(
-                "PROJEKT",
-                fx(
-                        () -> {
-                            @SuppressWarnings("unchecked")
-                            var combo =
-                                    (ComboBox<dev.voxelbrew.exporter.ExportSelection.Space>)
-                                            node("#export-space");
-                            return combo.getConverter().toString(combo.getValue());
-                        }));
+        assertEquals("PROJEKT", fx(() -> {
+            @SuppressWarnings("unchecked")
+            var combo = (ComboBox<dev.voxelbrew.exporter.ExportSelection.Space>) node("#export-space");
+            return combo.getConverter().toString(combo.getValue());
+        }));
         key(KeyCode.ESCAPE);
         click("workspace-print");
         click("print-tab-process");
-        assertEquals(
-                "Podpory automatyczne",
-                fx(() -> ((CheckBox) node("#print-auto-supports")).getText()));
+        assertEquals("Podpory automatyczne", fx(() -> ((CheckBox) node("#print-auto-supports")).getText()));
         click("workspace-design");
         for (int palette : new int[] {1, 2}) {
             choice("appearance", palette);
-            fx(
-                    () -> {
-                        Screenshot.save(
-                                stage.getScene(),
-                                Path.of(
-                                        System.getProperty("voxelbrew.ui.artifacts"),
-                                        "polish-" + (palette == 1 ? "light" : "dark") + ".png"));
-                        return null;
-                    });
+            fx(() -> {
+                Screenshot.save(
+                        stage.getScene(),
+                        Path.of(
+                                System.getProperty("voxelbrew.ui.artifacts"),
+                                "polish-" + (palette == 1 ? "light" : "dark") + ".png"));
+                return null;
+            });
         }
         click("language");
         choice("language-choice", 1);
@@ -1457,85 +1217,72 @@ class WorkbenchUiTest {
         assertEquals("Zapisz", fx(() -> command(workbench, "save").getText()));
         assertButtonDescriptions();
         // A new window reads the saved preference; the existing one retains its own catalog.
-        fx(
-                () -> {
-                    var reopenedStage = new Stage();
-                    var reopened =
-                            Workbench.create(
-                                    reopenedStage,
-                                    directory.resolve("plugins with spaces"),
-                                    new dev.voxelbrew.util.di.ApplicationModule(
-                                            configuration, updates::service),
-                                    new dev.voxelbrew.exporter.di.FileIoModule());
-                    try {
-                        reopenedStage.setScene(reopened.createScene(964, 648));
-                        reopenedStage.show();
-                        assertEquals("Save", command(reopened, "save").getText());
-                    } finally {
-                        reopened.close();
-                        reopenedStage.hide();
-                    }
-                    return null;
-                });
+        fx(() -> {
+            var reopenedStage = new Stage();
+            var reopened = Workbench.create(
+                    reopenedStage,
+                    directory.resolve("plugins with spaces"),
+                    new dev.voxelbrew.util.di.ApplicationModule(configuration, updates::service),
+                    new dev.voxelbrew.exporter.di.FileIoModule());
+            try {
+                reopenedStage.setScene(reopened.createScene(964, 648));
+                reopenedStage.show();
+                assertEquals("Save", command(reopened, "save").getText());
+            } finally {
+                reopened.close();
+                reopenedStage.hide();
+            }
+            return null;
+        });
     }
 
     @Test
     void daggerGraphsIsolateWindowsPreferencesAndWorkerLifetimes() throws Exception {
-        fx(
-                () -> {
-                    var config =
-                            new dev.voxelbrew.util.config.UserConfiguration(
-                                    directory.resolve("isolated.properties"));
-                    config.set("language", "pl");
-                    config.set("appearance", "DARK");
-                    var secondStage = new Stage();
-                    var graph =
-                            DaggerGuiComponent.factory()
-                                    .create(
-                                            secondStage,
-                                            directory.resolve("isolated plugins"),
-                                            new dev.voxelbrew.util.di.ApplicationModule(
-                                                    config,
-                                                    () -> {
-                                                        throw new AssertionError(
-                                                                "Startup must not create an updater");
-                                                    }),
-                                            new dev.voxelbrew.exporter.di.FileIoModule());
-                    var second = graph.workbench();
-                    try {
-                        secondStage.setScene(second.createScene(964, 648));
-                        secondStage.show();
-                        assertSame(second, graph.workbench());
-                        assertNotSame(workbench.controller(), second.controller());
-                        assertNotEquals(
-                                workbench.controller().snapshot().document().id(),
-                                second.controller().snapshot().document().id());
-                        assertEquals(
-                                new dev.voxelbrew.util.i18n.Translations(
-                                                Locale.forLanguageTag("pl"))
-                                        .text("action.save"),
-                                command(second, "save").getText());
-                        assertTrue(second.getStyleClass().contains("dark"));
-                        second.close();
-                        second.close();
-                        var resources = graph.resources();
-                        assertTrue(
-                                List.of(
-                                                resources.rebuild,
-                                                resources.files,
-                                                resources.slicing,
-                                                resources.validation,
-                                                resources.appearance)
-                                        .stream()
-                                        .allMatch(ExecutorService::isShutdown));
-                        workbench.controller().newDocument();
-                        assertFalse(workbench.controller().ioBusy());
-                    } finally {
-                        second.close();
-                        secondStage.hide();
-                    }
-                    return null;
-                });
+        fx(() -> {
+            var config = new dev.voxelbrew.util.config.UserConfiguration(directory.resolve("isolated.properties"));
+            config.set("language", "pl");
+            config.set("appearance", "DARK");
+            var secondStage = new Stage();
+            var graph = DaggerGuiComponent.factory()
+                    .create(
+                            secondStage,
+                            directory.resolve("isolated plugins"),
+                            new dev.voxelbrew.util.di.ApplicationModule(config, () -> {
+                                throw new AssertionError("Startup must not create an updater");
+                            }),
+                            new dev.voxelbrew.exporter.di.FileIoModule());
+            var second = graph.workbench();
+            try {
+                secondStage.setScene(second.createScene(964, 648));
+                secondStage.show();
+                assertSame(second, graph.workbench());
+                assertNotSame(workbench.controller(), second.controller());
+                assertNotEquals(
+                        workbench.controller().snapshot().document().id(),
+                        second.controller().snapshot().document().id());
+                assertEquals(
+                        new dev.voxelbrew.util.i18n.Translations(Locale.forLanguageTag("pl")).text("action.save"),
+                        command(second, "save").getText());
+                assertTrue(second.getStyleClass().contains("dark"));
+                second.close();
+                second.close();
+                var resources = graph.resources();
+                assertTrue(List.of(
+                                resources.rebuild,
+                                resources.files,
+                                resources.slicing,
+                                resources.validation,
+                                resources.appearance)
+                        .stream()
+                        .allMatch(ExecutorService::isShutdown));
+                workbench.controller().newDocument();
+                assertFalse(workbench.controller().ioBusy());
+            } finally {
+                second.close();
+                secondStage.hide();
+            }
+            return null;
+        });
         ready();
     }
 
@@ -1557,57 +1304,36 @@ class WorkbenchUiTest {
         click("menu-file");
         assertEquals("Save", fx(() -> command(workbench, "save").getText()));
         assertNotNull(fx(() -> command(workbench, "save-as").getAccelerator()));
-        assertNotNull(
-                fx(() -> node("#save").getAccessibleHelp()),
-                "Menu description is attached to the popup node");
-        fx(
-                () -> {
-                    var bounds = node("#save").localToScreen(node("#save").getBoundsInLocal());
-                    robot.mouseMove(bounds.getCenterX(), bounds.getCenterY());
-                    return null;
-                });
+        assertNotNull(fx(() -> node("#save").getAccessibleHelp()), "Menu description is attached to the popup node");
+        fx(() -> {
+            var bounds = node("#save").localToScreen(node("#save").getBoundsInLocal());
+            robot.mouseMove(bounds.getCenterX(), bounds.getCenterY());
+            return null;
+        });
         long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(4);
-        while (!fx(
-                        () ->
-                                Window.getWindows().stream()
-                                        .anyMatch(
-                                                window ->
-                                                        window instanceof Tooltip tip
-                                                                && tip.isShowing()
-                                                                && tip.getText()
-                                                                        .contains(
-                                                                                "features and parameters")))
+        while (!fx(() -> Window.getWindows().stream()
+                        .anyMatch(window -> window instanceof Tooltip tip
+                                && tip.isShowing()
+                                && tip.getText().contains("features and parameters")))
                 && System.nanoTime() < deadline) Thread.sleep(40);
         assertTrue(
-                fx(
-                        () ->
-                                Window.getWindows().stream()
-                                        .anyMatch(
-                                                window ->
-                                                        window instanceof Tooltip tip
-                                                                && tip.isShowing()
-                                                                && tip.getText()
-                                                                        .contains(
-                                                                                "features and parameters"))),
+                fx(() -> Window.getWindows().stream()
+                        .anyMatch(window -> window instanceof Tooltip tip
+                                && tip.isShowing()
+                                && tip.getText().contains("features and parameters"))),
                 "Save description is a real hover popup");
-        fx(
-                () -> {
-                    Screenshot.save(
-                            stage.getScene(), artifacts.resolve("workbench-menu-light.png"));
-                    for (var window : Window.getWindows())
-                        if (window instanceof Tooltip && window.isShowing())
-                            Screenshot.save(
-                                    window.getScene(), artifacts.resolve("save-tooltip.png"));
-                    return null;
-                });
+        fx(() -> {
+            Screenshot.save(stage.getScene(), artifacts.resolve("workbench-menu-light.png"));
+            for (var window : Window.getWindows())
+                if (window instanceof Tooltip && window.isShowing())
+                    Screenshot.save(window.getScene(), artifacts.resolve("save-tooltip.png"));
+            return null;
+        });
         key(KeyCode.ESCAPE);
-        assertFalse(
-                fx(
-                        () ->
-                                ((MenuBar) workbench.getScene().lookup("#main-menu"))
-                                        .getMenus()
-                                        .getFirst()
-                                        .isShowing()));
+        assertFalse(fx(() -> ((MenuBar) workbench.getScene().lookup("#main-menu"))
+                .getMenus()
+                .getFirst()
+                .isShowing()));
         String documentId = document().id();
         click("save-as");
         assertButtonDescriptions();
@@ -1628,8 +1354,7 @@ class WorkbenchUiTest {
         click("constrained-sketch");
         click("choose-plane-xy");
         sketchReady();
-        assertNotNull(
-                fx(() -> node("#sketch-editor")), "Menu help must not cover a neighboring action");
+        assertNotNull(fx(() -> node("#sketch-editor")), "Menu help must not cover a neighboring action");
         click("constraint-cancel");
         click("constrained-sketch");
         click("choose-plane-xy");
@@ -1644,52 +1369,43 @@ class WorkbenchUiTest {
         click("workspace-design");
         choice("appearance", 2);
         assertButtonDescriptions();
-        fx(
-                () -> {
-                    Screenshot.save(stage.getScene(), artifacts.resolve("workbench-dark.png"));
-                    return null;
-                });
+        fx(() -> {
+            Screenshot.save(stage.getScene(), artifacts.resolve("workbench-dark.png"));
+            return null;
+        });
         click("menu-file");
-        fx(
-                () -> {
-                    var popup = node("#save").getScene();
-                    assertTrue(popup.getRoot().getStyleClass().contains("dark"));
-                    Screenshot.save(popup, artifacts.resolve("file-menu-dark.png"));
-                    return null;
-                });
+        fx(() -> {
+            var popup = node("#save").getScene();
+            assertTrue(popup.getRoot().getStyleClass().contains("dark"));
+            Screenshot.save(popup, artifacts.resolve("file-menu-dark.png"));
+            return null;
+        });
         key(KeyCode.ESCAPE);
     }
 
     private static java.util.stream.Stream<MenuItem> menuItems(Menu menu) {
         return menu.getItems().stream()
-                .flatMap(
-                        item ->
-                                item instanceof Menu child
-                                        ? java.util.stream.Stream.concat(
-                                                java.util.stream.Stream.of(item), menuItems(child))
-                                        : java.util.stream.Stream.of(item));
+                .flatMap(item -> item instanceof Menu child
+                        ? java.util.stream.Stream.concat(java.util.stream.Stream.of(item), menuItems(child))
+                        : java.util.stream.Stream.of(item));
     }
 
     private void assertButtonDescriptions() throws Exception {
-        fx(
-                () -> {
-                    for (var node : stage.getScene().getRoot().lookupAll("*")) {
-                        if (node instanceof ButtonBase button && button.isVisible()) {
-                            assertNotNull(
-                                    button.getAccessibleHelp(),
-                                    "Missing description: "
-                                            + button.getId()
-                                            + " "
-                                            + button.getText());
-                            assertFalse(button.getAccessibleHelp().isBlank());
-                            assertTrue(
-                                    button.getTooltip() != null
-                                            || button.getProperties().containsKey(UiHelp.class),
-                                    "Missing popup: " + button.getId());
-                        }
-                    }
-                    return null;
-                });
+        fx(() -> {
+            for (var node : stage.getScene().getRoot().lookupAll("*")) {
+                if (node instanceof ButtonBase button && button.isVisible()) {
+                    assertNotNull(
+                            button.getAccessibleHelp(),
+                            "Missing description: " + button.getId() + " " + button.getText());
+                    assertFalse(button.getAccessibleHelp().isBlank());
+                    assertTrue(
+                            button.getTooltip() != null
+                                    || button.getProperties().containsKey(UiHelp.class),
+                            "Missing popup: " + button.getId());
+                }
+            }
+            return null;
+        });
     }
 
     private Node node(String selector) {
@@ -1704,42 +1420,37 @@ class WorkbenchUiTest {
     }
 
     private void click(String id) throws Exception {
-        String menu =
-                switch (id) {
-                    case "new", "open", "import", "save", "save-as", "export" -> "menu-file";
-                    case "language", "updates", "about" -> "menu-settings";
-                    case "appearance", "menu-fit" -> "menu-view";
-                    default -> null;
-                };
+        String menu = switch (id) {
+            case "new", "open", "import", "save", "save-as", "export" -> "menu-file";
+            case "language", "updates", "about" -> "menu-settings";
+            case "appearance", "menu-fit" -> "menu-view";
+            default -> null;
+        };
         if (menu != null) click(menu);
         long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
-        while (!fx(
-                        () -> {
-                            try {
-                                node("#" + id);
-                                return true;
-                            } catch (AssertionError missing) {
-                                return false;
-                            }
-                        })
+        while (!fx(() -> {
+                    try {
+                        node("#" + id);
+                        return true;
+                    } catch (AssertionError missing) {
+                        return false;
+                    }
+                })
                 && System.nanoTime() < deadline) Thread.sleep(40);
         var window = fx(() -> node("#" + id).getScene().getWindow());
         if (!(window instanceof javafx.stage.PopupWindow)) focus(window);
         reveal(id);
-        fx(
-                () -> {
-                    window.getScene().getRoot().applyCss();
-                    window.getScene().getRoot().layout();
-                    var node = node("#" + id);
-                    assertFalse(node.isDisabled(), id + " is disabled");
-                    var bounds = node.localToScreen(node.getBoundsInLocal());
-                    assertNotNull(bounds);
-                    assertTrue(
-                            bounds.getCenterY() < window.getY() + window.getHeight(),
-                            "Control outside window: " + id);
-                    robot.mouseMove(bounds.getCenterX(), bounds.getCenterY());
-                    return null;
-                });
+        fx(() -> {
+            window.getScene().getRoot().applyCss();
+            window.getScene().getRoot().layout();
+            var node = node("#" + id);
+            assertFalse(node.isDisabled(), id + " is disabled");
+            var bounds = node.localToScreen(node.getBoundsInLocal());
+            assertNotNull(bounds);
+            assertTrue(bounds.getCenterY() < window.getY() + window.getHeight(), "Control outside window: " + id);
+            robot.mouseMove(bounds.getCenterX(), bounds.getCenterY());
+            return null;
+        });
         Thread.sleep(120);
         var target = fx(() -> node("#" + id));
         // Native menu rows may act on hover and redirect input into their submenu popup.
@@ -1748,84 +1459,71 @@ class WorkbenchUiTest {
         var released = new CountDownLatch(expected);
         EventHandler<MouseEvent> onPress = e -> pressed.countDown();
         EventHandler<MouseEvent> onRelease = e -> released.countDown();
-        fx(
-                () -> {
-                    target.addEventFilter(MouseEvent.MOUSE_PRESSED, onPress);
-                    target.addEventFilter(MouseEvent.MOUSE_RELEASED, onRelease);
-                    return null;
-                });
+        fx(() -> {
+            target.addEventFilter(MouseEvent.MOUSE_PRESSED, onPress);
+            target.addEventFilter(MouseEvent.MOUSE_RELEASED, onRelease);
+            return null;
+        });
         try {
             // Robot queues native input. Wait for delivery rather than assuming the OS and
             // renderer will process each event within a fixed delay; never replay a click.
-            fx(
-                    () -> {
-                        robot.mousePress(MouseButton.PRIMARY);
-                        return null;
-                    });
+            fx(() -> {
+                robot.mousePress(MouseButton.PRIMARY);
+                return null;
+            });
             assertTrue(pressed.await(3, TimeUnit.SECONDS), "Mouse press reached " + id);
             Thread.sleep(60);
-            fx(
-                    () -> {
-                        robot.mouseRelease(MouseButton.PRIMARY);
-                        return null;
-                    });
+            fx(() -> {
+                robot.mouseRelease(MouseButton.PRIMARY);
+                return null;
+            });
             assertTrue(released.await(3, TimeUnit.SECONDS), "Mouse release reached " + id);
         } finally {
-            fx(
-                    () -> {
-                        if (released.getCount() != 0) robot.mouseRelease(MouseButton.PRIMARY);
-                        target.removeEventFilter(MouseEvent.MOUSE_PRESSED, onPress);
-                        target.removeEventFilter(MouseEvent.MOUSE_RELEASED, onRelease);
-                        return null;
-                    });
+            fx(() -> {
+                if (released.getCount() != 0) robot.mouseRelease(MouseButton.PRIMARY);
+                target.removeEventFilter(MouseEvent.MOUSE_PRESSED, onPress);
+                target.removeEventFilter(MouseEvent.MOUSE_RELEASED, onRelease);
+                return null;
+            });
         }
         Thread.sleep(180);
     }
 
     private void hoverHelp(String id) throws Exception {
         var control = fx(() -> (Control) node("#" + id));
-        fx(
-                () -> {
-                    var bounds = control.localToScreen(control.getBoundsInLocal());
-                    robot.mouseMove(bounds.getCenterX(), bounds.getCenterY());
-                    return null;
-                });
+        fx(() -> {
+            var bounds = control.localToScreen(control.getBoundsInLocal());
+            robot.mouseMove(bounds.getCenterX(), bounds.getCenterY());
+            return null;
+        });
         long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(4);
-        while (!fx(() -> control.getTooltip().isShowing()) && System.nanoTime() < deadline)
-            Thread.sleep(40);
+        while (!fx(() -> control.getTooltip().isShowing()) && System.nanoTime() < deadline) Thread.sleep(40);
         assertTrue(fx(() -> control.getTooltip().isShowing()), "Hover help for " + id);
     }
 
     private void reveal(String id) throws Exception {
         for (int attempt = 0; attempt < 20; attempt++) {
-            int direction =
-                    fx(
-                            () -> {
-                                var target = node("#" + id);
-                                target.getScene().getRoot().applyCss();
-                                target.getScene().getRoot().layout();
-                                var bounds = target.localToScreen(target.getBoundsInLocal());
-                                for (var parent = target.getParent();
-                                        parent != null;
-                                        parent = parent.getParent()) {
-                                    if (!(parent instanceof ScrollPane scroll)) continue;
-                                    var viewport = scroll.lookup(".viewport");
-                                    var visible =
-                                            viewport.localToScreen(viewport.getBoundsInLocal());
-                                    if (bounds.getMinY() >= visible.getMinY()
-                                            && bounds.getMaxY() <= visible.getMaxY()) continue;
-                                    robot.mouseMove(visible.getCenterX(), visible.getCenterY());
-                                    return bounds.getCenterY() < visible.getCenterY() ? -3 : 3;
-                                }
-                                return 0;
-                            });
+            int direction = fx(() -> {
+                var target = node("#" + id);
+                target.getScene().getRoot().applyCss();
+                target.getScene().getRoot().layout();
+                var bounds = target.localToScreen(target.getBoundsInLocal());
+                for (var parent = target.getParent(); parent != null; parent = parent.getParent()) {
+                    if (!(parent instanceof ScrollPane scroll)) continue;
+                    var viewport = scroll.lookup(".viewport");
+                    var visible = viewport.localToScreen(viewport.getBoundsInLocal());
+                    if (bounds.getMinY() >= visible.getMinY() && bounds.getMaxY() <= visible.getMaxY()) continue;
+                    robot.mouseMove(visible.getCenterX(), visible.getCenterY());
+                    return bounds.getCenterY() < visible.getCenterY() ? -3 : 3;
+                }
+                return 0;
+            });
             if (direction == 0) return;
             Thread.sleep(100);
-            fx(
-                    () -> {
-                        robot.mouseWheel(direction);
-                        return null;
-                    });
+            fx(() -> {
+                robot.mouseWheel(direction);
+                return null;
+            });
             Thread.sleep(150);
         }
         fail("Could not scroll control into view: " + id);
@@ -1833,38 +1531,34 @@ class WorkbenchUiTest {
 
     private void focus(Window window) throws Exception {
         if (!fx(window::isFocused)) {
-            fx(
-                    () -> {
-                        if (window instanceof Stage target) target.toFront();
-                        window.requestFocus();
-                        return null;
-                    });
+            fx(() -> {
+                if (window instanceof Stage target) target.toFront();
+                window.requestFocus();
+                return null;
+            });
             Thread.sleep(200);
             if (!fx(window::isFocused)) {
-                fx(
-                        () -> {
-                            var point = window.getScene().getRoot().localToScreen(20, 20);
-                            robot.mouseMove(point);
-                            robot.mouseClick(MouseButton.PRIMARY);
-                            return null;
-                        });
+                fx(() -> {
+                    var point = window.getScene().getRoot().localToScreen(20, 20);
+                    robot.mouseMove(point);
+                    robot.mouseClick(MouseButton.PRIMARY);
+                    return null;
+                });
                 Thread.sleep(150);
-                fx(
-                        () -> {
-                            window.requestFocus();
-                            return null;
-                        });
+                fx(() -> {
+                    window.requestFocus();
+                    return null;
+                });
                 Thread.sleep(200);
             }
         }
     }
 
     private void key(KeyCode code) throws Exception {
-        fx(
-                () -> {
-                    robot.keyType(code);
-                    return null;
-                });
+        fx(() -> {
+            robot.keyType(code);
+            return null;
+        });
         Thread.sleep(100);
     }
 
@@ -1872,8 +1566,8 @@ class WorkbenchUiTest {
         focus(stage);
         key(KeyCode.F1);
         long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(3);
-        while (!fx(() -> node("#keyboard-shortcuts-close").isFocused())
-                && System.nanoTime() < deadline) Thread.sleep(20);
+        while (!fx(() -> node("#keyboard-shortcuts-close").isFocused()) && System.nanoTime() < deadline)
+            Thread.sleep(20);
         assertTrue(
                 fx(() -> node("#keyboard-shortcuts-close").isFocused()),
                 "The shortcut reference gives its Close button keyboard focus");
@@ -1882,46 +1576,41 @@ class WorkbenchUiTest {
     private void closeShortcutHelp() throws Exception {
         key(KeyCode.ESCAPE);
         long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(3);
-        while (fx(() -> stage.getScene().lookup("#keyboard-shortcuts-list") != null)
-                && System.nanoTime() < deadline) Thread.sleep(20);
+        while (fx(() -> stage.getScene().lookup("#keyboard-shortcuts-list") != null) && System.nanoTime() < deadline)
+            Thread.sleep(20);
         assertNull(
                 fx(() -> stage.getScene().lookup("#keyboard-shortcuts-list")),
                 "One Escape closes the shortcut reference");
     }
 
     private void shortcut(KeyCode code, boolean shift) throws Exception {
-        KeyCode modifier =
-                System.getProperty("os.name").startsWith("Mac") ? KeyCode.META : KeyCode.CONTROL;
+        KeyCode modifier = System.getProperty("os.name").startsWith("Mac") ? KeyCode.META : KeyCode.CONTROL;
         focus(stage);
         assertTrue(fx(stage::isFocused), "Window focus before shortcut");
-        fx(
-                () -> {
-                    robot.keyPress(modifier);
-                    return null;
-                });
+        fx(() -> {
+            robot.keyPress(modifier);
+            return null;
+        });
         Thread.sleep(60);
         if (shift) {
-            fx(
-                    () -> {
-                        robot.keyPress(KeyCode.SHIFT);
-                        return null;
-                    });
+            fx(() -> {
+                robot.keyPress(KeyCode.SHIFT);
+                return null;
+            });
             Thread.sleep(60);
         }
         key(code);
         if (shift) {
-            fx(
-                    () -> {
-                        robot.keyRelease(KeyCode.SHIFT);
-                        return null;
-                    });
+            fx(() -> {
+                robot.keyRelease(KeyCode.SHIFT);
+                return null;
+            });
             Thread.sleep(60);
         }
-        fx(
-                () -> {
-                    robot.keyRelease(modifier);
-                    return null;
-                });
+        fx(() -> {
+            robot.keyRelease(modifier);
+            return null;
+        });
         Thread.sleep(250);
     }
 
@@ -1938,54 +1627,45 @@ class WorkbenchUiTest {
         assertSame(target, fx(() -> node("#" + id)), "Stable inspector field: " + id);
         assertEquals(0, fx(target::getCaretPosition), "Home key: " + id);
         for (int i = 0; i < length; i++) {
-            fx(
-                    () -> {
-                        robot.keyType(KeyCode.DELETE);
-                        return null;
-                    });
+            fx(() -> {
+                robot.keyType(KeyCode.DELETE);
+                return null;
+            });
             Thread.sleep(20);
         }
         Thread.sleep(150);
-        assertEquals(
-                "",
-                fx(() -> ((TextField) node("#" + id)).getText()),
-                "Robot field clearing: " + id);
+        assertEquals("", fx(() -> ((TextField) node("#" + id)).getText()), "Robot field clearing: " + id);
         var entered = new StringBuilder();
         for (char c : value.toCharArray()) {
-            fx(
-                    () -> {
-                        boolean shift = Character.isUpperCase(c) || ":_~+$\"()*^".indexOf(c) >= 0;
-                        KeyCode code;
-                        if (Character.isLetter(c))
-                            code = KeyCode.valueOf(Character.toString(Character.toUpperCase(c)));
-                        else if (Character.isDigit(c)) code = KeyCode.valueOf("DIGIT" + c);
-                        else
-                            code =
-                                    switch (c) {
-                                        case '.' -> KeyCode.PERIOD;
-                                        case '-', '_' -> KeyCode.MINUS;
-                                        case '/' -> KeyCode.SLASH;
-                                        case '\\' -> KeyCode.BACK_SLASH;
-                                        case ':' -> KeyCode.SEMICOLON;
-                                        case '`', '~' -> KeyCode.BACK_QUOTE;
-                                        case ' ' -> KeyCode.SPACE;
-                                        case '=', '+' -> KeyCode.EQUALS;
-                                        case '$' -> KeyCode.DIGIT4;
-                                        case '"' -> KeyCode.QUOTE;
-                                        case '(' -> KeyCode.DIGIT9;
-                                        case ')' -> KeyCode.DIGIT0;
-                                        case '*' -> KeyCode.DIGIT8;
-                                        case '^' -> KeyCode.DIGIT6;
-                                        case ',' -> KeyCode.COMMA;
-                                        default ->
-                                                throw new IllegalArgumentException(
-                                                        "Unsupported test character " + c);
-                                    };
-                        if (shift) robot.keyPress(KeyCode.SHIFT);
-                        robot.keyType(code);
-                        if (shift) robot.keyRelease(KeyCode.SHIFT);
-                        return null;
-                    });
+            fx(() -> {
+                boolean shift = Character.isUpperCase(c) || ":_~+$\"()*^".indexOf(c) >= 0;
+                KeyCode code;
+                if (Character.isLetter(c)) code = KeyCode.valueOf(Character.toString(Character.toUpperCase(c)));
+                else if (Character.isDigit(c)) code = KeyCode.valueOf("DIGIT" + c);
+                else
+                    code = switch (c) {
+                        case '.' -> KeyCode.PERIOD;
+                        case '-', '_' -> KeyCode.MINUS;
+                        case '/' -> KeyCode.SLASH;
+                        case '\\' -> KeyCode.BACK_SLASH;
+                        case ':' -> KeyCode.SEMICOLON;
+                        case '`', '~' -> KeyCode.BACK_QUOTE;
+                        case ' ' -> KeyCode.SPACE;
+                        case '=', '+' -> KeyCode.EQUALS;
+                        case '$' -> KeyCode.DIGIT4;
+                        case '"' -> KeyCode.QUOTE;
+                        case '(' -> KeyCode.DIGIT9;
+                        case ')' -> KeyCode.DIGIT0;
+                        case '*' -> KeyCode.DIGIT8;
+                        case '^' -> KeyCode.DIGIT6;
+                        case ',' -> KeyCode.COMMA;
+                        default -> throw new IllegalArgumentException("Unsupported test character " + c);
+                    };
+                if (shift) robot.keyPress(KeyCode.SHIFT);
+                robot.keyType(code);
+                if (shift) robot.keyRelease(KeyCode.SHIFT);
+                return null;
+            });
             entered.append(c);
             // Some layouts compose these keys with the next character. Verify the combined
             // prefix after that keystroke; the final field value is always checked exactly.
@@ -1995,81 +1675,68 @@ class WorkbenchUiTest {
             }
             String expected = entered.toString();
             long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(2);
-            while (!expected.equals(fx(target::getText)) && System.nanoTime() < deadline)
-                Thread.sleep(10);
+            while (!expected.equals(fx(target::getText)) && System.nanoTime() < deadline) Thread.sleep(10);
             assertEquals(expected, fx(target::getText), "Delivered keyboard input: " + id);
         }
         Thread.sleep(120);
-        assertEquals(
-                value, fx(() -> ((TextField) node("#" + id)).getText()), "Robot text entry: " + id);
+        assertEquals(value, fx(() -> ((TextField) node("#" + id)).getText()), "Robot text entry: " + id);
         if (Set.of("file-path", "import-path", "export-path").contains(id)) assertPathRowLabels(id);
     }
 
     private void assertPathRowLabels(String fieldId) throws Exception {
-        fx(
-                () -> {
-                    stage.getScene().getRoot().applyCss();
-                    stage.getScene().getRoot().layout();
-                    var field = (TextField) node("#" + fieldId);
-                    var browse = (Button) node("#file-browse");
-                    var row = browse.getParent();
-                    // Use control layout bounds rather than shadows for the overlap check.
-                    var fieldBounds = field.localToParent(field.getLayoutBounds());
-                    var buttonBounds = browse.localToParent(browse.getLayoutBounds());
-                    assertTrue(browse.getWidth() > 0);
+        fx(() -> {
+            stage.getScene().getRoot().applyCss();
+            stage.getScene().getRoot().layout();
+            var field = (TextField) node("#" + fieldId);
+            var browse = (Button) node("#file-browse");
+            var row = browse.getParent();
+            // Use control layout bounds rather than shadows for the overlap check.
+            var fieldBounds = field.localToParent(field.getLayoutBounds());
+            var buttonBounds = browse.localToParent(browse.getLayoutBounds());
+            assertTrue(browse.getWidth() > 0);
+            assertTrue(fieldBounds.getMaxX() <= buttonBounds.getMinX(), "Path field must not overlap Browse");
+            Node panel = row;
+            while (!panel.getStyleClass().contains("dialog-overlay")) panel = panel.getParent();
+            for (var control : panel.lookupAll(".button")) {
+                if (control instanceof Button button && !button.getText().isEmpty()) {
+                    var rendered = assertInstanceOf(javafx.scene.text.Text.class, button.lookup(".text"));
+                    assertEquals(
+                            button.getText(),
+                            rendered.getText(),
+                            "The full translated button label must be displayed: " + button.getId());
+                    var textBounds = rendered.localToScene(rendered.getLayoutBounds());
                     assertTrue(
-                            fieldBounds.getMaxX() <= buttonBounds.getMinX(),
-                            "Path field must not overlap Browse");
-                    Node panel = row;
-                    while (!panel.getStyleClass().contains("dialog-overlay"))
-                        panel = panel.getParent();
-                    for (var control : panel.lookupAll(".button")) {
-                        if (control instanceof Button button && !button.getText().isEmpty()) {
-                            var rendered =
-                                    assertInstanceOf(
-                                            javafx.scene.text.Text.class, button.lookup(".text"));
-                            assertEquals(
-                                    button.getText(),
-                                    rendered.getText(),
-                                    "The full translated button label must be displayed: "
-                                            + button.getId());
-                            var textBounds = rendered.localToScene(rendered.getLayoutBounds());
+                            panel.localToScene(panel.getLayoutBounds()).contains(textBounds),
+                            "Button label must stay visible inside the dialog");
+                    for (var parent = button.getParent(); parent != panel; parent = parent.getParent()) {
+                        if (parent instanceof ScrollPane scroll) {
+                            var viewport = scroll.lookup(".viewport");
                             assertTrue(
-                                    panel.localToScene(panel.getLayoutBounds())
+                                    viewport.localToScene(viewport.getLayoutBounds())
                                             .contains(textBounds),
-                                    "Button label must stay visible inside the dialog");
-                            for (var parent = button.getParent();
-                                    parent != panel;
-                                    parent = parent.getParent()) {
-                                if (parent instanceof ScrollPane scroll) {
-                                    var viewport = scroll.lookup(".viewport");
-                                    assertTrue(
-                                            viewport.localToScene(viewport.getLayoutBounds())
-                                                    .contains(textBounds),
-                                            "Button label must not be clipped by the scroll viewport");
-                                }
-                            }
+                                    "Button label must not be clipped by the scroll viewport");
                         }
                     }
-                    Screenshot.save(
-                            stage.getScene(),
-                            Path.of(
-                                    System.getProperty("voxelbrew.ui.artifacts"),
-                                    "dialog-"
-                                            + fieldId
-                                            + "-"
-                                            + (browse.getText().startsWith("Browse") ? "en" : "pl")
-                                            + ".png"));
-                    return null;
-                });
+                }
+            }
+            Screenshot.save(
+                    stage.getScene(),
+                    Path.of(
+                            System.getProperty("voxelbrew.ui.artifacts"),
+                            "dialog-"
+                                    + fieldId
+                                    + "-"
+                                    + (browse.getText().startsWith("Browse") ? "en" : "pl")
+                                    + ".png"));
+            return null;
+        });
     }
 
     private void standardView(int index) throws Exception {
         click("menu-view");
-        click(
-                "view-"
-                        + List.of("isometric", "top", "front", "right", "back", "left", "bottom")
-                                .get(index));
+        click("view-"
+                + List.of("isometric", "top", "front", "right", "back", "left", "bottom")
+                        .get(index));
     }
 
     private void choice(String id, int index) throws Exception {
@@ -2078,37 +1745,24 @@ class WorkbenchUiTest {
             click("menu-appearance");
             click("appearance-" + List.of("system", "light", "dark").get(index));
             long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(3);
-            while (fx(
-                            () ->
-                                    ((MenuBar) workbench.getScene().lookup("#main-menu"))
-                                            .getMenus().stream().anyMatch(Menu::isShowing))
+            while (fx(() -> ((MenuBar) workbench.getScene().lookup("#main-menu"))
+                            .getMenus().stream().anyMatch(Menu::isShowing))
                     && System.nanoTime() < deadline) Thread.sleep(25);
             assertFalse(
-                    fx(
-                            () ->
-                                    ((MenuBar) workbench.getScene().lookup("#main-menu"))
-                                            .getMenus().stream().anyMatch(Menu::isShowing)),
+                    fx(() -> ((MenuBar) workbench.getScene().lookup("#main-menu"))
+                            .getMenus().stream().anyMatch(Menu::isShowing)),
                     "Appearance menus closed after selection");
-            assertTrue(
-                    fx(
-                            () ->
-                                    ((RadioMenuItem)
-                                                    command(
-                                                            workbench,
-                                                            "appearance-"
-                                                                    + List.of(
-                                                                                    "system",
-                                                                                    "light", "dark")
-                                                                            .get(index)))
-                                            .isSelected()));
+            assertTrue(fx(() -> ((RadioMenuItem) command(
+                            workbench,
+                            "appearance-" + List.of("system", "light", "dark").get(index)))
+                    .isSelected()));
             return;
         }
         click(id);
         // The native popup can appear after a later pulse when switching workspace tabs.
         // Wait for the observed popup; do not replay the click or set its selection in code.
         long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(3);
-        while (!fx(() -> ((ComboBox<?>) node("#" + id)).isShowing())
-                && System.nanoTime() < deadline) Thread.sleep(25);
+        while (!fx(() -> ((ComboBox<?>) node("#" + id)).isShowing()) && System.nanoTime() < deadline) Thread.sleep(25);
         assertTrue(fx(() -> ((ComboBox<?>) node("#" + id)).isShowing()), "Popup opened: " + id);
         // Popup windows can select a different DPI monitor than their owner in Windows Robot.
         // Exercise the actual opened popup through native keys, without setting selection in code.
@@ -2124,10 +1778,8 @@ class WorkbenchUiTest {
     private void ready() throws Exception {
         long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(20);
         while (System.nanoTime() < deadline) {
-            if (fx(
-                    () ->
-                            !workbench.controller().rebuilding()
-                                    && !workbench.controller().ioBusy())) {
+            if (fx(() -> !workbench.controller().rebuilding()
+                    && !workbench.controller().ioBusy())) {
                 Thread.sleep(150);
                 return;
             }
@@ -2150,42 +1802,25 @@ class WorkbenchUiTest {
             assertEquals(
                     "Version " + dev.voxelbrew.util.Version.version(),
                     fx(() -> ((Label) node("#about-version")).getText()));
-            fx(
-                    () -> {
-                        for (String id :
-                                List.of(
-                                        "about-check",
-                                        "about-updates",
-                                        "about-license",
-                                        "about-notices",
-                                        "about-close")) {
-                            var control = (Control) node("#" + id);
-                            assertNotNull(control.getTooltip(), id);
-                            assertFalse(control.getAccessibleHelp().isBlank(), id);
-                        }
-                        Screenshot.save(
-                                stage.getScene(),
-                                Path.of(
-                                        System.getProperty("voxelbrew.ui.artifacts"),
-                                        "about-" + palette + ".png"));
-                        return null;
-                    });
+            fx(() -> {
+                for (String id :
+                        List.of("about-check", "about-updates", "about-license", "about-notices", "about-close")) {
+                    var control = (Control) node("#" + id);
+                    assertNotNull(control.getTooltip(), id);
+                    assertFalse(control.getAccessibleHelp().isBlank(), id);
+                }
+                Screenshot.save(
+                        stage.getScene(),
+                        Path.of(System.getProperty("voxelbrew.ui.artifacts"), "about-" + palette + ".png"));
+                return null;
+            });
             click("about-license");
-            assertTrue(
-                    fx(
-                            () ->
-                                    ((TextArea) node("#about-legal-text"))
-                                            .getText()
-                                            .contains("GNU AFFERO GENERAL PUBLIC LICENSE")));
+            assertTrue(fx(() ->
+                    ((TextArea) node("#about-legal-text")).getText().contains("GNU AFFERO GENERAL PUBLIC LICENSE")));
             assertFalse(fx(() -> ((TextArea) node("#about-legal-text")).isEditable()));
             click("about-legal-close");
             click("about-notices");
-            assertTrue(
-                    fx(
-                            () ->
-                                    ((TextArea) node("#about-legal-text"))
-                                            .getText()
-                                            .contains("Open CASCADE")));
+            assertTrue(fx(() -> ((TextArea) node("#about-legal-text")).getText().contains("Open CASCADE")));
             click("about-legal-close");
             click("about-updates");
             assertNotNull(fx(() -> node("#update-check")));
@@ -2218,12 +1853,7 @@ class WorkbenchUiTest {
         updates.development = true;
         click("about-check");
         waitForAbout("Development runs are not replaced");
-        assertTrue(
-                fx(
-                        () ->
-                                ((Label) node("#about-status"))
-                                        .getText()
-                                        .startsWith("New version available: 1.1.0")));
+        assertTrue(fx(() -> ((Label) node("#about-status")).getText().startsWith("New version available: 1.1.0")));
         click("about-close");
         ready();
     }
@@ -2233,31 +1863,16 @@ class WorkbenchUiTest {
         click("about");
         waitForAbout("Dostępna nowa wersja: 1.1.0");
         assertEquals(
-                "Wersja " + dev.voxelbrew.util.Version.version(),
-                fx(() -> ((Label) node("#about-version")).getText()));
-        assertEquals(
-                "Otwórz aktualizator…", fx(() -> ((Hyperlink) node("#about-updates")).getText()));
-        assertTrue(
-                fx(
-                        () ->
-                                ((Hyperlink) node("#about-license"))
-                                        .getTooltip()
-                                        .getText()
-                                        .contains("licencję")));
-        fx(
-                () -> {
-                    Screenshot.save(
-                            stage.getScene(),
-                            Path.of(System.getProperty("voxelbrew.ui.artifacts"), "about-pl.png"));
-                    return null;
-                });
+                "Wersja " + dev.voxelbrew.util.Version.version(), fx(() -> ((Label) node("#about-version")).getText()));
+        assertEquals("Otwórz aktualizator…", fx(() -> ((Hyperlink) node("#about-updates")).getText()));
+        assertTrue(fx(() ->
+                ((Hyperlink) node("#about-license")).getTooltip().getText().contains("licencję")));
+        fx(() -> {
+            Screenshot.save(stage.getScene(), Path.of(System.getProperty("voxelbrew.ui.artifacts"), "about-pl.png"));
+            return null;
+        });
         click("about-notices");
-        assertTrue(
-                fx(
-                        () ->
-                                ((TextArea) node("#about-legal-text"))
-                                        .getText()
-                                        .contains("Open CASCADE")));
+        assertTrue(fx(() -> ((TextArea) node("#about-legal-text")).getText().contains("Open CASCADE")));
         click("about-legal-close");
         click("about-close");
         ready();
@@ -2265,8 +1880,8 @@ class WorkbenchUiTest {
 
     private void waitForAbout(String message) throws Exception {
         long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(15);
-        while (!fx(() -> ((Label) node("#about-status")).getText().contains(message))
-                && System.nanoTime() < deadline) Thread.sleep(50);
+        while (!fx(() -> ((Label) node("#about-status")).getText().contains(message)) && System.nanoTime() < deadline)
+            Thread.sleep(50);
         assertTrue(fx(() -> ((Label) node("#about-status")).getText().contains(message)), message);
     }
 
@@ -2286,31 +1901,25 @@ class WorkbenchUiTest {
             click("update-check");
             waitForUpdate("Update available");
             assertTrue(updates.requests.get() > request);
-            assertEquals(
-                    dev.voxelbrew.util.update.ReleaseVersion.release("1.1.0"), updates.requested);
-            fx(
-                    () -> {
-                        Screenshot.save(
-                                stage.getScene(),
-                                Path.of(
-                                        System.getProperty("voxelbrew.ui.artifacts"),
-                                        "updates-" + palette + ".png"));
-                        return null;
-                    });
+            assertEquals(dev.voxelbrew.util.update.ReleaseVersion.release("1.1.0"), updates.requested);
+            fx(() -> {
+                Screenshot.save(
+                        stage.getScene(),
+                        Path.of(System.getProperty("voxelbrew.ui.artifacts"), "updates-" + palette + ".png"));
+                return null;
+            });
             click("update-cancel");
         }
-        fx(
-                () -> {
-                    workbench
-                            .controller()
-                            .add(
-                                    new Feature.Sketch(
-                                            "update-sketch",
-                                            "profile",
-                                            new Feature.Plane("xy", 0),
-                                            new Feature.Rectangle(0, 0, 20, 10)));
-                    return null;
-                });
+        fx(() -> {
+            workbench
+                    .controller()
+                    .add(new Feature.Sketch(
+                            "update-sketch",
+                            "profile",
+                            new Feature.Plane("xy", 0),
+                            new Feature.Rectangle(0, 0, 20, 10)));
+            return null;
+        });
         ready();
         var before = document();
         click("updates");
@@ -2331,12 +1940,7 @@ class WorkbenchUiTest {
         boolean exists;
         do {
             try (var files = Files.walk(directory.resolve("update fixture"))) {
-                exists =
-                        files.anyMatch(
-                                path ->
-                                        path.getFileName()
-                                                .toString()
-                                                .startsWith(".VoxelBrew-update-"));
+                exists = files.anyMatch(path -> path.getFileName().toString().startsWith(".VoxelBrew-update-"));
             }
             if (exists) Thread.sleep(50);
         } while (exists && System.nanoTime() < deadline);
@@ -2360,7 +1964,9 @@ class WorkbenchUiTest {
         assertTrue(fx(() -> workbench.controller().dirty()));
         assertNull(fx(() -> workbench.controller().path()));
         assertEquals(
-                76800, fx(() -> workbench.controller().build().bodies().getFirst().volume()), .01);
+                76800,
+                fx(() -> workbench.controller().build().bodies().getFirst().volume()),
+                .01);
         Path saved = directory.resolve("imported design.jcad");
         save(saved);
         assertFalse(fx(() -> workbench.controller().dirty()));
@@ -2372,8 +1978,7 @@ class WorkbenchUiTest {
         click("import-confirm"); // First provider deliberately fails.
         ready();
         assertEquals(before, document());
-        assertTrue(
-                fx(() -> workbench.controller().error().contains("Deliberate importer failure")));
+        assertTrue(fx(() -> workbench.controller().error().contains("Deliberate importer failure")));
         assertEquals("60,40,4", Files.readString(source));
         assertEquals(before, DocumentReader.load(saved));
     }
@@ -2388,33 +1993,28 @@ class WorkbenchUiTest {
     }
 
     private double volume() throws Exception {
-        return fx(
-                () ->
-                        workbench.controller().build().bodies().stream()
-                                .mapToDouble(DocumentController.Body::volume)
-                                .sum());
+        return fx(() -> workbench.controller().build().bodies().stream()
+                .mapToDouble(DocumentController.Body::volume)
+                .sum());
     }
 
     private void modelClick(double x, double y, double z) throws Exception {
-        fx(
-                () -> {
-                    var point = workbench.viewport().modelToScreen(new Point3D(x, y, z));
-                    assertNotNull(point);
-                    robot.mouseMove(point);
-                    return null;
-                });
+        fx(() -> {
+            var point = workbench.viewport().modelToScreen(new Point3D(x, y, z));
+            assertNotNull(point);
+            robot.mouseMove(point);
+            return null;
+        });
         Thread.sleep(80);
-        fx(
-                () -> {
-                    robot.mousePress(MouseButton.PRIMARY);
-                    return null;
-                });
+        fx(() -> {
+            robot.mousePress(MouseButton.PRIMARY);
+            return null;
+        });
         Thread.sleep(60);
-        fx(
-                () -> {
-                    robot.mouseRelease(MouseButton.PRIMARY);
-                    return null;
-                });
+        fx(() -> {
+            robot.mouseRelease(MouseButton.PRIMARY);
+            return null;
+        });
         Thread.sleep(180);
     }
 
@@ -2452,12 +2052,8 @@ class WorkbenchUiTest {
         // Existing primitive sketches remain editable and convertible to constraints.
         // New profiles are always created through the sketch editor in the other workflows.
         var session = new ModelSession(CadDocument.empty());
-        session.add(
-                new Feature.Sketch(
-                        "legacy",
-                        "legacy.profile",
-                        new Feature.Plane("origin-xy", 0),
-                        new Feature.Rectangle(0, 0, 60, 40)));
+        session.add(new Feature.Sketch(
+                "legacy", "legacy.profile", new Feature.Plane("origin-xy", 0), new Feature.Rectangle(0, 0, 60, 40)));
         Path file = directory.resolve("existing rectangle.jcad");
         DocumentWriter.save(session.document(), file, false);
         open(file);
@@ -2474,36 +2070,32 @@ class WorkbenchUiTest {
 
     private void sketchReady() throws Exception {
         long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(20);
-        while (fx(() -> ((SketchEditor) node("#sketch-editor")).controller().busy())
-                && System.nanoTime() < deadline) Thread.sleep(25);
-        assertFalse(fx(() -> ((SketchEditor) node("#sketch-editor")).controller().busy()));
+        while (fx(() -> ((SketchEditor) node("#sketch-editor")).controller().busy()) && System.nanoTime() < deadline)
+            Thread.sleep(25);
+        assertFalse(
+                fx(() -> ((SketchEditor) node("#sketch-editor")).controller().busy()));
         Thread.sleep(100);
     }
 
     private void sketchClick(double x, double y, boolean shift) throws Exception {
-        fx(
-                () -> {
-                    var point =
-                            ((SketchEditor) node("#sketch-editor"))
-                                    .modelToScreen(new SketchGeometry.Vec(x, y));
-                    assertNotNull(point);
-                    robot.mouseMove(point);
-                    if (shift) robot.keyPress(KeyCode.SHIFT);
-                    return null;
-                });
+        fx(() -> {
+            var point = ((SketchEditor) node("#sketch-editor")).modelToScreen(new SketchGeometry.Vec(x, y));
+            assertNotNull(point);
+            robot.mouseMove(point);
+            if (shift) robot.keyPress(KeyCode.SHIFT);
+            return null;
+        });
         Thread.sleep(100);
-        fx(
-                () -> {
-                    robot.mousePress(MouseButton.PRIMARY);
-                    return null;
-                });
+        fx(() -> {
+            robot.mousePress(MouseButton.PRIMARY);
+            return null;
+        });
         Thread.sleep(60);
-        fx(
-                () -> {
-                    robot.mouseRelease(MouseButton.PRIMARY);
-                    if (shift) robot.keyRelease(KeyCode.SHIFT);
-                    return null;
-                });
+        fx(() -> {
+            robot.mouseRelease(MouseButton.PRIMARY);
+            if (shift) robot.keyRelease(KeyCode.SHIFT);
+            return null;
+        });
         Thread.sleep(150);
     }
 
@@ -2545,38 +2137,25 @@ class WorkbenchUiTest {
     }
 
     private void parameterTab(int index) throws Exception {
-        var position =
-                fx(
-                        () -> {
-                            var tabs = (TabPane) node("#parameters-tabs");
-                            var headers =
-                                    tabs.lookupAll(".tab").stream()
-                                            .filter(Node::isVisible)
-                                            .sorted(
-                                                    java.util.Comparator.comparingDouble(
-                                                            n ->
-                                                                    n.localToScreen(
-                                                                                    n
-                                                                                            .getBoundsInLocal())
-                                                                            .getMinX()))
-                                            .toList();
-                            return headers.get(index)
-                                    .localToScreen(headers.get(index).getBoundsInLocal());
-                        });
-        fx(
-                () -> {
-                    robot.mouseMove(position.getCenterX(), position.getCenterY());
-                    robot.mouseClick(MouseButton.PRIMARY);
-                    return null;
-                });
+        var position = fx(() -> {
+            var tabs = (TabPane) node("#parameters-tabs");
+            var headers = tabs.lookupAll(".tab").stream()
+                    .filter(Node::isVisible)
+                    .sorted(java.util.Comparator.comparingDouble(
+                            n -> n.localToScreen(n.getBoundsInLocal()).getMinX()))
+                    .toList();
+            return headers.get(index).localToScreen(headers.get(index).getBoundsInLocal());
+        });
+        fx(() -> {
+            robot.mouseMove(position.getCenterX(), position.getCenterY());
+            robot.mouseClick(MouseButton.PRIMARY);
+            return null;
+        });
         Thread.sleep(200);
         assertEquals(
                 index,
-                fx(
-                        () ->
-                                ((TabPane) node("#parameters-tabs"))
-                                        .getSelectionModel()
-                                        .getSelectedIndex()));
+                fx(() ->
+                        ((TabPane) node("#parameters-tabs")).getSelectionModel().getSelectedIndex()));
     }
 
     private void tableRow(String id, int index) throws Exception {
@@ -2589,8 +2168,7 @@ class WorkbenchUiTest {
     }
 
     @Test
-    void parameterCompletionFiltersAtCaretAndInsertsWithoutCommittingAcrossEditors()
-            throws Exception {
+    void parameterCompletionFiltersAtCaretAndInsertsWithoutCommittingAcrossEditors() throws Exception {
         choice("appearance", 1);
         click("parameters");
         parameter("fooWidth", "60");
@@ -2615,8 +2193,7 @@ class WorkbenchUiTest {
         key(KeyCode.ENTER);
         assertNoCompletion();
         assertEquals("=$fooWidth", fx(() -> ((TextField) node("#constraint-plane")).getText()));
-        assertEquals(
-                original, document(), "Accepting a suggestion creates no feature or history entry");
+        assertEquals(original, document(), "Accepting a suggestion creates no feature or history entry");
         shortcut(KeyCode.Z, false);
         assertEquals("=$foo", fx(() -> ((TextField) node("#constraint-plane")).getText()));
         assertNoCompletion(); // Text undo selects the replaced reference; resume at its end.
@@ -2647,8 +2224,7 @@ class WorkbenchUiTest {
         assertEquals(List.of("fooHeight", "fooWidth"), completionNames());
         click("formula-suggestion-fooHeight");
         assertNoCompletion();
-        assertEquals(
-                "=$fooHeight/2+1", fx(() -> ((TextField) node("#dimension-offsetZ")).getText()));
+        assertEquals("=$fooHeight/2+1", fx(() -> ((TextField) node("#dimension-offsetZ")).getText()));
         assertEquals(part, document(), "Mouse completion also preserves uncommitted editing");
         text("dimension-offsetZ", "=$missing");
         assertEquals(List.of(), completionNames());
@@ -2665,14 +2241,9 @@ class WorkbenchUiTest {
         completionScreenshot("parameter-completion-dark.png");
         key(KeyCode.ENTER);
         assertNoCompletion();
-        assertEquals(
-                "=\"Width: \" + $fooWidth",
-                fx(() -> ((TextField) node("#parameter-comment")).getText()));
-        assertEquals(
-                "Width: 60", fx(() -> ((FormulaField) node("#parameter-comment")).evaluatedText()));
-        assertNotNull(
-                fx(() -> node("#parameters-apply")),
-                "Completing text does not apply or close a dialog");
+        assertEquals("=\"Width: \" + $fooWidth", fx(() -> ((TextField) node("#parameter-comment")).getText()));
+        assertEquals("Width: 60", fx(() -> ((FormulaField) node("#parameter-comment")).evaluatedText()));
+        assertNotNull(fx(() -> node("#parameters-apply")), "Completing text does not apply or close a dialog");
         text("parameter-comment", "=\"literal $foo\"");
         assertNoCompletion();
         parameter("fooLength", "5");
@@ -2680,8 +2251,7 @@ class WorkbenchUiTest {
         assertEquals(List.of("fooHeight", "fooLength", "fooWidth"), completionNames());
         key(KeyCode.ESCAPE);
         assertNoCompletion();
-        assertNotNull(
-                fx(() -> node("#parameters-cancel")), "Escape does not cancel the parameter draft");
+        assertNotNull(fx(() -> node("#parameters-cancel")), "Escape does not cancel the parameter draft");
         click("parameters-cancel");
         assertEquals(part, document());
 
@@ -2704,37 +2274,30 @@ class WorkbenchUiTest {
         long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(3);
         while (!fx(this::completionShowing) && System.nanoTime() < deadline) Thread.sleep(20);
         assertTrue(fx(this::completionShowing), "Parameter suggestions are visible");
-        return fx(
-                () ->
-                        ((ListView<?>) node("#formula-suggestions"))
-                                .getItems().stream().map(Object::toString).toList());
+        return fx(() -> ((ListView<?>) node("#formula-suggestions"))
+                .getItems().stream().map(Object::toString).toList());
     }
 
     private boolean completionShowing() {
         return Window.getWindows().stream()
-                .anyMatch(
-                        window ->
-                                window instanceof PopupWindow
-                                        && window.isShowing()
-                                        && window.getScene().lookup("#formula-suggestions")
-                                                != null);
+                .anyMatch(window -> window instanceof PopupWindow
+                        && window.isShowing()
+                        && window.getScene().lookup("#formula-suggestions") != null);
     }
 
     private void assertNoCompletion() throws Exception {
         long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(3);
         while (fx(this::completionShowing) && System.nanoTime() < deadline) Thread.sleep(20);
-        assertFalse(
-                fx(this::completionShowing), "Suggestions must close without another key or click");
+        assertFalse(fx(this::completionShowing), "Suggestions must close without another key or click");
     }
 
     private void completionScreenshot(String name) throws Exception {
-        fx(
-                () -> {
-                    Screenshot.save(
-                            node("#formula-suggestions").getScene(),
-                            Path.of(System.getProperty("voxelbrew.ui.artifacts"), name));
-                    return null;
-                });
+        fx(() -> {
+            Screenshot.save(
+                    node("#formula-suggestions").getScene(),
+                    Path.of(System.getProperty("voxelbrew.ui.artifacts"), name));
+            return null;
+        });
     }
 
     @Test
@@ -2749,40 +2312,31 @@ class WorkbenchUiTest {
         rectangleDraft(30, 40, 0);
         sketchReference(sketchGeometry().entities().getFirst().id());
         text("sketch-dimension-value", "=$width/2");
-        fx(
-                () -> {
-                    var field = (FormulaField) node("#sketch-dimension-value");
-                    assertEquals(30, field.value());
-                    assertTrue(
-                            field.getPseudoClassStates()
-                                    .contains(javafx.css.PseudoClass.getPseudoClass("formula")));
-                    assertEquals(FormulaField.ExpressionType.NUMBER, field.expressionType());
-                    assertEquals("ƒx", ((Label) field.lookup(".formula-mark")).getText());
-                    assertTrue(field.getTooltip().getText().contains("30"));
-                    var centimeters =
-                            FormulaField.number(
-                                    "=$width/2",
-                                    () -> workbench.controller().snapshot().document().parameters(),
-                                    ParameterUnit.CM);
-                    assertEquals(30, centimeters.value());
-                    assertEquals(3, centimeters.declaredValue());
-                    Screenshot.save(stage.getScene(), artifacts.resolve("formulas-light.png"));
-                    return null;
-                });
+        fx(() -> {
+            var field = (FormulaField) node("#sketch-dimension-value");
+            assertEquals(30, field.value());
+            assertTrue(field.getPseudoClassStates().contains(javafx.css.PseudoClass.getPseudoClass("formula")));
+            assertEquals(FormulaField.ExpressionType.NUMBER, field.expressionType());
+            assertEquals("ƒx", ((Label) field.lookup(".formula-mark")).getText());
+            assertTrue(field.getTooltip().getText().contains("30"));
+            var centimeters = FormulaField.number(
+                    "=$width/2",
+                    () -> workbench.controller().snapshot().document().parameters(),
+                    ParameterUnit.CM);
+            assertEquals(30, centimeters.value());
+            assertEquals(3, centimeters.declaredValue());
+            Screenshot.save(stage.getScene(), artifacts.resolve("formulas-light.png"));
+            return null;
+        });
         sketchDimension(0, "=$width/2");
         click("sketch-clear-selection");
         sketchReference(sketchGeometry().entities().get(1).id());
         text("sketch-dimension-value", "=1/0");
         click("sketch-apply-dimension");
         assertEquals(before, document());
-        assertTrue(
-                fx(
-                        () ->
-                                node("#sketch-dimension-value")
-                                        .getPseudoClassStates()
-                                        .contains(
-                                                javafx.css.PseudoClass.getPseudoClass(
-                                                        "formula-invalid"))));
+        assertTrue(fx(() -> node("#sketch-dimension-value")
+                .getPseudoClassStates()
+                .contains(javafx.css.PseudoClass.getPseudoClass("formula-invalid"))));
         sketchDimension(0, "=20+20");
         click("constraint-finish");
         ready();
@@ -2804,48 +2358,41 @@ class WorkbenchUiTest {
         sketchType(SketchTools.Tool.TEXT);
         text("sketch-text-content", "=\"Width: \" + 5");
         text("sketch-text-height", "=$width/12");
-        fx(
-                () -> {
-                    assertEquals(
-                            "Width: 5",
-                            ((FormulaField) node("#sketch-text-content")).evaluatedText());
-                    var stringField = (FormulaField) node("#sketch-text-content");
-                    assertEquals(FormulaField.ExpressionType.STRING, stringField.expressionType());
-                    assertTrue(stringField.getStyleClass().contains("string-expression"));
-                    assertEquals("ƒs", ((Label) stringField.lookup(".formula-mark")).getText());
-                    Screenshot.save(stage.getScene(), artifacts.resolve("formulas-dark.png"));
-                    return null;
-                });
+        fx(() -> {
+            assertEquals("Width: 5", ((FormulaField) node("#sketch-text-content")).evaluatedText());
+            var stringField = (FormulaField) node("#sketch-text-content");
+            assertEquals(FormulaField.ExpressionType.STRING, stringField.expressionType());
+            assertTrue(stringField.getStyleClass().contains("string-expression"));
+            assertEquals("ƒs", ((Label) stringField.lookup(".formula-mark")).getText());
+            Screenshot.save(stage.getScene(), artifacts.resolve("formulas-dark.png"));
+            return null;
+        });
         sketchNumericPoint(0, 50);
-        var textEntity =
-                sketchGeometry().entities().stream()
-                        .filter(e -> e.kind() == SketchGeometry.Kind.TEXT)
-                        .findFirst()
-                        .orElseThrow();
+        var textEntity = sketchGeometry().entities().stream()
+                .filter(e -> e.kind() == SketchGeometry.Kind.TEXT)
+                .findFirst()
+                .orElseThrow();
         assertEquals("Width: 5", textEntity.text().content());
         assertEquals(5, textEntity.value(2), .00001);
         sketchReference(textEntity.id());
         click("sketch-edit-text");
-        assertEquals(
-                "=\"Width: \" + 5",
-                fx(() -> ((TextField) node("#sketch-edit-text-content")).getText()));
+        assertEquals("=\"Width: \" + 5", fx(() -> ((TextField) node("#sketch-edit-text-content")).getText()));
         text("sketch-edit-text-content", "=\"Width: \" + $missing");
         assertEquals(
                 javafx.scene.paint.Color.web("#d65c46"),
-                fx(
-                        () ->
-                                ((TextField) node("#sketch-edit-text-content"))
-                                        .getBorder()
-                                        .getStrokes()
-                                        .getFirst()
-                                        .getTopStroke()));
+                fx(() -> ((TextField) node("#sketch-edit-text-content"))
+                        .getBorder()
+                        .getStrokes()
+                        .getFirst()
+                        .getTopStroke()));
         key(KeyCode.ENTER);
         assertEquals("Width: 5", sketchGeometry().entity(textEntity.id()).text().content());
         text("sketch-edit-text-content", "=\"Width: \" + $width");
         key(KeyCode.ENTER); // Accept the parameter suggestion first; the next Enter applies.
         key(KeyCode.ENTER);
         sketchReady();
-        assertEquals("Width: 60", sketchGeometry().entity(textEntity.id()).text().content());
+        assertEquals(
+                "Width: 60", sketchGeometry().entity(textEntity.id()).text().content());
         click("sketch-undo");
         sketchReady();
         assertEquals("Width: 5", sketchGeometry().entity(textEntity.id()).text().content());
@@ -2860,24 +2407,22 @@ class WorkbenchUiTest {
         assertEquals(8000.0 / 3, volume(), .01);
         assertEquals(
                 5, // Four rectangle edges and one text entity are rendered as sketch curves.
-                fx(
-                        () ->
-                                ((SubScene) workbench.viewport().getChildren().getFirst())
-                                        .getRoot()
-                                        .lookupAll(".sketch-curves")
-                                        .size()));
+                fx(() -> ((SubScene) workbench.viewport().getChildren().getFirst())
+                        .getRoot()
+                        .lookupAll(".sketch-curves")
+                        .size()));
         var file = directory.resolve("formula fields.jcad");
         save(file);
         var saved = document();
         open(file);
         assertEquals(saved, document());
-        assertTrue(
-                DocumentReader.load(file).parameters().bindings().stream()
-                        .anyMatch(b -> b.expression().equals("=\"Width: \" + $width")));
+        assertTrue(DocumentReader.load(file).parameters().bindings().stream()
+                .anyMatch(b -> b.expression().equals("=\"Width: \" + $width")));
         click("history-2");
         click("edit-sketch-constraints");
         sketchReady();
-        assertEquals("Width: 80", sketchGeometry().entity(textEntity.id()).text().content());
+        assertEquals(
+                "Width: 80", sketchGeometry().entity(textEntity.id()).text().content());
         assertEquals(80.0 / 12, sketchGeometry().entity(textEntity.id()).value(2), .00001);
         sketchReference(textEntity.id());
         click("sketch-edit-text");
@@ -2886,12 +2431,8 @@ class WorkbenchUiTest {
         click("constraint-cancel");
         ready();
         assertEquals(saved, document());
-        Files.copy(
-                file,
-                artifacts.resolve("formula-fields.jcad"),
-                StandardCopyOption.REPLACE_EXISTING);
-        Files.writeString(
-                artifacts.resolve("formula-cli-inspection.txt"), cli("inspect", file.toString()));
+        Files.copy(file, artifacts.resolve("formula-fields.jcad"), StandardCopyOption.REPLACE_EXISTING);
+        Files.writeString(artifacts.resolve("formula-cli-inspection.txt"), cli("inspect", file.toString()));
     }
 
     @Test
@@ -2919,14 +2460,12 @@ class WorkbenchUiTest {
         sketchReady();
         assertEquals(
                 "width",
-                fx(
-                        () ->
-                                ((SketchEditor) node("#sketch-editor"))
-                                        .controller()
-                                        .parameters()
-                                        .bindings()
-                                        .getFirst()
-                                        .expression()));
+                fx(() -> ((SketchEditor) node("#sketch-editor"))
+                        .controller()
+                        .parameters()
+                        .bindings()
+                        .getFirst()
+                        .expression()));
         click("sketch-clear-selection");
         sketchReference(sketchGeometry().entities().get(1).id());
         text("sketch-dimension-value", "40");
@@ -2939,13 +2478,11 @@ class WorkbenchUiTest {
         click("commit-extrusion");
         ready();
         assertEquals(12000, volume(), .01);
-        String body = fx(() -> workbench.controller().build().bodies().getFirst().id());
-        var featureIds =
-                fx(
-                        () ->
-                                workbench.controller().snapshot().document().features().stream()
-                                        .map(Feature::id)
-                                        .toList());
+        String body =
+                fx(() -> workbench.controller().build().bodies().getFirst().id());
+        var featureIds = fx(() -> workbench.controller().snapshot().document().features().stream()
+                .map(Feature::id)
+                .toList());
         click("parameters");
         parameterTab(1);
         text("configuration-name", "Large");
@@ -2959,17 +2496,16 @@ class WorkbenchUiTest {
         click("configuration-set");
         click("configuration-activate");
         Path artifacts = Path.of(System.getProperty("voxelbrew.ui.artifacts"));
-        fx(
-                () -> {
-                    Screenshot.save(
-                            stage.getScene(),
-                            artifacts.resolve("parameter-configurations-dark.png"));
-                    return null;
-                });
+        fx(() -> {
+            Screenshot.save(stage.getScene(), artifacts.resolve("parameter-configurations-dark.png"));
+            return null;
+        });
         click("parameters-apply");
         ready();
         assertEquals(25600, volume(), .02);
-        assertEquals(body, fx(() -> workbench.controller().build().bodies().getFirst().id()));
+        assertEquals(
+                body,
+                fx(() -> workbench.controller().build().bodies().getFirst().id()));
         click("undo");
         ready();
         assertEquals(12000, volume(), .02);
@@ -2978,18 +2514,21 @@ class WorkbenchUiTest {
         assertEquals(25600, volume(), .02);
         assertEquals(
                 featureIds,
-                fx(
-                        () ->
-                                workbench.controller().snapshot().document().features().stream()
-                                        .map(Feature::id)
-                                        .toList()));
+                fx(() -> workbench.controller().snapshot().document().features().stream()
+                        .map(Feature::id)
+                        .toList()));
         Path file = directory.resolve("parameter versions.jcad");
         save(file);
         open(file);
         ready();
         assertEquals(
                 "Large",
-                fx(() -> workbench.controller().snapshot().document().parameters().activeName()));
+                fx(() -> workbench
+                        .controller()
+                        .snapshot()
+                        .document()
+                        .parameters()
+                        .activeName()));
         choice("active-configuration", 0);
         ready();
         assertEquals(12000, volume(), .02);
@@ -2999,14 +2538,10 @@ class WorkbenchUiTest {
         click("save");
         ready();
         String inspection = cli("inspect", file.toString());
-        var measured =
-                java.util.regex.Pattern.compile("volume=([0-9.eE+\\-]+)").matcher(inspection);
+        var measured = java.util.regex.Pattern.compile("volume=([0-9.eE+\\-]+)").matcher(inspection);
         assertTrue(measured.find(), inspection);
         assertEquals(25600, Double.parseDouble(measured.group(1)), .02, inspection);
-        Files.copy(
-                file,
-                artifacts.resolve("gui-parameter-variants.jcad"),
-                StandardCopyOption.REPLACE_EXISTING);
+        Files.copy(file, artifacts.resolve("gui-parameter-variants.jcad"), StandardCopyOption.REPLACE_EXISTING);
         Files.writeString(artifacts.resolve("parameter-cli-inspection.txt"), inspection);
     }
 
@@ -3026,37 +2561,25 @@ class WorkbenchUiTest {
         tableRow("parameter-table", 0);
         text("parameter-expression", "missing");
         click("parameter-save");
-        assertTrue(
-                fx(
-                        () ->
-                                ((Label) node("#parameters-error"))
-                                        .getText()
-                                        .contains("Unknown parameter")));
+        assertTrue(fx(() -> ((Label) node("#parameters-error")).getText().contains("Unknown parameter")));
         text("parameter-expression", "60");
         choice("parameter-unit", 5); // reject an angle parameter bound to a length
         click("parameter-save");
-        assertTrue(
-                fx(
-                        () ->
-                                ((Label) node("#parameters-error"))
-                                        .getText()
-                                        .toLowerCase(java.util.Locale.ROOT)
-                                        .contains("incompatible")));
+        assertTrue(fx(() -> ((Label) node("#parameters-error"))
+                .getText()
+                .toLowerCase(java.util.Locale.ROOT)
+                .contains("incompatible")));
         click("parameters-cancel");
         assertEquals(before, fx(() -> workbench.controller().snapshot()));
         click("parameters");
         tableRow("parameter-table", 0);
         text("parameter-name", "plateWidth");
         click("parameter-save");
-        fx(
-                () -> {
-                    Screenshot.save(
-                            stage.getScene(),
-                            Path.of(
-                                    System.getProperty("voxelbrew.ui.artifacts"),
-                                    "parameters-light.png"));
-                    return null;
-                });
+        fx(() -> {
+            Screenshot.save(
+                    stage.getScene(), Path.of(System.getProperty("voxelbrew.ui.artifacts"), "parameters-light.png"));
+            return null;
+        });
         click("parameters-apply");
         ready();
         assertEquals("plateWidth", fx(() -> ((TextField) node("#dimension-width")).getText()));
@@ -3075,17 +2598,15 @@ class WorkbenchUiTest {
         ready();
         assertEquals(
                 "constraint:width",
-                fx(
-                        () ->
-                                workbench
-                                        .controller()
-                                        .snapshot()
-                                        .document()
-                                        .parameters()
-                                        .bindings()
-                                        .getFirst()
-                                        .target()
-                                        .field()));
+                fx(() -> workbench
+                        .controller()
+                        .snapshot()
+                        .document()
+                        .parameters()
+                        .bindings()
+                        .getFirst()
+                        .target()
+                        .field()));
         click("extrude");
         click("commit-extrusion");
         ready();
@@ -3104,14 +2625,8 @@ class WorkbenchUiTest {
         assertTrue(fx(() -> workbench.controller().build().bodies().isEmpty()));
         click("menu-file");
         assertTrue(fx(() -> command(workbench, "export").isDisable()));
-        assertTrue(
-                fx(
-                        () ->
-                                node("#export")
-                                        .getPseudoClassStates()
-                                        .contains(
-                                                javafx.css.PseudoClass.getPseudoClass(
-                                                        "disabled"))));
+        assertTrue(fx(() ->
+                node("#export").getPseudoClassStates().contains(javafx.css.PseudoClass.getPseudoClass("disabled"))));
         key(KeyCode.ESCAPE);
         choice("active-configuration", 0);
         ready();
@@ -3151,13 +2666,10 @@ class WorkbenchUiTest {
                 fx(() -> ((SketchEditor) node("#sketch-editor")).controller().canFinish()),
                 fx(() -> ((Label) node("#sketch-error")).getText()));
         Path artifacts = Path.of(System.getProperty("voxelbrew.ui.artifacts"));
-        fx(
-                () -> {
-                    Screenshot.save(
-                            stage.getScene(),
-                            artifacts.resolve("sketch-types-ellipse-slot-conic.png"));
-                    return null;
-                });
+        fx(() -> {
+            Screenshot.save(stage.getScene(), artifacts.resolve("sketch-types-ellipse-slot-conic.png"));
+            return null;
+        });
         click("constraint-finish");
         ready();
         click("extrude");
@@ -3199,11 +2711,10 @@ class WorkbenchUiTest {
         sketchReady();
         var before = sketchGeometry();
         sketchDrag(0, 35, 2, 37, false);
-        var control =
-                sketchGeometry().entities().stream()
-                        .filter(e -> e.kind() == SketchGeometry.Kind.CONTROL_SPLINE)
-                        .findFirst()
-                        .orElseThrow();
+        var control = sketchGeometry().entities().stream()
+                .filter(e -> e.kind() == SketchGeometry.Kind.CONTROL_SPLINE)
+                .findFirst()
+                .orElseThrow();
         assertEquals(2, control.value(0), .3);
         assertEquals(37, control.value(1), .3);
         click("sketch-undo");
@@ -3213,12 +2724,11 @@ class WorkbenchUiTest {
         text("sketch-text-content", "OB");
         text("sketch-text-height", "8");
         sketchNumericPoint(40, 10);
-        String textId =
-                sketchGeometry().entities().stream()
-                        .filter(e -> e.kind() == SketchGeometry.Kind.TEXT)
-                        .findFirst()
-                        .orElseThrow()
-                        .id();
+        String textId = sketchGeometry().entities().stream()
+                .filter(e -> e.kind() == SketchGeometry.Kind.TEXT)
+                .findFirst()
+                .orElseThrow()
+                .id();
         sketchReference(textId);
         click("sketch-edit-text");
         text("sketch-edit-text-content", "OC");
@@ -3227,13 +2737,10 @@ class WorkbenchUiTest {
         assertEquals("OC", sketchGeometry().entity(textId).text().content());
         click("sketch-fit");
         Path artifacts = Path.of(System.getProperty("voxelbrew.ui.artifacts"));
-        fx(
-                () -> {
-                    Screenshot.save(
-                            stage.getScene(),
-                            artifacts.resolve("sketch-types-splines-text-dark.png"));
-                    return null;
-                });
+        fx(() -> {
+            Screenshot.save(stage.getScene(), artifacts.resolve("sketch-types-splines-text-dark.png"));
+            return null;
+        });
         click("constraint-finish");
         ready();
         click("extrude");
@@ -3279,15 +2786,11 @@ class WorkbenchUiTest {
         sketchType(SketchTools.Tool.CIRCLE_TWO_TANGENT);
         sketchClick(8, 8, false);
         sketchReady();
-        var circle =
-                sketchGeometry().entities().stream()
-                        .filter(e -> e.kind() == SketchGeometry.Kind.CIRCLE)
-                        .findFirst()
-                        .orElseThrow();
-        assertEquals(
-                0,
-                circle.point(SketchGeometry.Part.CENTER).distance(new SketchGeometry.Vec(5, 5)),
-                .05);
+        var circle = sketchGeometry().entities().stream()
+                .filter(e -> e.kind() == SketchGeometry.Kind.CIRCLE)
+                .findFirst()
+                .orElseThrow();
+        assertEquals(0, circle.point(SketchGeometry.Part.CENTER).distance(new SketchGeometry.Vec(5, 5)), .05);
         click("sketch-construction");
         click("sketch-tool-arc");
         sketchClick(30, 20, false);
@@ -3295,34 +2798,29 @@ class WorkbenchUiTest {
         sketchClick(30, 40, false);
         sketchReady();
         click("sketch-construction");
-        String arc =
-                sketchGeometry().entities().stream()
-                        .filter(e -> e.kind() == SketchGeometry.Kind.ARC)
-                        .findFirst()
-                        .orElseThrow()
-                        .id();
+        String arc = sketchGeometry().entities().stream()
+                .filter(e -> e.kind() == SketchGeometry.Kind.ARC)
+                .findFirst()
+                .orElseThrow()
+                .id();
         sketchReference(arc);
         sketchType(SketchTools.Tool.TEXT_ON_PATH);
         text("sketch-text-content", "CAD");
         text("sketch-text-height", "4");
         sketchNumericPoint(50, 20);
-        var text =
-                sketchGeometry().entities().stream()
-                        .filter(e -> e.kind() == SketchGeometry.Kind.TEXT)
-                        .findFirst()
-                        .orElseThrow();
+        var text = sketchGeometry().entities().stream()
+                .filter(e -> e.kind() == SketchGeometry.Kind.TEXT)
+                .findFirst()
+                .orElseThrow();
         assertEquals(arc, text.text().pathId());
         var before = sketchGeometry().curves(text).getFirst().at(0);
         sketchDrag(30, 20, 35, 20, false);
         assertTrue(before.distance(sketchGeometry().curves(text).getFirst().at(0)) > 4);
         Path artifacts = Path.of(System.getProperty("voxelbrew.ui.artifacts"));
-        fx(
-                () -> {
-                    Screenshot.save(
-                            stage.getScene(),
-                            artifacts.resolve("sketch-types-tangent-and-path-text.png"));
-                    return null;
-                });
+        fx(() -> {
+            Screenshot.save(stage.getScene(), artifacts.resolve("sketch-types-tangent-and-path-text.png"));
+            return null;
+        });
         sketchReference(text.id());
         click("sketch-edit-text");
         choice("sketch-edit-text-path", 0);
@@ -3367,8 +2865,7 @@ class WorkbenchUiTest {
         sketchDimension(0, "60");
         sketchClick(0, 20, false);
         sketchDimension(0, "40");
-        assertEquals(
-                "Fully constrained", fx(() -> ((Label) node("#sketch-solve-status")).getText()));
+        assertEquals("Fully constrained", fx(() -> ((Label) node("#sketch-solve-status")).getText()));
         sketchClick(30, 0, false);
         sketchDimension(0, "80");
         assertTrue(fx(() -> node("#constraint-finish").isDisabled()));
@@ -3391,17 +2888,13 @@ class WorkbenchUiTest {
         sketchClick(0, 0, true);
         sketchDimension(2, "-10");
         sketchDimension(3, "-10");
-        assertEquals(
-                "Fully constrained", fx(() -> ((Label) node("#sketch-solve-status")).getText()));
-        assertEquals(
-                0, document().features().size(), "Sketch editing stays transient until Finish");
+        assertEquals("Fully constrained", fx(() -> ((Label) node("#sketch-solve-status")).getText()));
+        assertEquals(0, document().features().size(), "Sketch editing stays transient until Finish");
         Path artifacts = Path.of(System.getProperty("voxelbrew.ui.artifacts"));
-        fx(
-                () -> {
-                    Screenshot.save(
-                            stage.getScene(), artifacts.resolve("sketch-constraints-light.png"));
-                    return null;
-                });
+        fx(() -> {
+            Screenshot.save(stage.getScene(), artifacts.resolve("sketch-constraints-light.png"));
+            return null;
+        });
         click("constraint-finish");
         ready();
         assertEquals(1, document().features().size());
@@ -3429,41 +2922,33 @@ class WorkbenchUiTest {
         click("history-0");
         click("edit-sketch-constraints");
         sketchReady();
-        int widthIndex =
-                fx(
-                        () -> {
-                            var values =
-                                    ((SketchEditor) node("#sketch-editor"))
-                                            .controller()
-                                            .definition()
-                                            .constraints();
-                            for (int i = 0; i < values.size(); i++)
-                                if (values.get(i).type() == SketchGeometry.Type.LENGTH
-                                        && values.get(i)
-                                                .refs()
-                                                .getFirst()
-                                                .entityId()
-                                                .endsWith("bottom")) return i;
-                            throw new AssertionError("Missing width dimension");
-                        });
+        int widthIndex = fx(() -> {
+            var values = ((SketchEditor) node("#sketch-editor"))
+                    .controller()
+                    .definition()
+                    .constraints();
+            for (int i = 0; i < values.size(); i++)
+                if (values.get(i).type() == SketchGeometry.Type.LENGTH
+                        && values.get(i).refs().getFirst().entityId().endsWith("bottom")) return i;
+            throw new AssertionError("Missing width dimension");
+        });
         click("sketch-constraints");
         key(KeyCode.HOME);
         for (int i = 0; i < widthIndex; i++) key(KeyCode.DOWN);
         text("sketch-dimension-value", "80");
         click("sketch-apply-dimension");
         sketchReady();
-        assertEquals(
-                "Fully constrained", fx(() -> ((Label) node("#sketch-solve-status")).getText()));
-        fx(
-                () -> {
-                    Screenshot.save(
-                            stage.getScene(), artifacts.resolve("sketch-constraints-dark.png"));
-                    return null;
-                });
+        assertEquals("Fully constrained", fx(() -> ((Label) node("#sketch-solve-status")).getText()));
+        fx(() -> {
+            Screenshot.save(stage.getScene(), artifacts.resolve("sketch-constraints-dark.png"));
+            return null;
+        });
         click("constraint-finish");
         ready();
         assertEquals((80 * 40 - 4 * Math.PI) * 8, volume(), 0.01);
-        assertEquals(saved.features().getFirst().id(), document().features().getFirst().id());
+        assertEquals(
+                saved.features().getFirst().id(),
+                document().features().getFirst().id());
         click("undo");
         ready();
         assertEquals(saved, document());
@@ -3477,89 +2962,69 @@ class WorkbenchUiTest {
         click("sketch-tool-line");
         sketchClick(10, 10, false);
         key(KeyCode.ESCAPE);
-        assertTrue(
-                fx(
-                        () ->
-                                ((SketchEditor) node("#sketch-editor"))
-                                        .controller()
-                                        .definition()
-                                        .entities()
-                                        .isEmpty()));
+        assertTrue(fx(() -> ((SketchEditor) node("#sketch-editor"))
+                .controller()
+                .definition()
+                .entities()
+                .isEmpty()));
         click("constraint-cancel");
         assertEquals(beforeCancel, fx(() -> workbench.controller().snapshot()));
-        Files.copy(
-                file,
-                artifacts.resolve("gui-constrained-plate.jcad"),
-                StandardCopyOption.REPLACE_EXISTING);
+        Files.copy(file, artifacts.resolve("gui-constrained-plate.jcad"), StandardCopyOption.REPLACE_EXISTING);
         Files.writeString(artifacts.resolve("constrained-cli-inspection.txt"), inspection);
     }
 
     private void sketchReference(String ref) throws Exception {
-        int index =
-                fx(
-                        () -> {
-                            var items = ((ComboBox<?>) node("#sketch-reference")).getItems();
-                            for (int i = 0; i < items.size(); i++)
-                                if (items.get(i).toString().equals(ref)) return i;
-                            throw new AssertionError("Missing sketch reference " + ref);
-                        });
+        int index = fx(() -> {
+            var items = ((ComboBox<?>) node("#sketch-reference")).getItems();
+            for (int i = 0; i < items.size(); i++) if (items.get(i).toString().equals(ref)) return i;
+            throw new AssertionError("Missing sketch reference " + ref);
+        });
         choice("sketch-reference", index);
         click("sketch-select-ref");
     }
 
-    private void sketchDrag(double x, double y, double toX, double toY, boolean cancel)
-            throws Exception {
-        var positions =
-                fx(
-                        () -> {
-                            var editor = (SketchEditor) node("#sketch-editor");
-                            return new javafx.geometry.Point2D[] {
-                                editor.modelToScreen(new SketchGeometry.Vec(x, y)),
-                                editor.modelToScreen(new SketchGeometry.Vec(toX, toY))
-                            };
-                        });
-        fx(
-                () -> {
-                    robot.mouseMove(positions[0]);
-                    return null;
-                });
+    private void sketchDrag(double x, double y, double toX, double toY, boolean cancel) throws Exception {
+        var positions = fx(() -> {
+            var editor = (SketchEditor) node("#sketch-editor");
+            return new javafx.geometry.Point2D[] {
+                editor.modelToScreen(new SketchGeometry.Vec(x, y)),
+                editor.modelToScreen(new SketchGeometry.Vec(toX, toY))
+            };
+        });
+        fx(() -> {
+            robot.mouseMove(positions[0]);
+            return null;
+        });
         Thread.sleep(100);
-        fx(
-                () -> {
-                    robot.mousePress(MouseButton.PRIMARY);
-                    return null;
-                });
+        fx(() -> {
+            robot.mousePress(MouseButton.PRIMARY);
+            return null;
+        });
         Thread.sleep(100);
-        fx(
-                () -> {
-                    robot.mouseMove(positions[1]);
-                    return null;
-                });
+        fx(() -> {
+            robot.mouseMove(positions[1]);
+            return null;
+        });
         Thread.sleep(180);
         if (cancel) key(KeyCode.ESCAPE);
         var released = new CountDownLatch(1);
-        javafx.event.EventHandler<MouseEvent> releaseObserved =
-                event -> {
-                    if (event.getButton() == MouseButton.PRIMARY) released.countDown();
-                };
+        javafx.event.EventHandler<MouseEvent> releaseObserved = event -> {
+            if (event.getButton() == MouseButton.PRIMARY) released.countDown();
+        };
         var canvas = fx(() -> node("#sketch-canvas"));
         try {
-            fx(
-                    () -> {
-                        canvas.addEventFilter(MouseEvent.MOUSE_RELEASED, releaseObserved);
-                        robot.mouseRelease(MouseButton.PRIMARY);
-                        return null;
-                    });
-            assertTrue(
-                    released.await(10, TimeUnit.SECONDS),
-                    "Native sketch mouse release was not delivered");
+            fx(() -> {
+                canvas.addEventFilter(MouseEvent.MOUSE_RELEASED, releaseObserved);
+                robot.mouseRelease(MouseButton.PRIMARY);
+                return null;
+            });
+            assertTrue(released.await(10, TimeUnit.SECONDS), "Native sketch mouse release was not delivered");
         } finally {
             // This FX dispatch also waits until the release handler has submitted its solve.
-            fx(
-                    () -> {
-                        canvas.removeEventFilter(MouseEvent.MOUSE_RELEASED, releaseObserved);
-                        return null;
-                    });
+            fx(() -> {
+                canvas.removeEventFilter(MouseEvent.MOUSE_RELEASED, releaseObserved);
+                return null;
+            });
         }
         sketchReady();
     }
@@ -3574,17 +3039,21 @@ class WorkbenchUiTest {
         sketchClick(10, 10, false);
         sketchClick(30, 10, false);
         sketchReady();
-        var before = fx(() -> ((SketchEditor) node("#sketch-editor")).controller().definition());
+        var before =
+                fx(() -> ((SketchEditor) node("#sketch-editor")).controller().definition());
         sketchDrag(30, 10, 35, 15, true);
         assertEquals(
                 before,
                 fx(() -> ((SketchEditor) node("#sketch-editor")).controller().definition()));
         sketchDrag(30, 10, 35, 15, false);
-        var moved = fx(() -> ((SketchEditor) node("#sketch-editor")).controller().definition());
+        var moved =
+                fx(() -> ((SketchEditor) node("#sketch-editor")).controller().definition());
         assertEquals(35, moved.entities().getFirst().at(1).x(), 0.3);
         assertEquals(15, moved.entities().getFirst().at(1).y(), 0.3);
         assertEquals(
-                moved.entities().getFirst().at(0).y(), moved.entities().getFirst().at(1).y(), 1e-6);
+                moved.entities().getFirst().at(0).y(),
+                moved.entities().getFirst().at(1).y(),
+                1e-6);
         click("sketch-undo");
         sketchReady();
         assertEquals(
@@ -3608,24 +3077,18 @@ class WorkbenchUiTest {
         sketchClick(-8, 6, false);
         sketchClick(-10, 0, false);
         sketchReady();
-        String arcId =
-                fx(
-                        () ->
-                                ((SketchEditor) node("#sketch-editor"))
-                                        .controller().definition().entities().stream()
-                                                .filter(e -> e.kind() == SketchGeometry.Kind.ARC)
-                                                .findFirst()
-                                                .orElseThrow()
-                                                .id());
-        String splineId =
-                fx(
-                        () ->
-                                ((SketchEditor) node("#sketch-editor"))
-                                        .controller().definition().entities().stream()
-                                                .filter(e -> e.kind() == SketchGeometry.Kind.SPLINE)
-                                                .findFirst()
-                                                .orElseThrow()
-                                                .id());
+        String arcId = fx(() -> ((SketchEditor) node("#sketch-editor"))
+                .controller().definition().entities().stream()
+                        .filter(e -> e.kind() == SketchGeometry.Kind.ARC)
+                        .findFirst()
+                        .orElseThrow()
+                        .id());
+        String splineId = fx(() -> ((SketchEditor) node("#sketch-editor"))
+                .controller().definition().entities().stream()
+                        .filter(e -> e.kind() == SketchGeometry.Kind.SPLINE)
+                        .findFirst()
+                        .orElseThrow()
+                        .id());
         sketchReference(arcId);
         click("constraint-fix");
         sketchReady();
@@ -3634,15 +3097,16 @@ class WorkbenchUiTest {
         sketchReference(splineId + ".start");
         click("constraint-curvature");
         sketchReady();
-        var geometry = fx(() -> ((SketchEditor) node("#sketch-editor")).controller().definition());
+        var geometry =
+                fx(() -> ((SketchEditor) node("#sketch-editor")).controller().definition());
         assertTrue(
                 fx(() -> ((SketchEditor) node("#sketch-editor")).controller().canFinish()),
                 fx(() -> ((Label) node("#sketch-error")).getText()));
-        assertTrue(
-                geometry.constraints().stream()
-                        .anyMatch(c -> c.type() == SketchGeometry.Type.CURVATURE));
+        assertTrue(geometry.constraints().stream().anyMatch(c -> c.type() == SketchGeometry.Type.CURVATURE));
         assertEquals(
-                0, geometry.entity(arcId).at(1).distance(geometry.entity(splineId).at(0)), 1e-6);
+                0,
+                geometry.entity(arcId).at(1).distance(geometry.entity(splineId).at(0)),
+                1e-6);
         assertEquals(
                 geometry.entity(arcId).curvature(1), geometry.entity(splineId).curvature(0), 1e-8);
         click("sketch-tool-line");
@@ -3650,12 +3114,10 @@ class WorkbenchUiTest {
         sketchClick(10, 0, false);
         sketchReady();
         Path artifacts = Path.of(System.getProperty("voxelbrew.ui.artifacts"));
-        fx(
-                () -> {
-                    Screenshot.save(
-                            stage.getScene(), artifacts.resolve("sketch-spline-curvature.png"));
-                    return null;
-                });
+        fx(() -> {
+            Screenshot.save(stage.getScene(), artifacts.resolve("sketch-spline-curvature.png"));
+            return null;
+        });
         click("constraint-finish");
         ready();
         click("extrude");
@@ -3673,21 +3135,18 @@ class WorkbenchUiTest {
         sketchReady();
         geometry = fx(() -> ((SketchEditor) node("#sketch-editor")).controller().definition());
         assertEquals(6, geometry.entities().size());
-        assertEquals(SketchGeometry.Type.POLYGON, geometry.constraints().getFirst().type());
+        assertEquals(
+                SketchGeometry.Type.POLYGON, geometry.constraints().getFirst().type());
         assertEquals(
                 4,
-                fx(
-                        () ->
-                                ((SketchEditor) node("#sketch-editor"))
-                                        .controller()
-                                        .result()
-                                        .degreesOfFreedom()));
-        fx(
-                () -> {
-                    Screenshot.save(
-                            stage.getScene(), artifacts.resolve("sketch-regular-polygon.png"));
-                    return null;
-                });
+                fx(() -> ((SketchEditor) node("#sketch-editor"))
+                        .controller()
+                        .result()
+                        .degreesOfFreedom()));
+        fx(() -> {
+            Screenshot.save(stage.getScene(), artifacts.resolve("sketch-regular-polygon.png"));
+            return null;
+        });
         click("constraint-finish");
         ready();
         assertEquals(3, document().features().size());
@@ -3700,50 +3159,42 @@ class WorkbenchUiTest {
     }
 
     private void cubeClick(String region, ViewOrientation expected) throws Exception {
-        fx(
-                () -> {
-                    var polygon = (Polygon) node("#view-cube-" + region);
-                    double x = 0, y = 0;
-                    var points = polygon.getPoints();
-                    for (int i = 0; i < points.size(); i += 2) {
-                        x += points.get(i);
-                        y += points.get(i + 1);
-                    }
-                    robot.mouseMove(
-                            polygon.localToScreen(x * 2 / points.size(), y * 2 / points.size()));
-                    return null;
-                });
+        fx(() -> {
+            var polygon = (Polygon) node("#view-cube-" + region);
+            double x = 0, y = 0;
+            var points = polygon.getPoints();
+            for (int i = 0; i < points.size(); i += 2) {
+                x += points.get(i);
+                y += points.get(i + 1);
+            }
+            robot.mouseMove(polygon.localToScreen(x * 2 / points.size(), y * 2 / points.size()));
+            return null;
+        });
         Thread.sleep(100);
-        fx(
-                () -> {
-                    robot.mousePress(MouseButton.PRIMARY);
-                    return null;
-                });
+        fx(() -> {
+            robot.mousePress(MouseButton.PRIMARY);
+            return null;
+        });
         Thread.sleep(60);
-        fx(
-                () -> {
-                    robot.mouseRelease(MouseButton.PRIMARY);
-                    return null;
-                });
+        fx(() -> {
+            robot.mouseRelease(MouseButton.PRIMARY);
+            return null;
+        });
         Thread.sleep(180);
-        assertEquals(expected, fx(() -> workbench.viewport().orientationProperty().get()), region);
+        assertEquals(
+                expected, fx(() -> workbench.viewport().orientationProperty().get()), region);
     }
 
     @Test
     void gridDragRotatesWithoutTakingOverPickingSketchesOrDocumentHistory() throws Exception {
         ready();
         var empty = fx(() -> workbench.controller().snapshot());
-        var background =
-                fx(
-                        () -> {
-                            var viewport = workbench.viewport();
-                            return viewport.localToScreen(
-                                    viewport.getWidth() * 0.25, viewport.getHeight() * 0.7);
-                        });
+        var background = fx(() -> {
+            var viewport = workbench.viewport();
+            return viewport.localToScreen(viewport.getWidth() * 0.25, viewport.getHeight() * 0.7);
+        });
         primaryDrag(background, 40, 24);
-        assertOrbit(
-                new ViewOrientation(40, -55),
-                "An empty document's grid can be grabbed and rotated right/down");
+        assertOrbit(new ViewOrientation(40, -55), "An empty document's grid can be grabbed and rotated right/down");
         assertEquals(
                 Cursor.DEFAULT,
                 fx(() -> node("#viewport-scene").getCursor()),
@@ -3755,36 +3206,23 @@ class WorkbenchUiTest {
 
         rectangle(0);
         var top = fx(() -> workbench.viewport().orientationProperty().get());
-        double fittedWidth =
-                fx(
-                        () ->
-                                workbench
-                                        .viewport()
-                                        .modelToScreen(new Point3D(0, 0, 0))
-                                        .distance(
-                                                workbench
-                                                        .viewport()
-                                                        .modelToScreen(new Point3D(60, 0, 0))));
+        double fittedWidth = fx(() -> workbench
+                .viewport()
+                .modelToScreen(new Point3D(0, 0, 0))
+                .distance(workbench.viewport().modelToScreen(new Point3D(60, 0, 0))));
         // At Fit the sketch stroke is subpixel on the Linux test display. Zoom in
         // before picking its curve so Robot rounding cannot hit the adjacent grid.
-        fx(
-                () -> {
-                    robot.mouseMove(workbench.viewport().modelToScreen(new Point3D(30, 20, 0)));
-                    robot.mouseWheel(-8);
-                    return null;
-                });
+        fx(() -> {
+            robot.mouseMove(workbench.viewport().modelToScreen(new Point3D(30, 20, 0)));
+            robot.mouseWheel(-8);
+            return null;
+        });
         Thread.sleep(200);
         assertTrue(
-                fx(
-                                () ->
-                                        workbench
-                                                .viewport()
-                                                .modelToScreen(new Point3D(0, 0, 0))
-                                                .distance(
-                                                        workbench
-                                                                .viewport()
-                                                                .modelToScreen(
-                                                                        new Point3D(60, 0, 0))))
+                fx(() -> workbench
+                                .viewport()
+                                .modelToScreen(new Point3D(0, 0, 0))
+                                .distance(workbench.viewport().modelToScreen(new Point3D(60, 0, 0))))
                         > fittedWidth,
                 "Zoom enlarges the curve before native picking");
         primaryDrag(fx(() -> workbench.viewport().modelToScreen(new Point3D(30, 0, .04))), 80, 24);
@@ -3793,7 +3231,10 @@ class WorkbenchUiTest {
                 fx(() -> workbench.viewport().orientationProperty().get()),
                 "A drag that starts on a sketch does not become a grid orbit");
         primaryDrag(
-                fx(() -> workbench.viewport().modelToScreen(new Point3D(30, 0, .04)).add(0, 2)),
+                fx(() -> workbench
+                        .viewport()
+                        .modelToScreen(new Point3D(30, 0, .04))
+                        .add(0, 2)),
                 40,
                 12);
         assertEquals(
@@ -3824,15 +3265,10 @@ class WorkbenchUiTest {
                 "Releasing a grid drag does not change selection");
         assertEquals(saved, fx(() -> workbench.controller().snapshot()));
         assertFalse(fx(() -> workbench.controller().dirty()));
-        fx(
-                () -> {
-                    Screenshot.save(
-                            stage.getScene(),
-                            Path.of(
-                                    System.getProperty("voxelbrew.ui.artifacts"),
-                                    "grid-orbit.png"));
-                    return null;
-                });
+        fx(() -> {
+            Screenshot.save(stage.getScene(), Path.of(System.getProperty("voxelbrew.ui.artifacts"), "grid-orbit.png"));
+            return null;
+        });
 
         click("constrained-sketch");
         click("choose-plane-xy");
@@ -3840,10 +3276,7 @@ class WorkbenchUiTest {
         var drawingView = fx(() -> workbench.viewport().orientationProperty().get());
         click("sketch-tool-rectangle");
         var drawingPoint =
-                fx(
-                        () ->
-                                ((SketchEditor) node("#sketch-editor"))
-                                        .modelToScreen(new SketchGeometry.Vec(0, 0)));
+                fx(() -> ((SketchEditor) node("#sketch-editor")).modelToScreen(new SketchGeometry.Vec(0, 0)));
         primaryDrag(drawingPoint, 40, 24);
         assertEquals(
                 drawingView,
@@ -3891,18 +3324,16 @@ class WorkbenchUiTest {
                 "Cube follows main viewport orbit");
         var orientation = fx(() -> workbench.viewport().orientationProperty().get());
         navigate(true);
-        fx(
-                () -> {
-                    robot.mouseWheel(4);
-                    return null;
-                });
+        fx(() -> {
+            robot.mouseWheel(4);
+            return null;
+        });
         Thread.sleep(200);
         assertEquals(
                 orientation,
                 fx(() -> workbench.viewport().orientationProperty().get()),
                 "Pan and zoom do not rotate the cube");
-        assertTrue(
-                homeProjection.distance(fx(() -> workbench.viewport().modelToScreen(point))) > 2);
+        assertTrue(homeProjection.distance(fx(() -> workbench.viewport().modelToScreen(point))) > 2);
         click("view-cube-home");
         assertEquals(
                 0,
@@ -3910,38 +3341,33 @@ class WorkbenchUiTest {
                 0.01,
                 "Home resets rotation, pan and zoom");
         var beforeDrag = fx(() -> workbench.viewport().modelToScreen(point));
-        fx(
-                () -> {
-                    var face = node("#view-cube-front");
-                    var bounds = face.localToScreen(face.getBoundsInLocal());
-                    robot.mouseMove(bounds.getCenterX(), bounds.getCenterY());
-                    return null;
-                });
+        fx(() -> {
+            var face = node("#view-cube-front");
+            var bounds = face.localToScreen(face.getBoundsInLocal());
+            robot.mouseMove(bounds.getCenterX(), bounds.getCenterY());
+            return null;
+        });
         Thread.sleep(100);
-        fx(
-                () -> {
-                    robot.mousePress(MouseButton.PRIMARY);
-                    return null;
-                });
+        fx(() -> {
+            robot.mousePress(MouseButton.PRIMARY);
+            return null;
+        });
         Thread.sleep(100);
-        fx(
-                () -> {
-                    robot.mouseMove(robot.getMouseX() + 30, robot.getMouseY() + 20);
-                    return null;
-                });
+        fx(() -> {
+            robot.mouseMove(robot.getMouseX() + 30, robot.getMouseY() + 20);
+            return null;
+        });
         Thread.sleep(150);
-        fx(
-                () -> {
-                    robot.mouseRelease(MouseButton.PRIMARY);
-                    return null;
-                });
+        fx(() -> {
+            robot.mouseRelease(MouseButton.PRIMARY);
+            return null;
+        });
         Thread.sleep(180);
         assertTrue(
                 beforeDrag.distance(fx(() -> workbench.viewport().modelToScreen(point))) > 2,
                 "Dragging cube orbits the main view");
         assertOrbit(
-                new ViewOrientation(38, -50),
-                "Right/down drag follows the pointer and must not also snap on release");
+                new ViewOrientation(38, -50), "Right/down drag follows the pointer and must not also snap on release");
         click("view-cube-menu");
         assertTrue(fx(() -> ((MenuButton) node("#view-cube-menu")).isShowing()));
         key(KeyCode.DOWN);
@@ -3960,24 +3386,18 @@ class WorkbenchUiTest {
         click("view-cube-home");
         modelClick(30, 20, 5);
         assertTrue(
-                fx(
-                        () ->
-                                ((Label) workbench.lookup(".selection-title"))
-                                        .getText()
-                                        .startsWith("Face")),
+                fx(() ->
+                        ((Label) workbench.lookup(".selection-title")).getText().startsWith("Face")),
                 "Model picking still works around the overlay");
         assertEquals(snapshot, fx(() -> workbench.controller().snapshot()));
         assertFalse(fx(() -> workbench.controller().dirty()));
         for (int palette = 1; palette <= 2; palette++) {
             choice("appearance", palette);
             String name = palette == 1 ? "view-cube-light.png" : "view-cube-dark.png";
-            fx(
-                    () -> {
-                        Screenshot.save(
-                                stage.getScene(),
-                                Path.of(System.getProperty("voxelbrew.ui.artifacts"), name));
-                        return null;
-                    });
+            fx(() -> {
+                Screenshot.save(stage.getScene(), Path.of(System.getProperty("voxelbrew.ui.artifacts"), name));
+                return null;
+            });
         }
     }
 
@@ -4060,26 +3480,18 @@ class WorkbenchUiTest {
         String inspection = cli("inspect", file.toString(), "--point", "10,10,4");
         assertTrue(inspection.contains("volume=19099.469035085127"));
         assertTrue(inspection.contains("contains=false"));
-        assertTrue(
-                inspection.contains(
-                        "bounds=0.000000000,0.000000000,0.000000000,60.000000000,40.000000000,8.000000000"));
+        assertTrue(inspection.contains(
+                "bounds=0.000000000,0.000000000,0.000000000,60.000000000,40.000000000,8.000000000"));
         assertTrue(cli("inspect", file.toString(), "--point", "30,20,4").contains("contains=true"));
         standardView(0);
         modelClick(30, 20, 8);
-        assertTrue(
-                fx(
-                        () ->
-                                ((Label) workbench.lookup(".selection-title"))
-                                        .getText()
-                                        .startsWith("Face")));
-        var selectedTree =
-                fx(
-                        () ->
-                                ((TreeView<?>) node("#model-tree"))
-                                        .getSelectionModel()
-                                        .getSelectedItem()
-                                        .getValue()
-                                        .toString());
+        assertTrue(fx(
+                () -> ((Label) workbench.lookup(".selection-title")).getText().startsWith("Face")));
+        var selectedTree = fx(() -> ((TreeView<?>) node("#model-tree"))
+                .getSelectionModel()
+                .getSelectedItem()
+                .getValue()
+                .toString());
         assertEquals("Body 1", selectedTree);
         var navigationDocument = document();
         var point = new Point3D(60, 40, 8);
@@ -4090,15 +3502,13 @@ class WorkbenchUiTest {
         navigate(true);
         var afterPan = fx(() -> workbench.viewport().modelToScreen(point));
         assertTrue(afterOrbit.distance(afterPan) > 2, "Pan changes projection");
-        fx(
-                () -> {
-                    robot.mouseWheel(4);
-                    return null;
-                });
+        fx(() -> {
+            robot.mouseWheel(4);
+            return null;
+        });
         Thread.sleep(250);
         assertTrue(
-                afterPan.distance(fx(() -> workbench.viewport().modelToScreen(point))) > 2,
-                "Zoom changes projection");
+                afterPan.distance(fx(() -> workbench.viewport().modelToScreen(point))) > 2, "Zoom changes projection");
         assertEquals(navigationDocument, document());
         standardView(1);
         standardView(0);
@@ -4106,33 +3516,21 @@ class WorkbenchUiTest {
         Path artifacts = Path.of(System.getProperty("voxelbrew.ui.artifacts"));
         Files.createDirectories(artifacts);
         choice("appearance", 1);
-        fx(
-                () -> {
-                    Screenshot.save(stage.getScene(), artifacts.resolve("workbench-light.png"));
-                    return null;
-                });
+        fx(() -> {
+            Screenshot.save(stage.getScene(), artifacts.resolve("workbench-light.png"));
+            return null;
+        });
         choice("appearance", 2);
-        fx(
-                () -> {
-                    Screenshot.save(stage.getScene(), artifacts.resolve("workbench-dark.png"));
-                    return null;
-                });
-        assertFalse(
-                Arrays.equals(
-                        Files.readAllBytes(artifacts.resolve("workbench-light.png")),
-                        Files.readAllBytes(artifacts.resolve("workbench-dark.png"))));
-        Files.copy(
-                file,
-                artifacts.resolve("gui-reference-8mm.jcad"),
-                StandardCopyOption.REPLACE_EXISTING);
-        Files.copy(
-                exported,
-                artifacts.resolve("gui-reference.3mf"),
-                StandardCopyOption.REPLACE_EXISTING);
-        Files.copy(
-                external,
-                artifacts.resolve("external-provider.txt"),
-                StandardCopyOption.REPLACE_EXISTING);
+        fx(() -> {
+            Screenshot.save(stage.getScene(), artifacts.resolve("workbench-dark.png"));
+            return null;
+        });
+        assertFalse(Arrays.equals(
+                Files.readAllBytes(artifacts.resolve("workbench-light.png")),
+                Files.readAllBytes(artifacts.resolve("workbench-dark.png"))));
+        Files.copy(file, artifacts.resolve("gui-reference-8mm.jcad"), StandardCopyOption.REPLACE_EXISTING);
+        Files.copy(exported, artifacts.resolve("gui-reference.3mf"), StandardCopyOption.REPLACE_EXISTING);
+        Files.copy(external, artifacts.resolve("external-provider.txt"), StandardCopyOption.REPLACE_EXISTING);
         Files.writeString(artifacts.resolve("cli-inspection.txt"), inspection);
     }
 
@@ -4167,23 +3565,20 @@ class WorkbenchUiTest {
         Path file = directory.resolve("GUI spacer.jcad");
         save(file);
         var before = DocumentReader.load(file);
-        Path plugins = directory.resolve("plugins with spaces"),
-                jar = plugins.resolve("provider.jar");
-        fx(
-                () -> {
-                    workbench.close();
-                    return null;
-                });
+        Path plugins = directory.resolve("plugins with spaces"), jar = plugins.resolve("provider.jar");
+        fx(() -> {
+            workbench.close();
+            return null;
+        });
         workbench.whenClosed().toCompletableFuture().get(20, TimeUnit.SECONDS);
         Files.delete(jar);
-        fx(
-                () -> {
-                    workbench = Workbench.create(stage, plugins);
-                    stage.setScene(workbench.createScene(964, 648));
-                    stage.toFront();
-                    stage.requestFocus();
-                    return null;
-                });
+        fx(() -> {
+            workbench = Workbench.create(stage, plugins);
+            stage.setScene(workbench.createScene(964, 648));
+            stage.toFront();
+            stage.requestFocus();
+            return null;
+        });
         Thread.sleep(1200);
         click("open");
         text("file-path", file.toString());
@@ -4193,14 +3588,8 @@ class WorkbenchUiTest {
         assertEquals(0, volume(), 0);
         click("menu-file");
         assertTrue(fx(() -> command(workbench, "export").isDisable()));
-        assertTrue(
-                fx(
-                        () ->
-                                node("#export")
-                                        .getPseudoClassStates()
-                                        .contains(
-                                                javafx.css.PseudoClass.getPseudoClass(
-                                                        "disabled"))));
+        assertTrue(fx(() ->
+                node("#export").getPseudoClassStates().contains(javafx.css.PseudoClass.getPseudoClass("disabled"))));
         key(KeyCode.ESCAPE);
         click("save");
         ready();
@@ -4218,24 +3607,13 @@ class WorkbenchUiTest {
         click("export-confirm");
         ready();
         assertTrue(Files.size(exported) > 500);
-        assertTrue(
-                cli(
-                                "inspect",
-                                file.toString(),
-                                "--point",
-                                "0,0,4",
-                                "--plugin-dir",
-                                plugins.toString())
-                        .contains("contains=false"));
-        fx(
-                () -> {
-                    Screenshot.save(
-                            stage.getScene(),
-                            Path.of(
-                                    System.getProperty("voxelbrew.ui.artifacts"),
-                                    "custom-spacer.png"));
-                    return null;
-                });
+        assertTrue(cli("inspect", file.toString(), "--point", "0,0,4", "--plugin-dir", plugins.toString())
+                .contains("contains=false"));
+        fx(() -> {
+            Screenshot.save(
+                    stage.getScene(), Path.of(System.getProperty("voxelbrew.ui.artifacts"), "custom-spacer.png"));
+            return null;
+        });
     }
 
     private void assertOrbit(ViewOrientation expected, String message) throws Exception {
@@ -4246,60 +3624,50 @@ class WorkbenchUiTest {
     }
 
     private void primaryDrag(Point2D start, double dx, double dy) throws Exception {
-        fx(
-                () -> {
-                    robot.mouseMove(start);
-                    return null;
-                });
+        fx(() -> {
+            robot.mouseMove(start);
+            return null;
+        });
         Thread.sleep(120);
-        fx(
-                () -> {
-                    robot.mousePress(MouseButton.PRIMARY);
-                    return null;
-                });
+        fx(() -> {
+            robot.mousePress(MouseButton.PRIMARY);
+            return null;
+        });
         try {
             Thread.sleep(100);
-            fx(
-                    () -> {
-                        robot.mouseMove(start.add(dx, dy));
-                        return null;
-                    });
+            fx(() -> {
+                robot.mouseMove(start.add(dx, dy));
+                return null;
+            });
             Thread.sleep(150);
         } finally {
-            fx(
-                    () -> {
-                        robot.mouseRelease(MouseButton.PRIMARY);
-                        return null;
-                    });
+            fx(() -> {
+                robot.mouseRelease(MouseButton.PRIMARY);
+                return null;
+            });
         }
         Thread.sleep(180);
     }
 
     private void navigate(boolean pan) throws Exception {
-        fx(
-                () -> {
-                    var bounds =
-                            workbench
-                                    .viewport()
-                                    .localToScreen(workbench.viewport().getBoundsInLocal());
-                    robot.mouseMove(bounds.getCenterX(), bounds.getCenterY());
-                    if (pan) robot.keyPress(KeyCode.SHIFT);
-                    robot.mousePress(MouseButton.MIDDLE);
-                    return null;
-                });
+        fx(() -> {
+            var bounds = workbench.viewport().localToScreen(workbench.viewport().getBoundsInLocal());
+            robot.mouseMove(bounds.getCenterX(), bounds.getCenterY());
+            if (pan) robot.keyPress(KeyCode.SHIFT);
+            robot.mousePress(MouseButton.MIDDLE);
+            return null;
+        });
         Thread.sleep(100);
-        fx(
-                () -> {
-                    robot.mouseMove(robot.getMouseX() + 60, robot.getMouseY() + 35);
-                    return null;
-                });
+        fx(() -> {
+            robot.mouseMove(robot.getMouseX() + 60, robot.getMouseY() + 35);
+            return null;
+        });
         Thread.sleep(150);
-        fx(
-                () -> {
-                    robot.mouseRelease(MouseButton.MIDDLE);
-                    if (pan) robot.keyRelease(KeyCode.SHIFT);
-                    return null;
-                });
+        fx(() -> {
+            robot.mouseRelease(MouseButton.MIDDLE);
+            if (pan) robot.keyRelease(KeyCode.SHIFT);
+            return null;
+        });
         Thread.sleep(150);
     }
 
@@ -4323,48 +3691,43 @@ class WorkbenchUiTest {
         click("extrude");
         ready();
         var before = document();
-        fx(
-                () -> {
-                    var point = workbench.viewport().handleScreenPosition();
-                    assertNotNull(point);
-                    robot.mouseMove(point);
-                    robot.mousePress(MouseButton.PRIMARY);
-                    robot.mouseMove(point.getX(), point.getY() - 60);
-                    return null;
-                });
+        fx(() -> {
+            var point = workbench.viewport().handleScreenPosition();
+            assertNotNull(point);
+            robot.mouseMove(point);
+            robot.mousePress(MouseButton.PRIMARY);
+            robot.mouseMove(point.getX(), point.getY() - 60);
+            return null;
+        });
         Thread.sleep(200);
         key(KeyCode.ESCAPE);
-        fx(
-                () -> {
-                    robot.mouseRelease(MouseButton.PRIMARY);
-                    return null;
-                });
+        fx(() -> {
+            robot.mouseRelease(MouseButton.PRIMARY);
+            return null;
+        });
         ready();
         assertEquals(before, document());
         assertFalse(fx(() -> workbench.controller().hasPreview()));
         click("history-0");
         click("extrude");
         ready();
-        fx(
-                () -> {
-                    var point = workbench.viewport().handleScreenPosition();
-                    robot.mouseMove(point);
-                    robot.mousePress(MouseButton.PRIMARY);
-                    return null;
-                });
+        fx(() -> {
+            var point = workbench.viewport().handleScreenPosition();
+            robot.mouseMove(point);
+            robot.mousePress(MouseButton.PRIMARY);
+            return null;
+        });
         Thread.sleep(100);
-        fx(
-                () -> {
-                    var point = workbench.viewport().handleScreenPosition();
-                    robot.mouseMove(point.getX(), point.getY() - 70);
-                    return null;
-                });
+        fx(() -> {
+            var point = workbench.viewport().handleScreenPosition();
+            robot.mouseMove(point.getX(), point.getY() - 70);
+            return null;
+        });
         Thread.sleep(200);
-        fx(
-                () -> {
-                    robot.mouseRelease(MouseButton.PRIMARY);
-                    return null;
-                });
+        fx(() -> {
+            robot.mouseRelease(MouseButton.PRIMARY);
+            return null;
+        });
         ready();
         assertEquals(2, document().features().size());
         assertTrue(((Feature.Extrude) document().features().getLast()).distance() > 5);
@@ -4385,14 +3748,8 @@ class WorkbenchUiTest {
         assertEquals(original, document());
         assertTrue(fx(() -> ((Label) node("#tool-error")).getText().contains("finite")));
         var sketch = (Feature.Sketch) original.features().getFirst();
-        var broken =
-                new CadDocument(
-                        "broken",
-                        List.of(
-                                sketch,
-                                new Feature.Extrude(
-                                        "bad", new Feature.ProfileRef("missing", "none"), 8)),
-                        2);
+        var broken = new CadDocument(
+                "broken", List.of(sketch, new Feature.Extrude("bad", new Feature.ProfileRef("missing", "none"), 8)), 2);
         Path file = directory.resolve("broken.jcad");
         DocumentWriter.save(broken, file, false);
         // Open through the actual file action after saving the current document to avoid an
@@ -4405,36 +3762,27 @@ class WorkbenchUiTest {
         assertFalse(fx(() -> workbench.controller().build().valid()));
         assertTrue(fx(() -> workbench.controller().build().bodies().isEmpty()));
         click("history-1");
-        assertFalse(
-                fx(
-                        () ->
-                                ((javafx.scene.layout.VBox) node("#feature-diagnostics"))
-                                        .getChildren()
-                                        .isEmpty()));
+        assertFalse(fx(() -> ((javafx.scene.layout.VBox) node("#feature-diagnostics"))
+                .getChildren()
+                .isEmpty()));
         choice("repair-sketch", 0);
         click("repair");
         ready();
         assertEquals(19200, volume(), 0.01);
         assertEquals("bad", document().features().getLast().id());
-        assertTrue(
-                fx(
-                        () ->
-                                ((javafx.scene.layout.VBox) node("#feature-diagnostics"))
-                                        .getChildren()
-                                        .isEmpty()));
+        assertTrue(fx(() -> ((javafx.scene.layout.VBox) node("#feature-diagnostics"))
+                .getChildren()
+                .isEmpty()));
     }
 
     @Test
-    void keyboardModelingNavigationAndSketchDraftsRespectFocusAndModalBoundaries()
-            throws Exception {
+    void keyboardModelingNavigationAndSketchDraftsRespectFocusAndModalBoundaries() throws Exception {
         ready();
         assertShortcutCaption("extrude", "↑  Extrude", "E");
         assertShortcutCaption("split-body", "Split body (X)", "X");
         click("menu-fit");
         key(KeyCode.E);
-        assertNull(
-                fx(() -> workbench.lookup("#extrude-distance")),
-                "Disabled extrusion stays unavailable");
+        assertNull(fx(() -> workbench.lookup("#extrude-distance")), "Disabled extrusion stays unavailable");
         shortcut(KeyCode.E, false);
         assertFalse(fx(workbench::isDisabled), "Unavailable export does not open a dialog");
         assertNull(fx(() -> workbench.lookup("#rectangle")));
@@ -4488,23 +3836,22 @@ class WorkbenchUiTest {
         ready();
         assertEquals(2, document().features().size());
         var part = document();
-        for (var entry :
-                Map.of(
-                                KeyCode.DIGIT0,
-                                "Isometric",
-                                KeyCode.DIGIT1,
-                                "Top",
-                                KeyCode.DIGIT2,
-                                "Front",
-                                KeyCode.DIGIT3,
-                                "Right",
-                                KeyCode.DIGIT4,
-                                "Back",
-                                KeyCode.DIGIT5,
-                                "Left",
-                                KeyCode.DIGIT6,
-                                "Bottom")
-                        .entrySet()) {
+        for (var entry : Map.of(
+                        KeyCode.DIGIT0,
+                        "Isometric",
+                        KeyCode.DIGIT1,
+                        "Top",
+                        KeyCode.DIGIT2,
+                        "Front",
+                        KeyCode.DIGIT3,
+                        "Right",
+                        KeyCode.DIGIT4,
+                        "Back",
+                        KeyCode.DIGIT5,
+                        "Left",
+                        KeyCode.DIGIT6,
+                        "Bottom")
+                .entrySet()) {
             key(entry.getKey());
             assertEquals(
                     entry.getValue(),
@@ -4515,16 +3862,12 @@ class WorkbenchUiTest {
         shortcut(KeyCode.DIGIT2, false);
         assertEquals(
                 "workspace-print",
-                fx(
-                        () ->
-                                ((TabPane) node("#workspaces"))
-                                        .getSelectionModel()
-                                        .getSelectedItem()
-                                        .getId()));
+                fx(() -> ((TabPane) node("#workspaces"))
+                        .getSelectionModel()
+                        .getSelectedItem()
+                        .getId()));
         key(KeyCode.K);
-        assertNull(
-                fx(() -> stage.getScene().lookup("#sketch-editor")),
-                "Design tools are inactive in Print");
+        assertNull(fx(() -> stage.getScene().lookup("#sketch-editor")), "Design tools are inactive in Print");
         shortcut(KeyCode.DIGIT1, false);
         shortcut(KeyCode.P, true);
         assertNotNull(fx(() -> node("#parameters-cancel")));
@@ -4561,30 +3904,24 @@ class WorkbenchUiTest {
         key(KeyCode.DELETE);
         sketchReady();
         assertEquals(
-                constraints - 1,
-                sketchGeometry().constraints().size(),
-                "Delete works on the focused constraint list");
+                constraints - 1, sketchGeometry().constraints().size(), "Delete works on the focused constraint list");
         shortcut(KeyCode.Z, false);
         sketchReady();
         assertEquals(constraints, sketchGeometry().constraints().size());
         openShortcutHelp();
         assertNotNull(fx(() -> node("#keyboard-shortcuts-list")));
-        fx(
-                () -> {
-                    Screenshot.save(
-                            stage.getScene(),
-                            Path.of(
-                                    System.getProperty("voxelbrew.ui.artifacts"),
-                                    "keyboard-shortcuts-light.png"));
-                    return null;
-                });
+        fx(() -> {
+            Screenshot.save(
+                    stage.getScene(),
+                    Path.of(System.getProperty("voxelbrew.ui.artifacts"), "keyboard-shortcuts-light.png"));
+            return null;
+        });
         shortcut(KeyCode.ENTER, false);
         assertEquals(part, document(), "Help overlay blocks finish-sketch");
         closeShortcutHelp();
         shortcut(KeyCode.ENTER, false);
         ready();
-        assertEquals(
-                3, document().features().size(), "Finish sketch commits exactly one operation");
+        assertEquals(3, document().features().size(), "Finish sketch commits exactly one operation");
         click("menu-fit");
         shortcut(KeyCode.Z, false);
         ready();
@@ -4594,9 +3931,7 @@ class WorkbenchUiTest {
         ready();
         assertEquals(0, document().cursor());
         key(KeyCode.K);
-        assertNull(
-                fx(() -> stage.getScene().lookup("#sketch-editor")),
-                "Rollback blocks new features");
+        assertNull(fx(() -> stage.getScene().lookup("#sketch-editor")), "Rollback blocks new features");
         shortcut(KeyCode.E, false);
         assertFalse(fx(workbench::isDisabled), "Rollback blocks export");
         key(KeyCode.END);
@@ -4604,15 +3939,12 @@ class WorkbenchUiTest {
         assertEquals(part, document());
         choice("appearance", 2);
         openShortcutHelp();
-        fx(
-                () -> {
-                    Screenshot.save(
-                            stage.getScene(),
-                            Path.of(
-                                    System.getProperty("voxelbrew.ui.artifacts"),
-                                    "keyboard-shortcuts-dark.png"));
-                    return null;
-                });
+        fx(() -> {
+            Screenshot.save(
+                    stage.getScene(),
+                    Path.of(System.getProperty("voxelbrew.ui.artifacts"), "keyboard-shortcuts-dark.png"));
+            return null;
+        });
         closeShortcutHelp();
         click("constrained-sketch");
         click("choose-plane-xy");
@@ -4624,55 +3956,50 @@ class WorkbenchUiTest {
     }
 
     private void assertShortcutCaption(String id, String expected, String letter) throws Exception {
-        fx(
-                () -> {
-                    var button = (ButtonBase) node("#" + id);
-                    button.getScene().getRoot().applyCss();
-                    button.getScene().getRoot().layout();
-                    var caption = (javafx.scene.layout.HBox) button.lookup(".shortcut-caption");
-                    assertNotNull(caption, id);
-                    var fragments =
-                            caption.getChildren().stream()
-                                    .map(javafx.scene.text.Text.class::cast)
-                                    .toList();
-                    assertEquals(
-                            expected,
-                            fragments.stream()
-                                    .map(javafx.scene.text.Text::getText)
-                                    .collect(java.util.stream.Collectors.joining()),
-                            id);
-                    var marked =
-                            fragments.stream().filter(javafx.scene.text.Text::isUnderline).toList();
-                    assertEquals(1, marked.size(), id);
-                    assertEquals(letter, marked.getFirst().getText(), id);
-                    assertEquals(button.getTextFill(), marked.getFirst().getFill(), id);
-                    assertEquals(button.getFont(), marked.getFirst().getFont(), id);
-                    assertFalse(
-                            button.isMnemonicParsing(), "Do not register unrelated Alt mnemonics");
-                    var bounds = button.localToScene(button.getLayoutBounds());
-                    var textBounds = caption.localToScene(caption.getLayoutBounds());
-                    assertTrue(
-                            textBounds.getMinX() >= bounds.getMinX() - 1
-                                    && textBounds.getMaxX() <= bounds.getMaxX() + 1,
-                            "Full caption fits: " + id);
-                    assertTrue(
-                            textBounds.getMinY() >= bounds.getMinY() - 1
-                                    && textBounds.getMaxY() <= bounds.getMaxY() + 1,
-                            "Caption height fits: " + id);
-                    return null;
-                });
+        fx(() -> {
+            var button = (ButtonBase) node("#" + id);
+            button.getScene().getRoot().applyCss();
+            button.getScene().getRoot().layout();
+            var caption = (javafx.scene.layout.HBox) button.lookup(".shortcut-caption");
+            assertNotNull(caption, id);
+            var fragments = caption.getChildren().stream()
+                    .map(javafx.scene.text.Text.class::cast)
+                    .toList();
+            assertEquals(
+                    expected,
+                    fragments.stream()
+                            .map(javafx.scene.text.Text::getText)
+                            .collect(java.util.stream.Collectors.joining()),
+                    id);
+            var marked = fragments.stream()
+                    .filter(javafx.scene.text.Text::isUnderline)
+                    .toList();
+            assertEquals(1, marked.size(), id);
+            assertEquals(letter, marked.getFirst().getText(), id);
+            assertEquals(button.getTextFill(), marked.getFirst().getFill(), id);
+            assertEquals(button.getFont(), marked.getFirst().getFont(), id);
+            assertFalse(button.isMnemonicParsing(), "Do not register unrelated Alt mnemonics");
+            var bounds = button.localToScene(button.getLayoutBounds());
+            var textBounds = caption.localToScene(caption.getLayoutBounds());
+            assertTrue(
+                    textBounds.getMinX() >= bounds.getMinX() - 1 && textBounds.getMaxX() <= bounds.getMaxX() + 1,
+                    "Full caption fits: " + id);
+            assertTrue(
+                    textBounds.getMinY() >= bounds.getMinY() - 1 && textBounds.getMaxY() <= bounds.getMaxY() + 1,
+                    "Caption height fits: " + id);
+            return null;
+        });
     }
 
     private void saveShortcutLabels(String languageAndPalette) throws Exception {
-        fx(
-                () -> {
-                    Screenshot.save(
-                            stage.getScene(),
-                            Path.of(
-                                    System.getProperty("voxelbrew.ui.artifacts"),
-                                    "shortcut-labels-" + languageAndPalette + ".png"));
-                    return null;
-                });
+        fx(() -> {
+            Screenshot.save(
+                    stage.getScene(),
+                    Path.of(
+                            System.getProperty("voxelbrew.ui.artifacts"),
+                            "shortcut-labels-" + languageAndPalette + ".png"));
+            return null;
+        });
     }
 
     @Test
@@ -4773,12 +4100,11 @@ class WorkbenchUiTest {
         Path job = directory.resolve("GUI printer job.gcode");
         text("print-output", job.toString());
         long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(20);
-        while (fx(() -> node("#print-slice").isDisabled()) && System.nanoTime() < deadline)
-            Thread.sleep(25);
+        while (fx(() -> node("#print-slice").isDisabled()) && System.nanoTime() < deadline) Thread.sleep(25);
         click("print-slice");
         deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(45);
-        while (fx(() -> ((PrintingPane) node("#printing-workspace")).jobs().running())
-                && System.nanoTime() < deadline) Thread.sleep(25);
+        while (fx(() -> ((PrintingPane) node("#printing-workspace")).jobs().running()) && System.nanoTime() < deadline)
+            Thread.sleep(25);
         assertEquals(
                 PrintController.State.SUCCEEDED,
                 fx(() -> ((PrintingPane) node("#printing-workspace")).jobs().state()),
@@ -4791,19 +4117,17 @@ class WorkbenchUiTest {
         click("print-role-travel");
         click("print-role-perimeter");
         Path evidence = Path.of(System.getProperty("voxelbrew.ui.artifacts"));
-        fx(
-                () -> {
-                    Screenshot.save(stage.getScene(), evidence.resolve("printing-dark.png"));
-                    return null;
-                });
+        fx(() -> {
+            Screenshot.save(stage.getScene(), evidence.resolve("printing-dark.png"));
+            return null;
+        });
         click("workspace-design");
         choice("appearance", 1);
         click("workspace-print");
-        fx(
-                () -> {
-                    Screenshot.save(stage.getScene(), evidence.resolve("printing-light.png"));
-                    return null;
-                });
+        fx(() -> {
+            Screenshot.save(stage.getScene(), evidence.resolve("printing-light.png"));
+            return null;
+        });
         Path cliJob = directory.resolve("CLI printer job.gcode");
         assertTrue(cli("validate", file.toString()).contains("VALID"));
         cli(
@@ -4814,14 +4138,8 @@ class WorkbenchUiTest {
                 "--slicer",
                 PrusaSlicerBackend.defaultExecutable().toString());
         assertEquals(actual.segments(), GcodeReader.read(cliJob).segments());
-        Files.copy(
-                file,
-                evidence.resolve("GUI print setup.jcad"),
-                StandardCopyOption.REPLACE_EXISTING);
-        Files.copy(
-                job,
-                evidence.resolve("GUI printer job.gcode"),
-                StandardCopyOption.REPLACE_EXISTING);
+        Files.copy(file, evidence.resolve("GUI print setup.jcad"), StandardCopyOption.REPLACE_EXISTING);
+        Files.copy(job, evidence.resolve("GUI printer job.gcode"), StandardCopyOption.REPLACE_EXISTING);
         click("print-tab-process");
         text("print-layer-height", "0.3");
         click("print-apply-process");
@@ -4835,16 +4153,14 @@ class WorkbenchUiTest {
     @Test
     void olderFilesUpgradeAndNewerFilesReportErrorWithoutReplacingTheDocument() throws Exception {
         Path file = directory.resolve("older version design.jcad");
-        var original =
-                new CadDocument(
-                        "versioned-design",
-                        List.of(
-                                new Feature.Sketch(
-                                        "plate",
-                                        "plate.profile",
-                                        new Feature.Plane("origin-xy", 0),
-                                        new Feature.Rectangle(0, 0, 60, 40))),
-                        1);
+        var original = new CadDocument(
+                "versioned-design",
+                List.of(new Feature.Sketch(
+                        "plate",
+                        "plate.profile",
+                        new Feature.Plane("origin-xy", 0),
+                        new Feature.Rectangle(0, 0, 60, 40))),
+                1);
         DocumentWriter.save(original, file, false);
         byte[] saved = Files.readAllBytes(file);
         var message = DocumentProto.Document.parseFrom(Arrays.copyOfRange(saved, 44, saved.length));
@@ -4884,21 +4200,18 @@ class WorkbenchUiTest {
             assertFalse(fx(() -> workbench.controller().dirty()));
             assertArrayEquals(future, Files.readAllBytes(futureFile));
             assertArrayEquals(upgraded, Files.readAllBytes(file));
-            fx(
-                    () -> {
-                        Screenshot.save(
-                                stage.getScene(),
-                                Path.of(
-                                        System.getProperty("voxelbrew.ui.artifacts"),
-                                        "document-version-" + palette + ".png"));
-                        return null;
-                    });
+            fx(() -> {
+                Screenshot.save(
+                        stage.getScene(),
+                        Path.of(System.getProperty("voxelbrew.ui.artifacts"), "document-version-" + palette + ".png"));
+                return null;
+            });
         }
     }
 
-    private static byte[] versionedDocument(DocumentProto.Document document, String version)
-            throws Exception {
-        byte[] payload = document.toBuilder().setApplicationVersion(version).build().toByteArray();
+    private static byte[] versionedDocument(DocumentProto.Document document, String version) throws Exception {
+        byte[] payload =
+                document.toBuilder().setApplicationVersion(version).build().toByteArray();
         return ByteBuffer.allocate(44 + payload.length)
                 .put(new byte[] {'J', 'C', 'A', 'D', 13, 10, 26, 10})
                 .putInt(payload.length)
@@ -4913,18 +4226,14 @@ class WorkbenchUiTest {
         command.add("-Dvoxelbrew.native.path=" + System.getProperty("voxelbrew.native.path"));
         command.add("-Dvoxelbrew.home=" + directory.resolve("cli-settings"));
         command.add("-cp");
-        command.add(
-                Path.of(System.getProperty("voxelbrew.cli.distribution"), "lib")
-                        + java.io.File.separator
-                        + "*");
+        command.add(Path.of(System.getProperty("voxelbrew.cli.distribution"), "lib") + java.io.File.separator + "*");
         command.add("dev.voxelbrew.cli.VoxelBrew");
         command.addAll(List.of(arguments));
         Path log = Files.createTempFile(directory, "cli-", ".txt");
-        var process =
-                new ProcessBuilder(command)
-                        .redirectErrorStream(true)
-                        .redirectOutput(log.toFile())
-                        .start();
+        var process = new ProcessBuilder(command)
+                .redirectErrorStream(true)
+                .redirectOutput(log.toFile())
+                .start();
         assertTrue(process.waitFor(30, TimeUnit.SECONDS));
         String output = Files.readString(log);
         assertEquals(0, process.exitValue(), output);
@@ -4936,8 +4245,6 @@ class WorkbenchUiTest {
         var p = new Point3D(10, 20, 30);
         assertEquals(p, Viewport.toModel(Viewport.toView(p.getX(), p.getY(), p.getZ())));
         assertEquals(new Point3D(0, -1, 0), Viewport.toView(0, 0, 1));
-        assertEquals(
-                Viewport.toView(0, 0, 1),
-                Viewport.toView(1, 0, 0).crossProduct(Viewport.toView(0, 1, 0)));
+        assertEquals(Viewport.toView(0, 0, 1), Viewport.toView(1, 0, 0).crossProduct(Viewport.toView(0, 1, 0)));
     }
 }

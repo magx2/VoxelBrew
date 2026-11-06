@@ -19,8 +19,7 @@ public class SpacerProvider implements FeatureProvider {
                 API_VERSION,
                 1,
                 List.of(
-                        new FeatureParameter(
-                                "outerDiameter", "Outer diameter", "mm", 20, 0.001, 1000),
+                        new FeatureParameter("outerDiameter", "Outer diameter", "mm", 20, 0.001, 1000),
                         new FeatureParameter("innerDiameter", "Hole diameter", "mm", 4, 0.001, 999),
                         new FeatureParameter("height", "Height", "mm", 8, 0.001, 1000)));
     }
@@ -40,19 +39,10 @@ public class SpacerProvider implements FeatureProvider {
     }
 
     public Map<String, Double> decode(int version, byte[] payload) {
-        if (version != 1)
-            throw new IllegalArgumentException("Unsupported spacer payload version " + version);
-        if (payload.length != 24)
-            throw new IllegalArgumentException("Invalid spacer payload length");
+        if (version != 1) throw new IllegalArgumentException("Unsupported spacer payload version " + version);
+        if (payload.length != 24) throw new IllegalArgumentException("Invalid spacer payload length");
         var b = ByteBuffer.wrap(payload);
-        var result =
-                Map.of(
-                        "outerDiameter",
-                        b.getDouble(),
-                        "innerDiameter",
-                        b.getDouble(),
-                        "height",
-                        b.getDouble());
+        var result = Map.of("outerDiameter", b.getDouble(), "innerDiameter", b.getDouble(), "height", b.getDouble());
         validate(result);
         return result;
     }
@@ -60,15 +50,13 @@ public class SpacerProvider implements FeatureProvider {
     public Solid evaluate(int version, byte[] payload) {
         var p = decode(version, payload);
         Quantity<Length> origin = quantity(0, MILLIMETRE);
-        try (var cylinder =
-                Solid.circlePrism(
-                        origin,
-                        origin,
-                        origin,
-                        quantity(p.get("outerDiameter"), MILLIMETRE),
-                        quantity(p.get("height"), MILLIMETRE))) {
-            return cylinder.cutThroughCircle(
-                    origin, origin, quantity(p.get("innerDiameter"), MILLIMETRE));
+        try (var cylinder = Solid.circlePrism(
+                origin,
+                origin,
+                origin,
+                quantity(p.get("outerDiameter"), MILLIMETRE),
+                quantity(p.get("height"), MILLIMETRE))) {
+            return cylinder.cutThroughCircle(origin, origin, quantity(p.get("innerDiameter"), MILLIMETRE));
         }
     }
 
@@ -77,8 +65,7 @@ public class SpacerProvider implements FeatureProvider {
     public static final class Incompatible extends SpacerProvider {
         @Override
         public FeatureDescriptor descriptor() {
-            return new FeatureDescriptor(
-                    "example.future", "spacer", "Future spacer", 999, 1, List.of());
+            return new FeatureDescriptor("example.future", "spacer", "Future spacer", 999, 1, List.of());
         }
     }
 
@@ -86,8 +73,7 @@ public class SpacerProvider implements FeatureProvider {
         @Override
         public FeatureDescriptor descriptor() {
             var d = super.descriptor();
-            return new FeatureDescriptor(
-                    "example.failed", d.type(), "Failed feature", API_VERSION, 1, d.parameters());
+            return new FeatureDescriptor("example.failed", d.type(), "Failed feature", API_VERSION, 1, d.parameters());
         }
 
         @Override

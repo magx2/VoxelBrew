@@ -14,11 +14,8 @@ public final class Expressions {
     private Expressions() {}
 
     private static final Set<String> FUNCTIONS =
-            Set.of(
-                    "abs", "sqrt", "min", "max", "sin", "cos", "tan", "asin", "acos", "atan",
-                    "floor", "ceil", "round");
-    private static final Pattern TOKEN =
-            Pattern.compile("\"(?:[^\"]|\"\")*\"|(?<![A-Za-z_0-9.])[A-Za-z][A-Za-z_.]*");
+            Set.of("abs", "sqrt", "min", "max", "sin", "cos", "tan", "asin", "acos", "atan", "floor", "ceil", "round");
+    private static final Pattern TOKEN = Pattern.compile("\"(?:[^\"]|\"\")*\"|(?<![A-Za-z_0-9.])[A-Za-z][A-Za-z_.]*");
 
     public static boolean isFormula(String text) {
         return text != null && text.stripLeading().startsWith("=");
@@ -30,9 +27,7 @@ public final class Expressions {
     }
 
     public static boolean isNumber(String text) {
-        return text != null
-                && text.strip()
-                        .matches("[+-]?(?:[0-9]+(?:\\.[0-9]*)?|\\.[0-9]+)(?:[eE][+-]?[0-9]+)?");
+        return text != null && text.strip().matches("[+-]?(?:[0-9]+(?:\\.[0-9]*)?|\\.[0-9]+)(?:[eE][+-]?[0-9]+)?");
     }
 
     private static Quantity<?> numeric(Object value) {
@@ -44,8 +39,7 @@ public final class Expressions {
     public static String format(Object value) {
         if (value instanceof String text) return text;
         double number = number(numeric(value));
-        if (!Double.isFinite(number))
-            throw new IllegalArgumentException("Expression must be finite");
+        if (!Double.isFinite(number)) throw new IllegalArgumentException("Expression must be finite");
         return BigDecimal.valueOf(number).stripTrailingZeros().toPlainString();
     }
 
@@ -67,12 +61,8 @@ public final class Expressions {
         return q.getValue().doubleValue();
     }
 
-    private static Quantity<?> implicit(
-            Quantity<?> q, Quantity<?> dimensional, ParameterUnit unit) {
-        Unit<?> target =
-                sameKind(unit.unit(), dimensional.getUnit())
-                        ? unit.unit()
-                        : canonical(dimensional.getUnit());
+    private static Quantity<?> implicit(Quantity<?> q, Quantity<?> dimensional, ParameterUnit unit) {
+        Unit<?> target = sameKind(unit.unit(), dimensional.getUnit()) ? unit.unit() : canonical(dimensional.getUnit());
         return normalized(quantity(value(q, ONE), target));
     }
 
@@ -97,19 +87,17 @@ public final class Expressions {
                 || name.equals("e")
                 || name.equals("NaN")
                 || name.equals("Infinity")
-                || Arrays.stream(ParameterUnit.values()).anyMatch(u -> u.toString().equals(name));
+                || Arrays.stream(ParameterUnit.values())
+                        .anyMatch(u -> u.toString().equals(name));
     }
 
     public static String rename(String expression, String oldName, String newName) {
         return TOKEN.matcher(expression)
                 .replaceAll(
-                        m ->
-                                java.util.regex.Matcher.quoteReplacement(
-                                        m.group().equals(oldName) ? newName : m.group()));
+                        m -> java.util.regex.Matcher.quoteReplacement(m.group().equals(oldName) ? newName : m.group()));
     }
 
-    public static Quantity<?> evaluate(
-            String expression, ParameterUnit unit, Function<String, Quantity<?>> names) {
+    public static Quantity<?> evaluate(String expression, ParameterUnit unit, Function<String, Quantity<?>> names) {
         var value = numeric(new Parser(expression, names, unit).parse());
         if (scalar(value)) value = unit.quantity(value(value, ONE));
         return to(value, unit.canonicalUnit());
@@ -165,8 +153,7 @@ public final class Expressions {
                     var next = product();
                     if (q instanceof String || next instanceof String) {
                         q = format(q) + format(next);
-                        if (((String) q).length() > 4096)
-                            throw error("Text result exceeds 4096 characters");
+                        if (((String) q).length() > 4096) throw error("Text result exceeds 4096 characters");
                     } else q = add(numeric(q), numeric(next), unit);
                 } else if (take('-')) q = add(numeric(q), numeric(product()).negate(), unit);
                 else return q;
@@ -182,10 +169,9 @@ public final class Expressions {
                     skip();
                     int begin = index;
                     String word = word();
-                    var suffix =
-                            Arrays.stream(ParameterUnit.values())
-                                    .filter(u -> u.toString().equals(word))
-                                    .findFirst();
+                    var suffix = Arrays.stream(ParameterUnit.values())
+                            .filter(u -> u.toString().equals(word))
+                            .findFirst();
                     index = begin;
                     if (suffix.isPresent()) q = times(numeric(q), numeric(unary()), false);
                     else return q;
@@ -263,16 +249,12 @@ public final class Expressions {
             char first = input.charAt(index);
             if (Character.isDigit(first) || first == '.') {
                 int begin = index++;
-                while (index < input.length()
-                        && (Character.isDigit(input.charAt(index)) || input.charAt(index) == '.'))
+                while (index < input.length() && (Character.isDigit(input.charAt(index)) || input.charAt(index) == '.'))
                     index++;
-                if (index < input.length()
-                        && (input.charAt(index) == 'e' || input.charAt(index) == 'E')) {
+                if (index < input.length() && (input.charAt(index) == 'e' || input.charAt(index) == 'E')) {
                     index++;
-                    if (index < input.length()
-                            && (input.charAt(index) == '+' || input.charAt(index) == '-')) index++;
-                    while (index < input.length() && Character.isDigit(input.charAt(index)))
-                        index++;
+                    if (index < input.length() && (input.charAt(index) == '+' || input.charAt(index) == '-')) index++;
+                    while (index < input.length() && Character.isDigit(input.charAt(index))) index++;
                 }
                 try {
                     return quantity(Double.parseDouble(input.substring(begin, index)), ONE);
@@ -282,8 +264,7 @@ public final class Expressions {
             }
             String name = word();
             if (name.isEmpty()) throw error("Expected a number or parameter name");
-            if (name.equals("NaN") || name.equals("Infinity"))
-                throw error("Expression must be finite");
+            if (name.equals("NaN") || name.equals("Infinity")) throw error("Expression must be finite");
             if (take('(')) {
                 var arguments = new ArrayList<Quantity<?>>();
                 arguments.add(numeric(sum()));
@@ -293,8 +274,7 @@ public final class Expressions {
             }
             if (name.equals("pi")) return quantity(Math.PI, ONE);
             if (name.equals("e")) return quantity(Math.E, ONE);
-            for (var u : ParameterUnit.values())
-                if (u.toString().equals(name)) return normalized(u.quantity(1));
+            for (var u : ParameterUnit.values()) if (u.toString().equals(name)) return normalized(u.quantity(1));
             var q = names.apply(name);
             if (q == null) throw error("Unknown parameter '" + name + "'");
             return normalized(q);
@@ -312,28 +292,24 @@ public final class Expressions {
                     if (scalar(b) && !scalar(q)) b = implicit(b, q, unit);
                     double other = value(b, q.getUnit());
                     yield quantity(
-                            name.equals("min")
-                                    ? Math.min(number(q), other)
-                                    : Math.max(number(q), other),
-                            q.getUnit());
+                            name.equals("min") ? Math.min(number(q), other) : Math.max(number(q), other), q.getUnit());
                 }
                 case "abs", "floor", "ceil", "round" ->
-                        quantity(
-                                switch (name) {
-                                    case "abs" -> Math.abs(number(q));
-                                    case "floor" -> Math.floor(number(q));
-                                    case "ceil" -> Math.ceil(number(q));
-                                    default -> Math.rint(number(q));
-                                },
-                                q.getUnit());
+                    quantity(
+                            switch (name) {
+                                case "abs" -> Math.abs(number(q));
+                                case "floor" -> Math.floor(number(q));
+                                case "ceil" -> Math.ceil(number(q));
+                                default -> Math.rint(number(q));
+                            },
+                            q.getUnit());
                 case "sqrt" -> {
                     if (powers(q.getUnit()).values().stream().anyMatch(p -> p % 2 != 0))
                         throw error("Square root requires even unit powers");
                     yield normalized(quantity(Math.sqrt(number(q)), q.getUnit().root(2)));
                 }
                 case "sin", "cos", "tan" -> {
-                    if (!(scalar(q) || sameKind(q.getUnit(), RADIAN)))
-                        throw error("Trigonometry needs an angle");
+                    if (!(scalar(q) || sameKind(q.getUnit(), RADIAN))) throw error("Trigonometry needs an angle");
                     double radians = scalar(q) ? radians(value(q, ONE)) : value(q, RADIAN);
                     yield quantity(
                             name.equals("sin")
@@ -343,14 +319,11 @@ public final class Expressions {
                 }
                 default -> {
                     if (!scalar(q)) throw error("Inverse trigonometry needs a unitless number");
-                    yield normalized(
-                            quantity(
-                                    name.equals("asin")
-                                            ? Math.asin(value(q, ONE))
-                                            : name.equals("acos")
-                                                    ? Math.acos(value(q, ONE))
-                                                    : Math.atan(value(q, ONE)),
-                                    RADIAN));
+                    yield normalized(quantity(
+                            name.equals("asin")
+                                    ? Math.asin(value(q, ONE))
+                                    : name.equals("acos") ? Math.acos(value(q, ONE)) : Math.atan(value(q, ONE)),
+                            RADIAN));
                 }
             };
         }

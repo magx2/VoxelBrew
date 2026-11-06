@@ -16,11 +16,7 @@ public final class UpdateService {
     }
 
     public record Check(
-            ReleaseSource.Release release,
-            String asset,
-            boolean available,
-            boolean installable,
-            String message) {}
+            ReleaseSource.Release release, String asset, boolean available, boolean installable, String message) {}
 
     private final ApplicationImage.Component component;
     private final ReleaseVersion current;
@@ -39,14 +35,12 @@ public final class UpdateService {
         this.platform = Objects.requireNonNull(platform);
         this.source = Objects.requireNonNull(source);
         this.installation = Objects.requireNonNull(installation);
-        installation.ifPresent(
-                image -> {
-                    if (image.component() != component
-                            || !image.platform().equals(platform)
-                            || !image.version().equals(current))
-                        throw new IllegalArgumentException(
-                                "Updater and installation identities must match");
-                });
+        installation.ifPresent(image -> {
+            if (image.component() != component
+                    || !image.platform().equals(platform)
+                    || !image.version().equals(current))
+                throw new IllegalArgumentException("Updater and installation identities must match");
+        });
     }
 
     public static UpdateService system(ApplicationImage.Component component) throws IOException {
@@ -65,32 +59,20 @@ public final class UpdateService {
         if (request.version() != null && !release.version().equals(request.version()))
             throw new IOException("Release source returned the wrong version");
         String asset = component.asset(release.version(), platform);
-        boolean available =
-                request.version() != null
-                        ? !release.version().equals(current) || request.force()
-                        : release.version().compareTo(current) > 0
-                                || (request.force() && release.version().equals(current));
+        boolean available = request.version() != null
+                ? !release.version().equals(current) || request.force()
+                : release.version().compareTo(current) > 0
+                        || (request.force() && release.version().equals(current));
         if (!release.assets().contains(asset))
             throw new IOException(
-                    "Release "
-                            + release.tag()
-                            + " has no qualified "
-                            + component
-                            + " download for "
-                            + platform);
+                    "Release " + release.tag() + " has no qualified " + component + " download for " + platform);
         if (!release.assets().contains("SHA256SUMS"))
             throw new IOException("Release is missing required SHA256SUMS; update refused");
-        String message =
-                available
-                        ? "Update available: " + current + " → " + release.version()
-                        : "Already current: "
-                                + current
-                                + " (selected release "
-                                + release.version()
-                                + ")";
+        String message = available
+                ? "Update available: " + current + " → " + release.version()
+                : "Already current: " + current + " (selected release " + release.version() + ")";
         if (installation.isEmpty())
-            message +=
-                    ". Installation requires a released app image; development distributions are not replaced.";
+            message += ". Installation requires a released app image; development distributions are not replaced.";
         log.info(
                 "Update check completed: selected {}, available={}, installable={}",
                 release.version(),
@@ -102,15 +84,14 @@ public final class UpdateService {
     public Prepared prepare(Check check, UpdateCancellation cancellation, Consumer<String> progress)
             throws IOException {
         if (!check.available()) throw new IOException("No update selected");
-        var image =
-                installation.orElseThrow(
-                        () ->
-                                new IOException(
-                                        "Cannot self-update a development distribution or standalone JAR. Use the released bundled application."));
+        var image = installation.orElseThrow(
+                () -> new IOException(
+                        "Cannot self-update a development distribution or standalone JAR. Use the released bundled application."));
         if (!check.asset().equals(component.asset(check.release().version(), platform)))
             throw new IOException("Wrong application update asset");
         ApplicationImage.Lease lease = ApplicationImage.lock(image.updateLock(), false);
-        log.info("Preparing verified {} update to {}", component, check.release().version());
+        log.info(
+                "Preparing verified {} update to {}", component, check.release().version());
         Path stage = null;
         boolean complete = false;
         try {
@@ -123,12 +104,8 @@ public final class UpdateService {
             progress.accept("Verifying SHA-256 checksum");
             UpdateArchive.verify(archive, checksums, check.asset(), cancellation);
             progress.accept("Preparing application and native libraries");
-            Path payload =
-                    UpdateArchive.extract(
-                            archive,
-                            stage.resolve("payload"),
-                            component.imageName(platform),
-                            cancellation);
+            Path payload = UpdateArchive.extract(
+                    archive, stage.resolve("payload"), component.imageName(platform), cancellation);
             var replacement = ApplicationImage.open(payload, component, platform);
             if (!replacement.version().equals(check.release().version()))
                 throw new IOException("Downloaded image has the wrong product version");
@@ -139,9 +116,7 @@ public final class UpdateService {
             progress.accept("Preparing independent update helper");
             Path worker = Files.createDirectory(stage.resolve("worker"));
             UpdateFiles.copyTree(image.runtime(), worker.resolve("runtime"), cancellation);
-            Files.copy(
-                    image.appDirectory().resolve(image.updaterJar()),
-                    worker.resolve("updater.jar"));
+            Files.copy(image.appDirectory().resolve(image.updaterJar()), worker.resolve("updater.jar"));
             cancellation.check();
             var p = new Properties();
             p.setProperty("target", image.root().toString());
@@ -155,16 +130,12 @@ public final class UpdateService {
                     ProcessHandle.current()
                             .info()
                             .startInstant()
-                            .orElseThrow(
-                                    () ->
-                                            new IOException(
-                                                    "Cannot identify current process start time"))
+                            .orElseThrow(() -> new IOException("Cannot identify current process start time"))
                             .toString());
             try (var output = Files.newOutputStream(stage.resolve("job.properties"))) {
                 p.store(output, "VoxelBrew staged update");
             }
-            UpdateHelper.status(
-                    stage, "PREPARED", "Ready to install " + replacement.version() + " after exit");
+            UpdateHelper.status(stage, "PREPARED", "Ready to install " + replacement.version() + " after exit");
             complete = true;
             log.info("Update {} is staged and ready for handoff", replacement.version());
             return new Prepared(stage, lease, platform);
@@ -204,24 +175,23 @@ public final class UpdateService {
             if (closed || handedOff) throw new IOException("Update is no longer available");
             Path worker = stage.resolve("worker");
             String executable = platform.startsWith("windows-") ? "javaw.exe" : "java";
-            if (platform.startsWith("windows-")
-                    && !Files.isRegularFile(worker.resolve("runtime/bin/" + executable)))
+            if (platform.startsWith("windows-") && !Files.isRegularFile(worker.resolve("runtime/bin/" + executable)))
                 executable = "java.exe";
-            var process =
-                    new ProcessBuilder(
-                                    worker.resolve("runtime/bin/" + executable).toString(),
-                                    "-cp",
-                                    worker.resolve("updater.jar").toString(),
-                                    UpdateHelper.class.getName(),
-                                    stage.resolve("job.properties").toString())
-                            .directory(worker.toFile())
-                            .redirectOutput(logFile().toFile())
-                            .redirectErrorStream(true)
-                            .start();
+            var process = new ProcessBuilder(
+                            worker.resolve("runtime/bin/" + executable).toString(),
+                            "-cp",
+                            worker.resolve("updater.jar").toString(),
+                            UpdateHelper.class.getName(),
+                            stage.resolve("job.properties").toString())
+                    .directory(worker.toFile())
+                    .redirectOutput(logFile().toFile())
+                    .redirectErrorStream(true)
+                    .start();
             try {
                 lease.close();
                 lease = null;
-                long deadline = System.nanoTime() + java.time.Duration.ofSeconds(20).toNanos();
+                long deadline =
+                        System.nanoTime() + java.time.Duration.ofSeconds(20).toNanos();
                 while (process.isAlive() && System.nanoTime() < deadline) {
                     var status = ApplicationImage.read(statusFile());
                     if ("READY".equals(status.getProperty("state"))) {
@@ -232,8 +202,7 @@ public final class UpdateService {
                         throw new IOException(status.getProperty("message"));
                     Thread.sleep(50);
                 }
-                String detail =
-                        Files.exists(logFile()) ? Files.readString(logFile()) : "No helper output";
+                String detail = Files.exists(logFile()) ? Files.readString(logFile()) : "No helper output";
                 throw new IOException("Update helper did not become ready: " + detail);
             } catch (InterruptedException interrupted) {
                 Thread.currentThread().interrupt();

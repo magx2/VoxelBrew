@@ -8,21 +8,16 @@ record ViewOrientation(double tilt, double orbit) {
 
     ViewOrientation {
         if (!Double.isFinite(tilt) || !Double.isFinite(orbit) || Math.abs(tilt) > 90)
-            throw new IllegalArgumentException(
-                    "Camera angles must be finite, with tilt in [-90, 90]");
+            throw new IllegalArgumentException("Camera angles must be finite, with tilt in [-90, 90]");
         orbit = ((orbit % 360) + 540) % 360 - 180;
     }
 
     static ViewOrientation lookingFrom(int x, int y, int z) {
         var direction = new Point3D(x, y, z);
-        if (direction.magnitude() == 0)
-            throw new IllegalArgumentException("Missing view direction");
+        if (direction.magnitude() == 0) throw new IllegalArgumentException("Missing view direction");
         return new ViewOrientation(
-                dev.voxelbrew.engine.units.Measurements.degrees(
-                        Math.asin(z / direction.magnitude())),
-                x == 0 && y == 0
-                        ? 0
-                        : dev.voxelbrew.engine.units.Measurements.degrees(Math.atan2(x, -y)));
+                dev.voxelbrew.engine.units.Measurements.degrees(Math.asin(z / direction.magnitude())),
+                x == 0 && y == 0 ? 0 : dev.voxelbrew.engine.units.Measurements.degrees(Math.atan2(x, -y)));
     }
 
     static ViewOrientation named(String name) {
@@ -38,8 +33,7 @@ record ViewOrientation(double tilt, double orbit) {
     }
 
     String name() {
-        for (String name :
-                new String[] {"Isometric", "Top", "Front", "Right", "Back", "Left", "Bottom"})
+        for (String name : new String[] {"Isometric", "Top", "Front", "Right", "Back", "Left", "Bottom"})
             if (equals(named(name))) return name;
         return "Custom";
     }

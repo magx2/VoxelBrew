@@ -18,7 +18,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 class DocumentWriterTest {
-    @TempDir Path directory;
+    @TempDir
+    Path directory;
 
     @Test
     void currentSchemaUpdatesMetadataWithoutChangingDefinitions() throws Exception {
@@ -30,32 +31,26 @@ class DocumentWriterTest {
                 "ee377084ceba2fe30348ffd54d91c04441b8fee542da9baadd142dcb8a58b8ff",
                 HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(baseline)));
         var document = DocumentCodec.decode(baseline);
-        var upgradedDefinitions =
-                message(baseline).toBuilder()
-                        .setSchemaVersion(DocumentCodec.SCHEMA_VERSION)
-                        .clearApplicationVersion();
+        var upgradedDefinitions = message(baseline).toBuilder()
+                .setSchemaVersion(DocumentCodec.SCHEMA_VERSION)
+                .clearApplicationVersion();
         for (var feature : upgradedDefinitions.getFeaturesBuilderList())
             if (feature.hasSketch())
                 feature.getSketchBuilder()
                         .getPlaneBuilder()
-                        .addAllFrame(
-                                Arrays.stream(
-                                                dev.voxelbrew.engine.model.Transform.IDENTITY
-                                                        .matrix())
-                                        .boxed()
-                                        .toList());
+                        .addAllFrame(Arrays.stream(dev.voxelbrew.engine.model.Transform.IDENTITY.matrix())
+                                .boxed()
+                                .toList());
         assertEquals(
                 HexFormat.of()
-                        .formatHex(
-                                MessageDigest.getInstance("SHA-256")
-                                        .digest(upgradedDefinitions.build().toByteArray())),
+                        .formatHex(MessageDigest.getInstance("SHA-256")
+                                .digest(upgradedDefinitions.build().toByteArray())),
                 DocumentCodec.fingerprint(document));
         Path file = directory.resolve("saved with spaces.jcad");
         DocumentWriter.save(document, file, false);
         byte[] saved = Files.readAllBytes(file);
         assertEquals(
-                upgradedDefinitions.setApplicationVersion(Version.version()).build(),
-                message(saved));
+                upgradedDefinitions.setApplicationVersion(Version.version()).build(), message(saved));
         assertEquals(document, DocumentReader.load(file));
         DocumentWriter.save(document, file, true);
         assertArrayEquals(saved, Files.readAllBytes(file));
@@ -67,8 +62,8 @@ class DocumentWriterTest {
         try (var input = getClass().getResourceAsStream("/fixtures/reference-schema9.jcad")) {
             baseline = Objects.requireNonNull(input).readAllBytes();
         }
-        byte[] older =
-                envelope(message(baseline).toBuilder().setApplicationVersion("0.0.0").build());
+        byte[] older = envelope(
+                message(baseline).toBuilder().setApplicationVersion("0.0.0").build());
         Path file = directory.resolve("older application.jcad");
         Files.write(file, older);
         var document = DocumentReader.load(file);
@@ -84,12 +79,12 @@ class DocumentWriterTest {
         var document = CadDocument.empty();
         var current = message(DocumentCodec.encode(document));
         for (String version : List.of("65534.65534.65534", "invalid")) {
-            byte[] future = envelope(current.toBuilder().setApplicationVersion(version).build());
+            byte[] future =
+                    envelope(current.toBuilder().setApplicationVersion(version).build());
             Path file = directory.resolve(version + ".jcad");
             Files.write(file, future);
             assertThrows(DocumentFormatException.class, () -> DocumentReader.load(file));
-            assertThrows(
-                    DocumentFormatException.class, () -> DocumentWriter.save(document, file, true));
+            assertThrows(DocumentFormatException.class, () -> DocumentWriter.save(document, file, true));
             assertArrayEquals(future, Files.readAllBytes(file));
         }
         try (var paths = Files.list(directory)) {
@@ -103,8 +98,7 @@ class DocumentWriterTest {
         var document = CadDocument.empty();
         DocumentWriter.save(document, file, false);
         byte[] original = Files.readAllBytes(file);
-        assertThrows(
-                IOException.class, () -> DocumentWriter.save(CadDocument.empty(), file, false));
+        assertThrows(IOException.class, () -> DocumentWriter.save(CadDocument.empty(), file, false));
         assertArrayEquals(original, Files.readAllBytes(file));
         Files.writeString(file, "Unsupported or damaged original");
         assertThrows(IOException.class, () -> DocumentWriter.save(document, file, true));
@@ -123,19 +117,16 @@ class DocumentWriterTest {
         var results = new ArrayList<Future<Boolean>>();
         try (var workers = Executors.newFixedThreadPool(2)) {
             for (var document : documents)
-                results.add(
-                        workers.submit(
-                                () -> {
-                                    ready.countDown();
-                                    if (!start.await(10, TimeUnit.SECONDS))
-                                        throw new AssertionError("Writer start timed out");
-                                    try {
-                                        DocumentWriter.save(document, destination, false);
-                                        return true;
-                                    } catch (IOException expectedRace) {
-                                        return false;
-                                    }
-                                }));
+                results.add(workers.submit(() -> {
+                    ready.countDown();
+                    if (!start.await(10, TimeUnit.SECONDS)) throw new AssertionError("Writer start timed out");
+                    try {
+                        DocumentWriter.save(document, destination, false);
+                        return true;
+                    } catch (IOException expectedRace) {
+                        return false;
+                    }
+                }));
             assertTrue(ready.await(10, TimeUnit.SECONDS));
             start.countDown();
             int winner = -1;

@@ -21,9 +21,7 @@ public final class Measurements {
     public static final Unit<Length> FOOT = INCH.multiply(12);
     public static final Unit<Angle> RADIAN = Units.RADIAN;
     public static final Unit<Angle> DEGREE =
-            RADIAN.transform(
-                    MultiplyConverter.ofPiExponent(1)
-                            .concatenate(MultiplyConverter.ofRational(1, 180)));
+            RADIAN.transform(MultiplyConverter.ofPiExponent(1).concatenate(MultiplyConverter.ofRational(1, 180)));
     public static final Unit<Dimensionless> ONE = AbstractUnit.ONE;
     public static final Unit<Dimensionless> PERCENT = ONE.divide(100);
     public static final Unit<Area> SQUARE_MILLIMETRE = MILLIMETRE.pow(2).asType(Area.class);
@@ -63,13 +61,11 @@ public final class Measurements {
 
     public static double convert(double value, Unit<?> from, Unit<?> to) {
         finite(value);
-        if (!sameKind(from, to))
-            throw new IllegalArgumentException("Incompatible units: " + from + " and " + to);
+        if (!sameKind(from, to)) throw new IllegalArgumentException("Incompatible units: " + from + " and " + to);
         try {
             return finite(from.getConverterToAny(to).convert(value));
         } catch (javax.measure.IncommensurableException failure) {
-            throw new IllegalArgumentException(
-                    "Incompatible units: " + from + " and " + to, failure);
+            throw new IllegalArgumentException("Incompatible units: " + from + " and " + to, failure);
         }
     }
 
@@ -112,8 +108,7 @@ public final class Measurements {
 
     public static Quantity<?> normalized(Quantity<?> quantity) {
         for (int power : powers(quantity.getUnit()).values())
-            if (Math.abs(power) > 8)
-                throw new IllegalArgumentException("Unsupported unit powers (limit 8)");
+            if (Math.abs(power) > 8) throw new IllegalArgumentException("Unsupported unit powers (limit 8)");
         return to(quantity, canonical(quantity.getUnit()));
     }
 }

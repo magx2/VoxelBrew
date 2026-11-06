@@ -8,8 +8,7 @@ public final class BuildVersion {
     private BuildVersion() {}
 
     public static String current() {
-        try (var input =
-                BuildVersion.class.getResourceAsStream("/voxelbrew-util-version.properties")) {
+        try (var input = BuildVersion.class.getResourceAsStream("/voxelbrew-util-version.properties")) {
             if (input == null) throw new IOException("Missing VoxelBrew build version");
             var properties = new Properties();
             properties.load(input);

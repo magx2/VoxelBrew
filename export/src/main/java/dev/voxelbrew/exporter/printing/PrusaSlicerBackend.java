@@ -9,34 +9,28 @@ import java.util.*;
 
 public final class PrusaSlicerBackend implements SlicerBackend {
     public static final String VERSION = "2.7.2";
-    private static final Set<Capability> CAPABILITIES =
-            Set.of(
-                    Capability.AUTOMATIC_SUPPORTS,
-                    Capability.BUILD_PLATE_SUPPORTS,
-                    Capability.SUPPORT_VOLUMES,
-                    Capability.BRIM,
-                    Capability.RAFT);
+    private static final Set<Capability> CAPABILITIES = Set.of(
+            Capability.AUTOMATIC_SUPPORTS,
+            Capability.BUILD_PLATE_SUPPORTS,
+            Capability.SUPPORT_VOLUMES,
+            Capability.BRIM,
+            Capability.RAFT);
 
     @Override
     public Descriptor descriptor() {
-        return new Descriptor(
-                "prusa-slicer", "PrusaSlicer", API_VERSION, VERSION, CAPABILITIES, Set.of("gcode"));
+        return new Descriptor("prusa-slicer", "PrusaSlicer", API_VERSION, VERSION, CAPABILITIES, Set.of("gcode"));
     }
 
     @Override
     public Probe probe(Path executable, Cancellation cancellation) throws IOException {
-        String help =
-                ProcessRunner.run(
-                        List.of(executable.toString(), "--help"), null, cancellation, line -> {});
+        String help = ProcessRunner.run(List.of(executable.toString(), "--help"), null, cancellation, line -> {});
         if (!help.matches("(?s).*PrusaSlicer-2\\.7\\.2(?:\\+|\\s).*"))
-            throw new IOException(
-                    "Expected PrusaSlicer "
-                            + VERSION
-                            + "; executable reported: "
-                            + help.lines().findFirst().orElse("no version"));
+            throw new IOException("Expected PrusaSlicer "
+                    + VERSION
+                    + "; executable reported: "
+                    + help.lines().findFirst().orElse("no version"));
         for (var flag : List.of("--export-gcode", "--dont-arrange", "--no-ensure-on-bed", "--load"))
-            if (!help.contains(flag))
-                throw new IOException("Slicer is missing required capability " + flag);
+            if (!help.contains(flag)) throw new IOException("Slicer is missing required capability " + flag);
         return new Probe(help.lines().findFirst().orElseThrow(), CAPABILITIES);
     }
 
@@ -44,7 +38,8 @@ public final class PrusaSlicerBackend implements SlicerBackend {
     public RunResult slice(Request request) throws IOException {
         var profile = request.model().profile();
         if (!Set.of("PLA", "PETG").contains(profile.material().id()))
-            throw new IOException("Unsupported material profile: " + profile.material().id());
+            throw new IOException(
+                    "Unsupported material profile: " + profile.material().id());
         if (!profile.printer().firmware().equals("marlin2")
                 || !profile.printer().outputFormat().equals("gcode")
                 || Math.abs(profile.printer().nozzleMm() - 0.4) > 1e-9)
@@ -77,16 +72,11 @@ public final class PrusaSlicerBackend implements SlicerBackend {
     }
 
     public static Path defaultExecutable() {
-        String configured =
-                System.getProperty("voxelbrew.slicer", System.getenv("VOXELBREW_SLICER"));
+        String configured = System.getProperty("voxelbrew.slicer", System.getenv("VOXELBREW_SLICER"));
         if (configured != null && !configured.isBlank()) return Path.of(configured);
         if (System.getProperty("os.name").startsWith("Windows")) {
-            Path local =
-                    Path.of(
-                            ".tools",
-                            "PrusaSlicer-2.7.2",
-                            "PrusaSlicer-2.7.2+win64-202402291307",
-                            "prusa-slicer-console.exe");
+            Path local = Path.of(
+                    ".tools", "PrusaSlicer-2.7.2", "PrusaSlicer-2.7.2+win64-202402291307", "prusa-slicer-console.exe");
             if (Files.isRegularFile(local)) return local.toAbsolutePath();
             return Path.of("prusa-slicer-console.exe");
         }

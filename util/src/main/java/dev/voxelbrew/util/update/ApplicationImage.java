@@ -10,12 +10,7 @@ import java.util.jar.JarFile;
 
 /** A complete jpackage installation. Development classpaths are deliberately not update targets. */
 public record ApplicationImage(
-        Path root,
-        Component component,
-        String platform,
-        ReleaseVersion version,
-        String engineJar,
-        String mainJar) {
+        Path root, Component component, String platform, ReleaseVersion version, String engineJar, String mainJar) {
     public static final String MARKER = "voxelbrew-install.properties";
 
     public enum Component {
@@ -44,8 +39,7 @@ public record ApplicationImage(
     public static String currentPlatform() {
         String arch = System.getProperty("os.arch");
         if (!Set.of("amd64", "x86_64").contains(arch))
-            throw new IllegalArgumentException(
-                    "Self-update is not qualified for architecture " + arch);
+            throw new IllegalArgumentException("Self-update is not qualified for architecture " + arch);
         String os = System.getProperty("os.name");
         if (os.startsWith("Windows")) return "windows-x64";
         if (os.startsWith("Mac")) return "macos-x64";
@@ -55,18 +49,14 @@ public record ApplicationImage(
 
     public Path appDirectory() {
         return root.resolve(
-                platform.startsWith("windows-")
-                        ? "app"
-                        : platform.startsWith("macos-") ? "Contents/app" : "lib/app");
+                platform.startsWith("windows-") ? "app" : platform.startsWith("macos-") ? "Contents/app" : "lib/app");
     }
 
     public Path runtime() {
         return root.resolve(
                 platform.startsWith("windows-")
                         ? "runtime"
-                        : platform.startsWith("macos-")
-                                ? "Contents/runtime/Contents/Home"
-                                : "lib/runtime");
+                        : platform.startsWith("macos-") ? "Contents/runtime/Contents/Home" : "lib/runtime");
     }
 
     public Path launcher() {
@@ -93,19 +83,18 @@ public record ApplicationImage(
 
     public static Optional<ApplicationImage> detect(Component component) throws IOException {
         try {
-            Path jar =
-                    Path.of(
-                            BuildVersion.class
-                                    .getProtectionDomain()
-                                    .getCodeSource()
-                                    .getLocation()
-                                    .toURI());
+            Path jar = Path.of(BuildVersion.class
+                    .getProtectionDomain()
+                    .getCodeSource()
+                    .getLocation()
+                    .toURI());
             if (!Files.isRegularFile(jar)) return Optional.empty();
             Path app = jar.getParent();
             if (!Files.isRegularFile(app.resolve(MARKER))) return Optional.empty();
             String platform = currentPlatform();
-            Path root =
-                    platform.startsWith("windows-") ? app.getParent() : app.getParent().getParent();
+            Path root = platform.startsWith("windows-")
+                    ? app.getParent()
+                    : app.getParent().getParent();
             var image = open(root, component, platform);
             if (!Path.of(System.getProperty("java.home"))
                     .toRealPath()
@@ -118,44 +107,27 @@ public record ApplicationImage(
         }
     }
 
-    public static ApplicationImage open(Path directory, Component component, String platform)
-            throws IOException {
+    public static ApplicationImage open(Path directory, Component component, String platform) throws IOException {
         if (!Set.of("windows-x64", "linux-x64", "macos-x64").contains(platform))
             throw new IOException("Unqualified platform: " + platform);
         Path root = directory.toAbsolutePath().normalize();
-        if (!root.getFileName().toString().equals(component.imageName(platform))
-                || Files.isSymbolicLink(root))
-            throw new IOException(
-                    "Expected an unlinked " + component.imageName(platform) + " app directory");
+        if (!root.getFileName().toString().equals(component.imageName(platform)) || Files.isSymbolicLink(root))
+            throw new IOException("Expected an unlinked " + component.imageName(platform) + " app directory");
         var temporary = new ApplicationImage(root, component, platform, null, "", "");
         Properties p = read(temporary.appDirectory().resolve(MARKER));
         try {
             if (!"1".equals(p.getProperty("format"))
                     || !component.name().equals(p.getProperty("component"))
                     || !platform.equals(p.getProperty("platform")))
-                throw new IOException(
-                        "Installation identity does not match selected application/platform");
-            String engine = fileName(p.getProperty("engineJar")),
-                    main = fileName(p.getProperty("mainJar"));
-            var result =
-                    new ApplicationImage(
-                            root,
-                            component,
-                            platform,
-                            ReleaseVersion.parse(p.getProperty("version")),
-                            engine,
-                            main);
-            for (Path file :
-                    List.of(
-                            result.launcher(),
-                            result.runtime()
-                                    .resolve(
-                                            "bin/java"
-                                                    + (platform.startsWith("windows-")
-                                                            ? ".exe"
-                                                            : "")),
-                            result.appDirectory().resolve(engine),
-                            result.appDirectory().resolve(main))) {
+                throw new IOException("Installation identity does not match selected application/platform");
+            String engine = fileName(p.getProperty("engineJar")), main = fileName(p.getProperty("mainJar"));
+            var result = new ApplicationImage(
+                    root, component, platform, ReleaseVersion.parse(p.getProperty("version")), engine, main);
+            for (Path file : List.of(
+                    result.launcher(),
+                    result.runtime().resolve("bin/java" + (platform.startsWith("windows-") ? ".exe" : "")),
+                    result.appDirectory().resolve(engine),
+                    result.appDirectory().resolve(main))) {
                 if (!Files.isRegularFile(file, LinkOption.NOFOLLOW_LINKS)
                         || !file.toRealPath().startsWith(root.toRealPath()))
                     throw new IOException("Incomplete or linked app image: " + file);
@@ -164,8 +136,7 @@ public record ApplicationImage(
                 throw new IOException("App image has no native libraries");
             for (String module : List.of("util", "import", "export", "import-api", "export-api")) {
                 if (!p.containsKey(module + "Jar")) continue; // Older format-1 installations.
-                Path utility =
-                        result.appDirectory().resolve(fileName(p.getProperty(module + "Jar")));
+                Path utility = result.appDirectory().resolve(fileName(p.getProperty(module + "Jar")));
                 if (!Files.isRegularFile(utility, LinkOption.NOFOLLOW_LINKS)
                         || !utility.toRealPath().startsWith(root.toRealPath()))
                     throw new IOException("Incomplete or linked " + module + " JAR: " + utility);
@@ -191,8 +162,7 @@ public record ApplicationImage(
                     throw new IOException("Engine/installation version mismatch");
             }
             try (var jar = new JarFile(result.appDirectory().resolve(main).toFile())) {
-                if (jar.getJarEntry(component.entry) == null)
-                    throw new IOException("Wrong application entry point");
+                if (jar.getJarEntry(component.entry) == null) throw new IOException("Wrong application entry point");
             }
             return result;
         } catch (IllegalArgumentException | NullPointerException failure) {
@@ -227,24 +197,17 @@ public record ApplicationImage(
     }
 
     static Lease lock(Path file, boolean shared) throws IOException {
-        if (Files.isSymbolicLink(file))
-            throw new IOException("Linked installation lock is not allowed");
+        if (Files.isSymbolicLink(file)) throw new IOException("Linked installation lock is not allowed");
         var channel =
-                FileChannel.open(
-                        file,
-                        StandardOpenOption.CREATE,
-                        StandardOpenOption.READ,
-                        StandardOpenOption.WRITE);
+                FileChannel.open(file, StandardOpenOption.CREATE, StandardOpenOption.READ, StandardOpenOption.WRITE);
         try {
             var lock = channel.tryLock(0, Long.MAX_VALUE, shared);
             if (lock == null)
-                throw new IOException(
-                        "Installation is busy; close other instances or wait for its update");
+                throw new IOException("Installation is busy; close other instances or wait for its update");
             return new Lease(channel, lock);
         } catch (IOException | OverlappingFileLockException failure) {
             channel.close();
-            throw new IOException(
-                    "Installation is busy; close other instances or wait for its update", failure);
+            throw new IOException("Installation is busy; close other instances or wait for its update", failure);
         }
     }
 

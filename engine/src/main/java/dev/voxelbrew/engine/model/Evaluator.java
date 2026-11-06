@@ -24,11 +24,9 @@ public final class Evaluator {
     /** The registry lives only on the evaluating thread; results contain engine-owned solids. */
     public static Evaluation evaluate(CadDocument document, Path pluginDirectory) {
         if (document.features().stream().noneMatch(Feature.Custom.class::isInstance))
-            return replay(
-                    document,
-                    custom -> {
-                        throw new AssertionError("No custom features");
-                    });
+            return replay(document, custom -> {
+                throw new AssertionError("No custom features");
+            });
         Evaluation result = null;
         try (var registry = new FeatureRegistry(pluginDirectory)) {
             result = replay(document, registry::evaluate);
@@ -36,18 +34,13 @@ public final class Evaluator {
         } catch (IOException failure) {
             log.warn("Cannot load feature plugins from {}", pluginDirectory, failure);
             if (result != null) result.close();
-            return replay(
-                    document,
-                    custom -> {
-                        throw new ModelException(
-                                custom.id(),
-                                "Cannot load feature plugins: " + failure.getMessage());
-                    });
+            return replay(document, custom -> {
+                throw new ModelException(custom.id(), "Cannot load feature plugins: " + failure.getMessage());
+            });
         }
     }
 
-    private static Evaluation replay(
-            CadDocument document, Function<Feature.Custom, Solid> customEvaluator) {
+    private static Evaluation replay(CadDocument document, Function<Feature.Custom, Solid> customEvaluator) {
         long started = System.nanoTime();
         log.debug(
                 "Rebuilding document {}: {} features, cursor {}",
@@ -68,8 +61,7 @@ public final class Evaluator {
             for (var binding : document.parameters().bindings())
                 if (document.features().stream()
                         .noneMatch(f -> f.id().equals(binding.target().featureId())))
-                    throw new IllegalArgumentException(
-                            "Binding refers to missing feature " + binding.target());
+                    throw new IllegalArgumentException("Binding refers to missing feature " + binding.target());
         } catch (IllegalArgumentException failure) {
             log.debug("Parameter evaluation failed for document {}", document.id(), failure);
             return new Evaluation(
@@ -82,27 +74,20 @@ public final class Evaluator {
             for (int index = 0; index < document.features().size(); index++) {
                 Feature feature = document.features().get(index);
                 if (index >= document.cursor()) {
-                    diagnostics.add(
-                            new Evaluation.Diagnostic(
-                                    feature.id(), ROLLED_BACK, "after timeline cursor"));
+                    diagnostics.add(new Evaluation.Diagnostic(feature.id(), ROLLED_BACK, "after timeline cursor"));
                     continue;
                 }
                 try {
                     for (String input : references(feature)) {
                         if (!states.containsKey(input)) {
-                            throw new ModelException(
-                                    feature.id(), "missing or non-earlier input '" + input + "'");
+                            throw new ModelException(feature.id(), "missing or non-earlier input '" + input + "'");
                         }
                         if (states.get(input) != OK) {
                             throw new Blocked("input '" + input + "' did not rebuild");
                         }
                     }
-                    feature =
-                            dev.voxelbrew.engine.parameters.FeatureDimensions.resolve(
-                                    feature,
-                                    document.features(),
-                                    document.parameters(),
-                                    parameterValues);
+                    feature = dev.voxelbrew.engine.parameters.FeatureDimensions.resolve(
+                            feature, document.features(), document.parameters(), parameterValues);
                     resolved.set(index, feature);
                     FeatureValidation.validate(feature);
                     if (feature instanceof Feature.Sketch s) {
@@ -110,16 +95,14 @@ public final class Evaluator {
                             var support = s.plane().support();
                             var source = outputs.get(support.body());
                             if (source == null)
-                                throw new ModelException(
-                                        s.id(), "Missing supporting body output " + support.body());
-                            var plane =
-                                    new Feature.Plane(
-                                            s.plane().id(),
-                                            s.plane().offsetZ(),
-                                            support.resolve(
-                                                    source.solid().planarFaces(),
-                                                    s.plane().frame()),
-                                            support);
+                                throw new ModelException(s.id(), "Missing supporting body output " + support.body());
+                            var plane = new Feature.Plane(
+                                    s.plane().id(),
+                                    s.plane().offsetZ(),
+                                    support.resolve(
+                                            source.solid().planarFaces(),
+                                            s.plane().frame()),
+                                    support);
                             s = new Feature.Sketch(s.id(), s.profileId(), plane, s.profile());
                             resolved.set(index, s);
                         }
@@ -127,18 +110,16 @@ public final class Evaluator {
                         if (earlier != null && !earlier.equals(s.plane())) {
                             throw new ModelException(
                                     s.id(),
-                                    "conflicting definition of plane '" + s.plane().id() + "'");
+                                    "conflicting definition of plane '"
+                                            + s.plane().id() + "'");
                         }
                         planes.put(s.plane().id(), s.plane());
                         sketches.put(s.id(), s);
                     } else if (feature instanceof Feature.Custom custom) {
                         Solid solid = customEvaluator.apply(custom);
                         owned.add(solid);
-                        var body =
-                                new Evaluation.Body(
-                                        custom.id() + ".body",
-                                        new Feature.BodyRef(custom.id(), "body"),
-                                        solid);
+                        var body = new Evaluation.Body(
+                                custom.id() + ".body", new Feature.BodyRef(custom.id(), "body"), solid);
                         outputs.put(body.output(), body);
                         active.put(body.id(), body);
                     } else if (feature instanceof Feature.Extrude e) {
@@ -146,65 +127,50 @@ public final class Evaluator {
                         Solid solid;
                         var additionalBodies = new ArrayList<Evaluation.Body>();
                         if (sketch.profile() instanceof Feature.Rectangle r) {
-                            solid =
-                                    place(
-                                            Solid.rectanglePrism(
-                                                    r.x(),
-                                                    r.y(),
-                                                    sketch.plane().offsetZ(),
-                                                    r.width(),
-                                                    r.height(),
-                                                    e.distance()),
-                                            sketch.plane().frame());
+                            solid = place(
+                                    Solid.rectanglePrism(
+                                            r.x(),
+                                            r.y(),
+                                            sketch.plane().offsetZ(),
+                                            r.width(),
+                                            r.height(),
+                                            e.distance()),
+                                    sketch.plane().frame());
                         } else if (sketch.profile() instanceof Feature.Circle c) {
-                            solid =
-                                    place(
-                                            Solid.circlePrism(
-                                                    c.centerX(),
-                                                    c.centerY(),
-                                                    sketch.plane().offsetZ(),
-                                                    c.diameter(),
-                                                    e.distance()),
-                                            sketch.plane().frame());
+                            solid = place(
+                                    Solid.circlePrism(
+                                            c.centerX(),
+                                            c.centerY(),
+                                            sketch.plane().offsetZ(),
+                                            c.diameter(),
+                                            e.distance()),
+                                    sketch.plane().frame());
                         } else if (sketch.profile() instanceof Feature.Constrained c) {
-                            var regions =
-                                    dev.voxelbrew.engine.sketch.SketchProfiles.regions(
-                                            c.geometry());
-                            solid =
-                                    place(
-                                            Solid.profilePrism(
-                                                    regions.getFirst().profile(),
-                                                    sketch.plane().offsetZ(),
-                                                    e.distance()),
-                                            sketch.plane().frame());
+                            var regions = dev.voxelbrew.engine.sketch.SketchProfiles.regions(c.geometry());
+                            solid = place(
+                                    Solid.profilePrism(
+                                            regions.getFirst().profile(),
+                                            sketch.plane().offsetZ(),
+                                            e.distance()),
+                                    sketch.plane().frame());
                             owned.add(solid);
                             for (int region = 1; region < regions.size(); region++) {
                                 var r = regions.get(region);
-                                var extra =
-                                        place(
-                                                Solid.profilePrism(
-                                                        r.profile(),
-                                                        sketch.plane().offsetZ(),
-                                                        e.distance()),
-                                                sketch.plane().frame());
+                                var extra = place(
+                                        Solid.profilePrism(
+                                                r.profile(), sketch.plane().offsetZ(), e.distance()),
+                                        sketch.plane().frame());
                                 owned.add(extra);
                                 String name = "body-" + r.id();
-                                var body =
-                                        new Evaluation.Body(
-                                                e.id() + "." + name,
-                                                new Feature.BodyRef(e.id(), name),
-                                                extra);
+                                var body = new Evaluation.Body(
+                                        e.id() + "." + name, new Feature.BodyRef(e.id(), name), extra);
                                 additionalBodies.add(body);
                             }
                         } else {
                             throw new ModelException(e.id(), "unsupported extrusion profile");
                         }
                         if (!owned.contains(solid)) owned.add(solid);
-                        var body =
-                                new Evaluation.Body(
-                                        e.id() + ".body",
-                                        new Feature.BodyRef(e.id(), "body"),
-                                        solid);
+                        var body = new Evaluation.Body(e.id() + ".body", new Feature.BodyRef(e.id(), "body"), solid);
                         outputs.put(body.output(), body);
                         active.put(body.id(), body);
                         for (var additional : additionalBodies) {
@@ -213,28 +179,19 @@ public final class Evaluator {
                         }
                     } else if (feature instanceof Feature.SplitBody split) {
                         Evaluation.Body input = outputs.get(split.body());
-                        if (input == null)
-                            throw new ModelException(
-                                    split.id(), "missing body output " + split.body());
+                        if (input == null) throw new ModelException(split.id(), "missing body output " + split.body());
                         if (active.get(input.id()) != input)
-                            throw new ModelException(
-                                    split.id(),
-                                    "body input has been superseded by a later feature");
+                            throw new ModelException(split.id(), "body input has been superseded by a later feature");
                         var p = split.plane();
-                        var parts =
-                                input.solid()
-                                        .split(p.normalX(), p.normalY(), p.normalZ(), p.offset());
+                        var parts = input.solid().split(p.normalX(), p.normalY(), p.normalZ(), p.offset());
                         owned.add(parts.negative());
                         owned.add(parts.positive());
                         active.remove(input.id());
                         for (var side : List.of("negative", "positive")) {
-                            var body =
-                                    new Evaluation.Body(
-                                            split.id() + "." + side,
-                                            new Feature.BodyRef(split.id(), side),
-                                            side.equals("negative")
-                                                    ? parts.negative()
-                                                    : parts.positive());
+                            var body = new Evaluation.Body(
+                                    split.id() + "." + side,
+                                    new Feature.BodyRef(split.id(), side),
+                                    side.equals("negative") ? parts.negative() : parts.positive());
                             outputs.put(body.output(), body);
                             active.put(body.id(), body);
                         }
@@ -242,16 +199,14 @@ public final class Evaluator {
                         Feature.Sketch sketch = profile(cut.id(), cut.profile(), sketches);
                         if (!(sketch.profile() instanceof Feature.Circle)
                                 && !(sketch.profile() instanceof Feature.Constrained)) {
-                            throw new ModelException(
-                                    cut.id(), "through-all cut requires a circle profile");
+                            throw new ModelException(cut.id(), "through-all cut requires a circle profile");
                         }
                         Evaluation.Body input = outputs.get(cut.body());
                         if (input == null) {
                             throw new ModelException(cut.id(), "missing body output " + cut.body());
                         }
                         if (active.get(input.id()) != input)
-                            throw new ModelException(
-                                    cut.id(), "body input has been superseded by a later feature");
+                            throw new ModelException(cut.id(), "body input has been superseded by a later feature");
                         // Evaluate through-all in sketch coordinates, then restore model
                         // coordinates.
                         var frame = sketch.plane().frame();
@@ -262,15 +217,12 @@ public final class Evaluator {
                         }
                         Solid solid;
                         if (sketch.profile() instanceof Feature.Circle circle) {
-                            solid =
-                                    local.cutThroughCircle(
-                                            circle.centerX(), circle.centerY(), circle.diameter());
+                            solid = local.cutThroughCircle(circle.centerX(), circle.centerY(), circle.diameter());
                         } else {
                             var constrained = (Feature.Constrained) sketch.profile();
                             solid = local;
                             for (var region :
-                                    dev.voxelbrew.engine.sketch.SketchProfiles.regions(
-                                            constrained.geometry())) {
+                                    dev.voxelbrew.engine.sketch.SketchProfiles.regions(constrained.geometry())) {
                                 solid = solid.cutThroughProfile(region.profile());
                                 owned.add(solid);
                             }
@@ -280,9 +232,7 @@ public final class Evaluator {
                             solid = solid.transformed(frame);
                             owned.add(solid);
                         }
-                        var body =
-                                new Evaluation.Body(
-                                        input.id(), new Feature.BodyRef(cut.id(), "body"), solid);
+                        var body = new Evaluation.Body(input.id(), new Feature.BodyRef(cut.id(), "body"), solid);
                         outputs.put(body.output(), body);
                         active.put(body.id(), body);
                     }
@@ -291,17 +241,11 @@ public final class Evaluator {
                 } catch (Blocked failure) {
                     log.debug("Feature {} blocked: {}", feature.id(), failure.getMessage());
                     states.put(feature.id(), BLOCKED);
-                    diagnostics.add(
-                            new Evaluation.Diagnostic(feature.id(), BLOCKED, failure.getMessage()));
+                    diagnostics.add(new Evaluation.Diagnostic(feature.id(), BLOCKED, failure.getMessage()));
                 } catch (RuntimeException failure) {
-                    log.debug(
-                            "Feature {} failed in document {}",
-                            feature.id(),
-                            document.id(),
-                            failure);
+                    log.debug("Feature {} failed in document {}", feature.id(), document.id(), failure);
                     states.put(feature.id(), FAILED);
-                    diagnostics.add(
-                            new Evaluation.Diagnostic(feature.id(), FAILED, failure.getMessage()));
+                    diagnostics.add(new Evaluation.Diagnostic(feature.id(), FAILED, failure.getMessage()));
                 }
             }
             if (log.isDebugEnabled())
@@ -311,21 +255,17 @@ public final class Evaluator {
                         (System.nanoTime() - started) / 1_000_000,
                         active.size(),
                         diagnostics.stream().filter(d -> d.state() == FAILED).count());
-            return new Evaluation(
-                    document, diagnostics, new ArrayList<>(active.values()), owned, resolved);
+            return new Evaluation(document, diagnostics, new ArrayList<>(active.values()), owned, resolved);
         } catch (Throwable failure) {
             owned.forEach(Solid::close);
             throw failure;
         }
     }
 
-    private static Feature.Sketch profile(
-            String owner, Feature.ProfileRef ref, Map<String, Feature.Sketch> sketches) {
+    private static Feature.Sketch profile(String owner, Feature.ProfileRef ref, Map<String, Feature.Sketch> sketches) {
         Feature.Sketch sketch = sketches.get(ref.sketchId());
         if (sketch == null || !sketch.profileId().equals(ref.profileId())) {
-            throw new ModelException(
-                    owner,
-                    "missing sketch/profile '" + ref.sketchId() + "/" + ref.profileId() + "'");
+            throw new ModelException(owner, "missing sketch/profile '" + ref.sketchId() + "/" + ref.profileId() + "'");
         }
         return sketch;
     }
@@ -346,7 +286,8 @@ public final class Evaluator {
         if (feature instanceof Feature.ThroughCut c) {
             return List.of(c.profile().sketchId(), c.body().featureId());
         }
-        if (feature instanceof Feature.SplitBody split) return List.of(split.body().featureId());
+        if (feature instanceof Feature.SplitBody split)
+            return List.of(split.body().featureId());
         return List.of();
     }
 

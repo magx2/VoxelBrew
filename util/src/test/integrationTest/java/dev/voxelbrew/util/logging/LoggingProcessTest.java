@@ -11,7 +11,8 @@ import org.junit.jupiter.api.Timeout;
 import org.junit.jupiter.api.io.TempDir;
 
 class LoggingProcessTest {
-    @TempDir Path directory;
+    @TempDir
+    Path directory;
 
     @Test
     @Timeout(60)
@@ -37,7 +38,8 @@ class LoggingProcessTest {
             try (var files = Files.list(home.resolve("log"))) {
                 assertEquals(
                         0,
-                        files.filter(p -> p.getFileName().toString().startsWith("app-")).count(),
+                        files.filter(p -> p.getFileName().toString().startsWith("app-"))
+                                .count(),
                         "initialize twice must not rotate twice");
             }
             processes.add(start(home, "cli"));
@@ -45,7 +47,8 @@ class LoggingProcessTest {
             try (var files = Files.list(home.resolve("log"))) {
                 assertEquals(
                         1,
-                        files.filter(p -> p.getFileName().toString().startsWith("app-")).count());
+                        files.filter(p -> p.getFileName().toString().startsWith("app-"))
+                                .count());
             }
             for (var process : processes) {
                 process.getOutputStream().write('\n');
@@ -72,10 +75,7 @@ class LoggingProcessTest {
                 assertTrue(text.contains("uncaught-worker-" + component));
                 for (int i = 0; i < 100; i++) {
                     String marker = "event-" + component + "-" + i + ";";
-                    assertEquals(
-                            1,
-                            text.split(java.util.regex.Pattern.quote(marker), -1).length - 1,
-                            marker);
+                    assertEquals(1, text.split(java.util.regex.Pattern.quote(marker), -1).length - 1, marker);
                 }
             }
         } finally {
@@ -112,15 +112,16 @@ class LoggingProcessTest {
 
     private Process start(Path home, String component) throws Exception {
         var locations = new ArrayList<String>();
-        for (var type :
-                List.of(
-                        Logging.class,
-                        Writer.class,
-                        org.slf4j.LoggerFactory.class,
-                        Class.forName("org.slf4j.jul.JULServiceProvider"))) {
-            locations.add(
-                    Path.of(type.getProtectionDomain().getCodeSource().getLocation().toURI())
-                            .toString());
+        for (var type : List.of(
+                Logging.class,
+                Writer.class,
+                org.slf4j.LoggerFactory.class,
+                Class.forName("org.slf4j.jul.JULServiceProvider"))) {
+            locations.add(Path.of(type.getProtectionDomain()
+                            .getCodeSource()
+                            .getLocation()
+                            .toURI())
+                    .toString());
         }
         return new ProcessBuilder(
                         Path.of(System.getProperty("java.home"), "bin", "java").toString(),
@@ -150,18 +151,12 @@ class LoggingProcessTest {
             Logging.initialize(args[0]);
             try {
                 Files.writeString(
-                        dev.voxelbrew.util.config.ApplicationPaths.home()
-                                .resolve(args[0] + ".ready"),
-                        "ready");
+                        dev.voxelbrew.util.config.ApplicationPaths.home().resolve(args[0] + ".ready"), "ready");
                 if (System.in.read() < 0) throw new IllegalStateException("Missing start signal");
                 for (int i = 0; i < 100; i++) log.debug("event-{}-{}; Zażółć ☕", args[0], i);
-                var failed =
-                        Thread.ofPlatform()
-                                .start(
-                                        () -> {
-                                            throw new IllegalStateException(
-                                                    "uncaught-worker-" + args[0] + " Zażółć ☕");
-                                        });
+                var failed = Thread.ofPlatform().start(() -> {
+                    throw new IllegalStateException("uncaught-worker-" + args[0] + " Zażółć ☕");
+                });
                 failed.join();
             } finally {
                 Logging.close();

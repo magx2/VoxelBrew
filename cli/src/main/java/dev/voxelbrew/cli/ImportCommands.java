@@ -17,10 +17,7 @@ final class ImportCommands {
         command.addSubcommand("import", new CommandLine(ImportFile.class, command.getFactory()));
     }
 
-    @Command(
-            name = "importers",
-            mixinStandardHelpOptions = true,
-            description = "List built-in and external importers")
+    @Command(name = "importers", mixinStandardHelpOptions = true, description = "List built-in and external importers")
     static final class Importers implements Callable<Integer> {
         private final ImporterRegistry.Factory importers;
 
@@ -32,7 +29,8 @@ final class ImportCommands {
         @Option(names = "--plugin-dir")
         Path plugins = ImporterRegistry.defaultDirectory();
 
-        @Spec CommandLine.Model.CommandSpec spec;
+        @Spec
+        CommandLine.Model.CommandSpec spec;
 
         @Override
         public Integer call() throws Exception {
@@ -41,25 +39,18 @@ final class ImportCommands {
                 for (var descriptor : registry.descriptors()) {
                     spec.commandLine()
                             .getOut()
-                            .println(
-                                    descriptor.id()
-                                            + "\t"
-                                            + descriptor.name()
-                                            + "\t"
-                                            + descriptor.resultKind()
-                                            + "\t"
-                                            + String.join(",", descriptor.extensions()));
+                            .println(descriptor.id()
+                                    + "\t"
+                                    + descriptor.name()
+                                    + "\t"
+                                    + descriptor.resultKind()
+                                    + "\t"
+                                    + String.join(",", descriptor.extensions()));
                     for (var option : descriptor.options())
                         spec.commandLine()
                                 .getOut()
                                 .println(
-                                        "  "
-                                                + option.key()
-                                                + "="
-                                                + option.defaultValue()
-                                                + " ("
-                                                + option.type()
-                                                + ")");
+                                        "  " + option.key() + "=" + option.defaultValue() + " (" + option.type() + ")");
                 }
             }
             return 0;
@@ -98,7 +89,8 @@ final class ImportCommands {
         @Option(names = "--overwrite")
         boolean overwrite;
 
-        @Spec CommandLine.Model.CommandSpec spec;
+        @Spec
+        CommandLine.Model.CommandSpec spec;
 
         @Override
         public Integer call() throws Exception {
@@ -116,8 +108,7 @@ final class ImportCommands {
                                         .equals(output.toAbsolutePath().normalize())
                                 || java.nio.file.Files.exists(output)
                                         && java.nio.file.Files.isSameFile(source, output)))
-                    throw new IllegalArgumentException(
-                            "Import destination must differ from its source");
+                    throw new IllegalArgumentException("Import destination must differ from its source");
                 var result = ImportService.read(registry, format, source, options);
                 if (result instanceof ImportResult.Document document) {
                     documents.save(document.document(), output, overwrite);
@@ -127,16 +118,12 @@ final class ImportCommands {
                 } else if (result instanceof ImportResult.Gcode gcode) {
                     spec.commandLine()
                             .getOut()
-                            .println(
-                                    "model_layers="
-                                            + gcode.job().modelLayers().size()
-                                            + " deposition_moves="
-                                            + gcode.job().segments().stream()
-                                                    .filter(
-                                                            dev.voxelbrew.engine.printing.GcodeJob
-                                                                            .Segment
-                                                                    ::deposits)
-                                                    .count());
+                            .println("model_layers="
+                                    + gcode.job().modelLayers().size()
+                                    + " deposition_moves="
+                                    + gcode.job().segments().stream()
+                                            .filter(dev.voxelbrew.engine.printing.GcodeJob.Segment::deposits)
+                                            .count());
                 }
             }
             return 0;

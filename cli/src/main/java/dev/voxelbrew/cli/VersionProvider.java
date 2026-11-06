@@ -8,8 +8,6 @@ import picocli.CommandLine;
 public final class VersionProvider implements CommandLine.IVersionProvider {
     @Override
     public String[] getVersion() {
-        return new String[] {
-            "VoxelBrew " + BuildVersion.current() + " / jcad schema " + DocumentCodec.SCHEMA_VERSION
-        };
+        return new String[] {"VoxelBrew " + BuildVersion.current() + " / jcad schema " + DocumentCodec.SCHEMA_VERSION};
     }
 }

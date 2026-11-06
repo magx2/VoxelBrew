@@ -22,10 +22,10 @@ public final class UpdateProbe {
                 verifyUtilities(component);
             } else if (args[1].equals("hold")) {
                 Files.writeString(Path.of(args[2]), "LOCKED");
-                long deadline = System.nanoTime() + java.time.Duration.ofMinutes(3).toNanos();
+                long deadline =
+                        System.nanoTime() + java.time.Duration.ofMinutes(3).toNanos();
                 while (!Files.exists(Path.of(args[3]))) {
-                    if (System.nanoTime() > deadline)
-                        throw new IllegalStateException("Holder timed out");
+                    if (System.nanoTime() > deadline) throw new IllegalStateException("Holder timed out");
                     Thread.sleep(100);
                 }
             } else {
@@ -50,42 +50,33 @@ public final class UpdateProbe {
             throw new IllegalStateException("Bundled runtime is missing Polish locale data");
         var messages = new dev.voxelbrew.util.i18n.Translations(polish);
         if (!"Otwórz…".equals(messages.text("action.open")))
-            throw new IllegalStateException(
-                    "Bundled translations are missing or incorrectly encoded");
+            throw new IllegalStateException("Bundled translations are missing or incorrectly encoded");
         var configuration = dev.voxelbrew.util.config.UserConfiguration.user();
         configuration.set("verification.text", "Zażółć ☕");
         if (!"Zażółć ☕"
-                .equals(
-                        dev.voxelbrew.util.config.UserConfiguration.user()
-                                .get("verification.text", "")))
+                .equals(dev.voxelbrew.util.config.UserConfiguration.user().get("verification.text", "")))
             throw new IllegalStateException("Bundled configuration did not round-trip UTF-8");
         configuration.remove("verification.text");
-        dev.voxelbrew.util.logging.Logging.initialize(
-                component.name().toLowerCase(java.util.Locale.ROOT));
-        java.util.logging.Logger.getLogger("dev.voxelbrew.verification")
-                .info("UTILITY_RUNTIME_LOG");
+        dev.voxelbrew.util.logging.Logging.initialize(component.name().toLowerCase(java.util.Locale.ROOT));
+        java.util.logging.Logger.getLogger("dev.voxelbrew.verification").info("UTILITY_RUNTIME_LOG");
         dev.voxelbrew.util.logging.Logging.close();
         Path activeLog = dev.voxelbrew.util.config.ApplicationPaths.home().resolve("log/app.log");
         boolean logged =
-                Files.isRegularFile(activeLog)
-                        && Files.readString(activeLog).contains("UTILITY_RUNTIME_LOG");
+                Files.isRegularFile(activeLog) && Files.readString(activeLog).contains("UTILITY_RUNTIME_LOG");
         if (!logged) throw new IllegalStateException("Bundled file logging is unavailable");
         System.out.println("PACKAGE_UTIL_PASS " + component);
     }
 
     private static void verifyDocumentVersion(String expectedVersion, Path path) throws Exception {
         if (!expectedVersion.equals(dev.voxelbrew.util.Version.version()))
-            throw new IllegalStateException(
-                    "Packaged Version does not match the installed release");
+            throw new IllegalStateException("Packaged Version does not match the installed release");
         var document = dev.voxelbrew.engine.model.CadDocument.empty();
         dev.voxelbrew.exporter.DocumentWriter.save(document, path, false);
         byte[] bytes = Files.readAllBytes(path);
-        var message =
-                dev.voxelbrew.engine.persistence.proto.DocumentProto.Document.parseFrom(
-                        java.util.Arrays.copyOfRange(bytes, 44, bytes.length));
+        var message = dev.voxelbrew.engine.persistence.proto.DocumentProto.Document.parseFrom(
+                java.util.Arrays.copyOfRange(bytes, 44, bytes.length));
         if (!expectedVersion.equals(message.getApplicationVersion()))
-            throw new IllegalStateException(
-                    "Document writer version does not match Version.version()");
+            throw new IllegalStateException("Document writer version does not match Version.version()");
         if (!document.equals(dev.voxelbrew.importer.DocumentReader.load(path)))
             throw new IllegalStateException("Packaged document did not round-trip");
         System.out.println("DOCUMENT_VERSION_PASS " + expectedVersion);

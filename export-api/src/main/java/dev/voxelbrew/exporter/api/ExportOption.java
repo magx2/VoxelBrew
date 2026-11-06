@@ -5,8 +5,7 @@ import java.util.Objects;
 
 /** Typed, frontend-neutral provider option; values cross the SPI as canonical strings. */
 @lombok.extern.slf4j.Slf4j
-public record ExportOption(
-        String key, String label, Type type, String defaultValue, List<String> choices) {
+public record ExportOption(String key, String label, Type type, String defaultValue, List<String> choices) {
     public enum Type {
         STRING,
         BOOLEAN,
@@ -16,8 +15,7 @@ public record ExportOption(
     }
 
     public ExportOption {
-        if (key == null || !key.matches("[a-z][a-z0-9.-]*"))
-            throw new IllegalArgumentException("Invalid option key");
+        if (key == null || !key.matches("[a-z][a-z0-9.-]*")) throw new IllegalArgumentException("Invalid option key");
         Objects.requireNonNull(label);
         Objects.requireNonNull(type);
         Objects.requireNonNull(defaultValue);
@@ -30,8 +28,7 @@ public record ExportOption(
             validate(type, value, choices);
         } catch (IllegalArgumentException failure) {
             log.debug("Rejected exporter option {} of type {}", key, type);
-            throw new IllegalArgumentException(
-                    "Invalid option '" + key + "': " + failure.getMessage(), failure);
+            throw new IllegalArgumentException("Invalid option '" + key + "': " + failure.getMessage(), failure);
         }
     }
 
@@ -48,8 +45,7 @@ public record ExportOption(
                     throw new IllegalArgumentException("expected finite decimal");
             }
             case CHOICE -> {
-                if (!choices.contains(value))
-                    throw new IllegalArgumentException("expected one of " + choices);
+                if (!choices.contains(value)) throw new IllegalArgumentException("expected one of " + choices);
             }
             case STRING -> {}
         }

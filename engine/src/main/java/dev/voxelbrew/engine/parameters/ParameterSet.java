@@ -11,8 +11,7 @@ public record ParameterSet(
         String active,
         List<Binding> bindings,
         dev.voxelbrew.util.UuidGenerator uuidGenerator) {
-    public record Parameter(
-            String id, String name, ParameterUnit unit, String expression, String comment) {
+    public record Parameter(String id, String name, ParameterUnit unit, String expression, String comment) {
         public Parameter {
             CadDocument.identifier(id, "parameter ID");
             requireName(name);
@@ -31,10 +30,7 @@ public record ParameterSet(
     public record Configuration(String id, String name, Map<String, String> overrides) {
         public Configuration {
             CadDocument.identifier(id, "configuration ID");
-            if (name == null
-                    || name.isBlank()
-                    || name.length() > 80
-                    || name.equalsIgnoreCase("Default"))
+            if (name == null || name.isBlank() || name.length() > 80 || name.equalsIgnoreCase("Default"))
                 throw new IllegalArgumentException(
                         "Configuration needs a unique name (1–80 characters, other than Default)");
             overrides = Collections.unmodifiableMap(new LinkedHashMap<>(overrides));
@@ -68,10 +64,7 @@ public record ParameterSet(
     }
 
     public ParameterSet(
-            List<Parameter> parameters,
-            List<Configuration> configurations,
-            String active,
-            List<Binding> bindings) {
+            List<Parameter> parameters, List<Configuration> configurations, String active, List<Binding> bindings) {
         this(parameters, configurations, active, bindings, new dev.voxelbrew.util.UuidGenerator());
     }
 
@@ -100,8 +93,7 @@ public record ParameterSet(
         bindings = List.copyOf(bindings);
         Objects.requireNonNull(active);
         if (parameters.size() > 128 || configurations.size() > 32 || bindings.size() > 2048)
-            throw new IllegalArgumentException(
-                    "Limit: 128 parameters, 32 configurations and 2048 bound dimensions");
+            throw new IllegalArgumentException("Limit: 128 parameters, 32 configurations and 2048 bound dimensions");
         Set<String> ids = new HashSet<>(), names = new HashSet<>();
         for (var p : parameters)
             if (!ids.add(p.id()) || !names.add(p.name()))
@@ -118,8 +110,7 @@ public record ParameterSet(
             throw new IllegalArgumentException("Missing active configuration: " + active);
         var targets = new HashSet<Target>();
         for (var b : bindings)
-            if (!targets.add(b.target()))
-                throw new IllegalArgumentException("Duplicate binding: " + b.target());
+            if (!targets.add(b.target())) throw new IllegalArgumentException("Duplicate binding: " + b.target());
     }
 
     public static ParameterSet empty() {
@@ -152,8 +143,7 @@ public record ParameterSet(
         return configurations.stream()
                 .filter(c -> c.id().equals(nameOrId) || c.name().equals(nameOrId))
                 .findFirst()
-                .orElseThrow(
-                        () -> new IllegalArgumentException("Unknown configuration: " + nameOrId))
+                .orElseThrow(() -> new IllegalArgumentException("Unknown configuration: " + nameOrId))
                 .id();
     }
 
@@ -186,13 +176,12 @@ public record ParameterSet(
     }
 
     public ParameterSet select(String nameOrId) {
-        return new ParameterSet(
-                parameters, configurations, configurationId(nameOrId), bindings, uuidGenerator);
+        return new ParameterSet(parameters, configurations, configurationId(nameOrId), bindings, uuidGenerator);
     }
 
     public ParameterSet bind(Target target, String expression) {
-        var next =
-                new ArrayList<>(bindings.stream().filter(b -> !b.target().equals(target)).toList());
+        var next = new ArrayList<>(
+                bindings.stream().filter(b -> !b.target().equals(target)).toList());
         if (!expression.isBlank()) next.add(new Binding(target, expression.strip()));
         return new ParameterSet(parameters, configurations, active, next, uuidGenerator);
     }
@@ -202,20 +191,12 @@ public record ParameterSet(
         if (existing.isPresent()) {
             var old = existing.get();
             var next = new ArrayList<>(parameters);
-            next.set(
-                    next.indexOf(old),
-                    new Parameter(old.id(), name, unit, old.expression(), comment));
+            next.set(next.indexOf(old), new Parameter(old.id(), name, unit, old.expression(), comment));
             return new ParameterSet(next, configurations, active, bindings, uuidGenerator)
                     .override(name, active, expression);
         }
         var next = new ArrayList<>(parameters);
-        next.add(
-                new Parameter(
-                        "parameter-" + uuidGenerator.next(),
-                        name,
-                        unit,
-                        expression.strip(),
-                        comment));
+        next.add(new Parameter("parameter-" + uuidGenerator.next(), name, unit, expression.strip(), comment));
         return new ParameterSet(next, configurations, active, bindings, uuidGenerator);
     }
 
@@ -225,16 +206,9 @@ public record ParameterSet(
         if (id.isEmpty())
             return new ParameterSet(
                     parameters.stream()
-                            .map(
-                                    v ->
-                                            v.id().equals(p.id())
-                                                    ? new Parameter(
-                                                            v.id(),
-                                                            v.name(),
-                                                            v.unit(),
-                                                            expression.strip(),
-                                                            v.comment())
-                                                    : v)
+                            .map(v -> v.id().equals(p.id())
+                                    ? new Parameter(v.id(), v.name(), v.unit(), expression.strip(), v.comment())
+                                    : v)
                             .toList(),
                     configurations,
                     active,
@@ -243,14 +217,13 @@ public record ParameterSet(
         return new ParameterSet(
                 parameters,
                 configurations.stream()
-                        .map(
-                                c -> {
-                                    if (!c.id().equals(id)) return c;
-                                    var values = new LinkedHashMap<>(c.overrides());
-                                    if (expression.isBlank()) values.remove(p.id());
-                                    else values.put(p.id(), expression.strip());
-                                    return new Configuration(c.id(), c.name(), values);
-                                })
+                        .map(c -> {
+                            if (!c.id().equals(id)) return c;
+                            var values = new LinkedHashMap<>(c.overrides());
+                            if (expression.isBlank()) values.remove(p.id());
+                            else values.put(p.id(), expression.strip());
+                            return new Configuration(c.id(), c.name(), values);
+                        })
                         .toList(),
                 active,
                 bindings,
@@ -260,68 +233,47 @@ public record ParameterSet(
     public ParameterSet rename(String nameOrId, String nextName) {
         requireName(nextName);
         var old = parameter(nameOrId);
-        var renamed =
-                parameters.stream()
-                        .map(
-                                p ->
-                                        new Parameter(
-                                                p.id(),
-                                                p.id().equals(old.id()) ? nextName : p.name(),
-                                                p.unit(),
-                                                Expressions.rename(
-                                                        p.expression(), old.name(), nextName),
-                                                p.comment()))
-                        .toList();
-        var configs =
-                configurations.stream()
-                        .map(
-                                c -> {
-                                    var values = new LinkedHashMap<String, String>();
-                                    c.overrides()
-                                            .forEach(
-                                                    (id, value) ->
-                                                            values.put(
-                                                                    id,
-                                                                    Expressions.rename(
-                                                                            value,
-                                                                            old.name(),
-                                                                            nextName)));
-                                    return new Configuration(c.id(), c.name(), values);
-                                })
-                        .toList();
+        var renamed = parameters.stream()
+                .map(p -> new Parameter(
+                        p.id(),
+                        p.id().equals(old.id()) ? nextName : p.name(),
+                        p.unit(),
+                        Expressions.rename(p.expression(), old.name(), nextName),
+                        p.comment()))
+                .toList();
+        var configs = configurations.stream()
+                .map(c -> {
+                    var values = new LinkedHashMap<String, String>();
+                    c.overrides()
+                            .forEach((id, value) -> values.put(id, Expressions.rename(value, old.name(), nextName)));
+                    return new Configuration(c.id(), c.name(), values);
+                })
+                .toList();
         return new ParameterSet(
                 renamed,
                 configs,
                 active,
                 bindings.stream()
-                        .map(
-                                b ->
-                                        new Binding(
-                                                b.target(),
-                                                Expressions.rename(
-                                                        b.expression(), old.name(), nextName)))
+                        .map(b -> new Binding(b.target(), Expressions.rename(b.expression(), old.name(), nextName)))
                         .toList(),
                 uuidGenerator);
     }
 
     public ParameterSet remove(String nameOrId) {
         var removed = parameter(nameOrId);
-        var configs =
-                configurations.stream()
-                        .map(
-                                c -> {
-                                    var overrides = new LinkedHashMap<>(c.overrides());
-                                    overrides.remove(removed.id());
-                                    return new Configuration(c.id(), c.name(), overrides);
-                                })
-                        .toList();
-        var result =
-                new ParameterSet(
-                        parameters.stream().filter(p -> !p.id().equals(removed.id())).toList(),
-                        configs,
-                        active,
-                        bindings,
-                        uuidGenerator);
+        var configs = configurations.stream()
+                .map(c -> {
+                    var overrides = new LinkedHashMap<>(c.overrides());
+                    overrides.remove(removed.id());
+                    return new Configuration(c.id(), c.name(), overrides);
+                })
+                .toList();
+        var result = new ParameterSet(
+                parameters.stream().filter(p -> !p.id().equals(removed.id())).toList(),
+                configs,
+                active,
+                bindings,
+                uuidGenerator);
         result.validate();
         return result;
     }
@@ -340,11 +292,7 @@ public record ParameterSet(
         return new ParameterSet(
                 parameters,
                 configurations.stream()
-                        .map(
-                                c ->
-                                        c.id().equals(id)
-                                                ? new Configuration(id, name, c.overrides())
-                                                : c)
+                        .map(c -> c.id().equals(id) ? new Configuration(id, name, c.overrides()) : c)
                         .toList(),
                 active,
                 bindings,
@@ -379,19 +327,14 @@ public record ParameterSet(
                 if (p == null) throw new IllegalArgumentException("Unknown parameter: " + name);
                 if (!visiting.add(name))
                     throw new IllegalArgumentException(
-                            "Cyclic parameter dependency: "
-                                    + String.join(" → ", visiting)
-                                    + " → "
-                                    + name);
-                if (visiting.size() > 32)
-                    throw new IllegalArgumentException("Parameter dependency depth exceeds 32");
+                            "Cyclic parameter dependency: " + String.join(" → ", visiting) + " → " + name);
+                if (visiting.size() > 32) throw new IllegalArgumentException("Parameter dependency depth exceeds 32");
                 try {
                     var q = Expressions.evaluate(expression(p, id), p.unit(), this::get);
                     resolved.put(name, q);
                     return q;
                 } catch (IllegalArgumentException failure) {
-                    throw new IllegalArgumentException(
-                            "Parameter " + name + ": " + failure.getMessage(), failure);
+                    throw new IllegalArgumentException("Parameter " + name + ": " + failure.getMessage(), failure);
                 } finally {
                     visiting.remove(name);
                 }
@@ -430,19 +373,16 @@ public record ParameterSet(
         for (var id : ids) {
             try {
                 var values = values(id);
-                for (var binding : bindings)
-                    Expressions.evaluateAny(binding.expression(), values::get);
+                for (var binding : bindings) Expressions.evaluateAny(binding.expression(), values::get);
             } catch (IllegalArgumentException failure) {
-                String name =
-                        id.isEmpty()
-                                ? "Default"
-                                : configurations.stream()
-                                        .filter(c -> c.id().equals(id))
-                                        .findFirst()
-                                        .orElseThrow()
-                                        .name();
-                throw new IllegalArgumentException(
-                        "Configuration " + name + ": " + failure.getMessage(), failure);
+                String name = id.isEmpty()
+                        ? "Default"
+                        : configurations.stream()
+                                .filter(c -> c.id().equals(id))
+                                .findFirst()
+                                .orElseThrow()
+                                .name();
+                throw new IllegalArgumentException("Configuration " + name + ": " + failure.getMessage(), failure);
             }
         }
     }

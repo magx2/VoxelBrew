@@ -23,11 +23,7 @@ public final class Evaluation implements AutoCloseable {
     private final List<Feature> resolvedFeatures;
     private boolean closed;
 
-    Evaluation(
-            CadDocument document,
-            List<Diagnostic> diagnostics,
-            List<Body> bodies,
-            List<Solid> owned) {
+    Evaluation(CadDocument document, List<Diagnostic> diagnostics, List<Body> bodies, List<Solid> owned) {
         this(document, diagnostics, bodies, owned, document.features());
     }
 
@@ -57,15 +53,13 @@ public final class Evaluation implements AutoCloseable {
     }
 
     public boolean valid() {
-        return diagnostics.stream()
-                .noneMatch(d -> d.state() == State.FAILED || d.state() == State.BLOCKED);
+        return diagnostics.stream().noneMatch(d -> d.state() == State.FAILED || d.state() == State.BLOCKED);
     }
 
     public List<Body> bodies() {
         requireOpen();
         if (!valid()) {
-            throw new IllegalStateException(
-                    "Rebuild failed; partial or stale geometry is unavailable. " + diagnostics);
+            throw new IllegalStateException("Rebuild failed; partial or stale geometry is unavailable. " + diagnostics);
         }
         return bodies;
     }
@@ -76,8 +70,7 @@ public final class Evaluation implements AutoCloseable {
      */
     public List<Body> requireCompleteDocument() {
         if (document.cursor() != document.features().size()) {
-            throw new IllegalStateException(
-                    "Return timeline cursor to the end before full-part export");
+            throw new IllegalStateException("Return timeline cursor to the end before full-part export");
         }
         return bodies();
     }

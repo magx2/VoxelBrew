@@ -12,15 +12,14 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 class ImportTest {
-    @TempDir Path directory;
+    @TempDir
+    Path directory;
 
     @Test
     void independentProviderUsesApiOnlyAndReturnsEditableCad() throws Exception {
         Path plugins = Files.createDirectories(directory.resolve("trusted plugins with spaces"));
-        Path jar =
-                Files.copy(
-                        Path.of(System.getProperty("voxelbrew.test.plugin")),
-                        plugins.resolve("external importer.jar"));
+        Path jar = Files.copy(
+                Path.of(System.getProperty("voxelbrew.test.plugin")), plugins.resolve("external importer.jar"));
         try (var archive = new java.util.zip.ZipFile(jar.toFile())) {
             assertTrue(
                     archive.stream().noneMatch(e -> e.getName().startsWith("dev/voxelbrew/")),
@@ -36,11 +35,8 @@ class ImportTest {
             assertTrue(diagnostics.contains("Duplicate importer ID: plate"), diagnostics);
             assertTrue(diagnostics.contains("Incompatible importer future"), diagnostics);
             assertTrue(diagnostics.contains("Broken descriptor"), diagnostics);
-            var document =
-                    ((ImportResult.Document)
-                                    ImportService.read(
-                                            registry, "plate", source, Map.of("scale", "2")))
-                            .document();
+            var document = ((ImportResult.Document) ImportService.read(registry, "plate", source, Map.of("scale", "2")))
+                    .document();
             try (var evaluation = Evaluator.evaluate(document)) {
                 assertTrue(evaluation.valid());
                 assertEquals(76800, evaluation.bodies().getFirst().solid().volume(), .001);
@@ -53,18 +49,11 @@ class ImportTest {
             assertThrows(
                     IllegalArgumentException.class,
                     () -> ImportService.read(registry, "plate", source, Map.of("typo", "1")));
+            assertTrue(assertThrows(IOException.class, () -> ImportService.read(registry, "failing", source, Map.of()))
+                    .getMessage()
+                    .contains("Deliberate importer failure"));
             assertTrue(
-                    assertThrows(
-                                    IOException.class,
-                                    () -> ImportService.read(registry, "failing", source, Map.of()))
-                            .getMessage()
-                            .contains("Deliberate importer failure"));
-            assertTrue(
-                    assertThrows(
-                                    IOException.class,
-                                    () ->
-                                            ImportService.read(
-                                                    registry, "wrong-kind", source, Map.of()))
+                    assertThrows(IOException.class, () -> ImportService.read(registry, "wrong-kind", source, Map.of()))
                             .getMessage()
                             .contains("different result kind"));
         }
@@ -81,8 +70,7 @@ class ImportTest {
         try (var registry = new ImporterRegistry(directory.resolve("no plugins"))) {
             assertEquals(
                     document,
-                    ((ImportResult.Document) ImportService.read(registry, "jcad", source, Map.of()))
-                            .document());
+                    ((ImportResult.Document) ImportService.read(registry, "jcad", source, Map.of())).document());
             Path gcode = directory.resolve("part.gcode");
             Files.writeString(gcode, "G21\nG90\nM82\nG1 Z0.2\nG1 X10 Y10 E1 F1200\n");
             assertEquals(
@@ -91,12 +79,9 @@ class ImportTest {
             try (var oversized = new RandomAccessFile(source.toFile(), "rw")) {
                 oversized.setLength(ImportService.MAX_INPUT_BYTES + 1);
             }
-            assertTrue(
-                    assertThrows(
-                                    IOException.class,
-                                    () -> ImportService.read(registry, "jcad", source, Map.of()))
-                            .getMessage()
-                            .contains("256 MiB"));
+            assertTrue(assertThrows(IOException.class, () -> ImportService.read(registry, "jcad", source, Map.of()))
+                    .getMessage()
+                    .contains("256 MiB"));
         }
     }
 }

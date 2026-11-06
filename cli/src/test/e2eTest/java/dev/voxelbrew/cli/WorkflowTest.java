@@ -19,25 +19,16 @@ import org.junit.jupiter.api.io.TempDir;
 
 /** Every command runs in a new JVM, proving that edits come from the saved definitions. */
 class WorkflowTest {
-    @TempDir Path directory;
+    @TempDir
+    Path directory;
 
     @Test
-    void bodyMaterialsAndColorsPersistAcrossCommandsAndInvalidAssignmentsDoNotWrite()
-            throws Exception {
+    void bodyMaterialsAndColorsPersistAcrossCommandsAndInvalidAssignmentsDoNotWrite() throws Exception {
         String file = directory.resolve("colored objects.jcad").toString();
         run(0, "new", file);
         run(0, "rectangle", file, "--id", "plate", "--width", "60", "--height", "40");
         run(0, "extrude", file, "--id", "solid", "--sketch", "plate", "--distance", "5");
-        run(
-                0,
-                "body-style",
-                file,
-                "--body",
-                "solid.body",
-                "--material",
-                "PETG",
-                "--color",
-                "#FF0000");
+        run(0, "body-style", file, "--body", "solid.body", "--material", "PETG", "--color", "#FF0000");
         assertTrue(run(0, "body-style", file).contains("solid.body\tPETG\t#FF0000"));
         run(0, "edit", file, "--feature", "solid", "--field", "distance", "--value", "8");
         assertTrue(run(0, "body-style", file).contains("solid.body\tPETG\t#FF0000"));
@@ -47,16 +38,7 @@ class WorkflowTest {
         run(1, "body-style", file, "--material", "PLA");
         run(1, "body-style", file, "--body", "solid.body", "--reset", "--material", "PLA");
         assertArrayEquals(saved, Files.readAllBytes(Path.of(file)));
-        run(
-                0,
-                "body-style",
-                file,
-                "--body",
-                "solid.body",
-                "--material",
-                "PLA",
-                "--color",
-                "#0000ff");
+        run(0, "body-style", file, "--body", "solid.body", "--material", "PLA", "--color", "#0000ff");
         assertTrue(run(0, "body-style", file).contains("solid.body\tPLA\t#0000FF"));
         run(0, "body-style", file, "--body", "solid.body", "--reset");
         assertTrue(DocumentReader.load(Path.of(file)).bodyStyles().isEmpty());
@@ -64,17 +46,13 @@ class WorkflowTest {
     }
 
     @Test
-    void externalImporterListsOptionsAndPublishesEditableDocumentsAcrossProcesses()
-            throws Exception {
+    void externalImporterListsOptionsAndPublishesEditableDocumentsAcrossProcesses() throws Exception {
         Path plugins = Files.createDirectories(directory.resolve("import plugins with spaces"));
-        Files.copy(
-                Path.of(System.getProperty("voxelbrew.test.plugin")),
-                plugins.resolve("provider.jar"));
+        Files.copy(Path.of(System.getProperty("voxelbrew.test.plugin")), plugins.resolve("provider.jar"));
         String listing = run(0, "importers", "--plugin-dir", plugins.toString());
         assertTrue(listing.contains("plate\tExternal plate"), listing);
         assertTrue(listing.contains("scale=1 (DECIMAL)"), listing);
-        Path source = directory.resolve("source plate.vbplate"),
-                output = directory.resolve("imported design.jcad");
+        Path source = directory.resolve("source plate.vbplate"), output = directory.resolve("imported design.jcad");
         Files.writeString(source, "60,40,4");
         run(
                 0,
@@ -113,25 +91,22 @@ class WorkflowTest {
                 "--output",
                 output.toString());
         assertArrayEquals(saved, Files.readAllBytes(output));
-        String error =
-                run(
-                        1,
-                        "import",
-                        source.toString(),
-                        "--format",
-                        "plate",
-                        "--plugin-dir",
-                        plugins.toString(),
-                        "--output",
-                        source.toString(),
-                        "--overwrite");
+        String error = run(
+                1,
+                "import",
+                source.toString(),
+                "--format",
+                "plate",
+                "--plugin-dir",
+                plugins.toString(),
+                "--output",
+                source.toString(),
+                "--overwrite");
         assertTrue(error.contains("must differ from its source"), error);
         assertEquals("60,40,4", Files.readString(source));
         Path gcode = directory.resolve("source.gcode");
         Files.writeString(gcode, "G21\nG90\nM82\nG1 Z0.2\nG1 X10 Y10 E1 F1200\n");
-        assertTrue(
-                run(0, "import", gcode.toString(), "--format", "gcode")
-                        .contains("deposition_moves=1"));
+        assertTrue(run(0, "import", gcode.toString(), "--format", "gcode").contains("deposition_moves=1"));
     }
 
     @Test
@@ -148,8 +123,7 @@ class WorkflowTest {
         assertArrayEquals(older, Files.readAllBytes(file));
         run(0, "edit", file.toString(), "--feature", "plate", "--field", "width", "--value", "61");
         byte[] upgraded = Files.readAllBytes(file);
-        var result =
-                DocumentProto.Document.parseFrom(Arrays.copyOfRange(upgraded, 44, upgraded.length));
+        var result = DocumentProto.Document.parseFrom(Arrays.copyOfRange(upgraded, 44, upgraded.length));
         assertEquals(Version.version(), result.getApplicationVersion());
         assertEquals(message.getDocumentId(), result.getDocumentId());
         assertEquals("plate", result.getFeatures(0).getId());
@@ -163,9 +137,9 @@ class WorkflowTest {
         assertArrayEquals(future, Files.readAllBytes(file));
     }
 
-    private static byte[] versioned(DocumentProto.Document document, String version)
-            throws Exception {
-        byte[] payload = document.toBuilder().setApplicationVersion(version).build().toByteArray();
+    private static byte[] versioned(DocumentProto.Document document, String version) throws Exception {
+        byte[] payload =
+                document.toBuilder().setApplicationVersion(version).build().toByteArray();
         return ByteBuffer.allocate(44 + payload.length)
                 .put(new byte[] {'J', 'C', 'A', 'D', 13, 10, 26, 10})
                 .putInt(payload.length)
@@ -188,54 +162,17 @@ class WorkflowTest {
         run(0, "extrude", file, "--id", "solid", "--sketch", "plate", "--distance", "5");
         run(0, "parameters", "set", file, "--name", "width", "--unit", "cm", "--expression", "6");
         run(0, "parameters", "set", file, "--name", "thickness", "--expression", "5");
-        run(
-                0,
-                "parameters",
-                "bind",
-                file,
-                "--feature",
-                "plate",
-                "--field",
-                "width",
-                "--expression",
-                "width");
-        run(
-                0,
-                "edit",
-                file,
-                "--feature",
-                "solid",
-                "--field",
-                "distance",
-                "--expression",
-                "thickness");
+        run(0, "parameters", "bind", file, "--feature", "plate", "--field", "width", "--expression", "width");
+        run(0, "edit", file, "--feature", "solid", "--field", "distance", "--expression", "thickness");
         run(0, "configurations", "add", file, "--name", "Large");
-        run(
-                0,
-                "configurations",
-                "set",
-                file,
-                "--name",
-                "Large",
-                "--parameter",
-                "width",
-                "--expression",
-                "8");
-        run(
-                0,
-                "configurations",
-                "set",
-                file,
-                "--name",
-                "Large",
-                "--parameter",
-                "thickness",
-                "--expression",
-                "8");
+        run(0, "configurations", "set", file, "--name", "Large", "--parameter", "width", "--expression", "8");
+        run(0, "configurations", "set", file, "--name", "Large", "--parameter", "thickness", "--expression", "8");
         run(0, "configurations", "activate", file, "--name", "Large");
         assertTrue(run(0, "parameters", "list", file).contains("width\tcm\texpression=8"));
         assertVolume(25600, run(0, "inspect", file));
-        var ids = DocumentReader.load(Path.of(file)).features().stream().map(Feature::id).toList();
+        var ids = DocumentReader.load(Path.of(file)).features().stream()
+                .map(Feature::id)
+                .toList();
         run(0, "sketch", "convert", file, "--sketch", "plate");
         assertVolume(25600, run(0, "inspect", file));
         run(0, "parameters", "rename", file, "--name", "width", "--to", "plateWidth");
@@ -250,7 +187,9 @@ class WorkflowTest {
         run(0, "configurations", "activate", file, "--name", "Large");
         assertEquals(
                 ids,
-                DocumentReader.load(Path.of(file)).features().stream().map(Feature::id).toList());
+                DocumentReader.load(Path.of(file)).features().stream()
+                        .map(Feature::id)
+                        .toList());
         Path output = directory.resolve("large variant.3mf");
         run(0, "export", file, "--format", "3mf", "--output", output.toString());
         assertTrue(Files.size(output) > 1000);
@@ -291,16 +230,7 @@ class WorkflowTest {
                 "10");
         run(0, "extrude", file, "--id", "oval", "--sketch", "ellipse", "--distance", "2");
         assertTrue(run(0, "inspect", file).contains("volume=314.159"));
-        run(
-                0,
-                "edit",
-                file,
-                "--feature",
-                "ellipse",
-                "--field",
-                "constraint:major",
-                "--value",
-                "12");
+        run(0, "edit", file, "--feature", "ellipse", "--field", "constraint:major", "--value", "12");
         assertTrue(run(0, "inspect", file).contains("volume=376.991"));
         run(0, "sketch", "new", file, "--id", "slot");
         run(
@@ -395,9 +325,9 @@ class WorkflowTest {
         var before = DocumentReader.load(Path.of(file));
         run(0, "extrude", file, "--id", "thickness", "--sketch", "plate", "--distance", "8");
         run(0, "sketch", "convert", file, "--sketch", "plate");
-        var converted = (Feature.Sketch) DocumentReader.load(Path.of(file)).features().getFirst();
-        assertEquals(
-                ((Feature.Sketch) before.features().getFirst()).profileId(), converted.profileId());
+        var converted =
+                (Feature.Sketch) DocumentReader.load(Path.of(file)).features().getFirst();
+        assertEquals(((Feature.Sketch) before.features().getFirst()).profileId(), converted.profileId());
         run(
                 0,
                 "sketch",
@@ -424,11 +354,9 @@ class WorkflowTest {
                 "FIX",
                 "--refs",
                 "hole");
-        assertTrue(
-                run(0, "sketch", "list", file, "--sketch", "plate").contains("Fully constrained"));
+        assertTrue(run(0, "sketch", "list", file, "--sketch", "plate").contains("Fully constrained"));
         assertTrue(run(0, "inspect", file, "--point", "10,10,4").contains("contains=false"));
-        var session =
-                new dev.voxelbrew.engine.model.ModelSession(DocumentReader.load(Path.of(file)));
+        var session = new dev.voxelbrew.engine.model.ModelSession(DocumentReader.load(Path.of(file)));
         try (var result = session.evaluate()) {
             assertEquals(
                     19099.469035085127,
@@ -436,23 +364,22 @@ class WorkflowTest {
                     0.01);
         }
         byte[] original = Files.readAllBytes(Path.of(file));
-        assertTrue(
-                run(
-                                1,
-                                "sketch",
-                                "constrain",
-                                file,
-                                "--sketch",
-                                "plate",
-                                "--id",
-                                "bad-width",
-                                "--type",
-                                "LENGTH",
-                                "--refs",
-                                "rectangle-bottom",
-                                "--value",
-                                "80")
-                        .contains("cannot satisfy"));
+        assertTrue(run(
+                        1,
+                        "sketch",
+                        "constrain",
+                        file,
+                        "--sketch",
+                        "plate",
+                        "--id",
+                        "bad-width",
+                        "--type",
+                        "LENGTH",
+                        "--refs",
+                        "rectangle-bottom",
+                        "--value",
+                        "80")
+                .contains("cannot satisfy"));
         assertArrayEquals(original, Files.readAllBytes(Path.of(file)));
         run(0, "edit", file, "--feature", "plate", "--field", "constraint:width", "--value", "80");
         original = Files.readAllBytes(Path.of(file));
@@ -484,10 +411,8 @@ class WorkflowTest {
                 "4",
                 "--y",
                 "5");
-        var profile =
-                (Feature.Constrained)
-                        ((Feature.Sketch) DocumentReader.load(Path.of(file)).features().getFirst())
-                                .profile();
+        var profile = (Feature.Constrained)
+                ((Feature.Sketch) DocumentReader.load(Path.of(file)).features().getFirst()).profile();
         assertEquals(4, profile.geometry().entity("rectangle-bottom").at(0).x(), 1e-6);
         assertEquals(5, profile.geometry().entity("rectangle-bottom").at(0).y(), 1e-6);
         run(0, "sketch", "solve", file, "--sketch", "plate");
@@ -506,24 +431,10 @@ class WorkflowTest {
         String polygon = directory.resolve("polygon.jcad").toString();
         run(0, "new", polygon);
         run(0, "sketch", "new", polygon, "--id", "hex");
-        run(
-                0,
-                "sketch",
-                "polygon",
-                polygon,
-                "--sketch",
-                "hex",
-                "--id",
-                "boundary",
-                "--radius",
-                "10",
-                "--sides",
-                "6");
+        run(0, "sketch", "polygon", polygon, "--sketch", "hex", "--id", "boundary", "--radius", "10", "--sides", "6");
         assertTrue(run(0, "sketch", "list", polygon, "--sketch", "hex").contains("POLYGON"));
         run(0, "extrude", polygon, "--id", "body", "--sketch", "hex", "--distance", "3");
-        try (var evaluation =
-                dev.voxelbrew.engine.model.Evaluator.evaluate(
-                        DocumentReader.load(Path.of(polygon)))) {
+        try (var evaluation = dev.voxelbrew.engine.model.Evaluator.evaluate(DocumentReader.load(Path.of(polygon)))) {
             assertEquals(
                     3 * Math.sqrt(3) / 2 * 100 * 3,
                     evaluation.requireCompleteDocument().getFirst().solid().volume(),
@@ -560,9 +471,7 @@ class WorkflowTest {
                 "10,0,0,0");
         run(0, "sketch", "profile", spline, "--sketch", "curve", "--entities", "spline,chord");
         run(0, "extrude", spline, "--id", "body", "--sketch", "curve", "--distance", "2");
-        try (var evaluation =
-                dev.voxelbrew.engine.model.Evaluator.evaluate(
-                        DocumentReader.load(Path.of(spline)))) {
+        try (var evaluation = dev.voxelbrew.engine.model.Evaluator.evaluate(DocumentReader.load(Path.of(spline)))) {
             assertEquals(
                     120, evaluation.requireCompleteDocument().getFirst().solid().volume(), 1e-6);
         }
@@ -571,8 +480,7 @@ class WorkflowTest {
     @Test
     void customProviderSurvivesFreshProcessesMissingPluginAndPrinting() throws Exception {
         Path plugins = Files.createDirectory(directory.resolve("feature plugins"));
-        Path jar = plugins.resolve("provider.jar"),
-                hidden = directory.resolve("removed provider.jar");
+        Path jar = plugins.resolve("provider.jar"), hidden = directory.resolve("removed provider.jar");
         Files.copy(Path.of(System.getProperty("voxelbrew.test.plugin")), jar);
         String file = directory.resolve("custom spacer.jcad").toString();
         String plugin = plugins.toString();
@@ -592,68 +500,34 @@ class WorkflowTest {
                 "height=5",
                 "--plugin-dir",
                 plugin);
-        run(
-                0,
-                "edit",
-                file,
-                "--feature",
-                "spacer",
-                "--field",
-                "height",
-                "--value",
-                "8",
-                "--plugin-dir",
-                plugin);
+        run(0, "edit", file, "--feature", "spacer", "--field", "height", "--value", "8", "--plugin-dir", plugin);
         var before = DocumentReader.load(Path.of(file));
         byte[] bytes = Files.readAllBytes(Path.of(file));
-        assertTrue(
-                run(
-                                1,
-                                "edit",
-                                file,
-                                "--feature",
-                                "spacer",
-                                "--field",
-                                "innerDiameter",
-                                "--value",
-                                "30",
-                                "--plugin-dir",
-                                plugin)
-                        .contains("innerDiameter"));
+        assertTrue(run(
+                        1,
+                        "edit",
+                        file,
+                        "--feature",
+                        "spacer",
+                        "--field",
+                        "innerDiameter",
+                        "--value",
+                        "30",
+                        "--plugin-dir",
+                        plugin)
+                .contains("innerDiameter"));
         assertArrayEquals(bytes, Files.readAllBytes(Path.of(file)));
-        assertTrue(
-                run(0, "inspect", file, "--point", "0,0,4", "--plugin-dir", plugin)
-                        .contains("contains=false"));
+        assertTrue(run(0, "inspect", file, "--point", "0,0,4", "--plugin-dir", plugin)
+                .contains("contains=false"));
         Path stl = directory.resolve("spacer.stl");
-        run(
-                0,
-                "export",
-                file,
-                "--format",
-                "stl",
-                "--output",
-                stl.toString(),
-                "--plugin-dir",
-                plugin);
+        run(0, "export", file, "--format", "stl", "--output", stl.toString(), "--plugin-dir", plugin);
         byte[] mesh = Files.readAllBytes(stl);
         assertTrue(mesh.length > 84);
         Files.move(jar, hidden);
-        assertTrue(
-                run(1, "history", file, "--plugin-dir", plugin)
-                        .contains("Missing feature provider"));
+        assertTrue(run(1, "history", file, "--plugin-dir", plugin).contains("Missing feature provider"));
         run(1, "cursor", file, "--position", "1", "--plugin-dir", plugin);
         assertEquals(before, DocumentReader.load(Path.of(file)));
-        run(
-                1,
-                "export",
-                file,
-                "--format",
-                "stl",
-                "--output",
-                stl.toString(),
-                "--overwrite",
-                "--plugin-dir",
-                plugin);
+        run(1, "export", file, "--format", "stl", "--output", stl.toString(), "--overwrite", "--plugin-dir", plugin);
         assertArrayEquals(mesh, Files.readAllBytes(stl));
         Files.move(hidden, jar);
         assertTrue(run(0, "inspect", file, "--plugin-dir", plugin).contains("spacer.body"));
@@ -673,20 +547,18 @@ class WorkflowTest {
                 plugin);
         run(0, "validate", file, "--plugin-dir", plugin);
         String job = directory.resolve("spacer.gcode").toString();
-        assertTrue(
-                run(
-                                0,
-                                "slice",
-                                file,
-                                "--output",
-                                job,
-                                "--slicer",
-                                dev.voxelbrew.exporter.printing.PrusaSlicerBackend
-                                        .defaultExecutable()
-                                        .toString(),
-                                "--plugin-dir",
-                                plugin)
-                        .contains("model_layers=40"));
+        assertTrue(run(
+                        0,
+                        "slice",
+                        file,
+                        "--output",
+                        job,
+                        "--slicer",
+                        dev.voxelbrew.exporter.printing.PrusaSlicerBackend.defaultExecutable()
+                                .toString(),
+                        "--plugin-dir",
+                        plugin)
+                .contains("model_layers=40"));
     }
 
     @Test
@@ -696,39 +568,20 @@ class WorkflowTest {
                 threeMf = directory.resolve("plate.3mf");
         run(0, "new", file.toString());
         run(0, "rectangle", file.toString(), "--id", "plate", "--width", "60", "--height", "40");
-        run(
-                0,
-                "extrude",
-                file.toString(),
-                "--id",
-                "thickness",
-                "--sketch",
-                "plate",
-                "--distance",
-                "8");
+        run(0, "extrude", file.toString(), "--id", "thickness", "--sketch", "plate", "--distance", "8");
         assertTrue(run(0, "exporters", "--plugin-dir", directory.toString()).contains("3mf"));
         run(0, "export", file.toString(), "--format", "stl", "--output", stl.toString());
         byte[] bytes = Files.readAllBytes(stl);
-        assertTrue(
-                run(1, "export", file.toString(), "--format", "stl", "--output", stl.toString())
-                        .contains("overwrite"));
+        assertTrue(run(1, "export", file.toString(), "--format", "stl", "--output", stl.toString())
+                .contains("overwrite"));
         assertArrayEquals(bytes, Files.readAllBytes(stl));
         run(0, "export", file.toString(), "--format", "3mf", "--output", threeMf.toString());
         try (var zip = new java.util.zip.ZipFile(threeMf.toFile())) {
             assertNotNull(zip.getEntry("3D/3dmodel.model"));
         }
         run(0, "cursor", file.toString(), "--position", "1");
-        assertTrue(
-                run(
-                                1,
-                                "export",
-                                file.toString(),
-                                "--format",
-                                "stl",
-                                "--output",
-                                stl.toString(),
-                                "--overwrite")
-                        .contains("timeline"));
+        assertTrue(run(1, "export", file.toString(), "--format", "stl", "--output", stl.toString(), "--overwrite")
+                .contains("timeline"));
         assertArrayEquals(bytes, Files.readAllBytes(stl));
     }
 
@@ -737,78 +590,28 @@ class WorkflowTest {
         Path file = directory.resolve("reference part.jcad");
         run(0, "new", file.toString());
         run(0, "rectangle", file.toString(), "--id", "plate", "--width", "60", "--height", "40");
-        run(
-                0,
-                "extrude",
-                file.toString(),
-                "--id",
-                "thickness",
-                "--sketch",
-                "plate",
-                "--distance",
-                "5");
-        run(
-                0,
-                "circle",
-                file.toString(),
-                "--id",
-                "hole",
-                "--center-x",
-                "10",
-                "--center-y",
-                "10",
-                "--diameter",
-                "4");
-        run(
-                0,
-                "cut",
-                file.toString(),
-                "--id",
-                "cut",
-                "--sketch",
-                "hole",
-                "--body-feature",
-                "thickness");
+        run(0, "extrude", file.toString(), "--id", "thickness", "--sketch", "plate", "--distance", "5");
+        run(0, "circle", file.toString(), "--id", "hole", "--center-x", "10", "--center-y", "10", "--diameter", "4");
+        run(0, "cut", file.toString(), "--id", "cut", "--sketch", "hole", "--body-feature", "thickness");
         var before = DocumentReader.load(file);
         var ids = before.features().stream().map(Feature::id).toList();
         assertEquals(Arrays.asList("plate", "thickness", "hole", "cut"), ids);
         assertTrue(run(0, "inspect", file.toString()).contains("volume=11937.168146928205"));
-        run(
-                0,
-                "edit",
-                file.toString(),
-                "--feature",
-                "thickness",
-                "--field",
-                "distance",
-                "--value",
-                "8");
+        run(0, "edit", file.toString(), "--feature", "thickness", "--field", "distance", "--value", "8");
         var reopened = DocumentReader.load(file);
         assertEquals(before.id(), reopened.id());
         assertEquals(ids, reopened.features().stream().map(Feature::id).toList());
         String measurements = run(0, "inspect", file.toString(), "--point", "10,10,4");
         assertTrue(measurements.contains("volume=19099.469035085127"), measurements);
-        assertTrue(
-                measurements.contains(
-                        "bounds=0.000000000,0.000000000,0.000000000,60.000000000,40.000000000,8.000000000"));
+        assertTrue(measurements.contains(
+                "bounds=0.000000000,0.000000000,0.000000000,60.000000000,40.000000000,8.000000000"));
         assertTrue(measurements.contains("contains=false"));
-        assertTrue(
-                run(0, "inspect", file.toString(), "--point", "13,10,4").contains("contains=true"));
+        assertTrue(run(0, "inspect", file.toString(), "--point", "13,10,4").contains("contains=true"));
         run(0, "cursor", file.toString(), "--position", "3");
         assertTrue(run(0, "inspect", file.toString()).contains("volume=19200.000000000000"));
         run(0, "cursor", file.toString(), "--position", "4");
         byte[] good = Files.readAllBytes(file);
-        String invalid =
-                run(
-                        1,
-                        "edit",
-                        file.toString(),
-                        "--feature",
-                        "hole",
-                        "--field",
-                        "diameter",
-                        "--value",
-                        "NaN");
+        String invalid = run(1, "edit", file.toString(), "--feature", "hole", "--field", "diameter", "--value", "NaN");
         assertTrue(invalid.contains("hole") && invalid.contains("diameter"));
         assertArrayEquals(good, Files.readAllBytes(file));
         String history = run(0, "history", file.toString());
@@ -823,23 +626,11 @@ class WorkflowTest {
         Path file = directory.resolve("repair.jcad");
         run(0, "new", file.toString());
         run(0, "rectangle", file.toString(), "--id", "plate", "--width", "60", "--height", "40");
-        run(
-                0,
-                "extrude",
-                file.toString(),
-                "--id",
-                "thickness",
-                "--sketch",
-                "plate",
-                "--distance",
-                "8");
+        run(0, "extrude", file.toString(), "--id", "thickness", "--sketch", "plate", "--distance", "8");
         var document = DocumentReader.load(file);
         var features = new ArrayList<>(document.features());
-        features.set(
-                1,
-                new Feature.Extrude("thickness", new Feature.ProfileRef("missing", "profile"), 8));
-        DocumentWriter.save(
-                new dev.voxelbrew.engine.model.CadDocument(document.id(), features, 2), file, true);
+        features.set(1, new Feature.Extrude("thickness", new Feature.ProfileRef("missing", "profile"), 8));
+        DocumentWriter.save(new dev.voxelbrew.engine.model.CadDocument(document.id(), features, 2), file, true);
         assertTrue(run(1, "history", file.toString()).contains("FAILED"));
         run(0, "repair", file.toString(), "--feature", "thickness", "--sketch", "plate");
         assertTrue(run(0, "inspect", file.toString()).contains("volume=19200.000000000000"));
@@ -852,18 +643,7 @@ class WorkflowTest {
         run(0, "new", file);
         run(0, "rectangle", file, "--id", "plate", "--width", "60", "--height", "40");
         run(0, "extrude", file, "--id", "thickness", "--sketch", "plate", "--distance", "8");
-        run(
-                0,
-                "circle",
-                file,
-                "--id",
-                "hole",
-                "--center-x",
-                "10",
-                "--center-y",
-                "10",
-                "--diameter",
-                "4");
+        run(0, "circle", file, "--id", "hole", "--center-x", "10", "--center-y", "10", "--diameter", "4");
         run(0, "cut", file, "--id", "cut", "--sketch", "hole", "--body-feature", "thickness");
         run(0, "split", file, "--id", "halves", "--body-feature", "cut", "--offset", "30");
         assertTrue(run(0, "inspect", file).contains("halves.negative"));
@@ -887,30 +667,8 @@ class WorkflowTest {
                 "halves.positive",
                 "--output",
                 directory.resolve("right.stl").toString());
-        run(
-                0,
-                "place",
-                file,
-                "--instance",
-                "left",
-                "--body",
-                "halves.negative",
-                "--x",
-                "20",
-                "--y",
-                "30");
-        run(
-                0,
-                "place",
-                file,
-                "--instance",
-                "right",
-                "--body",
-                "halves.positive",
-                "--x",
-                "30",
-                "--y",
-                "30");
+        run(0, "place", file, "--instance", "left", "--body", "halves.negative", "--x", "20", "--y", "30");
+        run(0, "place", file, "--instance", "right", "--body", "halves.positive", "--x", "30", "--y", "30");
         run(
                 0,
                 "support",
@@ -931,16 +689,12 @@ class WorkflowTest {
         assertTrue(run(0, "print-setup", file).contains("PETG"));
         assertTrue(run(0, "validate", file).contains("VALID"));
         String output = directory.resolve("CLI real job.gcode").toString();
-        String slicer =
-                dev.voxelbrew.exporter.printing.PrusaSlicerBackend.defaultExecutable().toString();
-        assertTrue(
-                run(0, "slice", file, "--output", output, "--slicer", slicer)
-                        .contains("model_layers=40"));
+        String slicer = dev.voxelbrew.exporter.printing.PrusaSlicerBackend.defaultExecutable()
+                .toString();
+        assertTrue(run(0, "slice", file, "--output", output, "--slicer", slicer).contains("model_layers=40"));
         assertTrue(run(0, "inspect-job", output).contains("material=PETG"));
         byte[] original = Files.readAllBytes(Path.of(output));
-        assertTrue(
-                run(1, "slice", file, "--output", output, "--slicer", slicer)
-                        .contains("overwrite"));
+        assertTrue(run(1, "slice", file, "--output", output, "--slicer", slicer).contains("overwrite"));
         assertArrayEquals(original, Files.readAllBytes(Path.of(output)));
         run(0, "remove-instance", file, "--instance", "left");
         assertTrue(run(1, "validate", file).contains("MISSING_INSTANCE"));
@@ -958,11 +712,10 @@ class WorkflowTest {
         command.add(VoxelBrew.class.getName());
         command.addAll(Arrays.asList(args));
         Path log = Files.createTempFile(directory, "command-", ".txt");
-        Process process =
-                new ProcessBuilder(command)
-                        .redirectErrorStream(true)
-                        .redirectOutput(log.toFile())
-                        .start();
+        Process process = new ProcessBuilder(command)
+                .redirectErrorStream(true)
+                .redirectOutput(log.toFile())
+                .start();
         if (!process.waitFor(30, TimeUnit.SECONDS)) {
             process.destroyForcibly();
             fail("CLI timed out: " + command);

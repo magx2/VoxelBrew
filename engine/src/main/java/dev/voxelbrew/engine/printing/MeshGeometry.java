@@ -21,12 +21,8 @@ public final class MeshGeometry {
     }
 
     public static Bounds bounds(MeshData mesh) {
-        double[] min = {
-            Double.POSITIVE_INFINITY, Double.POSITIVE_INFINITY, Double.POSITIVE_INFINITY
-        };
-        double[] max = {
-            Double.NEGATIVE_INFINITY, Double.NEGATIVE_INFINITY, Double.NEGATIVE_INFINITY
-        };
+        double[] min = {Double.POSITIVE_INFINITY, Double.POSITIVE_INFINITY, Double.POSITIVE_INFINITY};
+        double[] max = {Double.NEGATIVE_INFINITY, Double.NEGATIVE_INFINITY, Double.NEGATIVE_INFINITY};
         for (int v = 0; v < mesh.vertexCount(); v++)
             for (int axis = 0; axis < 3; axis++) {
                 min[axis] = Math.min(min[axis], mesh.coordinate(v, axis));
@@ -36,19 +32,12 @@ public final class MeshGeometry {
     }
 
     public static MeshData box(SupportVolume box) {
-        double x = box.x(),
-                y = box.y(),
-                z = box.z(),
-                a = x + box.width(),
-                b = y + box.depth(),
-                c = z + box.height();
+        double x = box.x(), y = box.y(), z = box.z(), a = x + box.width(), b = y + box.depth(), c = z + box.height();
         return new MeshData(
-                new double[] {
-                    x, y, z, a, y, z, a, b, z, x, b, z, x, y, c, a, y, c, a, b, c, x, b, c
-                },
+                new double[] {x, y, z, a, y, z, a, b, z, x, b, z, x, y, c, a, y, c, a, b, c, x, b, c},
                 new int[] {
-                    0, 2, 1, 0, 3, 2, 4, 5, 6, 4, 6, 7, 0, 1, 5, 0, 5, 4, 1, 2, 6, 1, 6, 5, 2, 3, 7,
-                    2, 7, 6, 3, 0, 4, 3, 4, 7
+                    0, 2, 1, 0, 3, 2, 4, 5, 6, 4, 6, 7, 0, 1, 5, 0, 5, 4, 1, 2, 6, 1, 6, 5, 2, 3, 7, 2, 7, 6, 3, 0, 4,
+                    3, 4, 7
                 },
                 new int[] {0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5});
     }
@@ -67,24 +56,20 @@ public final class MeshGeometry {
                 if (n == null) {
                     n = next;
                     int v = world.vertexIndex(t, 0);
-                    plane =
-                            n[0] * world.coordinate(v, 0)
-                                    + n[1] * world.coordinate(v, 1)
-                                    + n[2] * world.coordinate(v, 2);
+                    plane = n[0] * world.coordinate(v, 0)
+                            + n[1] * world.coordinate(v, 1)
+                            + n[2] * world.coordinate(v, 2);
                 } else if (n[0] * next[0] + n[1] * next[1] + n[2] * next[2] < 1 - 1e-8)
                     throw new IllegalArgumentException("Selected face is not planar");
                 for (int corner = 0; corner < 3; corner++) {
                     int v = world.vertexIndex(t, corner);
-                    double d =
-                            n[0] * world.coordinate(v, 0)
-                                    + n[1] * world.coordinate(v, 1)
-                                    + n[2] * world.coordinate(v, 2);
-                    if (Math.abs(d - plane) > 0.001)
-                        throw new IllegalArgumentException("Selected face is not planar");
+                    double d = n[0] * world.coordinate(v, 0)
+                            + n[1] * world.coordinate(v, 1)
+                            + n[2] * world.coordinate(v, 2);
+                    if (Math.abs(d - plane) > 0.001) throw new IllegalArgumentException("Selected face is not planar");
                 }
             }
-        if (n == null)
-            throw new IllegalArgumentException("Face is unavailable in this revision: " + face);
+        if (n == null) throw new IllegalArgumentException("Face is unavailable in this revision: " + face);
         double cos = -n[2], vx = -n[1], vy = n[0], vz = 0;
         Transform rotation;
         if (cos < -1 + 1e-10) rotation = Transform.rotation(180, 0, 0);
@@ -94,8 +79,7 @@ public final class MeshGeometry {
             for (int row = 0; row < 3; row++)
                 for (int col = 0; col < 3; col++) {
                     r[4 * row + col] = (row == col ? 1 : 0) + k[row][col];
-                    for (int i = 0; i < 3; i++)
-                        r[4 * row + col] += k[row][i] * k[i][col] / (1 + cos);
+                    for (int i = 0; i < 3; i++) r[4 * row + col] += k[row][i] * k[i][col] / (1 + cos);
                 }
             rotation = new Transform(r);
         }
@@ -103,8 +87,7 @@ public final class MeshGeometry {
         var before = bounds(world);
         var after = bounds(transform(mesh, placed));
         if (Math.abs(-plane - after.minZ()) > 0.001)
-            throw new IllegalArgumentException(
-                    "Selected face cannot lie on the bed without putting material below it");
+            throw new IllegalArgumentException("Selected face cannot lie on the bed without putting material below it");
         return Transform.translation(
                         (before.minX() + before.maxX() - after.minX() - after.maxX()) / 2,
                         (before.minY() + before.maxY() - after.minY() - after.maxY()) / 2,

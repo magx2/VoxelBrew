@@ -35,7 +35,8 @@ final class SketchCommands implements Runnable {
     @javax.inject.Inject
     SketchCommands() {}
 
-    @Spec CommandLine.Model.CommandSpec spec;
+    @Spec
+    CommandLine.Model.CommandSpec spec;
 
     public void run() {
         spec.commandLine().usage(spec.commandLine().getOut());
@@ -62,17 +63,10 @@ final class SketchCommands implements Runnable {
         @Option(names = "--tool", required = true, description = "${COMPLETION-CANDIDATES}")
         SketchTools.Tool tool;
 
-        @Option(
-                names = "--points",
-                required = true,
-                split = ",",
-                description = "Ordered x,y pairs in millimeters")
+        @Option(names = "--points", required = true, split = ",", description = "Ordered x,y pairs in millimeters")
         List<Double> points;
 
-        @Option(
-                names = "--refs",
-                split = ",",
-                description = "Selected lines, tangent endpoint, or text path")
+        @Option(names = "--refs", split = ",", description = "Selected lines, tangent endpoint, or text path")
         List<String> refs = List.of();
 
         @Option(names = "--sides", defaultValue = "6")
@@ -99,10 +93,7 @@ final class SketchCommands implements Runnable {
         @Option(names = "--font", defaultValue = "SansSerif")
         String font;
 
-        @Option(
-                names = "--style",
-                defaultValue = "0",
-                description = "0 regular, 1 bold, 2 italic, 3 bold italic")
+        @Option(names = "--style", defaultValue = "0", description = "0 regular, 1 bold, 2 italic, 3 bold italic")
         int style;
 
         @Option(names = "--height", defaultValue = "10")
@@ -111,18 +102,13 @@ final class SketchCommands implements Runnable {
         @Option(names = "--angle", defaultValue = "0", description = "Text rotation in degrees")
         double angle;
 
-        @Option(
-                names = "--spacing",
-                defaultValue = "0",
-                description = "Extra text character spacing in em")
+        @Option(names = "--spacing", defaultValue = "0", description = "Extra text character spacing in em")
         double spacing;
 
         public Integer call() throws Exception {
-            if (points.size() % 2 != 0)
-                throw new IllegalArgumentException("Points must be x,y pairs");
+            if (points.size() % 2 != 0) throw new IllegalArgumentException("Points must be x,y pairs");
             var positions = new ArrayList<Vec>();
-            for (int i = 0; i < points.size(); i += 2)
-                positions.add(new Vec(points.get(i), points.get(i + 1)));
+            for (int i = 0; i < points.size(); i += 2) positions.add(new Vec(points.get(i), points.get(i + 1)));
             var session = session();
             return publish(
                     session,
@@ -151,8 +137,7 @@ final class SketchCommands implements Runnable {
     @Command(
             name = "text-edit",
             mixinStandardHelpOptions = true,
-            description =
-                    "Change persisted sketch text while preserving its identity and dimensions")
+            description = "Change persisted sketch text while preserving its identity and dimensions")
     static final class EditText extends EditSketch {
 
         @javax.inject.Inject
@@ -169,9 +154,7 @@ final class SketchCommands implements Runnable {
         @Option(names = "--font")
         String font;
 
-        @Option(
-                names = "--path",
-                description = "Replacement text path ID; an empty value detaches it")
+        @Option(names = "--path", description = "Replacement text path ID; an empty value detaches it")
         String path;
 
         public Integer call() throws Exception {
@@ -180,19 +163,18 @@ final class SketchCommands implements Runnable {
             var e = g.entity(id);
             if (e.kind() != Kind.TEXT) throw new IllegalArgumentException("Select a text entity");
             var data = e.text();
-            var edited =
-                    SketchText.create(
-                            id,
-                            text,
-                            font == null ? data.font() : font,
-                            data.style(),
-                            e.value(0),
-                            e.value(1),
-                            e.value(2),
-                            e.value(3),
-                            e.value(4),
-                            path == null ? data.pathId() : path,
-                            e.construction());
+            var edited = SketchText.create(
+                    id,
+                    text,
+                    font == null ? data.font() : font,
+                    data.style(),
+                    e.value(0),
+                    e.value(1),
+                    e.value(2),
+                    e.value(3),
+                    e.value(4),
+                    path == null ? data.pathId() : path,
+                    e.construction());
             return publish(session, g.replace(edited));
         }
     }
@@ -216,24 +198,18 @@ final class SketchCommands implements Runnable {
 
         int publish(ModelSession session, SketchGeometry geometry) throws Exception {
             var sketch = selected(session);
-            var parameters =
-                    dev.voxelbrew.engine.parameters.FeatureDimensions.convert(
-                                    sketch, session.document().parameters())
-                            .parameters();
-            parameters =
-                    dev.voxelbrew.engine.parameters.FeatureDimensions.retainSketchBindings(
-                            parameters, sketch.id(), geometry);
+            var parameters = dev.voxelbrew.engine.parameters.FeatureDimensions.convert(
+                            sketch, session.document().parameters())
+                    .parameters();
+            parameters = dev.voxelbrew.engine.parameters.FeatureDimensions.retainSketchBindings(
+                    parameters, sketch.id(), geometry);
             geometry =
-                    dev.voxelbrew.engine.parameters.FeatureDimensions.resolveSketch(
-                            geometry, sketch.id(), parameters);
+                    dev.voxelbrew.engine.parameters.FeatureDimensions.resolveSketch(geometry, sketch.id(), parameters);
             var result = SketchSolver.solve(geometry);
             var solved = result.requireSolved();
             session.replace(
                     new Feature.Sketch(
-                            sketch.id(),
-                            sketch.profileId(),
-                            sketch.plane(),
-                            new Feature.Constrained(solved)),
+                            sketch.id(), sketch.profileId(), sketch.plane(), new Feature.Constrained(solved)),
                     parameters);
             spec.commandLine().getOut().println(result.status());
             return save(session);
@@ -241,23 +217,17 @@ final class SketchCommands implements Runnable {
 
         SketchGeometry geometry(ModelSession session) {
             var document = session.document();
-            var sketch =
-                    (Feature.Sketch)
-                            dev.voxelbrew.engine.parameters.FeatureDimensions.resolve(
-                                    selected(session),
-                                    document.features(),
-                                    document.parameters(),
-                                    document.parameters().values());
-            return dev.voxelbrew.engine.parameters.FeatureDimensions.convert(
-                            sketch, document.parameters())
+            var sketch = (Feature.Sketch) dev.voxelbrew.engine.parameters.FeatureDimensions.resolve(
+                    selected(session),
+                    document.features(),
+                    document.parameters(),
+                    document.parameters().values());
+            return dev.voxelbrew.engine.parameters.FeatureDimensions.convert(sketch, document.parameters())
                     .geometry();
         }
     }
 
-    @Command(
-            name = "new",
-            mixinStandardHelpOptions = true,
-            description = "Add an empty constrained sketch")
+    @Command(name = "new", mixinStandardHelpOptions = true, description = "Add an empty constrained sketch")
     static final class Create extends VoxelBrew.AddSketch {
 
         @javax.inject.Inject
@@ -311,10 +281,7 @@ final class SketchCommands implements Runnable {
         @Option(names = "--construction")
         boolean construction;
 
-        @Option(
-                names = "--degree",
-                defaultValue = "3",
-                description = "Control spline degree: 3 or 5")
+        @Option(names = "--degree", defaultValue = "3", description = "Control spline degree: 3 or 5")
         int degree;
 
         @Option(names = "--closed", description = "Close a fit/control spline")
@@ -322,29 +289,28 @@ final class SketchCommands implements Runnable {
 
         @Option(
                 names = "--replace",
-                description =
-                        "Replace an existing entity; reject edits that conflict with constraints")
+                description = "Replace an existing entity; reject edits that conflict with constraints")
         boolean replace;
 
         public Integer call() throws Exception {
             var session = session();
             var g = geometry(session);
-            var entity =
-                    new Entity(
-                            id,
-                            kind,
-                            values,
-                            construction || kind == Kind.POINT,
-                            kind == Kind.CONTROL_SPLINE ? degree : 0,
-                            closed,
-                            null);
+            var entity = new Entity(
+                    id,
+                    kind,
+                    values,
+                    construction || kind == Kind.POINT,
+                    kind == Kind.CONTROL_SPLINE ? degree : 0,
+                    closed,
+                    null);
             if (replace) {
                 var previous = g.entity(id);
                 if (previous.kind() != kind)
                     throw new IllegalArgumentException(
                             "Changing an entity's kind would invalidate references; remove it first");
                 if (entity.construction())
-                    g = g.withBoundary(g.boundary().stream().filter(e -> !e.equals(id)).toList());
+                    g = g.withBoundary(
+                            g.boundary().stream().filter(e -> !e.equals(id)).toList());
                 g = Sketches.reshape(g, entity).requireSolved();
             } else {
                 g = g.add(entity);
@@ -384,10 +350,7 @@ final class SketchCommands implements Runnable {
         @Option(names = "--refs", required = true, split = ",")
         List<String> refs;
 
-        @Option(
-                names = "--value",
-                defaultValue = "0",
-                description = "Driving value in mm, or degrees for ANGLE")
+        @Option(names = "--value", defaultValue = "0", description = "Driving value in mm, or degrees for ANGLE")
         double value;
 
         @Option(names = "--tangency", description = "Optional circle/circle tangency branch")
@@ -396,20 +359,15 @@ final class SketchCommands implements Runnable {
         public Integer call() throws Exception {
             var session = session();
             var g = geometry(session);
-            var constraint =
-                    SketchConstraints.create(
-                            g, id, type, refs.stream().map(Ref::parse).toList(), value);
+            var constraint = SketchConstraints.create(
+                    g, id, type, refs.stream().map(Ref::parse).toList(), value);
             if (tangency != null) {
                 if (type != Type.TANGENT
                         || constraint.refs().size() != 2
                         || constraint.refs().stream()
-                                .anyMatch(
-                                        r ->
-                                                r.part() != Part.OBJECT
-                                                        || g.entity(r.entityId()).kind()
-                                                                != Kind.CIRCLE))
-                    throw new IllegalArgumentException(
-                            "--tangency requires two whole circles and TANGENT");
+                                .anyMatch(r -> r.part() != Part.OBJECT
+                                        || g.entity(r.entityId()).kind() != Kind.CIRCLE))
+                    throw new IllegalArgumentException("--tangency requires two whole circles and TANGENT");
                 constraint = constraint.withValue(tangency == Tangency.EXTERNAL ? 1 : -1);
             }
             return publish(session, g.add(constraint));
@@ -437,8 +395,9 @@ final class SketchCommands implements Runnable {
                 throw new IllegalArgumentException("Missing constraint: " + id);
             return publish(
                     session,
-                    g.withConstraints(
-                            g.constraints().stream().filter(c -> !c.id().equals(id)).toList()));
+                    g.withConstraints(g.constraints().stream()
+                            .filter(c -> !c.id().equals(id))
+                            .toList()));
         }
     }
 
@@ -465,8 +424,7 @@ final class SketchCommands implements Runnable {
     @Command(
             name = "profile",
             mixinStandardHelpOptions = true,
-            description =
-                    "Select one closed exterior and optional interior holes for extrusion/cutting")
+            description = "Select one closed exterior and optional interior holes for extrusion/cutting")
     static final class Profile extends EditSketch {
 
         @javax.inject.Inject
@@ -505,8 +463,7 @@ final class SketchCommands implements Runnable {
     @Command(
             name = "list",
             mixinStandardHelpOptions = true,
-            description =
-                    "List entity IDs, constraints, profile selection, degrees of freedom and conflicts")
+            description = "List entity IDs, constraints, profile selection, degrees of freedom and conflicts")
     static final class Listing extends EditSketch {
 
         @javax.inject.Inject
@@ -520,29 +477,17 @@ final class SketchCommands implements Runnable {
             var solved = SketchSolver.solve(g);
             output.println(solved.status());
             g.entities()
-                    .forEach(
-                            e ->
-                                    output.println(
-                                            "ENTITY "
-                                                    + e.id()
-                                                    + " "
-                                                    + e.kind().name()
-                                                    + " "
-                                                    + e.values()
-                                                    + " construction="
-                                                    + e.construction()));
+                    .forEach(e -> output.println("ENTITY "
+                            + e.id()
+                            + " "
+                            + e.kind().name()
+                            + " "
+                            + e.values()
+                            + " construction="
+                            + e.construction()));
             g.constraints()
-                    .forEach(
-                            c ->
-                                    output.println(
-                                            "CONSTRAINT "
-                                                    + c.id()
-                                                    + " "
-                                                    + c.type().name()
-                                                    + " "
-                                                    + c.refs()
-                                                    + " "
-                                                    + c.values()));
+                    .forEach(c -> output.println(
+                            "CONSTRAINT " + c.id() + " " + c.type().name() + " " + c.refs() + " " + c.values()));
             output.println("PROFILE " + g.boundary());
             solved.problems().forEach(p -> spec.commandLine().getErr().println(p.message()));
             return solved.solved() ? 0 : 1;

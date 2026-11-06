@@ -78,21 +78,19 @@ final class ViewCube extends Pane {
             for (int y = -1; y <= 1; y++)
                 for (int x = -1; x <= 1; x++) if (x != 0 || y != 0 || z != 0) addPatch(x, y, z);
 
-        surface.setOnMousePressed(
-                e -> {
-                    if (e.getButton() != MouseButton.PRIMARY) return;
-                    lastX = e.getScreenX();
-                    lastY = e.getScreenY();
-                    e.consume();
-                });
-        surface.setOnMouseDragged(
-                e -> {
-                    if (!e.isPrimaryButtonDown()) return;
-                    orbit.accept(e.getScreenX() - lastX, e.getScreenY() - lastY);
-                    lastX = e.getScreenX();
-                    lastY = e.getScreenY();
-                    e.consume();
-                });
+        surface.setOnMousePressed(e -> {
+            if (e.getButton() != MouseButton.PRIMARY) return;
+            lastX = e.getScreenX();
+            lastY = e.getScreenY();
+            e.consume();
+        });
+        surface.setOnMouseDragged(e -> {
+            if (!e.isPrimaryButtonDown()) return;
+            orbit.accept(e.getScreenX() - lastX, e.getScreenY() - lastY);
+            lastX = e.getScreenX();
+            lastY = e.getScreenY();
+            e.consume();
+        });
 
         var homeIcon = new SVGPath();
         homeIcon.setContent("M1 7 L8 1 L15 7 M3 6 L3 15 L6 15 L6 10 L10 10 L10 15 L13 15 L13 6");
@@ -112,8 +110,7 @@ final class ViewCube extends Pane {
         menu.getStyleClass().add("view-cube-control");
         menu.setAccessibleText(translations.text("gui.standard_views"));
         UiHelp.menu(menu, translations);
-        for (String name :
-                new String[] {"Isometric", "Top", "Front", "Right", "Back", "Left", "Bottom"}) {
+        for (String name : new String[] {"Isometric", "Top", "Front", "Right", "Back", "Left", "Bottom"}) {
             var item = new MenuItem(UiText.view(translations, name));
             UiHelp.menuItem(item, translations.text("help.standard-view"));
             item.setOnAction(e -> navigate.accept(ViewOrientation.named(name)));
@@ -154,18 +151,14 @@ final class ViewCube extends Pane {
         } else if (fixed.size() == 2) {
             for (int[] corner : new int[][] {{0, -1}, {1, -1}, {1, 1}, {0, 1}}) {
                 double[] v = {0, 0, 0};
-                for (int i = 0; i < 2; i++)
-                    v[fixed.get(i)] = signs[fixed.get(i)] * (i == corner[0] ? OUTER : INNER);
+                for (int i = 0; i < 2; i++) v[fixed.get(i)] = signs[fixed.get(i)] * (i == corner[0] ? OUTER : INNER);
                 v[free.getFirst()] = corner[1] * INNER;
                 vertices.add(new Point3D(v[0], v[1], v[2]));
             }
         } else {
             for (int i = 0; i < 3; i++)
-                vertices.add(
-                        new Point3D(
-                                x * (i == 0 ? OUTER : INNER),
-                                y * (i == 1 ? OUTER : INNER),
-                                z * (i == 2 ? OUTER : INNER)));
+                vertices.add(new Point3D(
+                        x * (i == 0 ? OUTER : INNER), y * (i == 1 ? OUTER : INNER), z * (i == 2 ? OUTER : INNER)));
         }
         var names = new ArrayList<String>();
         if (z != 0) names.add(z > 0 ? "Top" : "Bottom");
@@ -177,16 +170,10 @@ final class ViewCube extends Pane {
         polygon.setCursor(Cursor.HAND);
         polygon.setFocusTraversable(true);
         polygon.setAccessibleRole(AccessibleRole.BUTTON);
-        polygon.setAccessibleText(
-                translations.text("view.accessible", UiText.view(translations, name)));
-        Tooltip.install(
-                polygon,
-                UiHelp.tooltip(translations.text("view.orbit", UiText.view(translations, name))));
+        polygon.setAccessibleText(translations.text("view.accessible", UiText.view(translations, name)));
+        Tooltip.install(polygon, UiHelp.tooltip(translations.text("view.orbit", UiText.view(translations, name))));
         Text label =
-                fixed.size() == 1
-                        ? new Text(
-                                UiText.view(translations, name).toUpperCase(translations.locale()))
-                        : null;
+                fixed.size() == 1 ? new Text(UiText.view(translations, name).toUpperCase(translations.locale())) : null;
         if (label != null) {
             label.setFont(Font.font("SansSerif", FontWeight.SEMI_BOLD, 10));
             labels.getChildren().add(label);
@@ -196,21 +183,19 @@ final class ViewCube extends Pane {
         surface.getChildren().add(polygon);
         polygon.hoverProperty().addListener((o, before, after) -> paint(patch));
         polygon.focusedProperty().addListener((o, before, after) -> paint(patch));
-        polygon.setOnMouseClicked(
-                e -> {
-                    if (e.getButton() == MouseButton.PRIMARY && e.isStillSincePress()) {
-                        polygon.requestFocus();
-                        navigate.accept(ViewOrientation.lookingFrom(x, y, z));
-                    }
-                    e.consume();
-                });
-        polygon.setOnKeyPressed(
-                e -> {
-                    if (e.getCode() == KeyCode.ENTER || e.getCode() == KeyCode.SPACE) {
-                        navigate.accept(ViewOrientation.lookingFrom(x, y, z));
-                        e.consume();
-                    }
-                });
+        polygon.setOnMouseClicked(e -> {
+            if (e.getButton() == MouseButton.PRIMARY && e.isStillSincePress()) {
+                polygon.requestFocus();
+                navigate.accept(ViewOrientation.lookingFrom(x, y, z));
+            }
+            e.consume();
+        });
+        polygon.setOnKeyPressed(e -> {
+            if (e.getCode() == KeyCode.ENTER || e.getCode() == KeyCode.SPACE) {
+                navigate.accept(ViewOrientation.lookingFrom(x, y, z));
+                e.consume();
+            }
+        });
     }
 
     private void render() {
@@ -219,12 +204,10 @@ final class ViewCube extends Pane {
             double[] end = {0, 0, 0};
             end[axis] = 20;
             var p = orientation.project(new Point3D(end[0], end[1], end[2]));
-            var color =
-                    Color.web(
-                            (dark
-                                            ? new String[] {"#f08080", "#62c49a", "#82adf8"}
-                                            : new String[] {"#c24b52", "#25845f", "#3b73c8"})
-                                    [axis]);
+            var color = Color.web((dark
+                            ? new String[] {"#f08080", "#62c49a", "#82adf8"}
+                            : new String[] {"#c24b52", "#25845f", "#3b73c8"})
+                    [axis]);
             var line = new Line(CX, AXIS_Y, CX + p.getX(), AXIS_Y + p.getY());
             line.setStroke(color);
             line.setStrokeWidth(1.5);
@@ -249,10 +232,7 @@ final class ViewCube extends Pane {
                 var label = patch.label();
                 label.setVisible(visible);
                 label.setFill(Color.web(dark ? "#edf2fa" : "#35445b"));
-                Point3D u =
-                        patch.x() != 0
-                                ? new Point3D(0, patch.x(), 0)
-                                : new Point3D(patch.y() > 0 ? -1 : 1, 0, 0);
+                Point3D u = patch.x() != 0 ? new Point3D(0, patch.x(), 0) : new Point3D(patch.y() > 0 ? -1 : 1, 0, 0);
                 Point3D v = patch.z() != 0 ? new Point3D(0, -patch.z(), 0) : new Point3D(0, 0, -1);
                 var a = orientation.project(u);
                 var b = orientation.project(v);
@@ -260,50 +240,36 @@ final class ViewCube extends Pane {
                 var bounds = label.getLayoutBounds();
                 double lx = -bounds.getCenterX(), ly = -bounds.getCenterY();
                 label.getTransforms()
-                        .setAll(
-                                new Affine(
-                                        a.getX(),
-                                        b.getX(),
-                                        CX + c.getX() + a.getX() * lx + b.getX() * ly,
-                                        a.getY(),
-                                        b.getY(),
-                                        CY + c.getY() + a.getY() * lx + b.getY() * ly));
+                        .setAll(new Affine(
+                                a.getX(),
+                                b.getX(),
+                                CX + c.getX() + a.getX() * lx + b.getX() * ly,
+                                a.getY(),
+                                b.getY(),
+                                CY + c.getY() + a.getY() * lx + b.getY() * ly));
             }
         }
-        var order =
-                patches.stream()
-                        .sorted(
-                                Comparator.comparingDouble(
-                                                (Patch patch) ->
-                                                        patch.vertices().stream()
-                                                                .mapToDouble(
-                                                                        v ->
-                                                                                orientation
-                                                                                        .project(v)
-                                                                                        .getZ())
-                                                                .average()
-                                                                .orElseThrow())
-                                        .reversed())
-                        .toList();
+        var order = patches.stream()
+                .sorted(Comparator.comparingDouble((Patch patch) -> patch.vertices().stream()
+                                .mapToDouble(v -> orientation.project(v).getZ())
+                                .average()
+                                .orElseThrow())
+                        .reversed())
+                .toList();
         // Reorder existing nodes without removing a pressed node during an orbit gesture.
         for (int i = 0; i < order.size(); i++) order.get(i).shape().setViewOrder(-i);
     }
 
     private void paint(Patch patch) {
         double light =
-                Math.max(
-                        0,
-                        orientation
-                                .project(patch.normal())
-                                .dotProduct(new Point3D(-0.3, -0.6, -1).normalize()));
+                Math.max(0, orientation.project(patch.normal()).dotProduct(new Point3D(-0.3, -0.6, -1).normalize()));
         boolean highlighted = patch.shape().isHover() || patch.shape().isFocused();
         patch.shape()
                 .setFill(
                         highlighted
                                 ? Color.web(dark ? "#456b9b" : "#c8ddfa")
                                 : Color.web(dark ? "#353e4d" : "#d4dce7")
-                                        .interpolate(
-                                                Color.web(dark ? "#57667a" : "#f8faff"), light));
+                                        .interpolate(Color.web(dark ? "#57667a" : "#f8faff"), light));
         patch.shape().setStroke(Color.web(highlighted ? "#6498e8" : dark ? "#78889e" : "#9eacbf"));
         patch.shape().setStrokeWidth(highlighted ? 1.2 : 0.6);
         patch.shape().setStrokeLineJoin(StrokeLineJoin.ROUND);

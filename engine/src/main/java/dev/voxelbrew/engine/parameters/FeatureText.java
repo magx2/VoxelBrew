@@ -23,8 +23,7 @@ public final class FeatureText {
     }
 
     public static List<Field> list(Feature feature) {
-        if (feature instanceof Feature.Sketch sketch
-                && sketch.profile() instanceof Feature.Constrained profile)
+        if (feature instanceof Feature.Sketch sketch && sketch.profile() instanceof Feature.Constrained profile)
             return list(sketch.id(), profile.geometry());
         return List.of();
     }
@@ -33,14 +32,12 @@ public final class FeatureText {
         var result = new ArrayList<Field>();
         for (var entity : geometry.entities()) {
             if (entity.kind() != SketchGeometry.Kind.TEXT) continue;
-            result.add(
-                    new Field(
-                            new ParameterSet.Target(featureId, key(entity.id(), "content")),
-                            entity.text().content()));
-            result.add(
-                    new Field(
-                            new ParameterSet.Target(featureId, key(entity.id(), "font")),
-                            entity.text().font()));
+            result.add(new Field(
+                    new ParameterSet.Target(featureId, key(entity.id(), "content")),
+                    entity.text().content()));
+            result.add(new Field(
+                    new ParameterSet.Target(featureId, key(entity.id(), "font")),
+                    entity.text().font()));
         }
         return List.copyOf(result);
     }
@@ -49,10 +46,7 @@ public final class FeatureText {
         return list(feature).stream()
                 .filter(f -> f.target().field().equals(name))
                 .findFirst()
-                .orElseThrow(
-                        () ->
-                                new IllegalArgumentException(
-                                        "Unknown text field: " + feature.id() + "/" + name));
+                .orElseThrow(() -> new IllegalArgumentException("Unknown text field: " + feature.id() + "/" + name));
     }
 
     public static void validate(String expression, Map<String, Quantity<?>> values) {
@@ -62,55 +56,49 @@ public final class FeatureText {
     }
 
     public static SketchGeometry resolve(
-            SketchGeometry geometry,
-            String featureId,
-            ParameterSet parameters,
-            Map<String, Quantity<?>> values) {
+            SketchGeometry geometry, String featureId, ParameterSet parameters, Map<String, Quantity<?>> values) {
         var available = new HashSet<String>();
         list(featureId, geometry).forEach(f -> available.add(f.target().field()));
         for (var binding : parameters.bindings()) {
             if (binding.target().featureId().equals(featureId)
                     && isField(binding.target().field())) {
                 if (!available.contains(binding.target().field()))
-                    throw new IllegalArgumentException(
-                            "Missing bound sketch text: " + binding.target());
+                    throw new IllegalArgumentException("Missing bound sketch text: " + binding.target());
                 validate(binding.expression(), values);
             }
         }
         var entities = new ArrayList<SketchGeometry.Entity>();
         for (var entity : geometry.entities()) {
             if (entity.kind() == SketchGeometry.Kind.TEXT) {
-                String content =
-                        value(
-                                parameters,
-                                values,
-                                featureId,
-                                entity.id(),
-                                "content",
-                                entity.text().content());
-                String font =
-                        value(
-                                parameters,
-                                values,
-                                featureId,
-                                entity.id(),
-                                "font",
-                                entity.text().font());
+                String content = value(
+                        parameters,
+                        values,
+                        featureId,
+                        entity.id(),
+                        "content",
+                        entity.text().content());
+                String font = value(
+                        parameters,
+                        values,
+                        featureId,
+                        entity.id(),
+                        "font",
+                        entity.text().font());
                 // Reuse the persisted outlines when the text is unchanged, including offline fonts.
-                if (!content.equals(entity.text().content()) || !font.equals(entity.text().font()))
-                    entity =
-                            SketchText.create(
-                                    entity.id(),
-                                    content,
-                                    font,
-                                    entity.text().style(),
-                                    entity.value(0),
-                                    entity.value(1),
-                                    entity.value(2),
-                                    entity.value(3),
-                                    entity.value(4),
-                                    entity.text().pathId(),
-                                    entity.construction());
+                if (!content.equals(entity.text().content())
+                        || !font.equals(entity.text().font()))
+                    entity = SketchText.create(
+                            entity.id(),
+                            content,
+                            font,
+                            entity.text().style(),
+                            entity.value(0),
+                            entity.value(1),
+                            entity.value(2),
+                            entity.value(3),
+                            entity.value(4),
+                            entity.text().pathId(),
+                            entity.construction());
             }
             entities.add(entity);
         }
@@ -124,8 +112,7 @@ public final class FeatureText {
             String entityId,
             String property,
             String fallback) {
-        String expression =
-                parameters.binding(new ParameterSet.Target(featureId, key(entityId, property)));
+        String expression = parameters.binding(new ParameterSet.Target(featureId, key(entityId, property)));
         return expression.isEmpty() ? fallback : Expressions.evaluateText(expression, values::get);
     }
 }

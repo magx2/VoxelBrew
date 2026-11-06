@@ -38,14 +38,11 @@ public final class SketchProfiles {
     public static List<Region> regions(SketchGeometry g) {
         SketchConstraints.requireSatisfied(g);
         if (g.boundary().isEmpty())
-            throw new IllegalArgumentException(
-                    "Select closed profile geometry in Edit sketch before extruding");
-        var remaining =
-                new ArrayList<>(
-                        g.boundary().stream()
-                                .map(g::entity)
-                                .flatMap(e -> g.curves(e).stream())
-                                .toList());
+            throw new IllegalArgumentException("Select closed profile geometry in Edit sketch before extruding");
+        var remaining = new ArrayList<>(g.boundary().stream()
+                .map(g::entity)
+                .flatMap(e -> g.curves(e).stream())
+                .toList());
         if (remaining.isEmpty()) throw new IllegalArgumentException("Profile has no curves");
         var loops = new ArrayList<List<Edge>>();
         while (!remaining.isEmpty()) {
@@ -55,16 +52,11 @@ public final class SketchProfiles {
             if (!first.loop())
                 while (path.getLast().end().distance(path.getFirst().start()) > TOLERANCE) {
                     var endpoint = path.getLast().end();
-                    var candidates =
-                            remaining.stream()
-                                    .filter(
-                                            e ->
-                                                    !e.loop()
-                                                            && (e.at(0).distance(endpoint)
-                                                                            <= TOLERANCE
-                                                                    || e.at(1).distance(endpoint)
-                                                                            <= TOLERANCE))
-                                    .toList();
+                    var candidates = remaining.stream()
+                            .filter(e -> !e.loop()
+                                    && (e.at(0).distance(endpoint) <= TOLERANCE
+                                            || e.at(1).distance(endpoint) <= TOLERANCE))
+                            .toList();
                     if (candidates.size() != 1)
                         throw new IllegalArgumentException(
                                 candidates.isEmpty()
@@ -76,10 +68,8 @@ public final class SketchProfiles {
                                                 + "; select a single boundary");
                     var next = candidates.getFirst();
                     remaining.remove(next);
-                    path.add(
-                            new Edge(
-                                    next,
-                                    next.at(1).distance(endpoint) < next.at(0).distance(endpoint)));
+                    path.add(new Edge(
+                            next, next.at(1).distance(endpoint) < next.at(0).distance(endpoint)));
                 }
             loops.add(path);
         }
@@ -106,8 +96,7 @@ public final class SketchProfiles {
             if (depth % 2 != 0) continue;
             var wires = new ArrayList<List<PlanarProfile.Segment>>();
             wires.add(segments(loops.get(i), areas[i] < 0));
-            for (int j = 0; j < loops.size(); j++)
-                if (parent[j] == i) wires.add(segments(loops.get(j), areas[j] > 0));
+            for (int j = 0; j < loops.size(); j++) if (parent[j] == i) wires.add(segments(loops.get(j), areas[j] > 0));
             result.add(new Region(loops.get(i).getFirst().entity().id(), new PlanarProfile(wires)));
         }
         return List.copyOf(result);
@@ -144,8 +133,7 @@ public final class SketchProfiles {
 
     private static double area(List<Vec> polygon) {
         double sum = 0;
-        for (int i = 0; i < polygon.size(); i++)
-            sum += polygon.get(i).cross(polygon.get((i + 1) % polygon.size()));
+        for (int i = 0; i < polygon.size(); i++) sum += polygon.get(i).cross(polygon.get((i + 1) % polygon.size()));
         return sum / 2;
     }
 
@@ -155,8 +143,7 @@ public final class SketchProfiles {
             var a = polygon.get(i);
             var b = polygon.get(j);
             if ((a.y() > p.y()) != (b.y() > p.y())
-                    && p.x() < (b.x() - a.x()) * (p.y() - a.y()) / (b.y() - a.y()) + a.x())
-                result = !result;
+                    && p.x() < (b.x() - a.x()) * (p.y() - a.y()) / (b.y() - a.y()) + a.x()) result = !result;
         }
         return result;
     }

@@ -32,8 +32,7 @@ final class FormulaField extends TextField {
     private dev.voxelbrew.util.i18n.Translations translations =
             new dev.voxelbrew.util.i18n.Translations(java.util.Locale.ENGLISH);
 
-    private FormulaField(
-            String text, Supplier<ParameterSet> parameters, Supplier<ParameterUnit> unit) {
+    private FormulaField(String text, Supplier<ParameterSet> parameters, Supplier<ParameterUnit> unit) {
         super(text);
         this.parameters = Objects.requireNonNull(parameters);
         this.unit = unit;
@@ -43,11 +42,9 @@ final class FormulaField extends TextField {
         localizeHelp();
         textProperty().addListener((o, a, b) -> refreshFormula());
         focusedProperty().addListener((o, a, b) -> refreshFormula());
-        sceneProperty()
-                .addListener(
-                        (o, a, b) -> {
-                            if (b != null) refreshFormula();
-                        });
+        sceneProperty().addListener((o, a, b) -> {
+            if (b != null) refreshFormula();
+        });
         preview.setOnShowing(e -> refreshFormula());
         new ParameterSuggestions(this, parameters, () -> translations);
     }
@@ -56,8 +53,7 @@ final class FormulaField extends TextField {
         return number(text, parameters, () -> unit);
     }
 
-    static FormulaField number(
-            String text, Supplier<ParameterSet> parameters, Supplier<ParameterUnit> unit) {
+    static FormulaField number(String text, Supplier<ParameterSet> parameters, Supplier<ParameterUnit> unit) {
         return new FormulaField(text, parameters, Objects.requireNonNull(unit));
     }
 
@@ -77,8 +73,7 @@ final class FormulaField extends TextField {
     }
 
     private void localizeHelp() {
-        setPromptText(
-                translations.text(unit == null ? "formula.textPrompt" : "formula.numberPrompt"));
+        setPromptText(translations.text(unit == null ? "formula.textPrompt" : "formula.numberPrompt"));
         setAccessibleHelp(translations.text("formula.help"));
     }
 
@@ -105,8 +100,7 @@ final class FormulaField extends TextField {
     int integer() {
         double result = value();
         if (result != Math.rint(result) || result < Integer.MIN_VALUE || result > Integer.MAX_VALUE)
-            throw new IllegalArgumentException(
-                    translations.text("gui.expected_a_whole_number_in_the_supported_range"));
+            throw new IllegalArgumentException(translations.text("gui.expected_a_whole_number_in_the_supported_range"));
         return (int) result;
     }
 
@@ -118,24 +112,19 @@ final class FormulaField extends TextField {
     }
 
     void refreshFormula() {
-        boolean formula =
-                Expressions.isFormula(getText())
-                        || (unit != null
-                                && !getText().isBlank()
-                                && !Expressions.isNumber(getText()));
+        boolean formula = Expressions.isFormula(getText())
+                || (unit != null && !getText().isBlank() && !Expressions.isNumber(getText()));
         pseudoClassStateChanged(FORMULA, formula);
         try {
             String result = getText().isBlank() ? "" : evaluatedText();
-            String suffix =
-                    unit == null || unit.get() == ParameterUnit.NUMBER
-                            ? ""
-                            : " " + unit.get().canonicalUnit();
-            preview.setText(
-                    expressionType.mark
-                            + "  "
-                            + (formula
-                                    ? translations.text("formula.result", result, suffix)
-                                    : translations.text("gui.supports_formulas_and_parameters")));
+            String suffix = unit == null || unit.get() == ParameterUnit.NUMBER
+                    ? ""
+                    : " " + unit.get().canonicalUnit();
+            preview.setText(expressionType.mark
+                    + "  "
+                    + (formula
+                            ? translations.text("formula.result", result, suffix)
+                            : translations.text("gui.supports_formulas_and_parameters")));
             pseudoClassStateChanged(INVALID, false);
         } catch (RuntimeException failure) {
             preview.setText(expressionType.mark + "  " + failure.getMessage());

@@ -8,11 +8,11 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 class RenderingTest {
-    @TempDir Path directory;
+    @TempDir
+    Path directory;
 
     @Test
-    void remembersStyleWithoutChangingOtherPreferencesAndRecoversFromUnknownValues()
-            throws Exception {
+    void remembersStyleWithoutChangingOtherPreferencesAndRecoversFromUnknownValues() throws Exception {
         var configuration = new UserConfiguration(directory.resolve("config.properties"));
         configuration.set("language", "pl");
         var rendering = new Rendering(configuration);

@@ -11,8 +11,7 @@ class UuidPersistenceTest {
     void reloadResumesSharedDocumentSequence() throws Exception {
         var session = new ModelSession(CadDocument.empty());
         session.document().uuidGenerator().next();
-        session.setParameters(
-                session.document().parameters().put("width", ParameterUnit.MM, "10 mm", ""));
+        session.setParameters(session.document().parameters().put("width", ParameterUnit.MM, "10 mm", ""));
         long expected = session.document().uuidGenerator().nextValue();
         var reopened = DocumentCodec.decode(DocumentCodec.encode(session.document()));
         assertEquals(expected, reopened.uuidGenerator().next());

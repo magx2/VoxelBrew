@@ -15,30 +15,26 @@ final class AppLogFormatter extends Formatter {
 
     @Override
     public String format(LogRecord record) {
-        String severity =
-                record.getLevel().intValue() >= Level.SEVERE.intValue()
-                        ? "ERROR"
-                        : record.getLevel().intValue() >= Level.WARNING.intValue()
-                                ? "WARN"
-                                : record.getLevel().intValue() >= Level.INFO.intValue()
-                                        ? "INFO"
-                                        : record.getLevel().intValue() >= Level.FINE.intValue()
-                                                ? "DEBUG"
-                                                : "TRACE";
-        var text =
-                new StringBuilder()
-                        .append(record.getInstant())
-                        .append(' ')
-                        .append(severity)
-                        .append(" [")
-                        .append(identity)
-                        .append("/thread-")
-                        .append(record.getLongThreadID())
-                        .append("] ")
-                        .append(record.getLoggerName())
-                        .append(" - ")
-                        .append(formatMessage(record))
-                        .append('\n');
+        String severity = record.getLevel().intValue() >= Level.SEVERE.intValue()
+                ? "ERROR"
+                : record.getLevel().intValue() >= Level.WARNING.intValue()
+                        ? "WARN"
+                        : record.getLevel().intValue() >= Level.INFO.intValue()
+                                ? "INFO"
+                                : record.getLevel().intValue() >= Level.FINE.intValue() ? "DEBUG" : "TRACE";
+        var text = new StringBuilder()
+                .append(record.getInstant())
+                .append(' ')
+                .append(severity)
+                .append(" [")
+                .append(identity)
+                .append("/thread-")
+                .append(record.getLongThreadID())
+                .append("] ")
+                .append(record.getLoggerName())
+                .append(" - ")
+                .append(formatMessage(record))
+                .append('\n');
         if (record.getThrown() != null) {
             var stack = new StringWriter();
             record.getThrown().printStackTrace(new PrintWriter(stack));

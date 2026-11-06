@@ -5,12 +5,7 @@ import java.util.Objects;
 
 /** Numeric parameter metadata shared by CLI and GUI. Bounds are inclusive. */
 public record FeatureParameter(
-        String key,
-        String label,
-        String unit,
-        double defaultValue,
-        double minimum,
-        double maximum) {
+        String key, String label, String unit, double defaultValue, double minimum, double maximum) {
     public FeatureParameter {
         CadDocument.identifier(key, "parameter key");
         Objects.requireNonNull(label);
@@ -26,7 +21,6 @@ public record FeatureParameter(
 
     private static void check(String key, double value, double minimum, double maximum) {
         if (!Double.isFinite(value) || value < minimum || value > maximum)
-            throw new IllegalArgumentException(
-                    key + " must be finite and between " + minimum + " and " + maximum);
+            throw new IllegalArgumentException(key + " must be finite and between " + minimum + " and " + maximum);
     }
 }

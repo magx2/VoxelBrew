@@ -25,8 +25,7 @@ public final class Solid implements AutoCloseable {
         return NativeKernel.version();
     }
 
-    public static Solid profilePrism(
-            PlanarProfile profile, Quantity<Length> z, Quantity<Length> distance) {
+    public static Solid profilePrism(PlanarProfile profile, Quantity<Length> z, Quantity<Length> distance) {
         return profilePrism(profile, value(z, MILLIMETRE), value(distance, MILLIMETRE));
     }
 
@@ -60,10 +59,8 @@ public final class Solid implements AutoCloseable {
                 value(distance, MILLIMETRE));
     }
 
-    public Solid cutThroughCircle(
-            Quantity<Length> x, Quantity<Length> y, Quantity<Length> diameter) {
-        return cutThroughCircle(
-                value(x, MILLIMETRE), value(y, MILLIMETRE), value(diameter, MILLIMETRE));
+    public Solid cutThroughCircle(Quantity<Length> x, Quantity<Length> y, Quantity<Length> diameter) {
+        return cutThroughCircle(value(x, MILLIMETRE), value(y, MILLIMETRE), value(diameter, MILLIMETRE));
     }
 
     public Quantity<Volume> volumeQuantity() {
@@ -83,29 +80,17 @@ public final class Solid implements AutoCloseable {
         finite("offsetZ", z);
         finite("distance", distance);
         positive("absolute distance", Math.abs(distance));
-        return new Solid(
-                NativeKernel.profilePrism(
-                        profile.types(),
-                        profile.sizes(),
-                        profile.parameterSizes(),
-                        profile.parameters(),
-                        z,
-                        distance));
+        return new Solid(NativeKernel.profilePrism(
+                profile.types(), profile.sizes(), profile.parameterSizes(), profile.parameters(), z, distance));
     }
 
     public synchronized Solid cutThroughProfile(PlanarProfile profile) {
         requireOpen();
-        return new Solid(
-                NativeKernel.cutThroughProfile(
-                        token,
-                        profile.types(),
-                        profile.sizes(),
-                        profile.parameterSizes(),
-                        profile.parameters()));
+        return new Solid(NativeKernel.cutThroughProfile(
+                token, profile.types(), profile.sizes(), profile.parameterSizes(), profile.parameters()));
     }
 
-    public static Solid circlePrism(
-            double x, double y, double z, double diameter, double distance) {
+    public static Solid circlePrism(double x, double y, double z, double diameter, double distance) {
         finite("centerX", x);
         finite("centerY", y);
         finite("offsetZ", z);
@@ -118,8 +103,7 @@ public final class Solid implements AutoCloseable {
     }
 
     /** Extrudes an XY rectangle from z by a signed distance, in mm. */
-    public static Solid rectanglePrism(
-            double x, double y, double z, double width, double height, double distance) {
+    public static Solid rectanglePrism(double x, double y, double z, double width, double height, double distance) {
         finite("x", x);
         finite("y", y);
         finite("z", z);
@@ -160,9 +144,7 @@ public final class Solid implements AutoCloseable {
         double[] data = NativeKernel.planarFaces(token);
         var result = new java.util.ArrayList<PlanarFace>();
         for (int i = 0; i < data.length; i += 5)
-            result.add(
-                    new PlanarFace(
-                            (int) data[i], data[i + 1], data[i + 2], data[i + 3], data[i + 4]));
+            result.add(new PlanarFace((int) data[i], data[i + 1], data[i + 2], data[i + 3], data[i + 4]));
         return java.util.List.copyOf(result);
     }
 
@@ -190,11 +172,9 @@ public final class Solid implements AutoCloseable {
     /**
      * Detached mesh; face IDs are local to this tessellation, never persistent feature references.
      */
-    public synchronized dev.voxelbrew.engine.mesh.MeshData tessellate(
-            dev.voxelbrew.engine.mesh.MeshOptions options) {
+    public synchronized dev.voxelbrew.engine.mesh.MeshData tessellate(dev.voxelbrew.engine.mesh.MeshOptions options) {
         requireOpen();
-        return NativeKernel.tessellate(
-                token, options.chordToleranceMm(), value(options.angularTolerance(), RADIAN));
+        return NativeKernel.tessellate(token, options.chordToleranceMm(), value(options.angularTolerance(), RADIAN));
     }
 
     public synchronized Bounds bounds() {

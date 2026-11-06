@@ -32,21 +32,21 @@ final class FeatureCommands {
         @Option(names = "--plugin-dir")
         Path plugins = FeatureRegistry.defaultDirectory();
 
-        @Spec CommandLine.Model.CommandSpec spec;
+        @Spec
+        CommandLine.Model.CommandSpec spec;
 
         public Integer call() throws Exception {
             try (var registry = features.open(plugins)) {
                 for (var d : registry.descriptors())
                     spec.commandLine()
                             .getOut()
-                            .println(
-                                    d
-                                            + " API="
-                                            + d.apiVersion()
-                                            + " payload="
-                                            + d.payloadVersion()
-                                            + " parameters="
-                                            + d.parameters());
+                            .println(d
+                                    + " API="
+                                    + d.apiVersion()
+                                    + " payload="
+                                    + d.payloadVersion()
+                                    + " parameters="
+                                    + d.parameters());
                 registry.diagnostics().forEach(spec.commandLine().getErr()::println);
             }
             return 0;
@@ -61,10 +61,7 @@ final class FeatureCommands {
         private final FeatureRegistry.Factory features;
 
         @javax.inject.Inject
-        Custom(
-                DocumentSource documents,
-                DocumentSink documentWriter,
-                FeatureRegistry.Factory features) {
+        Custom(DocumentSource documents, DocumentSink documentWriter, FeatureRegistry.Factory features) {
             super(documents, documentWriter);
             this.features = features;
         }
@@ -77,8 +74,7 @@ final class FeatureCommands {
 
         @Option(
                 names = "--parameter",
-                description =
-                        "Numeric KEY=VALUE; repeatable. Omitted fields use provider defaults.")
+                description = "Numeric KEY=VALUE; repeatable. Omitted fields use provider defaults.")
         Map<String, Double> parameters = new LinkedHashMap<>();
 
         public Integer call() throws Exception {

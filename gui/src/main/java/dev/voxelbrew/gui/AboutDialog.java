@@ -55,29 +55,27 @@ final class AboutDialog {
         UiHelp.install(check, translations);
         check.setOnAction(event -> check());
         updates = link("about.updates", "about-updates");
-        updates.setOnAction(
-                event -> {
-                    openUpdates = true;
-                    close.fire();
-                });
+        updates.setOnAction(event -> {
+            openUpdates = true;
+            close.fire();
+        });
         license = link("about.license", "about-license");
         notices = link("about.notices", "about-notices");
         var releaseStatus = new HBox(10, progress, status);
         releaseStatus.setAlignment(Pos.CENTER_LEFT);
         HBox.setHgrow(status, Priority.ALWAYS);
-        var content =
-                new VBox(
-                        12,
-                        product,
-                        version,
-                        label(translations.text("about.description"), "about-description"),
-                        new Separator(),
-                        releaseStatus,
-                        check,
-                        updates,
-                        new Separator(),
-                        license,
-                        notices);
+        var content = new VBox(
+                12,
+                product,
+                version,
+                label(translations.text("about.description"), "about-description"),
+                new Separator(),
+                releaseStatus,
+                check,
+                updates,
+                new Separator(),
+                license,
+                notices);
         var scroll = new ScrollPane(content);
         content.getStyleClass().add("about-content");
         scroll.setFitToWidth(true);
@@ -106,43 +104,31 @@ final class AboutDialog {
         check.setDisable(true);
         progress.setVisible(true);
         status.setText(translations.text("about.checking"));
-        worker.execute(
-                () -> {
-                    try {
-                        var result =
-                                factory.create()
-                                        .check(
-                                                new UpdateService.Request(null, false),
-                                                cancellation);
-                        Platform.runLater(
-                                () -> {
-                                    if (closed) return;
-                                    String message =
-                                            result.available()
-                                                    ? translations.text(
-                                                            "about.available",
-                                                            result.release().version())
-                                                    : translations.text(
-                                                            "about.current",
-                                                            result.release().version());
-                                    if (!result.installable())
-                                        message += "\n" + translations.text("about.development");
-                                    status.setText(message);
-                                    finished();
-                                });
-                    } catch (Exception failure) {
-                        if (failure instanceof CancellationException
-                                || Thread.currentThread().isInterrupted())
-                            log.debug("About release lookup cancelled");
-                        else log.warn("About release lookup failed", failure);
-                        Platform.runLater(
-                                () -> {
-                                    if (closed) return;
-                                    status.setText(translations.text("about.failed"));
-                                    finished();
-                                });
-                    }
+        worker.execute(() -> {
+            try {
+                var result = factory.create().check(new UpdateService.Request(null, false), cancellation);
+                Platform.runLater(() -> {
+                    if (closed) return;
+                    String message = result.available()
+                            ? translations.text(
+                                    "about.available", result.release().version())
+                            : translations.text(
+                                    "about.current", result.release().version());
+                    if (!result.installable()) message += "\n" + translations.text("about.development");
+                    status.setText(message);
+                    finished();
                 });
+            } catch (Exception failure) {
+                if (failure instanceof CancellationException
+                        || Thread.currentThread().isInterrupted()) log.debug("About release lookup cancelled");
+                else log.warn("About release lookup failed", failure);
+                Platform.runLater(() -> {
+                    if (closed) return;
+                    status.setText(translations.text("about.failed"));
+                    finished();
+                });
+            }
+        });
     }
 
     private void finished() {

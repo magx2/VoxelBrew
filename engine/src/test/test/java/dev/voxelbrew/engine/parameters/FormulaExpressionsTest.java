@@ -12,10 +12,9 @@ class FormulaExpressionsTest {
             assertDoesNotThrow(() -> ParameterSet.requireName(name));
         for (var name : List.of("_x", ".x", "x1", "1x", "vb.width", "vb.", "a-b", "é"))
             assertThrows(IllegalArgumentException.class, () -> ParameterSet.requireName(name));
-        var p =
-                ParameterSet.empty()
-                        .put("x.fo", ParameterUnit.MM, "10", "")
-                        .put("x.bo", ParameterUnit.MM, "=$x.fo * 2", "");
+        var p = ParameterSet.empty()
+                .put("x.fo", ParameterUnit.MM, "10", "")
+                .put("x.bo", ParameterUnit.MM, "=$x.fo * 2", "");
         assertEquals(30, p.value("=$x.fo + x.bo", ParameterUnit.MM));
         var renamed = p.rename("x.fo", "y.width");
         assertEquals(30, renamed.value("=$y.width + x.bo", ParameterUnit.MM));
@@ -37,10 +36,9 @@ class FormulaExpressionsTest {
 
     @Test
     void excelPrefixesReferencesAndTextConcatenationRespectPrecedenceAndUnits() {
-        var p =
-                ParameterSet.empty()
-                        .put("width", ParameterUnit.MM, "=60", "")
-                        .put("half", ParameterUnit.MM, "=$width/2", "");
+        var p = ParameterSet.empty()
+                .put("width", ParameterUnit.MM, "=60", "")
+                .put("half", ParameterUnit.MM, "=$width/2", "");
         assertEquals(1 + 2.0 / 3, p.value("=1+2/3", ParameterUnit.NUMBER), 1e-12);
         assertEquals(30, p.value("=$width/2", ParameterUnit.MM));
         assertEquals(60, p.value("=3 cm + $half", ParameterUnit.MM));
@@ -57,38 +55,33 @@ class FormulaExpressionsTest {
     @Test
     void formulaFailuresAreBoundedAndDoNotCoerceTextIntoNumbers() {
         var p = ParameterSet.empty();
-        for (var input :
-                List.of(
-                        "=",
-                        "=$",
-                        "=$missing",
-                        "=1/0",
-                        "=1e309",
-                        "=sqrt(-1)",
-                        "=1+",
-                        "==2",
-                        "=\"unclosed",
-                        "=\"x\"*2",
-                        "=sin(\"x\")"))
-            assertThrows(IllegalArgumentException.class, () -> p.text(input), input);
+        for (var input : List.of(
+                "=",
+                "=$",
+                "=$missing",
+                "=1/0",
+                "=1e309",
+                "=sqrt(-1)",
+                "=1+",
+                "==2",
+                "=\"unclosed",
+                "=\"x\"*2",
+                "=sin(\"x\")")) assertThrows(IllegalArgumentException.class, () -> p.text(input), input);
         assertThrows(IllegalArgumentException.class, () -> p.value("=\"5\"", ParameterUnit.NUMBER));
         assertThrows(IllegalArgumentException.class, () -> p.value("=2 mm", ParameterUnit.DEG));
-        assertThrows(
-                IllegalArgumentException.class,
-                () -> p.text("=" + "(".repeat(40) + "1" + ")".repeat(40)));
+        assertThrows(IllegalArgumentException.class, () -> p.text("=" + "(".repeat(40) + "1" + ")".repeat(40)));
         assertThrows(IllegalArgumentException.class, () -> p.text("=\"" + "a".repeat(513) + "\""));
     }
 
     @Test
     void renamingPreservesQuotedTextAndVariantsTrackExplicitReferences() {
         var target = new ParameterSet.Target("sketch", "text:label:content");
-        var p =
-                ParameterSet.empty()
-                        .put("width", ParameterUnit.MM, "5", "")
-                        .addConfiguration("Wide", false)
-                        .override("width", "Wide", "8")
-                        .bind(target, "=\"width $width \" + $width")
-                        .rename("width", "size");
+        var p = ParameterSet.empty()
+                .put("width", ParameterUnit.MM, "5", "")
+                .addConfiguration("Wide", false)
+                .override("width", "Wide", "8")
+                .bind(target, "=\"width $width \" + $width")
+                .rename("width", "size");
         p.validate();
         assertEquals("=\"width $width \" + $size", p.binding(target));
         assertEquals("width $width 5", p.text(p.binding(target)));

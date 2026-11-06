@@ -10,15 +10,12 @@ import org.junit.jupiter.api.Test;
 class ParameterSuggestionsTest {
     @Test
     void dottedReferencesCompleteAndTableGroupsByFirstPrefix() {
-        assertEquals(
-                new ParameterSuggestions.Reference(1, 6, "x.f"),
-                ParameterSuggestions.reference("=$x.fo", 5));
-        var p =
-                ParameterSet.empty()
-                        .put("x.fo", ParameterUnit.MM, "1", "")
-                        .put("y.fo", ParameterUnit.MM, "2", "")
-                        .put("x.bo", ParameterUnit.MM, "3", "")
-                        .put("width", ParameterUnit.MM, "4", "");
+        assertEquals(new ParameterSuggestions.Reference(1, 6, "x.f"), ParameterSuggestions.reference("=$x.fo", 5));
+        var p = ParameterSet.empty()
+                .put("x.fo", ParameterUnit.MM, "1", "")
+                .put("y.fo", ParameterUnit.MM, "2", "")
+                .put("x.bo", ParameterUnit.MM, "3", "")
+                .put("width", ParameterUnit.MM, "4", "");
         assertEquals(List.of("x.bo", "x.fo"), ParameterSuggestions.matches(p, "x."));
         assertEquals(
                 List.of("width", "x.bo", "x.fo", "y.fo"),
@@ -29,9 +26,7 @@ class ParameterSuggestionsTest {
 
     @Test
     void findsOnlyTheReferenceAtTheCaretAndReplacesItsEntireToken() {
-        assertEquals(
-                new ParameterSuggestions.Reference(1, 2, ""),
-                ParameterSuggestions.reference("=$", 2));
+        assertEquals(new ParameterSuggestions.Reference(1, 2, ""), ParameterSuggestions.reference("=$", 2));
         assertEquals(
                 new ParameterSuggestions.Reference(2, 9, "foo"),
                 ParameterSuggestions.reference("=($fooBar/2)+$width", 6));
@@ -56,20 +51,16 @@ class ParameterSuggestionsTest {
 
     @Test
     void filtersByCaseSensitivePrefixRatherThanSubstringAndUsesCurrentNames() {
-        var parameters =
-                ParameterSet.empty()
-                        .put("food", ParameterUnit.MM, "20", "")
-                        .put("foo", ParameterUnit.MM, "10", "")
-                        .put("Foo", ParameterUnit.MM, "10", "")
-                        .put("afoo", ParameterUnit.MM, "30", "");
+        var parameters = ParameterSet.empty()
+                .put("food", ParameterUnit.MM, "20", "")
+                .put("foo", ParameterUnit.MM, "10", "")
+                .put("Foo", ParameterUnit.MM, "10", "")
+                .put("afoo", ParameterUnit.MM, "30", "");
         assertEquals(List.of("foo", "food"), ParameterSuggestions.matches(parameters, "foo"));
-        assertEquals(
-                List.of("Foo", "afoo", "foo", "food"),
-                ParameterSuggestions.matches(parameters, ""));
+        assertEquals(List.of("Foo", "afoo", "foo", "food"), ParameterSuggestions.matches(parameters, ""));
         assertEquals(List.of(), ParameterSuggestions.matches(parameters, "missing"));
         assertEquals(
                 List.of("foo", "food", "foot"),
-                ParameterSuggestions.matches(
-                        parameters.put("foot", ParameterUnit.MM, "40", ""), "foo"));
+                ParameterSuggestions.matches(parameters.put("foot", ParameterUnit.MM, "40", ""), "foo"));
     }
 }

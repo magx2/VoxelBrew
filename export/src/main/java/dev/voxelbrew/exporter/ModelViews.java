@@ -25,10 +25,8 @@ public final class ModelViews {
         var instances = List.copyOf(placements);
         var ids = new HashSet<String>();
         for (var instance : instances) {
-            if (!ids.add(instance.id())
-                    || bodies.stream().noneMatch(b -> b.id().equals(instance.bodyId()))) {
-                throw new IllegalArgumentException(
-                        "Duplicate instance or unknown body: " + instance.id());
+            if (!ids.add(instance.id()) || bodies.stream().noneMatch(b -> b.id().equals(instance.bodyId()))) {
+                throw new IllegalArgumentException("Duplicate instance or unknown body: " + instance.id());
             }
         }
         return new ModelView() {
@@ -66,32 +64,31 @@ public final class ModelViews {
         return new ModelView() {
             @Override
             public List<Body> bodies() {
-                return source.bodies().stream().filter(b -> b.id().equals(bodyId)).toList();
+                return source.bodies().stream()
+                        .filter(b -> b.id().equals(bodyId))
+                        .toList();
             }
 
             @Override
             public List<BodyInstance> instances() {
-                return source.instances().stream().filter(i -> i.bodyId().equals(bodyId)).toList();
+                return source.instances().stream()
+                        .filter(i -> i.bodyId().equals(bodyId))
+                        .toList();
             }
 
             @Override
             public MeshData tessellate(String id, MeshOptions options) {
-                if (!bodyId.equals(id))
-                    throw new IllegalArgumentException("Body is not selected: " + id);
+                if (!bodyId.equals(id)) throw new IllegalArgumentException("Body is not selected: " + id);
                 return source.tessellate(id, options);
             }
         };
     }
 
     public static ModelView selectInstance(ModelView source, String instanceId) {
-        var instance =
-                source.instances().stream()
-                        .filter(i -> i.id().equals(instanceId))
-                        .findFirst()
-                        .orElseThrow(
-                                () ->
-                                        new IllegalArgumentException(
-                                                "Unknown instance " + instanceId));
+        var instance = source.instances().stream()
+                .filter(i -> i.id().equals(instanceId))
+                .findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("Unknown instance " + instanceId));
         return new ModelView() {
             @Override
             public List<Body> bodies() {
@@ -107,8 +104,7 @@ public final class ModelViews {
 
             @Override
             public MeshData tessellate(String id, MeshOptions options) {
-                if (!id.equals(instance.bodyId()))
-                    throw new IllegalArgumentException("Body is not selected: " + id);
+                if (!id.equals(instance.bodyId())) throw new IllegalArgumentException("Body is not selected: " + id);
                 return source.tessellate(id, options);
             }
         };
@@ -126,10 +122,8 @@ public final class ModelViews {
             @Override
             public List<Body> bodies() {
                 return model.meshes().keySet().stream()
-                        .filter(
-                                id ->
-                                        model.instances().stream()
-                                                .anyMatch(i -> i.bodyId().equals(id)))
+                        .filter(id -> model.instances().stream()
+                                .anyMatch(i -> i.bodyId().equals(id)))
                         .map(id -> new Body(id, id))
                         .toList();
             }
@@ -160,17 +154,11 @@ public final class ModelViews {
         }
         for (var support : model.setup().supports())
             if (support.role() == SupportVolume.Role.SOLID_SUPPORT) {
-                var owner =
-                        model.setup().instances().stream()
-                                .filter(i -> i.id().equals(support.instanceId()))
-                                .findFirst()
-                                .orElseThrow(
-                                        () ->
-                                                new IllegalArgumentException(
-                                                        "Support "
-                                                                + support.id()
-                                                                + " has missing instance "
-                                                                + support.instanceId()));
+                var owner = model.setup().instances().stream()
+                        .filter(i -> i.id().equals(support.instanceId()))
+                        .findFirst()
+                        .orElseThrow(() -> new IllegalArgumentException(
+                                "Support " + support.id() + " has missing instance " + support.instanceId()));
                 String id = "support." + support.id();
                 selectedMeshes.put(id, MeshGeometry.box(support));
                 bodies.add(new ModelView.Body(id, support.id(), ModelView.Role.SOLID_SUPPORT));
@@ -190,8 +178,7 @@ public final class ModelViews {
             @Override
             public MeshData tessellate(String body, MeshOptions options) {
                 var mesh = selectedMeshes.get(body);
-                if (mesh == null)
-                    throw new IllegalArgumentException("Unknown selected body " + body);
+                if (mesh == null) throw new IllegalArgumentException("Unknown selected body " + body);
                 return mesh;
             }
         };

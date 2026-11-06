@@ -12,28 +12,14 @@ class ImportContractTest {
         assertThrows(IllegalArgumentException.class, () -> scale.validate("NaN"));
         assertThrows(
                 IllegalArgumentException.class,
-                () ->
-                        new ImporterDescriptor(
-                                "a",
-                                "Reader",
-                                1,
-                                List.of("txt"),
-                                ImportResult.Kind.DOCUMENT,
-                                List.of(scale, scale)));
+                () -> new ImporterDescriptor(
+                        "a", "Reader", 1, List.of("txt"), ImportResult.Kind.DOCUMENT, List.of(scale, scale)));
         assertThrows(
                 IllegalArgumentException.class,
-                () ->
-                        new ImporterDescriptor(
-                                "a",
-                                "Reader",
-                                1,
-                                List.of("../txt"),
-                                ImportResult.Kind.DOCUMENT,
-                                List.of()));
+                () -> new ImporterDescriptor(
+                        "a", "Reader", 1, List.of("../txt"), ImportResult.Kind.DOCUMENT, List.of()));
         var options = new ArrayList<>(List.of(scale));
-        var descriptor =
-                new ImporterDescriptor(
-                        "a", "Reader", 1, List.of("txt"), ImportResult.Kind.DOCUMENT, options);
+        var descriptor = new ImporterDescriptor("a", "Reader", 1, List.of("txt"), ImportResult.Kind.DOCUMENT, options);
         options.clear();
         assertEquals(1, descriptor.options().size());
         assertThrows(NullPointerException.class, () -> new ImportResult.Document(null));

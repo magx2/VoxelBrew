@@ -41,9 +41,7 @@ final class SketchStrokes {
             }
             for (int side = 0; side < 6; side++) {
                 int next = (side + 1) % 6;
-                int[] corners = {
-                    side, next, side + 6, next, next + 6, side + 6, 12, next, side, 13, side + 6,
-                    next + 6
+                int[] corners = {side, next, side + 6, next, next + 6, side + 6, 12, next, side, 13, side + 6, next + 6
                 };
                 for (int corner : corners) {
                     faces[triangle / 3] = index;

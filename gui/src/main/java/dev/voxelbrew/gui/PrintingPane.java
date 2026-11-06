@@ -41,9 +41,7 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
     private final ComboBox<SlicerBackend.Descriptor> backends = new ComboBox<>();
     private final ComboBox<SupportVolume.Role> supportRole = new ComboBox<>();
     private final Map<String, FormulaField> fields = new LinkedHashMap<>();
-    private final CheckBox autoSupports = new CheckBox(""),
-            bedOnly = new CheckBox(""),
-            overwrite = new CheckBox("");
+    private final CheckBox autoSupports = new CheckBox(""), bedOnly = new CheckBox(""), overwrite = new CheckBox("");
     private final Slider layer = new Slider(0, 0, 0);
     private final Label layerLabel = new Label(""),
             validationLabel = new Label(""),
@@ -96,218 +94,149 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
         autoSupports.setId("print-auto-supports");
         bedOnly.setId("print-bed-only");
         overwrite.setId("print-overwrite");
-        for (var check : List.of(autoSupports, bedOnly, overwrite))
-            UiHelp.install(check, translations);
+        for (var check : List.of(autoSupports, bedOnly, overwrite)) UiHelp.install(check, translations);
         materials.getItems().setAll("PLA", "PETG");
         supportRole.getItems().setAll(SupportVolume.Role.values());
         supportRole.setValue(SupportVolume.Role.SOLID_SUPPORT);
         backends.getItems().setAll(slicers.descriptors());
-        backends.setConverter(
-                new StringConverter<>() {
-                    @Override
-                    public String toString(SlicerBackend.Descriptor descriptor) {
-                        return descriptor == null
-                                ? ""
-                                : descriptor.name() + " " + descriptor.version();
-                    }
+        backends.setConverter(new StringConverter<>() {
+            @Override
+            public String toString(SlicerBackend.Descriptor descriptor) {
+                return descriptor == null ? "" : descriptor.name() + " " + descriptor.version();
+            }
 
-                    @Override
-                    public SlicerBackend.Descriptor fromString(String text) {
-                        throw new UnsupportedOperationException();
-                    }
-                });
-        var placement =
-                new VBox(
-                        7,
-                        new Label(translations.text("gui.cad_body")),
-                        bodies,
-                        button(
-                                translations.text("gui.add_selected_body"),
-                                "print-add",
-                                this::addInstance),
-                        new Label(translations.text("gui.build_instance")),
-                        instances);
+            @Override
+            public SlicerBackend.Descriptor fromString(String text) {
+                throw new UnsupportedOperationException();
+            }
+        });
+        var placement = new VBox(
+                7,
+                new Label(translations.text("gui.cad_body")),
+                bodies,
+                button(translations.text("gui.add_selected_body"), "print-add", this::addInstance),
+                new Label(translations.text("gui.build_instance")),
+                instances);
         for (var name : List.of("x", "y", "z", "rotate-x", "rotate-y", "rotate-z"))
             placement
                     .getChildren()
-                    .add(
-                            row(
-                                    "print-" + name,
-                                    name.startsWith("rotate")
-                                            ? translations.text(
-                                                    "print.rotation",
-                                                    name.substring("rotate-".length())
-                                                            .toUpperCase(Locale.ROOT))
-                                            : name + " (mm)",
-                                    "0"));
+                    .add(row(
+                            "print-" + name,
+                            name.startsWith("rotate")
+                                    ? translations.text(
+                                            "print.rotation",
+                                            name.substring("rotate-".length()).toUpperCase(Locale.ROOT))
+                                    : name + " (mm)",
+                            "0"));
         placement
                 .getChildren()
                 .addAll(
-                        button(
-                                translations.text("gui.apply_placement"),
-                                "print-place",
-                                this::applyPlacement),
-                        button(
-                                translations.text("gui.duplicate_70_mm_x"),
-                                "print-duplicate",
-                                this::duplicate),
-                        row(
-                                "print-face",
-                                translations.text("gui.planar_face_id_from_current_cad_revision"),
-                                "0"),
-                        button(
-                                translations.text("gui.lay_face_on_bed"),
-                                "print-lay-face",
-                                this::layFace),
-                        button(
-                                translations.text("gui.remove_instance"),
-                                "print-remove",
-                                this::removeInstance));
-        instances.setOnAction(
-                e -> {
-                    if (!updating) loadPlacement();
-                });
+                        button(translations.text("gui.apply_placement"), "print-place", this::applyPlacement),
+                        button(translations.text("gui.duplicate_70_mm_x"), "print-duplicate", this::duplicate),
+                        row("print-face", translations.text("gui.planar_face_id_from_current_cad_revision"), "0"),
+                        button(translations.text("gui.lay_face_on_bed"), "print-lay-face", this::layFace),
+                        button(translations.text("gui.remove_instance"), "print-remove", this::removeInstance));
+        instances.setOnAction(e -> {
+            if (!updating) loadPlacement();
+        });
 
-        var process =
-                new VBox(
-                        7,
-                        new Label(
-                                translations.text(
-                                        "gui.generic_marlin_200_200_200_mm_0_4_mm_nozzle")),
-                        new Label(translations.text("gui.material")),
-                        materials,
-                        row("print-layer-height", translations.text("gui.layer_height_mm"), "0.2"),
-                        row("print-walls", translations.text("gui.perimeter_walls"), "2"),
-                        row("print-infill", translations.text("gui.infill"), "20"),
-                        autoSupports,
-                        bedOnly,
-                        row(
-                                "print-threshold",
-                                translations.text("gui.support_threshold_degrees_from_horizontal"),
-                                "45"),
-                        row("print-gap", translations.text("gui.support_contact_gap_mm"), "0.2"),
-                        row("print-interfaces", translations.text("gui.interface_layers"), "3"),
-                        row("print-brim", translations.text("gui.brim_width_mm"), "0"),
-                        row("print-raft", translations.text("gui.raft_layers"), "0"),
-                        new Label(translations.text("gui.slicer_backend")),
-                        backends,
-                        button(
-                                translations.text("gui.apply_process_settings"),
-                                "print-apply-process",
-                                this::applyProcess));
+        var process = new VBox(
+                7,
+                new Label(translations.text("gui.generic_marlin_200_200_200_mm_0_4_mm_nozzle")),
+                new Label(translations.text("gui.material")),
+                materials,
+                row("print-layer-height", translations.text("gui.layer_height_mm"), "0.2"),
+                row("print-walls", translations.text("gui.perimeter_walls"), "2"),
+                row("print-infill", translations.text("gui.infill"), "20"),
+                autoSupports,
+                bedOnly,
+                row("print-threshold", translations.text("gui.support_threshold_degrees_from_horizontal"), "45"),
+                row("print-gap", translations.text("gui.support_contact_gap_mm"), "0.2"),
+                row("print-interfaces", translations.text("gui.interface_layers"), "3"),
+                row("print-brim", translations.text("gui.brim_width_mm"), "0"),
+                row("print-raft", translations.text("gui.raft_layers"), "0"),
+                new Label(translations.text("gui.slicer_backend")),
+                backends,
+                button(translations.text("gui.apply_process_settings"), "print-apply-process", this::applyProcess));
         var capabilities = new Label();
         capabilities.setWrapText(true);
         backends.valueProperty()
                 .addListener(
-                        (o, a, b) ->
-                                capabilities.setText(
-                                        b == null
-                                                ? translations.text(
-                                                        "gui.choose_an_available_backend")
-                                                : translations.text(
-                                                                "print.available",
-                                                                b.capabilities().stream()
-                                                                        .map(
-                                                                                c ->
-                                                                                        translations
-                                                                                                .text(
-                                                                                                        "print.capability."
-                                                                                                                + c
-                                                                                                                        .name()))
-                                                                        .collect(
-                                                                                java.util.stream
-                                                                                        .Collectors
-                                                                                        .joining(
-                                                                                                ", ")))
-                                                        + translations.text(
-                                                                "gui.unavailable_here_adaptive_layers_organic_supports_painted_regions_multiple_materials_generated_")));
-        process.getChildren()
-                .addAll(capabilities, new Label(String.join("\n", slicers.diagnostics())));
+                        (o, a, b) -> capabilities.setText(
+                                b == null
+                                        ? translations.text("gui.choose_an_available_backend")
+                                        : translations.text(
+                                                        "print.available",
+                                                        b.capabilities().stream()
+                                                                .map(c -> translations.text(
+                                                                        "print.capability." + c.name()))
+                                                                .collect(java.util.stream.Collectors.joining(", ")))
+                                                + translations.text(
+                                                        "gui.unavailable_here_adaptive_layers_organic_supports_painted_regions_multiple_materials_generated_")));
+        process.getChildren().addAll(capabilities, new Label(String.join("\n", slicers.diagnostics())));
 
-        var supports =
-                new VBox(
-                        7,
-                        new Label(translations.text("gui.existing_support_instruction")),
-                        supportIds,
-                        new Label(translations.text("gui.attached_build_instance")),
-                        supportOwners,
-                        new Label(translations.text("gui.role")),
-                        supportRole,
-                        row(
-                                "print-support-name",
-                                translations.text("gui.stable_support_id"),
-                                "support-1"));
+        var supports = new VBox(
+                7,
+                new Label(translations.text("gui.existing_support_instruction")),
+                supportIds,
+                new Label(translations.text("gui.attached_build_instance")),
+                supportOwners,
+                new Label(translations.text("gui.role")),
+                supportRole,
+                row("print-support-name", translations.text("gui.stable_support_id"), "support-1"));
         for (var name : List.of("x", "y", "z", "width", "depth", "height"))
             supports.getChildren()
-                    .add(
-                            row(
-                                    "print-support-" + name,
-                                    translations.text("print.bodySpace", name),
-                                    List.of("x", "y", "z").contains(name) ? "0" : "5"));
+                    .add(row(
+                            "print-support-" + name,
+                            translations.text("print.bodySpace", name),
+                            List.of("x", "y", "z").contains(name) ? "0" : "5"));
         supports.getChildren()
                 .addAll(
-                        button(
-                                translations.text("gui.add_update_support"),
-                                "print-support-apply",
-                                this::applySupport),
-                        button(
-                                translations.text("gui.remove_support"),
-                                "print-support-remove",
-                                this::removeSupport),
-                        new Label(
-                                translations.text(
-                                        "gui.portable_export_choose_build_space_then_model_support_solids_or_both")));
+                        button(translations.text("gui.add_update_support"), "print-support-apply", this::applySupport),
+                        button(translations.text("gui.remove_support"), "print-support-remove", this::removeSupport),
+                        new Label(translations.text(
+                                "gui.portable_export_choose_build_space_then_model_support_solids_or_both")));
         var generated =
-                button(
-                        translations.text("gui.export_generated_support_mesh"),
-                        "print-generated-support",
-                        () -> {
-                            throw new IllegalStateException(
-                                    translations.text(
-                                            "gui.this_backend_provides_support_toolpaths_not_generated_support_meshes"));
-                        });
+                button(translations.text("gui.export_generated_support_mesh"), "print-generated-support", () -> {
+                    throw new IllegalStateException(translations.text(
+                            "gui.this_backend_provides_support_toolpaths_not_generated_support_meshes"));
+                });
         generated.setDisable(true);
         UiHelp.describe(
                 generated,
                 translations.text(
                         "gui.generated_support_meshes_are_unavailable_explicit_support_pillars_can_be_exported"));
         supports.getChildren().add(generated);
-        supportIds.setOnAction(
-                e -> {
-                    if (!updating) loadSupport();
-                });
+        supportIds.setOnAction(e -> {
+            if (!updating) loadSupport();
+        });
 
         slice = button(translations.text("gui.slice"), "print-slice", this::slice);
         cancel = button(translations.text("gui.cancel_slicing"), "print-cancel", jobs::cancel);
-        var job =
-                new VBox(
-                        7,
-                        row(
-                                "print-executable",
-                                translations.text("gui.slicer_executable"),
-                                PrusaSlicerBackend.defaultExecutable().toString()),
-                        row(
-                                "print-output",
-                                translations.text("gui.g_code_destination"),
-                                Path.of(System.getProperty("user.home"), "part.gcode").toString()),
-                        overwrite,
-                        new HBox(8, slice, cancel),
-                        button(
-                                translations.text("gui.export_geometry_project"),
-                                "print-export",
-                                () -> ExportDialog.show(owner, document, exporters, translations)),
-                        summary,
-                        diagnostics);
+        var job = new VBox(
+                7,
+                row(
+                        "print-executable",
+                        translations.text("gui.slicer_executable"),
+                        PrusaSlicerBackend.defaultExecutable().toString()),
+                row(
+                        "print-output",
+                        translations.text("gui.g_code_destination"),
+                        Path.of(System.getProperty("user.home"), "part.gcode").toString()),
+                overwrite,
+                new HBox(8, slice, cancel),
+                button(
+                        translations.text("gui.export_geometry_project"),
+                        "print-export",
+                        () -> ExportDialog.show(owner, document, exporters, translations)),
+                summary,
+                diagnostics);
         diagnostics.setEditable(false);
         diagnostics.setPrefRowCount(5);
         diagnostics.setId("print-diagnostics");
         summary.setWrapText(true);
-        var tabs =
-                new TabPane(
-                        tab("Placement", placement),
-                        tab("Process", process),
-                        tab("Supports", supports),
-                        tab("Job", job));
+        var tabs = new TabPane(
+                tab("Placement", placement), tab("Process", process), tab("Supports", supports), tab("Job", job));
         tabs.setId("print-controls");
         tabs.setPrefWidth(330);
         tabs.setMinWidth(285);
@@ -339,14 +268,7 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
         status.setWrapText(true);
         validationLabel.setId("print-validation");
         validationLabel.setWrapText(true);
-        setBottom(
-                new VBox(
-                        5,
-                        layerLabel,
-                        layer,
-                        filters,
-                        validationLabel,
-                        new HBox(8, progress, status)));
+        setBottom(new VBox(5, layerLabel, layer, filters, validationLabel, new HBox(8, progress, status)));
         BorderPane.setMargin(tabs, new Insets(0, 0, 0, 8));
         jobs.onChanged(this::updateJob);
         updateJob();
@@ -354,9 +276,7 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
 
     private Tab tab(String name, VBox content) {
         content.setPadding(new Insets(8));
-        content.getChildren().stream()
-                .filter(n -> n instanceof Label)
-                .forEach(n -> ((Label) n).setWrapText(true));
+        content.getChildren().stream().filter(n -> n instanceof Label).forEach(n -> ((Label) n).setWrapText(true));
         var scroll = new ScrollPane(content);
         scroll.setFitToWidth(true);
         scroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
@@ -369,18 +289,12 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
     private VBox row(String id, String label, String initial) {
         java.util.function.Supplier<ParameterSet> parameters =
                 () -> document.snapshot().document().parameters();
-        var unit =
-                id.startsWith("print-rotate-") || id.equals("print-threshold")
-                        ? ParameterUnit.DEG
-                        : Set.of(
-                                                "print-face",
-                                                "print-walls",
-                                                "print-infill",
-                                                "print-interfaces",
-                                                "print-raft")
-                                        .contains(id)
-                                ? ParameterUnit.NUMBER
-                                : ParameterUnit.MM;
+        var unit = id.startsWith("print-rotate-") || id.equals("print-threshold")
+                ? ParameterUnit.DEG
+                : Set.of("print-face", "print-walls", "print-infill", "print-interfaces", "print-raft")
+                                .contains(id)
+                        ? ParameterUnit.NUMBER
+                        : ParameterUnit.MM;
         var field =
                 Set.of("print-support-name", "print-executable", "print-output").contains(id)
                         ? FormulaField.text(initial, parameters)
@@ -397,14 +311,13 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
         var button = new Button(title);
         button.setId(id);
         UiHelp.install(button, translations);
-        button.setOnAction(
-                e -> {
-                    try {
-                        action.run();
-                    } catch (RuntimeException failure) {
-                        status.setText(Objects.toString(failure.getMessage(), failure.toString()));
-                    }
-                });
+        button.setOnAction(e -> {
+            try {
+                action.run();
+            } catch (RuntimeException failure) {
+                status.setText(Objects.toString(failure.getMessage(), failure.toString()));
+            }
+        });
         return button;
     }
 
@@ -417,15 +330,13 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
             return value;
         } catch (IllegalArgumentException failure) {
             field.setStyle("-fx-border-color: #d04a3c;");
-            throw new IllegalArgumentException(
-                    id.replace("print-", "") + ": " + failure.getMessage(), failure);
+            throw new IllegalArgumentException(id.replace("print-", "") + ": " + failure.getMessage(), failure);
         }
     }
 
     private int integer(String id) {
         double value = number(id);
-        if (value != Math.rint(value))
-            throw new IllegalArgumentException(translations.text("print.integer", id));
+        if (value != Math.rint(value)) throw new IllegalArgumentException(translations.text("print.integer", id));
         return Math.toIntExact((long) value);
     }
 
@@ -437,10 +348,7 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
         return setup().instances().stream()
                 .filter(i -> i.id().equals(instances.getValue()))
                 .findFirst()
-                .orElseThrow(
-                        () ->
-                                new IllegalArgumentException(
-                                        translations.text("gui.choose_a_build_instance")));
+                .orElseThrow(() -> new IllegalArgumentException(translations.text("gui.choose_a_build_instance")));
     }
 
     private void commit(PrintSetup setup) {
@@ -448,104 +356,82 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
     }
 
     private void addInstance() {
-        String body =
-                Objects.requireNonNull(
-                        bodies.getValue(), translations.text("gui.choose_a_rebuilt_cad_body"));
-        var mesh =
-                document.build().bodies().stream()
-                        .filter(b -> b.id().equals(body))
-                        .findFirst()
-                        .orElseThrow()
-                        .mesh();
+        String body = Objects.requireNonNull(bodies.getValue(), translations.text("gui.choose_a_rebuilt_cad_body"));
+        var mesh = document.build().bodies().stream()
+                .filter(b -> b.id().equals(body))
+                .findFirst()
+                .orElseThrow()
+                .mesh();
         var bounds = MeshGeometry.bounds(mesh);
         var all = new ArrayList<>(setup().instances());
         String id = "part-" + document.snapshot().document().uuidGenerator().next();
-        all.add(
-                new BodyInstance(
-                        id,
-                        body,
-                        Transform.translation(
-                                10 + 70 * all.size() - bounds.minX(),
-                                10 - bounds.minY(),
-                                -bounds.minZ())));
+        all.add(new BodyInstance(
+                id,
+                body,
+                Transform.translation(10 + 70 * all.size() - bounds.minX(), 10 - bounds.minY(), -bounds.minZ())));
         commit(setup().withInstances(all));
         instances.setValue(id);
     }
 
     private void applyPlacement() {
         var selected = selected();
-        var transform =
-                Transform.translation(number("print-x"), number("print-y"), number("print-z"))
-                        .compose(
-                                Transform.rotation(
-                                        number("print-rotate-x"),
-                                        number("print-rotate-y"),
-                                        number("print-rotate-z")));
-        replace(
-                new BodyInstance(
-                        selected.id(),
-                        Objects.requireNonNull(
-                                bodies.getValue(), translations.text("gui.choose_a_cad_body")),
-                        transform));
+        var transform = Transform.translation(number("print-x"), number("print-y"), number("print-z"))
+                .compose(Transform.rotation(
+                        number("print-rotate-x"), number("print-rotate-y"), number("print-rotate-z")));
+        replace(new BodyInstance(
+                selected.id(),
+                Objects.requireNonNull(bodies.getValue(), translations.text("gui.choose_a_cad_body")),
+                transform));
     }
 
     private void replace(BodyInstance selected) {
-        commit(
-                setup().withInstances(
-                                setup().instances().stream()
-                                        .map(i -> i.id().equals(selected.id()) ? selected : i)
-                                        .toList()));
+        commit(setup().withInstances(setup().instances().stream()
+                .map(i -> i.id().equals(selected.id()) ? selected : i)
+                .toList()));
     }
 
     private void duplicate() {
         var source = selected();
         String id = "part-" + document.snapshot().document().uuidGenerator().next();
         var all = new ArrayList<>(setup().instances());
-        all.add(
-                new BodyInstance(
-                        id,
-                        source.bodyId(),
-                        Transform.translation(70, 0, 0).compose(source.transform())));
+        all.add(new BodyInstance(
+                id, source.bodyId(), Transform.translation(70, 0, 0).compose(source.transform())));
         var supports = new ArrayList<>(setup().supports());
         for (var s : setup().supports())
             if (s.instanceId().equals(source.id()))
-                supports.add(
-                        new SupportVolume(
-                                "support-" + document.snapshot().document().uuidGenerator().next(),
-                                id,
-                                s.role(),
-                                s.x(),
-                                s.y(),
-                                s.z(),
-                                s.width(),
-                                s.depth(),
-                                s.height()));
+                supports.add(new SupportVolume(
+                        "support-"
+                                + document.snapshot().document().uuidGenerator().next(),
+                        id,
+                        s.role(),
+                        s.x(),
+                        s.y(),
+                        s.z(),
+                        s.width(),
+                        s.depth(),
+                        s.height()));
         commit(setup().withInstances(all).withSupports(supports));
         instances.setValue(id);
     }
 
     private void removeInstance() {
         var id = selected().id();
-        commit(
-                setup().withInstances(
-                                setup().instances().stream()
-                                        .filter(i -> !i.id().equals(id))
-                                        .toList()));
+        commit(setup().withInstances(setup().instances().stream()
+                .filter(i -> !i.id().equals(id))
+                .toList()));
     }
 
     private void layFace() {
         var selected = selected();
-        var mesh =
-                document.build().bodies().stream()
-                        .filter(b -> b.id().equals(selected.bodyId()))
-                        .findFirst()
-                        .orElseThrow()
-                        .mesh();
-        replace(
-                new BodyInstance(
-                        selected.id(),
-                        selected.bodyId(),
-                        MeshGeometry.layOnFace(mesh, integer("print-face"), selected.transform())));
+        var mesh = document.build().bodies().stream()
+                .filter(b -> b.id().equals(selected.bodyId()))
+                .findFirst()
+                .orElseThrow()
+                .mesh();
+        replace(new BodyInstance(
+                selected.id(),
+                selected.bodyId(),
+                MeshGeometry.layOnFace(mesh, integer("print-face"), selected.transform())));
     }
 
     void selectedFace(String body, int face) {
@@ -576,51 +462,41 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
             dev.voxelbrew.engine.units.Measurements.degrees(ry),
             dev.voxelbrew.engine.units.Measurements.degrees(rz)
         };
-        for (int i = 0; i < names.length; i++)
-            fields.get("print-" + names[i]).setText(Double.toString(values[i]));
+        for (int i = 0; i < names.length; i++) fields.get("print-" + names[i]).setText(Double.toString(values[i]));
     }
 
     private void applyProcess() {
-        var backend =
-                Objects.requireNonNull(
-                        backends.getValue(),
-                        translations.text("gui.choose_an_installed_slicer_backend"));
-        var process =
-                new ProcessSettings(
-                        number("print-layer-height"),
-                        integer("print-walls"),
-                        number("print-infill"),
-                        autoSupports.isSelected(),
-                        bedOnly.isSelected(),
-                        number("print-threshold"),
-                        number("print-gap"),
-                        integer("print-interfaces"),
-                        number("print-brim"),
-                        integer("print-raft"));
-        commit(
-                setup().withProfile(
-                                backend.id(),
-                                "generic-marlin-200-0.4",
-                                Objects.requireNonNull(
-                                        materials.getValue(),
-                                        translations.text("gui.choose_a_material")),
-                                process));
+        var backend = Objects.requireNonNull(
+                backends.getValue(), translations.text("gui.choose_an_installed_slicer_backend"));
+        var process = new ProcessSettings(
+                number("print-layer-height"),
+                integer("print-walls"),
+                number("print-infill"),
+                autoSupports.isSelected(),
+                bedOnly.isSelected(),
+                number("print-threshold"),
+                number("print-gap"),
+                integer("print-interfaces"),
+                number("print-brim"),
+                integer("print-raft"));
+        commit(setup().withProfile(
+                        backend.id(),
+                        "generic-marlin-200-0.4",
+                        Objects.requireNonNull(materials.getValue(), translations.text("gui.choose_a_material")),
+                        process));
     }
 
     private void applySupport() {
-        var volume =
-                new SupportVolume(
-                        fields.get("print-support-name").evaluatedText(),
-                        Objects.requireNonNull(
-                                supportOwners.getValue(),
-                                translations.text("gui.choose_an_attached_instance")),
-                        Objects.requireNonNull(supportRole.getValue()),
-                        number("print-support-x"),
-                        number("print-support-y"),
-                        number("print-support-z"),
-                        number("print-support-width"),
-                        number("print-support-depth"),
-                        number("print-support-height"));
+        var volume = new SupportVolume(
+                fields.get("print-support-name").evaluatedText(),
+                Objects.requireNonNull(supportOwners.getValue(), translations.text("gui.choose_an_attached_instance")),
+                Objects.requireNonNull(supportRole.getValue()),
+                number("print-support-x"),
+                number("print-support-y"),
+                number("print-support-z"),
+                number("print-support-width"),
+                number("print-support-depth"),
+                number("print-support-height"));
         var all = new ArrayList<>(setup().supports());
         all.removeIf(s -> s.id().equals(volume.id()));
         all.add(volume);
@@ -630,40 +506,31 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
 
     private void removeSupport() {
         String id =
-                Objects.requireNonNull(
-                        supportIds.getValue(),
-                        translations.text("gui.choose_a_support_instruction"));
-        commit(
-                setup().withSupports(
-                                setup().supports().stream()
-                                        .filter(s -> !s.id().equals(id))
-                                        .toList()));
+                Objects.requireNonNull(supportIds.getValue(), translations.text("gui.choose_a_support_instruction"));
+        commit(setup().withSupports(setup().supports().stream()
+                .filter(s -> !s.id().equals(id))
+                .toList()));
     }
 
     private void loadSupport() {
         setup().supports().stream()
                 .filter(s -> s.id().equals(supportIds.getValue()))
                 .findFirst()
-                .ifPresent(
-                        s -> {
-                            fields.get("print-support-name").setText(s.id());
-                            supportOwners.setValue(s.instanceId());
-                            supportRole.setValue(s.role());
-                            String[] names = {"x", "y", "z", "width", "depth", "height"};
-                            double[] values = {
-                                s.x(), s.y(), s.z(), s.width(), s.depth(), s.height()
-                            };
-                            for (int i = 0; i < names.length; i++)
-                                fields.get("print-support-" + names[i])
-                                        .setText(Double.toString(values[i]));
-                        });
+                .ifPresent(s -> {
+                    fields.get("print-support-name").setText(s.id());
+                    supportOwners.setValue(s.instanceId());
+                    supportRole.setValue(s.role());
+                    String[] names = {"x", "y", "z", "width", "depth", "height"};
+                    double[] values = {s.x(), s.y(), s.z(), s.width(), s.depth(), s.height()};
+                    for (int i = 0; i < names.length; i++)
+                        fields.get("print-support-" + names[i]).setText(Double.toString(values[i]));
+                });
     }
 
     private void slice() {
         if (!document.canExport())
             throw new IllegalStateException(
-                    translations.text(
-                            "gui.slice_requires_a_complete_successful_rebuild_at_the_timeline_end"));
+                    translations.text("gui.slice_requires_a_complete_successful_rebuild_at_the_timeline_end"));
         jobs.start(
                         document.snapshot().document(),
                         slicers.require(setup().backendId()),
@@ -683,10 +550,9 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
             if (lastBuild != document.build()) {
                 String selected = bodies.getValue();
                 bodies.getItems()
-                        .setAll(
-                                document.build().bodies().stream()
-                                        .map(DocumentController.Body::id)
-                                        .toList());
+                        .setAll(document.build().bodies().stream()
+                                .map(DocumentController.Body::id)
+                                .toList());
                 bodies.setValue(
                         selected == null
                                 ? bodies.getItems().stream().findFirst().orElse(null)
@@ -697,7 +563,9 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
                 String selected = instances.getValue();
                 instances
                         .getItems()
-                        .setAll(setup().instances().stream().map(BodyInstance::id).toList());
+                        .setAll(setup().instances().stream()
+                                .map(BodyInstance::id)
+                                .toList());
                 instances.setValue(
                         instances.getItems().contains(selected)
                                 ? selected
@@ -707,24 +575,16 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
                     supportOwners.setValue(instances.getValue());
                 supportIds
                         .getItems()
-                        .setAll(setup().supports().stream().map(SupportVolume::id).toList());
+                        .setAll(setup().supports().stream()
+                                .map(SupportVolume::id)
+                                .toList());
                 materials.setValue(setup().materialId());
-                backends.setValue(
-                        backends.getItems().stream()
-                                .filter(b -> b.id().equals(setup().backendId()))
-                                .findFirst()
-                                .orElse(null));
+                backends.setValue(backends.getItems().stream()
+                        .filter(b -> b.id().equals(setup().backendId()))
+                        .findFirst()
+                        .orElse(null));
                 var p = setup().process();
-                String[] names = {
-                    "layer-height",
-                    "walls",
-                    "infill",
-                    "threshold",
-                    "gap",
-                    "interfaces",
-                    "brim",
-                    "raft"
-                };
+                String[] names = {"layer-height", "walls", "infill", "threshold", "gap", "interfaces", "brim", "raft"};
                 double[] values = {
                     p.layerHeight(),
                     p.walls(),
@@ -752,42 +612,30 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
             validatedRevision = "";
             validationSequence++;
             validationLabel.setText(
-                    translations.text(
-                            "gui.finish_rebuilding_the_complete_document_before_preparing_a_print"));
+                    translations.text("gui.finish_rebuilding_the_complete_document_before_preparing_a_print"));
         } else if (!revision.equals(validatedRevision)) {
             validatedRevision = revision;
             validation = null;
             try {
                 var meshes = new LinkedHashMap<String, MeshData>();
                 document.build().bodies().forEach(b -> meshes.put(b.id(), b.mesh()));
-                model =
-                        new ManufacturingModel(
-                                snapshot.id(),
-                                revision,
-                                setup(),
-                                PrintProfile.resolve(setup()),
-                                meshes);
+                model = new ManufacturingModel(snapshot.id(), revision, setup(), PrintProfile.resolve(setup()), meshes);
                 var captured = model;
                 long ticket = ++validationSequence;
                 if (validationTask != null) validationTask.cancel(false);
-                validationLabel.setText(
-                        translations.text("gui.validating_build_placement_and_meshes"));
-                validationTask =
-                        validator.submit(
-                                () -> {
-                                    var result = PrintValidation.validate(captured);
-                                    Platform.runLater(
-                                            () -> {
-                                                if (closed || ticket != validationSequence) return;
-                                                validation = result;
-                                                validationLabel.setText(
-                                                        result.valid()
-                                                                ? translations.text(
-                                                                        "gui.print_setup_valid_millimeters")
-                                                                : result.diagnostics().toString());
-                                                updateJob();
-                                            });
-                                });
+                validationLabel.setText(translations.text("gui.validating_build_placement_and_meshes"));
+                validationTask = validator.submit(() -> {
+                    var result = PrintValidation.validate(captured);
+                    Platform.runLater(() -> {
+                        if (closed || ticket != validationSequence) return;
+                        validation = result;
+                        validationLabel.setText(
+                                result.valid()
+                                        ? translations.text("gui.print_setup_valid_millimeters")
+                                        : result.diagnostics().toString());
+                        updateJob();
+                    });
+                });
             } catch (RuntimeException failure) {
                 model = null;
                 validationLabel.setText(failure.getMessage());
@@ -798,19 +646,14 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
     }
 
     private void updateJob() {
-        slice.setDisable(
-                !document.canExport()
-                        || jobs.running()
-                        || validation == null
-                        || !validation.valid());
+        slice.setDisable(!document.canExport() || jobs.running() || validation == null || !validation.valid());
         cancel.setDisable(!jobs.running());
         progress.setVisible(jobs.running());
-        status.setText(
-                translations.text("print.state." + jobs.state().name())
-                        + ": "
-                        + (jobs.state() == PrintController.State.IDLE
-                                ? translations.text("gui.ready_to_slice")
-                                : jobs.message()));
+        status.setText(translations.text("print.state." + jobs.state().name())
+                + ": "
+                + (jobs.state() == PrintController.State.IDLE
+                        ? translations.text("gui.ready_to_slice")
+                        : jobs.message()));
         diagnostics.setText(String.join("\n", jobs.diagnostics()));
         var result = jobs.result();
         if (result != displayed) {
@@ -820,34 +663,28 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
                 summary.setText("");
             } else {
                 var job = result.job();
-                previewLayers =
-                        job.segments().stream()
-                                .filter(GcodeJob.Segment::deposits)
-                                .map(s -> Math.rint(s.z1() * 1e6) / 1e6)
-                                .distinct()
-                                .sorted()
-                                .toList();
-                summary.setText(
-                        job.report().get("printer")
-                                + "\n"
-                                + translations.text(
-                                        "print.summary",
-                                        job.report().get("material"),
-                                        job.report().get("nozzle_mm"),
-                                        job.modelLayers().size(),
-                                        job.estimatedTime()
-                                                .orElse(translations.text("print.unknown")),
-                                        (job.filamentMm().isPresent()
-                                                ? String.format(
-                                                        Locale.ROOT,
-                                                        "%.1f mm",
-                                                        job.filamentMm().getAsDouble())
-                                                : translations.text("print.unknown"))));
+                previewLayers = job.segments().stream()
+                        .filter(GcodeJob.Segment::deposits)
+                        .map(s -> Math.rint(s.z1() * 1e6) / 1e6)
+                        .distinct()
+                        .sorted()
+                        .toList();
+                summary.setText(job.report().get("printer")
+                        + "\n"
+                        + translations.text(
+                                "print.summary",
+                                job.report().get("material"),
+                                job.report().get("nozzle_mm"),
+                                job.modelLayers().size(),
+                                job.estimatedTime().orElse(translations.text("print.unknown")),
+                                (job.filamentMm().isPresent()
+                                        ? String.format(
+                                                Locale.ROOT,
+                                                "%.1f mm",
+                                                job.filamentMm().getAsDouble())
+                                        : translations.text("print.unknown"))));
                 for (var entry : roles.entrySet())
-                    entry.getValue()
-                            .setDisable(
-                                    job.segments().stream()
-                                            .noneMatch(s -> s.role() == entry.getKey()));
+                    entry.getValue().setDisable(job.segments().stream().noneMatch(s -> s.role() == entry.getKey()));
             }
             layer.setMax(Math.max(0, previewLayers.size() - 1));
             layer.setValue(0);
@@ -882,17 +719,13 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
         if (displayed != null && !previewLayers.isEmpty()) {
             int index = Math.min(previewLayers.size() - 1, (int) Math.round(layer.getValue()));
             double z = previewLayers.get(index);
-            layerLabel.setText(
-                    translations.text(
-                            "print.layer",
-                            index + 1,
-                            previewLayers.size(),
-                            String.format(Locale.ROOT, "%.3f", z)));
+            layerLabel.setText(translations.text(
+                    "print.layer", index + 1, previewLayers.size(), String.format(Locale.ROOT, "%.3f", z)));
             for (var segment : displayed.job().segments())
-                if (Math.abs(segment.z1() - z) < 1e-5 && roles.get(segment.role()).isSelected()) {
+                if (Math.abs(segment.z1() - z) < 1e-5
+                        && roles.get(segment.role()).isSelected()) {
                     graphics.setStroke(color(segment.role()));
-                    graphics.setLineWidth(
-                            segment.deposits() ? Math.max(1, segment.width() * scale) : 0.5);
+                    graphics.setLineWidth(segment.deposits() ? Math.max(1, segment.width() * scale) : 0.5);
                     graphics.strokeLine(
                             ox + segment.x0() * scale,
                             oy - segment.y0() * scale,
@@ -900,8 +733,7 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
                             oy - segment.y1() * scale);
                 }
         } else {
-            layerLabel.setText(
-                    translations.text("gui.build_placement_slice_to_preview_actual_toolpaths"));
+            layerLabel.setText(translations.text("gui.build_placement_slice_to_preview_actual_toolpaths"));
             if (model == null) return;
             int index = 0;
             for (var instance : model.instances()) {
@@ -919,19 +751,16 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
                 }
             }
             for (var support : model.setup().supports()) {
-                var owner =
-                        model.instances().stream()
-                                .filter(i -> i.id().equals(support.instanceId()))
-                                .findFirst();
+                var owner = model.instances().stream()
+                        .filter(i -> i.id().equals(support.instanceId()))
+                        .findFirst();
                 if (owner.isEmpty()) continue;
-                var box =
-                        MeshGeometry.transform(MeshGeometry.box(support), owner.get().transform());
+                var box = MeshGeometry.transform(
+                        MeshGeometry.box(support), owner.get().transform());
                 graphics.setStroke(
                         support.role() == SupportVolume.Role.BLOCKER
                                 ? Color.CRIMSON
-                                : support.role() == SupportVolume.Role.ENFORCER
-                                        ? Color.MEDIUMPURPLE
-                                        : Color.LIMEGREEN);
+                                : support.role() == SupportVolume.Role.ENFORCER ? Color.MEDIUMPURPLE : Color.LIMEGREEN);
                 graphics.setLineWidth(2);
                 for (int t = 0; t < box.triangleCount(); t++)
                     for (int c = 0; c < 3; c++) {

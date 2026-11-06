@@ -39,42 +39,30 @@ final class FeatureDialog {
             diagnostics.setWrapText(true);
             var details = new TitledPane(translations.text("gui.plugin_diagnostics"), diagnostics);
             details.setExpanded(false);
-            type.setOnAction(
-                    e -> {
-                        fields.clear();
-                        form.getChildren().clear();
-                        errors.setText("");
-                        if (type.getValue() != null)
-                            for (var p : type.getValue().parameters()) {
-                                var input =
-                                        FormulaField.number(
-                                                        Double.toString(p.defaultValue()),
-                                                        () -> parameters,
-                                                        FormulaField.unit(p.unit()))
-                                                .localized(translations);
-                                input.setId("custom-" + p.key());
-                                fields.put(p.key(), input);
-                                form.getChildren()
-                                        .addAll(
-                                                new Label(p.label() + " (" + p.unit() + ")"),
-                                                input);
-                            }
-                    });
+            type.setOnAction(e -> {
+                fields.clear();
+                form.getChildren().clear();
+                errors.setText("");
+                if (type.getValue() != null)
+                    for (var p : type.getValue().parameters()) {
+                        var input = FormulaField.number(
+                                        Double.toString(p.defaultValue()),
+                                        () -> parameters,
+                                        FormulaField.unit(p.unit()))
+                                .localized(translations);
+                        input.setId("custom-" + p.key());
+                        fields.put(p.key(), input);
+                        form.getChildren().addAll(new Label(p.label() + " (" + p.unit() + ")"), input);
+                    }
+            });
             type.getSelectionModel().selectFirst();
             var scroll = new ScrollPane(form);
             scroll.setFitToWidth(true);
             scroll.setPrefViewportHeight(230);
             var location = new Label(translations.text("plugin.directory", directory));
             location.setWrapText(true);
-            var content =
-                    new VBox(
-                            10,
-                            new Label(translations.text("gui.feature_type")),
-                            type,
-                            scroll,
-                            errors,
-                            location,
-                            details);
+            var content = new VBox(
+                    10, new Label(translations.text("gui.feature_type")), type, scroll, errors, location, details);
             content.setPrefWidth(440);
             dialog.getDialogPane().setContent(content);
             var add = new ButtonType(translations.text("gui.add"), ButtonBar.ButtonData.OK_DONE);
@@ -83,46 +71,37 @@ final class FeatureDialog {
             button.setId("custom-add");
             button.setDisable(type.getItems().isEmpty());
             if (type.getItems().isEmpty())
-                errors.setText(
-                        translations.text(
-                                "gui.no_feature_providers_installed_add_a_trusted_jar_to_this_directory_and_reopen_features"));
+                errors.setText(translations.text(
+                        "gui.no_feature_providers_installed_add_a_trusted_jar_to_this_directory_and_reopen_features"));
             dialog.getDialogPane().lookupButton(ButtonType.CANCEL).setId("custom-cancel");
             Feature.Custom[] result = new Feature.Custom[1];
-            button.addEventFilter(
-                    ActionEvent.ACTION,
-                    e -> {
-                        fields.values().forEach(f -> f.getStyleClass().remove("invalid"));
-                        var values = new LinkedHashMap<String, Double>();
+            button.addEventFilter(ActionEvent.ACTION, e -> {
+                fields.values().forEach(f -> f.getStyleClass().remove("invalid"));
+                var values = new LinkedHashMap<String, Double>();
+                try {
+                    for (var p : type.getValue().parameters()) {
+                        var field = fields.get(p.key());
                         try {
-                            for (var p : type.getValue().parameters()) {
-                                var field = fields.get(p.key());
-                                try {
-                                    double value = field.declaredValue();
-                                    p.validate(value);
-                                    values.put(p.key(), value);
-                                } catch (IllegalArgumentException failure) {
-                                    field.getStyleClass().add("invalid");
-                                    throw new IllegalArgumentException(
-                                            p.label() + ": " + failure.getMessage(), failure);
-                                }
-                            }
-                            var d = type.getValue();
-                            result[0] =
-                                    registry.create(
-                                            "custom-" + parameters.uuidGenerator().next(),
-                                            d.providerId(),
-                                            d.type(),
-                                            values);
-                        } catch (RuntimeException failure) {
-                            errors.setText(failure.getMessage());
-                            fields.forEach(
-                                    (key, field) -> {
-                                        if (failure.getMessage().contains(key))
-                                            field.getStyleClass().add("invalid");
-                                    });
-                            e.consume();
+                            double value = field.declaredValue();
+                            p.validate(value);
+                            values.put(p.key(), value);
+                        } catch (IllegalArgumentException failure) {
+                            field.getStyleClass().add("invalid");
+                            throw new IllegalArgumentException(p.label() + ": " + failure.getMessage(), failure);
                         }
+                    }
+                    var d = type.getValue();
+                    result[0] = registry.create(
+                            "custom-" + parameters.uuidGenerator().next(), d.providerId(), d.type(), values);
+                } catch (RuntimeException failure) {
+                    errors.setText(failure.getMessage());
+                    fields.forEach((key, field) -> {
+                        if (failure.getMessage().contains(key))
+                            field.getStyleClass().add("invalid");
                     });
+                    e.consume();
+                }
+            });
             dialog.setResultConverter(choice -> choice == add ? result[0] : null);
             return Dialogs.show(dialog, owner, translations);
         }

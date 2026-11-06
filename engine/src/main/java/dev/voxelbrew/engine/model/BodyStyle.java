@@ -17,8 +17,7 @@ public record BodyStyle(String material, String color) {
     public BodyStyle {
         material = Objects.requireNonNull(material, "material").strip();
         if (material.length() > 64 || material.codePoints().anyMatch(Character::isISOControl)) {
-            throw new IllegalArgumentException(
-                    "Material must have at most 64 characters and no control characters");
+            throw new IllegalArgumentException("Material must have at most 64 characters and no control characters");
         }
         color = Objects.requireNonNull(color, "color").toUpperCase(Locale.ROOT);
         if (!color.matches("#[0-9A-F]{6}")) {

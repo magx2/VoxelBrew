@@ -9,14 +9,9 @@ import org.junit.jupiter.api.Test;
 class BodyNameTest {
     @Test
     void namesAreUndoableWithoutChangingIdsGeometryOrOtherMetadata() {
-        var sketch =
-                new Feature.Sketch(
-                        "sketch",
-                        "profile",
-                        new Feature.Plane("origin-xy", 0),
-                        new Feature.Rectangle(0, 0, 60, 40));
-        var extrusion =
-                new Feature.Extrude("solid", new Feature.ProfileRef("sketch", "profile"), 5);
+        var sketch = new Feature.Sketch(
+                "sketch", "profile", new Feature.Plane("origin-xy", 0), new Feature.Rectangle(0, 0, 60, 40));
+        var extrusion = new Feature.Extrude("solid", new Feature.ProfileRef("sketch", "profile"), 5);
         var initial = new CadDocument("named", List.of(sketch, extrusion), 2);
         var session = new ModelSession(initial);
         session.renameBody("solid.body", "  Mounting plate  ");
@@ -48,42 +43,40 @@ class BodyNameTest {
     }
 
     @Test
-    void unicodeNamesRoundTripDeterministicallyAndRemainIndependentOfStableReferences()
-            throws Exception {
+    void unicodeNamesRoundTripDeterministicallyAndRemainIndependentOfStableReferences() throws Exception {
         var names = new LinkedHashMap<String, String>();
         names.put("z.body", "Pokrywa żółta");
         names.put("a.body", "Support / left");
-        var document =
-                new CadDocument(
-                        "names",
-                        List.of(),
-                        0,
-                        dev.voxelbrew.engine.printing.PrintSetup.empty(),
-                        dev.voxelbrew.engine.parameters.ParameterSet.empty(),
-                        Map.of(),
-                        names);
+        var document = new CadDocument(
+                "names",
+                List.of(),
+                0,
+                dev.voxelbrew.engine.printing.PrintSetup.empty(),
+                dev.voxelbrew.engine.parameters.ParameterSet.empty(),
+                Map.of(),
+                names);
         names.clear();
         assertEquals(2, document.bodyNames().size());
         assertEquals(document, DocumentCodec.decode(DocumentCodec.encode(document)));
-        assertThrows(UnsupportedOperationException.class, () -> document.bodyNames().clear());
+        assertThrows(
+                UnsupportedOperationException.class, () -> document.bodyNames().clear());
         var reverse = new TreeMap<>(document.bodyNames());
-        var reordered =
-                new CadDocument(
-                        document.id(),
-                        document.features(),
-                        document.cursor(),
-                        document.printSetup(),
-                        document.parameters(),
-                        document.bodyStyles(),
-                        reverse);
+        var reordered = new CadDocument(
+                document.id(),
+                document.features(),
+                document.cursor(),
+                document.printSetup(),
+                document.parameters(),
+                document.bodyStyles(),
+                reverse);
         assertArrayEquals(DocumentCodec.encode(document), DocumentCodec.encode(reordered));
         assertEquals(DocumentCodec.fingerprint(document), DocumentCodec.fingerprint(reordered));
         var session = new ModelSession(document);
         session.renameBody("a.body", "Right support");
-        assertNotEquals(
-                DocumentCodec.fingerprint(document), DocumentCodec.fingerprint(session.document()));
+        assertNotEquals(DocumentCodec.fingerprint(document), DocumentCodec.fingerprint(session.document()));
         var unnamed = new CadDocument("names", List.of(), 0);
-        assertTrue(DocumentCodec.decode(DocumentCodec.encode(unnamed)).bodyNames().isEmpty());
+        assertTrue(
+                DocumentCodec.decode(DocumentCodec.encode(unnamed)).bodyNames().isEmpty());
     }
 
     @Test
@@ -91,11 +84,8 @@ class BodyNameTest {
         var session = new ModelSession(CadDocument.empty());
         var before = session.snapshot();
         for (String name : List.of("", "   ", "line\nbreak", "x\u0000y", "x".repeat(129)))
-            assertThrows(
-                    IllegalArgumentException.class, () -> session.renameBody("body.one", name));
-        assertThrows(
-                IllegalArgumentException.class,
-                () -> session.renameBody("invalid body ID", "Plate"));
+            assertThrows(IllegalArgumentException.class, () -> session.renameBody("body.one", name));
+        assertThrows(IllegalArgumentException.class, () -> session.renameBody("invalid body ID", "Plate"));
         assertEquals(before, session.snapshot());
     }
 }

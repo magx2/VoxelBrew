@@ -33,16 +33,8 @@ public record CadDocument(
     }
 
     public CadDocument(
-            String id,
-            List<Feature> features,
-            int cursor,
-            dev.voxelbrew.engine.printing.PrintSetup printSetup) {
-        this(
-                id,
-                features,
-                cursor,
-                printSetup,
-                dev.voxelbrew.engine.parameters.ParameterSet.empty());
+            String id, List<Feature> features, int cursor, dev.voxelbrew.engine.printing.PrintSetup printSetup) {
+        this(id, features, cursor, printSetup, dev.voxelbrew.engine.parameters.ParameterSet.empty());
     }
 
     public CadDocument(String id, List<Feature> features, int cursor) {
@@ -95,8 +87,7 @@ public record CadDocument(
                 || name.isBlank()
                 || name.length() > 128
                 || name.codePoints().anyMatch(Character::isISOControl))
-            throw new IllegalArgumentException(
-                    "Body name must contain 1–128 characters and no control characters");
+            throw new IllegalArgumentException("Body name must contain 1–128 characters and no control characters");
     }
 
     /**
@@ -112,8 +103,7 @@ public record CadDocument(
         if (!visited.add(bodyId)) return BodyStyle.DEFAULT;
         for (var feature : features) {
             if (feature instanceof Feature.SplitBody split
-                    && (bodyId.equals(split.id() + ".negative")
-                            || bodyId.equals(split.id() + ".positive"))) {
+                    && (bodyId.equals(split.id() + ".negative") || bodyId.equals(split.id() + ".positive"))) {
                 return outputStyle(split.body(), visited);
             }
         }
@@ -122,8 +112,7 @@ public record CadDocument(
 
     private BodyStyle outputStyle(Feature.BodyRef output, java.util.Set<String> visited) {
         for (var feature : features) {
-            if (feature.id().equals(output.featureId())
-                    && feature instanceof Feature.ThroughCut cut) {
+            if (feature.id().equals(output.featureId()) && feature instanceof Feature.ThroughCut cut) {
                 if (!visited.add("output:" + output.featureId())) return BodyStyle.DEFAULT;
                 return outputStyle(cut.body(), visited);
             }

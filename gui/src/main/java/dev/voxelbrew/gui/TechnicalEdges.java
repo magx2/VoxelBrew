@@ -11,10 +11,7 @@ final class TechnicalEdges {
         }
 
         Point cross(Point other) {
-            return new Point(
-                    y * other.z - z * other.y,
-                    z * other.x - x * other.z,
-                    x * other.y - y * other.x);
+            return new Point(y * other.z - z * other.y, z * other.x - x * other.z, x * other.y - y * other.x);
         }
 
         double dot(Point other) {
@@ -66,13 +63,8 @@ final class TechnicalEdges {
         var points = new ArrayList<Point>();
         var indices = new int[mesh.vertexCount()];
         for (int v = 0; v < indices.length; v++) {
-            var point =
-                    new Point(mesh.coordinate(v, 0), mesh.coordinate(v, 1), mesh.coordinate(v, 2));
-            var key =
-                    new Vertex(
-                            Math.round(point.x / 1e-7),
-                            Math.round(point.y / 1e-7),
-                            Math.round(point.z / 1e-7));
+            var point = new Point(mesh.coordinate(v, 0), mesh.coordinate(v, 1), mesh.coordinate(v, 2));
+            var key = new Vertex(Math.round(point.x / 1e-7), Math.round(point.y / 1e-7), Math.round(point.z / 1e-7));
             var existing = vertices.get(key);
             if (existing == null) {
                 existing = points.size();
@@ -87,9 +79,7 @@ final class TechnicalEdges {
                     b = indices[mesh.vertexIndex(t, 1)],
                     c = indices[mesh.vertexIndex(t, 2)];
             var normal =
-                    points.get(b)
-                            .subtract(points.get(a))
-                            .cross(points.get(c).subtract(points.get(a)));
+                    points.get(b).subtract(points.get(a)).cross(points.get(c).subtract(points.get(a)));
             if (normal.dot(normal) == 0) continue;
             int[] corners = {a, b, c};
             for (int k = 0; k < 3; k++) {
@@ -97,26 +87,15 @@ final class TechnicalEdges {
                 var pair = new Pair(Math.min(start, end), Math.max(start, end));
                 var old = adjacent.get(pair);
                 if (old == null)
-                    adjacent.put(
-                            pair,
-                            new Adjacent(
-                                    points.get(start), points.get(end), normal, mesh.faceIndex(t)));
+                    adjacent.put(pair, new Adjacent(points.get(start), points.get(end), normal, mesh.faceIndex(t)));
                 else {
                     old.boundary |= old.face != mesh.faceIndex(t) || old.second != null;
                     old.second = normal;
                 }
             }
         }
-        return new TechnicalEdges(
-                adjacent.values().stream()
-                        .map(
-                                edge ->
-                                        new Edge(
-                                                edge.a,
-                                                edge.b,
-                                                edge.first,
-                                                edge.second,
-                                                edge.boundary || edge.second == null))
-                        .toList());
+        return new TechnicalEdges(adjacent.values().stream()
+                .map(edge -> new Edge(edge.a, edge.b, edge.first, edge.second, edge.boundary || edge.second == null))
+                .toList());
     }
 }

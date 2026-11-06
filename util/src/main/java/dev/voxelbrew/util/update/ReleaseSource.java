@@ -8,8 +8,7 @@ import java.util.Set;
 public interface ReleaseSource {
     record Release(ReleaseVersion version, Set<String> assets) {
         public Release {
-            if (version.snapshot())
-                throw new IllegalArgumentException("A published release cannot be a snapshot");
+            if (version.snapshot()) throw new IllegalArgumentException("A published release cannot be a snapshot");
             assets = Set.copyOf(assets);
         }
 
@@ -20,6 +19,5 @@ public interface ReleaseSource {
 
     Release fetch(ReleaseVersion requested, UpdateCancellation cancellation) throws IOException;
 
-    void download(Release release, String asset, Path destination, UpdateCancellation cancellation)
-            throws IOException;
+    void download(Release release, String asset, Path destination, UpdateCancellation cancellation) throws IOException;
 }

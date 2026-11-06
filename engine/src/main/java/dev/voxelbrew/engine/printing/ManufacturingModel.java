@@ -17,11 +17,7 @@ public final class ManufacturingModel {
     private final Map<String, MeshData> meshes;
 
     public ManufacturingModel(
-            String documentId,
-            String revision,
-            PrintSetup setup,
-            PrintProfile profile,
-            Map<String, MeshData> meshes) {
+            String documentId, String revision, PrintSetup setup, PrintProfile profile, Map<String, MeshData> meshes) {
         this.documentId = Objects.requireNonNull(documentId);
         this.revision = Objects.requireNonNull(revision);
         this.setup = Objects.requireNonNull(setup);
@@ -30,8 +26,7 @@ public final class ManufacturingModel {
     }
 
     public static ManufacturingModel evaluate(CadDocument document, MeshOptions options) {
-        return evaluate(
-                document, options, dev.voxelbrew.engine.feature.FeatureRegistry.defaultDirectory());
+        return evaluate(document, options, dev.voxelbrew.engine.feature.FeatureRegistry.defaultDirectory());
     }
 
     public static ManufacturingModel evaluate(
@@ -41,13 +36,11 @@ public final class ManufacturingModel {
         }
     }
 
-    public static ManufacturingModel from(
-            CadDocument document, Evaluation evaluation, MeshOptions options) {
+    public static ManufacturingModel from(CadDocument document, Evaluation evaluation, MeshOptions options) {
         var meshes = new LinkedHashMap<String, MeshData>();
         var bodies = evaluation.requireCompleteDocument();
-        var detached =
-                dev.voxelbrew.util.concurrent.CpuWork.map(
-                        bodies, body -> body.solid().tessellate(options));
+        var detached = dev.voxelbrew.util.concurrent.CpuWork.map(
+                bodies, body -> body.solid().tessellate(options));
         for (int i = 0; i < bodies.size(); i++) meshes.put(bodies.get(i).id(), detached.get(i));
         return new ManufacturingModel(
                 document.id(),

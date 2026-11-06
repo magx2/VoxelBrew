@@ -11,11 +11,7 @@ class MeshValidationTest {
         assertThrows(IllegalArgumentException.class, () -> new MeshOptions(0.02, 0));
         assertThrows(
                 IllegalArgumentException.class,
-                () ->
-                        MeshValidation.requireClosed(
-                                new MeshData(
-                                        new double[] {0, 0, 0, 1, 0, 0, 0, 1, 0},
-                                        new int[] {0, 1, 2},
-                                        new int[] {0})));
+                () -> MeshValidation.requireClosed(
+                        new MeshData(new double[] {0, 0, 0, 1, 0, 0, 0, 1, 0}, new int[] {0, 1, 2}, new int[] {0})));
     }
 }

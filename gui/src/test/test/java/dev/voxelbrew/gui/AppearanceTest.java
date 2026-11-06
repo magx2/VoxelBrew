@@ -8,7 +8,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 class AppearanceTest {
-    @TempDir Path directory;
+    @TempDir
+    Path directory;
 
     @Test
     void migratesExistingPreferenceOnceAndPreservesUnrelatedConfiguration() throws Exception {
@@ -18,13 +19,10 @@ class AppearanceTest {
         assertEquals(Appearance.Choice.DARK, appearance.load());
         assertEquals("DARK", config.get("appearance", ""));
         appearance.save(Appearance.Choice.LIGHT);
-        var reopened =
-                new Appearance(
-                        new UserConfiguration(config.path()),
-                        () -> {
-                            fail("Legacy preference should not be consulted again");
-                            return null;
-                        });
+        var reopened = new Appearance(new UserConfiguration(config.path()), () -> {
+            fail("Legacy preference should not be consulted again");
+            return null;
+        });
         assertEquals(Appearance.Choice.LIGHT, reopened.load());
         assertEquals("pl", config.get("language", ""));
     }

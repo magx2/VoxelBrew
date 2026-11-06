@@ -68,28 +68,24 @@ final class Appearance {
 
     static boolean systemDark() {
         if (System.getProperty("os.name").startsWith("Windows")) return windowsDark("reg.exe");
-        String value =
-                command(List.of("gsettings", "get", "org.gnome.desktop.interface", "color-scheme"));
+        String value = command(List.of("gsettings", "get", "org.gnome.desktop.interface", "color-scheme"));
         if (value.contains("prefer-dark")) return true;
         if (value.contains("prefer-light")) return false;
         if (command(List.of("gsettings", "get", "org.gnome.desktop.interface", "gtk-theme"))
                 .toLowerCase(Locale.ROOT)
                 .contains("dark")) return true;
-        if (System.getenv("WSL_DISTRO_NAME") != null
-                && Files.isRegularFile(Path.of("/mnt/c/Windows/System32/reg.exe")))
+        if (System.getenv("WSL_DISTRO_NAME") != null && Files.isRegularFile(Path.of("/mnt/c/Windows/System32/reg.exe")))
             return windowsDark("/mnt/c/Windows/System32/reg.exe");
         return false;
     }
 
     private static boolean windowsDark(String executable) {
-        String value =
-                command(
-                        List.of(
-                                executable,
-                                "query",
-                                "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize",
-                                "/v",
-                                "AppsUseLightTheme"));
+        String value = command(List.of(
+                executable,
+                "query",
+                "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize",
+                "/v",
+                "AppsUseLightTheme"));
         return value.matches("(?s).*AppsUseLightTheme\\s+REG_DWORD\\s+0x0\\s*.*");
     }
 

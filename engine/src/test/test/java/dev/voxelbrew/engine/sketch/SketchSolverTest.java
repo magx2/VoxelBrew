@@ -19,8 +19,7 @@ class SketchSolverTest {
         return new SketchGeometry(List.of(entities), List.of(), List.of());
     }
 
-    private static SketchGeometry add(
-            SketchGeometry g, String id, Type type, double value, Ref... refs) {
+    private static SketchGeometry add(SketchGeometry g, String id, Type type, double value, Ref... refs) {
         return g.add(SketchConstraints.create(g, id, type, List.of(refs), value));
     }
 
@@ -85,18 +84,9 @@ class SketchSolverTest {
         moved = add(moved, "y", Type.DISTANCE_Y, 7, ORIGIN, p.ref(Part.POINT));
         point(solve(moved).entity("point").at(0), -4, 7);
         var coincident = add(geometry(line, p), "fixed", Type.FIX, 0, line.ref());
-        coincident =
-                solve(
-                        add(
-                                coincident,
-                                "on-line",
-                                Type.COINCIDENT,
-                                0,
-                                p.ref(Part.POINT),
-                                line.ref()));
+        coincident = solve(add(coincident, "on-line", Type.COINCIDENT, 0, p.ref(Part.POINT), line.ref()));
         point(coincident.entity("point").at(0), 4, 0);
-        var origin =
-                solve(add(geometry(p), "origin", Type.COINCIDENT, 0, p.ref(Part.POINT), ORIGIN));
+        var origin = solve(add(geometry(p), "origin", Type.COINCIDENT, 0, p.ref(Part.POINT), ORIGIN));
         point(origin.entity("point").at(0), 0, 0);
     }
 
@@ -169,8 +159,7 @@ class SketchSolverTest {
     @Test
     void curvatureMakesACubicSplineJoinAnArcWithG2Continuity() {
         var arc = Sketches.entity("arc", Kind.ARC, false, 0, 0, 10, 0, Math.PI / 2);
-        var spline =
-                Sketches.entity("spline", Kind.SPLINE, false, 0.2, 10.1, -3, 10.3, -8, 6, -10, 0);
+        var spline = Sketches.entity("spline", Kind.SPLINE, false, 0.2, 10.1, -3, 10.3, -8, 6, -10, 0);
         var g = add(geometry(arc, spline), "arc-fixed", Type.FIX, 0, arc.ref());
         g = solve(add(g, "smooth", Type.CURVATURE, 0, arc.ref(Part.END), spline.ref(Part.START)));
         var a = g.entity("arc");
@@ -204,26 +193,20 @@ class SketchSolverTest {
     void conflictsAreDiagnosedWithoutMutatingTheDefinitionAndRemovalRepairsIt() {
         var g = Sketches.rectangle("plate", 0, 0, 60, 40, true);
         assertEquals(0, SketchSolver.solve(g).degreesOfFreedom());
-        var inconsistent = add(g, "wrong-width", Type.LENGTH, 80, g.entities().getFirst().ref());
+        var inconsistent =
+                add(g, "wrong-width", Type.LENGTH, 80, g.entities().getFirst().ref());
         var result = SketchSolver.solve(inconsistent);
         assertFalse(result.solved());
-        assertTrue(
-                result.problems().stream().anyMatch(p -> p.constraintId().equals("wrong-width")));
+        assertTrue(result.problems().stream().anyMatch(p -> p.constraintId().equals("wrong-width")));
         assertEquals(60, g.entities().getFirst().at(1).x());
         assertThrows(IllegalArgumentException.class, result::requireSolved);
         assertTrue(SketchSolver.solve(g).solved());
-        var invalid =
-                new Constraint(
-                        "missing",
-                        Type.FIX,
-                        List.of(new Ref("missing", Part.START)),
-                        List.of(0.0, 0.0));
+        var invalid = new Constraint("missing", Type.FIX, List.of(new Ref("missing", Part.START)), List.of(0.0, 0.0));
         assertFalse(SketchSolver.solve(g.add(invalid)).solved());
         assertThrows(
                 IllegalArgumentException.class,
-                () ->
-                        SketchConstraints.create(
-                                g, "bad", Type.RADIUS, List.of(g.entities().getFirst().ref()), -1));
+                () -> SketchConstraints.create(
+                        g, "bad", Type.RADIUS, List.of(g.entities().getFirst().ref()), -1));
     }
 
     @Test
@@ -234,8 +217,7 @@ class SketchSolverTest {
         point(result.geometry().entities().getFirst().at(0), 4, 5);
         assertEquals(g.constraints(), result.geometry().constraints());
         var fixed = Sketches.rectangle("plate", 0, 0, 60, 40, true);
-        assertFalse(
-                Sketches.drag(fixed, fixed.entities().getFirst().ref(Part.START), new Vec(4, 5))
-                        .solved());
+        assertFalse(Sketches.drag(fixed, fixed.entities().getFirst().ref(Part.START), new Vec(4, 5))
+                .solved());
     }
 }

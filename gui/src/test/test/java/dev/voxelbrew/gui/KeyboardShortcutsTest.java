@@ -25,23 +25,13 @@ class KeyboardShortcutsTest {
 
     @Test
     void rectangleAndCircleShortcutsExistOnlyInsideTheSketchEditor() {
-        for (var entry :
-                java.util.Map.of(
-                                KeyCode.R, "sketch-tool-rectangle", KeyCode.C, "sketch-tool-circle")
-                        .entrySet())
+        for (var entry : java.util.Map.of(KeyCode.R, "sketch-tool-rectangle", KeyCode.C, "sketch-tool-circle")
+                .entrySet())
             assertEquals(
                     entry.getValue(),
                     KeyboardShortcuts.match(
                             KeyboardShortcuts.Scope.SKETCH,
-                            new KeyEvent(
-                                    KeyEvent.KEY_PRESSED,
-                                    "",
-                                    "",
-                                    entry.getKey(),
-                                    false,
-                                    false,
-                                    false,
-                                    false),
+                            new KeyEvent(KeyEvent.KEY_PRESSED, "", "", entry.getKey(), false, false, false, false),
                             null));
     }
 
@@ -57,7 +47,9 @@ class KeyboardShortcutsTest {
                 for (var language : List.of(Locale.ENGLISH, Locale.forLanguageTag("pl"))) {
                     var translations = new Translations(language);
                     assertFalse(UiHelp.description(translations, binding.id()).isBlank());
-                    assertFalse(translations.text("shortcuts.section." + scope.name()).isBlank());
+                    assertFalse(translations
+                            .text("shortcuts.section." + scope.name())
+                            .isBlank());
                 }
             }
         }

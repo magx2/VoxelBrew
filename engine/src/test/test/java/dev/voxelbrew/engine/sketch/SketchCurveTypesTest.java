@@ -8,14 +8,7 @@ import org.junit.jupiter.api.Test;
 
 class SketchCurveTypesTest {
     private Entity spline(Kind kind, int degree, boolean closed, double... points) {
-        return new Entity(
-                "spline",
-                kind,
-                Arrays.stream(points).boxed().toList(),
-                false,
-                degree,
-                closed,
-                null);
+        return new Entity("spline", kind, Arrays.stream(points).boxed().toList(), false, degree, closed, null);
     }
 
     @Test
@@ -24,24 +17,16 @@ class SketchCurveTypesTest {
         assertEquals(0, e.at(0).distance(new Vec(3, 14)), 1e-12);
         assertEquals(0.4, e.curvature(0), 1e-12);
         double weight = Math.sqrt(0.5);
-        var c =
-                Sketches.entity(
-                        "conic", Kind.CONIC, false, 10, 0, 10, 10, 0, 10, weight / (1 + weight));
+        var c = Sketches.entity("conic", Kind.CONIC, false, 10, 0, 10, 10, 0, 10, weight / (1 + weight));
         for (double t : new double[] {0, .2, .5, .8, 1}) {
             assertEquals(10, c.at(t).length(), 1e-10);
             assertEquals(.1, c.curvature(t), 1e-10);
         }
-        var reflected =
-                Sketches.entity("reflected", Kind.ELLIPSE, false, -3, 4, 10, 5, Math.PI / 2);
+        var reflected = Sketches.entity("reflected", Kind.ELLIPSE, false, -3, 4, 10, 5, Math.PI / 2);
         var axis = Sketches.entity("axis", Kind.LINE, true, 0, 0, 0, 20);
         var geometry = new SketchGeometry(List.of(e, reflected, axis), List.of(), List.of());
-        var symmetry =
-                SketchConstraints.create(
-                        geometry,
-                        "symmetry",
-                        Type.SYMMETRY,
-                        List.of(e.ref(), reflected.ref(), axis.ref()),
-                        0);
+        var symmetry = SketchConstraints.create(
+                geometry, "symmetry", Type.SYMMETRY, List.of(e.ref(), reflected.ref(), axis.ref()), 0);
         SketchConstraints.requireSatisfied(geometry.add(symmetry));
     }
 
@@ -62,23 +47,7 @@ class SketchCurveTypesTest {
     @Test
     void controlSplinesSupportBothDegreesAndPeriodicClosure() {
         for (int degree : new int[] {3, 5}) {
-            var e =
-                    spline(
-                            Kind.CONTROL_SPLINE,
-                            degree,
-                            false,
-                            0,
-                            0,
-                            0,
-                            10,
-                            10,
-                            20,
-                            20,
-                            20,
-                            30,
-                            10,
-                            30,
-                            0);
+            var e = spline(Kind.CONTROL_SPLINE, degree, false, 0, 0, 0, 10, 10, 20, 20, 20, 30, 10, 30, 0);
             assertEquals(new Vec(0, 0), e.at(0));
             assertEquals(new Vec(30, 0), e.at(1));
             var closed = new Entity(e.id(), e.kind(), e.values(), false, degree, true, null);
@@ -101,17 +70,13 @@ class SketchCurveTypesTest {
 
     @Test
     void invalidNewCurvesAreRejectedBeforeKernelEvaluation() {
-        for (var e :
-                List.of(
-                        Sketches.entity("ellipse", Kind.ELLIPSE, false, 0, 0, -1, 2, 0),
-                        Sketches.entity("conic", Kind.CONIC, false, 0, 0, 1, 1, 2, 0, 1),
-                        spline(Kind.FIT_SPLINE, 0, false, 0, 0, 0, 0))) {
-            assertFalse(
-                    SketchSolver.solve(new SketchGeometry(List.of(e), List.of(), List.of()))
-                            .solved());
+        for (var e : List.of(
+                Sketches.entity("ellipse", Kind.ELLIPSE, false, 0, 0, -1, 2, 0),
+                Sketches.entity("conic", Kind.CONIC, false, 0, 0, 1, 1, 2, 0, 1),
+                spline(Kind.FIT_SPLINE, 0, false, 0, 0, 0, 0))) {
+            assertFalse(SketchSolver.solve(new SketchGeometry(List.of(e), List.of(), List.of()))
+                    .solved());
         }
-        assertThrows(
-                IllegalArgumentException.class,
-                () -> spline(Kind.CONTROL_SPLINE, 5, false, 0, 0, 1, 1, 2, 0));
+        assertThrows(IllegalArgumentException.class, () -> spline(Kind.CONTROL_SPLINE, 5, false, 0, 0, 1, 1, 2, 0));
     }
 }

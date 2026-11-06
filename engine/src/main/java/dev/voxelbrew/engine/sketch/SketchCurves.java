@@ -87,8 +87,7 @@ public final class SketchCurves {
         var h = new double[spans];
         for (int i = 0; i < spans; i++) {
             h[i] = p.get(i).distance(p.get((i + 1) % n));
-            if (h[i] < 1e-6)
-                throw new IllegalArgumentException("Spline fit points must be distinct");
+            if (h[i] < 1e-6) throw new IllegalArgumentException("Spline fit points must be distinct");
         }
         var matrix = new double[n][n];
         var rhs = new double[n][2];
@@ -102,19 +101,17 @@ public final class SketchCurves {
             matrix[i][previous] += a;
             matrix[i][i] = 2 * (a + b);
             matrix[i][next] += b;
-            var difference =
-                    p.get(next)
-                            .minus(p.get(i))
-                            .times(1 / b)
-                            .minus(p.get(i).minus(p.get(previous)).times(1 / a))
-                            .times(6);
+            var difference = p.get(next)
+                    .minus(p.get(i))
+                    .times(1 / b)
+                    .minus(p.get(i).minus(p.get(previous)).times(1 / a))
+                    .times(6);
             rhs[i][0] = difference.x();
             rhs[i][1] = difference.y();
         }
-        var second =
-                new LUDecomposition(new Array2DRowRealMatrix(matrix, false))
-                        .getSolver()
-                        .solve(new Array2DRowRealMatrix(rhs, false));
+        var second = new LUDecomposition(new Array2DRowRealMatrix(matrix, false))
+                .getSolver()
+                .solve(new Array2DRowRealMatrix(rhs, false));
         var result = new ArrayList<Entity>();
         for (int i = 0; i < spans; i++) {
             int j = (i + 1) % n;
@@ -123,52 +120,42 @@ public final class SketchCurves {
             var m0 = new Vec(second.getEntry(i, 0), second.getEntry(i, 1));
             var m1 = new Vec(second.getEntry(j, 0), second.getEntry(j, 1));
             var c0 =
-                    a.plus(b.minus(a).times(1.0 / 3))
-                            .minus(m0.times(2).plus(m1).times(h[i] * h[i] / 18));
-            var c1 =
-                    b.minus(b.minus(a).times(1.0 / 3))
-                            .minus(m0.plus(m1.times(2)).times(h[i] * h[i] / 18));
-            result.add(
-                    Sketches.entity(
-                            SketchGeometry.derivedId(e.id(), "-span-" + i),
-                            Kind.SPLINE,
-                            e.construction(),
-                            a.x(),
-                            a.y(),
-                            c0.x(),
-                            c0.y(),
-                            c1.x(),
-                            c1.y(),
-                            b.x(),
-                            b.y()));
+                    a.plus(b.minus(a).times(1.0 / 3)).minus(m0.times(2).plus(m1).times(h[i] * h[i] / 18));
+            var c1 = b.minus(b.minus(a).times(1.0 / 3))
+                    .minus(m0.plus(m1.times(2)).times(h[i] * h[i] / 18));
+            result.add(Sketches.entity(
+                    SketchGeometry.derivedId(e.id(), "-span-" + i),
+                    Kind.SPLINE,
+                    e.construction(),
+                    a.x(),
+                    a.y(),
+                    c0.x(),
+                    c0.y(),
+                    c1.x(),
+                    c1.y(),
+                    b.x(),
+                    b.y()));
         }
         return List.copyOf(result);
     }
 
     private static ArrayList<Vec> points(Entity e) {
         var result = new ArrayList<Vec>();
-        for (int i = 0; i < e.values().size(); i += 2)
-            result.add(new Vec(e.value(i), e.value(i + 1)));
+        for (int i = 0; i < e.values().size(); i += 2) result.add(new Vec(e.value(i), e.value(i + 1)));
         return result;
     }
 
     public static Vec at(Entity e, double t, int order) {
-        if (e.kind() == Kind.TEXT)
-            return order == 0 ? new Vec(e.value(0), e.value(1)) : new Vec(0, 0);
+        if (e.kind() == Kind.TEXT) return order == 0 ? new Vec(e.value(0), e.value(1)) : new Vec(0, 0);
         if (e.kind() == Kind.CONTROL_SPLINE) return control(e).at(t, order);
         if (e.kind() == Kind.FIT_SPLINE) return fitAt(fitSegments(e), points(e), t, order);
         if (e.kind() == Kind.ELLIPSE) {
             double a = t * Math.TAU, rotation = e.value(4);
-            Vec local =
-                    switch (order) {
-                        case 0 -> new Vec(e.value(2) * Math.cos(a), e.value(3) * Math.sin(a));
-                        case 1 ->
-                                new Vec(-e.value(2) * Math.sin(a), e.value(3) * Math.cos(a))
-                                        .times(Math.TAU);
-                        default ->
-                                new Vec(-e.value(2) * Math.cos(a), -e.value(3) * Math.sin(a))
-                                        .times(Math.TAU * Math.TAU);
-                    };
+            Vec local = switch (order) {
+                case 0 -> new Vec(e.value(2) * Math.cos(a), e.value(3) * Math.sin(a));
+                case 1 -> new Vec(-e.value(2) * Math.sin(a), e.value(3) * Math.cos(a)).times(Math.TAU);
+                default -> new Vec(-e.value(2) * Math.cos(a), -e.value(3) * Math.sin(a)).times(Math.TAU * Math.TAU);
+            };
             var rotated = rotate(local, rotation);
             return order == 0 ? rotated.plus(new Vec(e.value(0), e.value(1))) : rotated;
         }
@@ -196,8 +183,7 @@ public final class SketchCurves {
     private static Vec fitAt(List<Entity> spans, List<Vec> p, double t, int order) {
         double total = 0;
         var lengths = new double[spans.size()];
-        for (int i = 0; i < lengths.length; i++)
-            total += lengths[i] = p.get(i).distance(p.get((i + 1) % p.size()));
+        for (int i = 0; i < lengths.length; i++) total += lengths[i] = p.get(i).distance(p.get((i + 1) % p.size()));
         double distance = Math.clamp(t, 0, 1) * total;
         int i = 0;
         while (i < spans.size() - 1 && distance > lengths[i]) distance -= lengths[i++];
@@ -223,16 +209,13 @@ public final class SketchCurves {
         var control = e.kind() == Kind.CONTROL_SPLINE ? control(e) : null;
         for (int i = 0; i <= count; i++)
             result.add(
-                    control != null
-                            ? control.at((double) i / count, 0)
-                            : fitAt(spans, points, (double) i / count, 0));
+                    control != null ? control.at((double) i / count, 0) : fitAt(spans, points, (double) i / count, 0));
         return List.copyOf(result);
     }
 
     public static Vec rotate(Vec p, double angle) {
         return new Vec(
-                p.x() * Math.cos(angle) - p.y() * Math.sin(angle),
-                p.x() * Math.sin(angle) + p.y() * Math.cos(angle));
+                p.x() * Math.cos(angle) - p.y() * Math.sin(angle), p.x() * Math.sin(angle) + p.y() * Math.cos(angle));
     }
 
     public static List<PlanarProfile.Segment> segments(Entity e, boolean reversed) {
@@ -241,24 +224,18 @@ public final class SketchCurves {
             var spans = new ArrayList<>(fitSegments(e));
             if (reversed) Collections.reverse(spans);
             return spans.stream()
-                    .map(
-                            s ->
-                                    new PlanarProfile.Segment(
-                                            PlanarProfile.Kind.BEZIER, s.values(), reversed))
+                    .map(s -> new PlanarProfile.Segment(PlanarProfile.Kind.BEZIER, s.values(), reversed))
                     .toList();
         }
-        var kind =
-                switch (e.kind()) {
-                    case LINE -> PlanarProfile.Kind.LINE;
-                    case CIRCLE -> PlanarProfile.Kind.CIRCLE;
-                    case ARC -> PlanarProfile.Kind.ARC;
-                    case SPLINE -> PlanarProfile.Kind.BEZIER;
-                    case ELLIPSE -> PlanarProfile.Kind.ELLIPSE;
-                    case CONIC -> PlanarProfile.Kind.CONIC;
-                    default ->
-                            throw new IllegalArgumentException(
-                                    "This entity is not a profile curve");
-                };
+        var kind = switch (e.kind()) {
+            case LINE -> PlanarProfile.Kind.LINE;
+            case CIRCLE -> PlanarProfile.Kind.CIRCLE;
+            case ARC -> PlanarProfile.Kind.ARC;
+            case SPLINE -> PlanarProfile.Kind.BEZIER;
+            case ELLIPSE -> PlanarProfile.Kind.ELLIPSE;
+            case CONIC -> PlanarProfile.Kind.CONIC;
+            default -> throw new IllegalArgumentException("This entity is not a profile curve");
+        };
         return List.of(new PlanarProfile.Segment(kind, e.values(), reversed));
     }
 }

@@ -22,30 +22,18 @@ public final class ComputeBenchmark {
         for (int body = 0; body < bodies; body++) {
             String prefix = "part" + body;
             var plane = new Feature.Plane("origin-xy", 0);
-            features.add(
-                    new Feature.Sketch(
-                            prefix, "profile", plane, new Feature.Rectangle(0, 0, 40, 30)));
+            features.add(new Feature.Sketch(prefix, "profile", plane, new Feature.Rectangle(0, 0, 40, 30)));
             String output = prefix + "extrude";
             features.add(new Feature.Extrude(output, new Feature.ProfileRef(prefix, "profile"), 8));
-            placements.add(
-                    new BodyInstance(
-                            prefix,
-                            output + ".body",
-                            Transform.translation((body % 4) * 45, (body / 4) * 35, 0)));
+            placements.add(new BodyInstance(
+                    prefix, output + ".body", Transform.translation((body % 4) * 45, (body / 4) * 35, 0)));
             for (int hole = 0; hole < holes; hole++) {
                 String sketch = prefix + "hole" + hole;
-                features.add(
-                        new Feature.Sketch(
-                                sketch,
-                                "profile",
-                                plane,
-                                new Feature.Circle(5 + (hole % 4) * 9, 5 + (hole / 4) * 9, 4)));
+                features.add(new Feature.Sketch(
+                        sketch, "profile", plane, new Feature.Circle(5 + (hole % 4) * 9, 5 + (hole / 4) * 9, 4)));
                 String cut = prefix + "cut" + hole;
-                features.add(
-                        new Feature.ThroughCut(
-                                cut,
-                                new Feature.ProfileRef(sketch, "profile"),
-                                new Feature.BodyRef(output, "body")));
+                features.add(new Feature.ThroughCut(
+                        cut, new Feature.ProfileRef(sketch, "profile"), new Feature.BodyRef(output, "body")));
                 output = cut;
             }
         }
@@ -62,30 +50,12 @@ public final class ComputeBenchmark {
             entities.add(Sketches.entity("line" + i, Kind.LINE, false, 0, i * 3, 9, i * 3 + 1));
         var geometry = new SketchGeometry(entities, List.of(), List.of());
         for (var entity : entities) {
-            geometry =
-                    geometry.add(
-                            SketchConstraints.create(
-                                    geometry,
-                                    entity.id() + "fixed",
-                                    Type.FIX,
-                                    List.of(entity.ref(Part.START)),
-                                    0));
-            geometry =
-                    geometry.add(
-                            SketchConstraints.create(
-                                    geometry,
-                                    entity.id() + "horizontal",
-                                    Type.HORIZONTAL,
-                                    List.of(entity.ref()),
-                                    0));
-            geometry =
-                    geometry.add(
-                            SketchConstraints.create(
-                                    geometry,
-                                    entity.id() + "length",
-                                    Type.LENGTH,
-                                    List.of(entity.ref()),
-                                    10));
+            geometry = geometry.add(SketchConstraints.create(
+                    geometry, entity.id() + "fixed", Type.FIX, List.of(entity.ref(Part.START)), 0));
+            geometry = geometry.add(SketchConstraints.create(
+                    geometry, entity.id() + "horizontal", Type.HORIZONTAL, List.of(entity.ref()), 0));
+            geometry = geometry.add(
+                    SketchConstraints.create(geometry, entity.id() + "length", Type.LENGTH, List.of(entity.ref()), 10));
         }
         return geometry;
     }
@@ -126,10 +96,9 @@ public final class ComputeBenchmark {
         }
         var document = document(12, 12);
         try (var evaluation = Evaluator.evaluate(document)) {
-            var serial =
-                    evaluation.requireCompleteDocument().stream()
-                            .map(b -> b.solid().tessellate(MeshOptions.DEFAULT))
-                            .toList();
+            var serial = evaluation.requireCompleteDocument().stream()
+                    .map(b -> b.solid().tessellate(MeshOptions.DEFAULT))
+                    .toList();
             var detached = ManufacturingModel.from(document, evaluation, MeshOptions.DEFAULT);
             for (int i = 0; i < serial.size(); i++) {
                 var mesh = detached.meshes().get(evaluation.bodies().get(i).id());

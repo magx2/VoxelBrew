@@ -62,23 +62,20 @@ final class WindowResources implements AutoCloseable {
         for (var worker : workers) worker.shutdown();
         if (workers.stream().allMatch(ExecutorService::isTerminated)) closeLoaders();
         else
-            Thread.ofVirtual()
-                    .name("voxelbrew-window-cleanup")
-                    .start(
-                            () -> {
-                                boolean interrupted = false;
-                                for (var worker : workers) {
-                                    while (!worker.isTerminated()) {
-                                        try {
-                                            worker.awaitTermination(1, TimeUnit.DAYS);
-                                        } catch (InterruptedException failure) {
-                                            interrupted = true;
-                                        }
-                                    }
-                                }
-                                closeLoaders();
-                                if (interrupted) Thread.currentThread().interrupt();
-                            });
+            Thread.ofVirtual().name("voxelbrew-window-cleanup").start(() -> {
+                boolean interrupted = false;
+                for (var worker : workers) {
+                    while (!worker.isTerminated()) {
+                        try {
+                            worker.awaitTermination(1, TimeUnit.DAYS);
+                        } catch (InterruptedException failure) {
+                            interrupted = true;
+                        }
+                    }
+                }
+                closeLoaders();
+                if (interrupted) Thread.currentThread().interrupt();
+            });
     }
 
     CompletionStage<Void> whenClosed() {

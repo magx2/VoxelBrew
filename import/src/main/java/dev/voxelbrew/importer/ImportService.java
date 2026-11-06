@@ -12,51 +12,35 @@ public final class ImportService {
 
     private ImportService() {}
 
-    public static ImportResult read(
-            ImporterRegistry registry, String format, Path source, Map<String, String> supplied)
+    public static ImportResult read(ImporterRegistry registry, String format, Path source, Map<String, String> supplied)
             throws IOException {
         var entry = registry.require(format);
         var descriptor = entry.descriptor();
         var options = new LinkedHashMap<String, String>();
         for (var option : descriptor.options()) options.put(option.key(), option.defaultValue());
         for (var value : supplied.entrySet()) {
-            var spec =
-                    descriptor.options().stream()
-                            .filter(o -> o.key().equals(value.getKey()))
-                            .findFirst()
-                            .orElseThrow(
-                                    () ->
-                                            new IllegalArgumentException(
-                                                    "Unknown option '"
-                                                            + value.getKey()
-                                                            + "' for "
-                                                            + format));
+            var spec = descriptor.options().stream()
+                    .filter(o -> o.key().equals(value.getKey()))
+                    .findFirst()
+                    .orElseThrow(() ->
+                            new IllegalArgumentException("Unknown option '" + value.getKey() + "' for " + format));
             spec.validate(value.getValue());
             options.put(value.getKey(), value.getValue());
         }
-        if (Files.size(source) > MAX_INPUT_BYTES)
-            throw new IOException("Import exceeds 256 MiB input limit");
+        if (Files.size(source) > MAX_INPUT_BYTES) throw new IOException("Import exceeds 256 MiB input limit");
         log.info("Importing {} using {}", source, format);
         try (var input = Files.newInputStream(source)) {
             var borrowed = new BoundedInput(input);
-            var result =
-                    Objects.requireNonNull(
-                            entry.provider().read(borrowed, Map.copyOf(options)),
-                            "Importer returned no result");
+            var result = Objects.requireNonNull(
+                    entry.provider().read(borrowed, Map.copyOf(options)), "Importer returned no result");
             borrowed.consumed(0);
             if (result.kind() != descriptor.resultKind())
-                throw new IOException(
-                        "Importer returned a different result kind than its descriptor");
+                throw new IOException("Importer returned a different result kind than its descriptor");
             log.info("Imported {} as {}", source, result.kind());
             return result;
-        } catch (IOException
-                | RuntimeException
-                | LinkageError
-                | ServiceConfigurationError
-                | AssertionError failure) {
+        } catch (IOException | RuntimeException | LinkageError | ServiceConfigurationError | AssertionError failure) {
             log.error("Import failed for {} using {}", source, format, failure);
-            throw new IOException(
-                    "Importer '" + format + "' failed: " + failure.getMessage(), failure);
+            throw new IOException("Importer '" + format + "' failed: " + failure.getMessage(), failure);
         }
     }
 
@@ -69,8 +53,7 @@ public final class ImportService {
 
         private void consumed(long amount) throws IOException {
             count += amount;
-            if (count > MAX_INPUT_BYTES)
-                throw new IOException("Import exceeds 256 MiB input limit");
+            if (count > MAX_INPUT_BYTES) throw new IOException("Import exceeds 256 MiB input limit");
         }
 
         @Override

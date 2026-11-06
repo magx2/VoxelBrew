@@ -30,7 +30,8 @@ final class ParameterCommands {
         @javax.inject.Inject
         Parameters() {}
 
-        @Spec CommandLine.Model.CommandSpec spec;
+        @Spec
+        CommandLine.Model.CommandSpec spec;
 
         public void run() {
             spec.commandLine().usage(spec.commandLine().getOut());
@@ -54,7 +55,8 @@ final class ParameterCommands {
         @javax.inject.Inject
         Configurations() {}
 
-        @Spec CommandLine.Model.CommandSpec spec;
+        @Spec
+        CommandLine.Model.CommandSpec spec;
 
         public void run() {
             spec.commandLine().usage(spec.commandLine().getOut());
@@ -89,8 +91,7 @@ final class ParameterCommands {
                         parameter.unit().displayValue(values.get(parameter.name())),
                         parameter.id(),
                         parameter.comment());
-            for (var binding : p.bindings())
-                out.println("bind\t" + binding.target() + "\t" + binding.expression());
+            for (var binding : p.bindings()) out.println("bind\t" + binding.target() + "\t" + binding.expression());
             return 0;
         }
     }
@@ -120,10 +121,7 @@ final class ParameterCommands {
 
         public Integer call() throws Exception {
             var s = session();
-            s.setParameters(
-                    s.document()
-                            .parameters()
-                            .put(name, ParameterUnit.parse(unit), expression, comment));
+            s.setParameters(s.document().parameters().put(name, ParameterUnit.parse(unit), expression, comment));
             return save(s);
         }
     }
@@ -211,17 +209,13 @@ final class ParameterCommands {
             var out = spec.commandLine().getOut();
             out.println((p.active().isEmpty() ? "* " : "  ") + "Default");
             for (var c : p.configurations()) {
-                out.println(
-                        (p.active().equals(c.id()) ? "* " : "  ") + c.name() + "\tid=" + c.id());
+                out.println((p.active().equals(c.id()) ? "* " : "  ") + c.name() + "\tid=" + c.id());
                 for (var parameter : p.parameters())
-                    out.println(
-                            "  "
-                                    + parameter.name()
-                                    + "="
-                                    + p.expression(parameter, c.id())
-                                    + (c.overrides().containsKey(parameter.id())
-                                            ? ""
-                                            : " (inherited)"));
+                    out.println("  "
+                            + parameter.name()
+                            + "="
+                            + p.expression(parameter, c.id())
+                            + (c.overrides().containsKey(parameter.id()) ? "" : " (inherited)"));
             }
             return 0;
         }
@@ -238,9 +232,7 @@ final class ParameterCommands {
         @Option(names = "--name", required = true)
         String name;
 
-        @Option(
-                names = "--copy-active",
-                description = "Snapshot current expressions; otherwise inherit Default")
+        @Option(names = "--copy-active", description = "Snapshot current expressions; otherwise inherit Default")
         boolean copy;
 
         public Integer call() throws Exception {
@@ -253,8 +245,7 @@ final class ParameterCommands {
     @Command(
             name = "set",
             mixinStandardHelpOptions = true,
-            description =
-                    "Set an override; empty expression restores inheritance for a nondefault configuration")
+            description = "Set an override; empty expression restores inheritance for a nondefault configuration")
     static class Override extends VoxelBrew.FileCommand {
 
         @javax.inject.Inject

@@ -8,9 +8,7 @@ public final class ApplicationPaths {
 
     public static Path home() {
         String override = System.getProperty("voxelbrew.home");
-        return (override == null
-                        ? Path.of(System.getProperty("user.home"), ".voxelbrew")
-                        : Path.of(override))
+        return (override == null ? Path.of(System.getProperty("user.home"), ".voxelbrew") : Path.of(override))
                 .toAbsolutePath()
                 .normalize();
     }

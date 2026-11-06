@@ -21,8 +21,7 @@ public final class UserConfiguration {
 
     public UserConfiguration(Path file) {
         this.file = Objects.requireNonNull(file).toAbsolutePath().normalize();
-        if (this.file.getParent() == null)
-            throw new IllegalArgumentException("Expected a file path");
+        if (this.file.getParent() == null) throw new IllegalArgumentException("Expected a file path");
     }
 
     public static UserConfiguration user() {
@@ -36,9 +35,7 @@ public final class UserConfiguration {
     public Map<String, String> read() throws IOException {
         Properties properties = load();
         var result = new TreeMap<String, String>();
-        properties
-                .stringPropertyNames()
-                .forEach(key -> result.put(key, properties.getProperty(key)));
+        properties.stringPropertyNames().forEach(key -> result.put(key, properties.getProperty(key)));
         return Collections.unmodifiableMap(result);
     }
 
@@ -55,20 +52,15 @@ public final class UserConfiguration {
     }
 
     public void update(Map<String, String> values, Set<String> removed) throws IOException {
-        log.debug(
-                "Updating configuration {} ({} keys set, {} removed)",
-                file,
-                values.size(),
-                removed.size());
+        log.debug("Updating configuration {} ({} keys set, {} removed)", file, values.size(), removed.size());
         var snapshot = Map.copyOf(values);
         var removals = Set.copyOf(removed);
         snapshot.keySet().forEach(UserConfiguration::checkKey);
         removals.forEach(UserConfiguration::checkKey);
-        change(
-                properties -> {
-                    removals.forEach(properties::remove);
-                    properties.putAll(snapshot);
-                });
+        change(properties -> {
+            removals.forEach(properties::remove);
+            properties.putAll(snapshot);
+        });
     }
 
     /** Used by migrations so an already configured value always wins. */
@@ -99,9 +91,7 @@ public final class UserConfiguration {
         synchronized (LOCKS[Math.floorMod(file.hashCode(), LOCKS.length)]) {
             Files.createDirectories(file.getParent());
             Path lockFile = file.resolveSibling(file.getFileName() + ".lock");
-            try (var channel =
-                            FileChannel.open(
-                                    lockFile, StandardOpenOption.CREATE, StandardOpenOption.WRITE);
+            try (var channel = FileChannel.open(lockFile, StandardOpenOption.CREATE, StandardOpenOption.WRITE);
                     var lock = channel.lock()) {
                 var properties = load();
                 operation.accept(properties);
@@ -110,16 +100,11 @@ public final class UserConfiguration {
                 Path temporary = Files.createTempFile(file.getParent(), ".config-", ".tmp");
                 try {
                     try (var output = FileChannel.open(temporary, StandardOpenOption.WRITE)) {
-                        var bytes =
-                                ByteBuffer.wrap(text.toString().getBytes(StandardCharsets.UTF_8));
+                        var bytes = ByteBuffer.wrap(text.toString().getBytes(StandardCharsets.UTF_8));
                         while (bytes.hasRemaining()) output.write(bytes);
                         output.force(true);
                     }
-                    Files.move(
-                            temporary,
-                            file,
-                            StandardCopyOption.ATOMIC_MOVE,
-                            StandardCopyOption.REPLACE_EXISTING);
+                    Files.move(temporary, file, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
                 } finally {
                     Files.deleteIfExists(temporary);
                 }

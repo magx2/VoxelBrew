@@ -14,22 +14,17 @@ final class UpdateArchive {
 
     private UpdateArchive() {}
 
-    static void verify(Path archive, Path checksums, String name, UpdateCancellation cancellation)
-            throws IOException {
-        if (Files.size(archive) == 0
-                || Files.size(archive) > MAX_ARCHIVE_BYTES
-                || Files.size(checksums) > 1024 * 1024)
+    static void verify(Path archive, Path checksums, String name, UpdateCancellation cancellation) throws IOException {
+        if (Files.size(archive) == 0 || Files.size(archive) > MAX_ARCHIVE_BYTES || Files.size(checksums) > 1024 * 1024)
             throw new IOException("Invalid release download size");
         var entries = new HashMap<String, String>();
         for (String line : Files.readAllLines(checksums)) {
-            var match =
-                    java.util.regex.Pattern.compile("([a-fA-F0-9]{64})  ([A-Za-z0-9._-]+)")
-                            .matcher(line);
+            var match = java.util.regex.Pattern.compile("([a-fA-F0-9]{64})  ([A-Za-z0-9._-]+)")
+                    .matcher(line);
             if (!match.matches() || entries.put(match.group(2), match.group(1)) != null)
                 throw new IOException("Invalid or duplicate SHA256SUMS entry");
         }
-        if (!entries.containsKey(name)
-                || !entries.get(name).equalsIgnoreCase(sha256(archive, cancellation)))
+        if (!entries.containsKey(name) || !entries.get(name).equalsIgnoreCase(sha256(archive, cancellation)))
             throw new IOException("Release archive SHA-256 checksum does not match SHA256SUMS");
     }
 
@@ -49,8 +44,7 @@ final class UpdateArchive {
         }
     }
 
-    static Path extract(
-            Path archive, Path destination, String imageName, UpdateCancellation cancellation)
+    static Path extract(Path archive, Path destination, String imageName, UpdateCancellation cancellation)
             throws IOException {
         Files.createDirectory(destination);
         long total = 0;
@@ -86,8 +80,7 @@ final class UpdateArchive {
                         throw new IOException("Unsafe release archive path: " + name);
                 }
                 Path target = destination.resolve(name).normalize();
-                if (!target.startsWith(destination))
-                    throw new IOException("Archive path escapes staging directory");
+                if (!target.startsWith(destination)) throw new IOException("Archive path escapes staging directory");
                 if (entry.isDirectory()) {
                     Files.createDirectories(target);
                     continue;
@@ -111,18 +104,14 @@ final class UpdateArchive {
                 if (size != entry.getSize() || crc.getValue() != entry.getCrc())
                     throw new IOException("Damaged release archive entry: " + name);
                 if (Files.getFileStore(target).supportsFileAttributeView("posix")) {
-                    var permissions =
-                            EnumSet.of(
-                                    PosixFilePermission.OWNER_READ,
-                                    PosixFilePermission.OWNER_WRITE,
-                                    PosixFilePermission.GROUP_READ,
-                                    PosixFilePermission.OTHERS_READ);
-                    if ((entry.getUnixMode() & 0100) != 0)
-                        permissions.add(PosixFilePermission.OWNER_EXECUTE);
-                    if ((entry.getUnixMode() & 0010) != 0)
-                        permissions.add(PosixFilePermission.GROUP_EXECUTE);
-                    if ((entry.getUnixMode() & 0001) != 0)
-                        permissions.add(PosixFilePermission.OTHERS_EXECUTE);
+                    var permissions = EnumSet.of(
+                            PosixFilePermission.OWNER_READ,
+                            PosixFilePermission.OWNER_WRITE,
+                            PosixFilePermission.GROUP_READ,
+                            PosixFilePermission.OTHERS_READ);
+                    if ((entry.getUnixMode() & 0100) != 0) permissions.add(PosixFilePermission.OWNER_EXECUTE);
+                    if ((entry.getUnixMode() & 0010) != 0) permissions.add(PosixFilePermission.GROUP_EXECUTE);
+                    if ((entry.getUnixMode() & 0001) != 0) permissions.add(PosixFilePermission.OTHERS_EXECUTE);
                     Files.setPosixFilePermissions(target, permissions);
                 }
             }

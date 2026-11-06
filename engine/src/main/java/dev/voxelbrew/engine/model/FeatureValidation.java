@@ -14,16 +14,12 @@ final class FeatureValidation {
                             || sketch.plane().support() != null
                             || !sketch.plane()
                                     .frame()
-                                    .equals(
-                                            Feature.Plane.origin(
-                                                            sketch.plane()
-                                                                    .id()
-                                                                    .substring(7)
-                                                                    .toUpperCase(
-                                                                            java.util.Locale.ROOT))
-                                                    .frame()))) {
-                throw new ModelException(
-                        feature.id(), "Origin planes are fixed; use an offset plane ID");
+                                    .equals(Feature.Plane.origin(sketch.plane()
+                                                    .id()
+                                                    .substring(7)
+                                                    .toUpperCase(java.util.Locale.ROOT))
+                                            .frame()))) {
+                throw new ModelException(feature.id(), "Origin planes are fixed; use an offset plane ID");
             }
             if (sketch.profile() instanceof Feature.Rectangle r) {
                 finite(feature.id(), "x", r.x());
@@ -48,8 +44,7 @@ final class FeatureValidation {
         } else if (feature instanceof Feature.Extrude extrusion) {
             finite(feature.id(), "distance", extrusion.distance());
             if (Math.abs(extrusion.distance()) < 1e-6) {
-                throw new ModelException(
-                        feature.id(), "distance must have magnitude >= 0.000001 mm");
+                throw new ModelException(feature.id(), "distance must have magnitude >= 0.000001 mm");
             }
         } else if (feature instanceof Feature.SplitBody split) {
             var p = split.plane();

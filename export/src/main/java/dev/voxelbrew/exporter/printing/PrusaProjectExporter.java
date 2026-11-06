@@ -26,18 +26,16 @@ public final class PrusaProjectExporter implements ModelExporter {
                 API_VERSION,
                 List.of("3mf"),
                 true,
-                List.of(
-                        new ExportOption(
-                                "include-support-solids",
-                                "Include explicit support solids",
-                                ExportOption.Type.BOOLEAN,
-                                "false",
-                                List.of())));
+                List.of(new ExportOption(
+                        "include-support-solids",
+                        "Include explicit support solids",
+                        ExportOption.Type.BOOLEAN,
+                        "false",
+                        List.of())));
     }
 
     @Override
-    public void write(
-            ModelView view, MeshOptions options, Map<String, String> supplied, OutputStream output)
+    public void write(ModelView view, MeshOptions options, Map<String, String> supplied, OutputStream output)
             throws IOException {
         if (!(view instanceof ManufacturingView manufacturing))
             throw new IOException(
@@ -46,48 +44,37 @@ public final class PrusaProjectExporter implements ModelExporter {
         PrintValidation.validate(model).requireValid();
         var setup = model.setup();
         if (!Boolean.parseBoolean(supplied.getOrDefault("include-support-solids", "false")))
-            setup =
-                    setup.withSupports(
-                            setup.supports().stream()
-                                    .filter(s -> s.role() != SupportVolume.Role.SOLID_SUPPORT)
-                                    .toList());
+            setup = setup.withSupports(setup.supports().stream()
+                    .filter(s -> s.role() != SupportVolume.Role.SOLID_SUPPORT)
+                    .toList());
         writeProject(
-                new ManufacturingModel(
-                        model.documentId(),
-                        model.revision(),
-                        setup,
-                        model.profile(),
-                        model.meshes()),
+                new ManufacturingModel(model.documentId(), model.revision(), setup, model.profile(), model.meshes()),
                 output);
     }
 
     public static List<Volume> volumes(ManufacturingModel model, BodyInstance instance) {
         var result = new ArrayList<Volume>();
-        result.add(
-                new Volume(
-                        instance.id() + "/" + instance.bodyId(),
-                        "ModelPart",
-                        MeshValidation.weld(model.placedMesh(instance))));
+        result.add(new Volume(
+                instance.id() + "/" + instance.bodyId(), "ModelPart", MeshValidation.weld(model.placedMesh(instance))));
         for (var support : model.setup().supports())
             if (support.instanceId().equals(instance.id()))
-                result.add(
-                        new Volume(
-                                instance.id() + "/" + support.id(),
-                                switch (support.role()) {
-                                    case BLOCKER -> "SupportBlocker";
-                                    case ENFORCER -> "SupportEnforcer";
-                                    case SOLID_SUPPORT -> "ModelPart";
-                                },
-                                MeshGeometry.transform(
-                                        MeshGeometry.box(support), instance.transform())));
+                result.add(new Volume(
+                        instance.id() + "/" + support.id(),
+                        switch (support.role()) {
+                            case BLOCKER -> "SupportBlocker";
+                            case ENFORCER -> "SupportEnforcer";
+                            case SOLID_SUPPORT -> "ModelPart";
+                        },
+                        MeshGeometry.transform(MeshGeometry.box(support), instance.transform())));
         return List.copyOf(result);
     }
 
-    public static void writeProject(ManufacturingModel model, OutputStream output)
-            throws IOException {
+    public static void writeProject(ManufacturingModel model, OutputStream output) throws IOException {
         // One multipart assembly keeps stacked CAD bodies at their declared Z coordinates.
         // Prusa's --merge flag does not merge objects already inside a single project file.
-        var volumes = model.instances().stream().flatMap(i -> volumes(model, i).stream()).toList();
+        var volumes = model.instances().stream()
+                .flatMap(i -> volumes(model, i).stream())
+                .toList();
         try (var zip = new ZipOutputStream(output, StandardCharsets.UTF_8)) {
             text(
                     zip,
@@ -170,9 +157,7 @@ public final class PrusaProjectExporter implements ModelExporter {
             xml.writeEndDocument();
             xml.flush();
             zip.closeEntry();
-            var config =
-                    new StringBuilder(
-                            "; generated by PrusaSlicer 2.7.2-compatible VoxelBrew exporter\n\n");
+            var config = new StringBuilder("; generated by PrusaSlicer 2.7.2-compatible VoxelBrew exporter\n\n");
             for (var setting : PrusaConfiguration.settings(model).entrySet())
                 config.append("; ")
                         .append(setting.getKey())
@@ -185,8 +170,7 @@ public final class PrusaProjectExporter implements ModelExporter {
         }
     }
 
-    private static void metadata(XMLStreamWriter xml, String type, String key, String value)
-            throws XMLStreamException {
+    private static void metadata(XMLStreamWriter xml, String type, String key, String value) throws XMLStreamException {
         xml.writeEmptyElement("metadata");
         xml.writeAttribute("type", type);
         xml.writeAttribute("key", key);

@@ -44,17 +44,12 @@ final class RollingAppLog extends Handler {
         this.monitor = LOCKS[Math.floorMod(active.hashCode(), LOCKS.length)];
         setEncoding(StandardCharsets.UTF_8.name());
         synchronized (monitor) {
-            locked(
-                    () -> {
-                        rotate();
-                        // Create a fresh file even when this application has not emitted an event
-                        // yet.
-                        Files.write(
-                                active,
-                                new byte[0],
-                                StandardOpenOption.CREATE,
-                                StandardOpenOption.APPEND);
-                    });
+            locked(() -> {
+                rotate();
+                // Create a fresh file even when this application has not emitted an event
+                // yet.
+                Files.write(active, new byte[0], StandardOpenOption.CREATE, StandardOpenOption.APPEND);
+            });
         }
     }
 
@@ -65,21 +60,15 @@ final class RollingAppLog extends Handler {
             if (closed) return;
             try {
                 byte[] bytes = getFormatter().format(record).getBytes(StandardCharsets.UTF_8);
-                locked(
-                        () -> {
-                            long size = Files.exists(active) ? Files.size(active) : 0;
-                            if (size > 0 && (size >= limit || bytes.length > limit - size))
-                                rotate();
-                            try (var output =
-                                    FileChannel.open(
-                                            active,
-                                            StandardOpenOption.CREATE,
-                                            StandardOpenOption.WRITE,
-                                            StandardOpenOption.APPEND)) {
-                                var buffer = ByteBuffer.wrap(bytes);
-                                while (buffer.hasRemaining()) output.write(buffer);
-                            }
-                        });
+                locked(() -> {
+                    long size = Files.exists(active) ? Files.size(active) : 0;
+                    if (size > 0 && (size >= limit || bytes.length > limit - size)) rotate();
+                    try (var output = FileChannel.open(
+                            active, StandardOpenOption.CREATE, StandardOpenOption.WRITE, StandardOpenOption.APPEND)) {
+                        var buffer = ByteBuffer.wrap(bytes);
+                        while (buffer.hasRemaining()) output.write(buffer);
+                    }
+                });
             } catch (IOException | RuntimeException failure) {
                 reportError("Cannot write VoxelBrew app.log", failure, ErrorManager.WRITE_FAILURE);
             }
@@ -89,9 +78,7 @@ final class RollingAppLog extends Handler {
     @SuppressWarnings("try")
     private void locked(IoOperation operation) throws IOException {
         // One channel at a time per canonical directory, including within this JVM.
-        try (var channel =
-                        FileChannel.open(
-                                lockFile, StandardOpenOption.CREATE, StandardOpenOption.WRITE);
+        try (var channel = FileChannel.open(lockFile, StandardOpenOption.CREATE, StandardOpenOption.WRITE);
                 var lock = channel.lock()) {
             operation.run();
         }
@@ -99,15 +86,13 @@ final class RollingAppLog extends Handler {
 
     private void rotate() throws IOException {
         if (Files.exists(active) && Files.size(active) > 0) {
-            Path archive =
-                    directory.resolve(
-                            "app-"
-                                    + STAMP.format(Instant.now())
-                                    + "-"
-                                    + ProcessHandle.current().pid()
-                                    + "-"
-                                    + logIds.next()
-                                    + ".log");
+            Path archive = directory.resolve("app-"
+                    + STAMP.format(Instant.now())
+                    + "-"
+                    + ProcessHandle.current().pid()
+                    + "-"
+                    + logIds.next()
+                    + ".log");
             try {
                 Files.move(active, archive, StandardCopyOption.ATOMIC_MOVE);
             } catch (AtomicMoveNotSupportedException unsupported) {
@@ -115,17 +100,12 @@ final class RollingAppLog extends Handler {
             }
         }
         try (var files = Files.list(directory)) {
-            var old =
-                    files.filter(path -> Files.isRegularFile(path, LinkOption.NOFOLLOW_LINKS))
-                            .filter(
-                                    path ->
-                                            path.getFileName()
-                                                    .toString()
-                                                    .matches(
-                                                            "app-\\d{8}-\\d{6}-\\d{9}-[0-9]+-[0-9]+\\.log"))
-                            .sorted(Comparator.reverseOrder())
-                            .skip(archives)
-                            .toList();
+            var old = files.filter(path -> Files.isRegularFile(path, LinkOption.NOFOLLOW_LINKS))
+                    .filter(path ->
+                            path.getFileName().toString().matches("app-\\d{8}-\\d{6}-\\d{9}-[0-9]+-[0-9]+\\.log"))
+                    .sorted(Comparator.reverseOrder())
+                    .skip(archives)
+                    .toList();
             for (var path : old) Files.delete(path);
         }
     }

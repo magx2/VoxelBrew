@@ -19,8 +19,7 @@ public class TestDirectoryFactory implements TempDirFactory {
     private Path realDirectory;
 
     @Override
-    public Path createTempDirectory(AnnotatedElementContext element, ExtensionContext context)
-            throws IOException {
+    public Path createTempDirectory(AnnotatedElementContext element, ExtensionContext context) throws IOException {
         directory = Files.createTempDirectory("voxelbrew-test-");
         realDirectory = directory.toRealPath();
         return directory;
@@ -31,48 +30,39 @@ public class TestDirectoryFactory implements TempDirFactory {
         if (directory == null) return;
         try {
             // No FOLLOW_LINKS: links and Windows junctions are removed, never traversed.
-            Files.walkFileTree(
-                    directory,
-                    new SimpleFileVisitor<>() {
-                        @Override
-                        public FileVisitResult preVisitDirectory(
-                                Path dir, BasicFileAttributes attributes) throws IOException {
-                            // Also guard Windows junctions, which can appear as ordinary
-                            // directories.
-                            Path expected = realDirectory.resolve(directory.relativize(dir));
-                            if (!dir.toRealPath().equals(expected)) {
-                                remove(dir);
-                                return FileVisitResult.SKIP_SUBTREE;
-                            }
-                            return FileVisitResult.CONTINUE;
-                        }
+            Files.walkFileTree(directory, new SimpleFileVisitor<>() {
+                @Override
+                public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attributes) throws IOException {
+                    // Also guard Windows junctions, which can appear as ordinary
+                    // directories.
+                    Path expected = realDirectory.resolve(directory.relativize(dir));
+                    if (!dir.toRealPath().equals(expected)) {
+                        remove(dir);
+                        return FileVisitResult.SKIP_SUBTREE;
+                    }
+                    return FileVisitResult.CONTINUE;
+                }
 
-                        @Override
-                        public FileVisitResult visitFile(
-                                Path file, BasicFileAttributes attributes) {
-                            remove(file);
-                            return FileVisitResult.CONTINUE;
-                        }
+                @Override
+                public FileVisitResult visitFile(Path file, BasicFileAttributes attributes) {
+                    remove(file);
+                    return FileVisitResult.CONTINUE;
+                }
 
-                        @Override
-                        public FileVisitResult visitFileFailed(Path file, IOException failure) {
-                            if (failure instanceof NoSuchFileException)
-                                return FileVisitResult.CONTINUE;
-                            log.error(
-                                    "Could not access test temporary file for cleanup: {}",
-                                    file,
-                                    failure);
-                            return FileVisitResult.CONTINUE;
-                        }
+                @Override
+                public FileVisitResult visitFileFailed(Path file, IOException failure) {
+                    if (failure instanceof NoSuchFileException) return FileVisitResult.CONTINUE;
+                    log.error("Could not access test temporary file for cleanup: {}", file, failure);
+                    return FileVisitResult.CONTINUE;
+                }
 
-                        @Override
-                        public FileVisitResult postVisitDirectory(Path dir, IOException failure) {
-                            if (failure != null)
-                                log.error("Could not list test directory: {}", dir, failure);
-                            remove(dir);
-                            return FileVisitResult.CONTINUE;
-                        }
-                    });
+                @Override
+                public FileVisitResult postVisitDirectory(Path dir, IOException failure) {
+                    if (failure != null) log.error("Could not list test directory: {}", dir, failure);
+                    remove(dir);
+                    return FileVisitResult.CONTINUE;
+                }
+            });
         } catch (IOException | RuntimeException failure) {
             log.error("Could not clean test temporary directory: {}", directory, failure);
         }

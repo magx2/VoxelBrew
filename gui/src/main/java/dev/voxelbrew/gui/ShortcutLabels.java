@@ -29,8 +29,7 @@ final class ShortcutLabels {
         button.setGraphic(caption);
         button.setMinWidth(Region.USE_PREF_SIZE);
         update(button, caption, key.get());
-        button.textProperty()
-                .addListener((observable, before, after) -> update(button, caption, key.get()));
+        button.textProperty().addListener((observable, before, after) -> update(button, caption, key.get()));
     }
 
     private static void update(ButtonBase button, HBox caption, String key) {

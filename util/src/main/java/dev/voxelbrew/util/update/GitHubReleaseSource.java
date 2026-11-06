@@ -27,10 +27,7 @@ public final class GitHubReleaseSource implements ReleaseSource {
     }
 
     private GitHubReleaseSource(String fixture) {
-        this(
-                fixture == null ? null : URI.create(fixture),
-                Duration.ofSeconds(45),
-                Duration.ofMinutes(10));
+        this(fixture == null ? null : URI.create(fixture), Duration.ofSeconds(45), Duration.ofMinutes(10));
     }
 
     /** Loopback-only transport fixture for independent packaged and GUI acceptance tests. */
@@ -60,17 +57,15 @@ public final class GitHubReleaseSource implements ReleaseSource {
     }
 
     @Override
-    public Release fetch(ReleaseVersion requested, UpdateCancellation cancellation)
-            throws IOException {
+    public Release fetch(ReleaseVersion requested, UpdateCancellation cancellation) throws IOException {
         var uri = releases.resolve(requested == null ? "latest" : "tags/v" + requested);
-        byte[] data =
-                request(
-                        uri,
-                        "application/vnd.github+json",
-                        metadataTimeout,
-                        MAX_METADATA_BYTES,
-                        HttpResponse.BodySubscribers::ofByteArray,
-                        cancellation);
+        byte[] data = request(
+                uri,
+                "application/vnd.github+json",
+                metadataTimeout,
+                MAX_METADATA_BYTES,
+                HttpResponse.BodySubscribers::ofByteArray,
+                cancellation);
         return parse(new String(data, StandardCharsets.UTF_8), requested);
     }
 
@@ -78,8 +73,7 @@ public final class GitHubReleaseSource implements ReleaseSource {
         try (var reader = new JsonReader(new StringReader(output))) {
             reader.setStrictness(Strictness.STRICT);
             var root = JsonParser.parseReader(reader).getAsJsonObject();
-            if (reader.peek() != JsonToken.END_DOCUMENT)
-                throw new IOException("Invalid GitHub release metadata");
+            if (reader.peek() != JsonToken.END_DOCUMENT) throw new IOException("Invalid GitHub release metadata");
             if (booleanField(root, "draft") || booleanField(root, "prerelease"))
                 throw new IOException("Only published stable releases can be installed");
             String tag = stringField(root, "tag_name");
@@ -100,21 +94,24 @@ public final class GitHubReleaseSource implements ReleaseSource {
 
     private static String stringField(JsonObject object, String name) throws IOException {
         var value = object.get(name);
-        if (value == null || !value.isJsonPrimitive() || !value.getAsJsonPrimitive().isString())
+        if (value == null
+                || !value.isJsonPrimitive()
+                || !value.getAsJsonPrimitive().isString())
             throw new IOException("Invalid GitHub release field: " + name);
         return value.getAsString();
     }
 
     private static boolean booleanField(JsonObject object, String name) throws IOException {
         var value = object.get(name);
-        if (value == null || !value.isJsonPrimitive() || !value.getAsJsonPrimitive().isBoolean())
+        if (value == null
+                || !value.isJsonPrimitive()
+                || !value.getAsJsonPrimitive().isBoolean())
             throw new IOException("Invalid GitHub release field: " + name);
         return value.getAsBoolean();
     }
 
     @Override
-    public void download(
-            Release release, String asset, Path destination, UpdateCancellation cancellation)
+    public void download(Release release, String asset, Path destination, UpdateCancellation cancellation)
             throws IOException {
         if (!release.assets().contains(asset) || !asset.matches("[A-Za-z0-9._-]+"))
             throw new IOException("Unknown release asset");
@@ -127,12 +124,8 @@ public final class GitHubReleaseSource implements ReleaseSource {
                     downloads.resolve(release.tag() + "/" + asset),
                     "application/octet-stream",
                     downloadTimeout,
-                    asset.equals("SHA256SUMS")
-                            ? MAX_METADATA_BYTES
-                            : UpdateArchive.MAX_ARCHIVE_BYTES,
-                    () ->
-                            HttpResponse.BodySubscribers.ofFile(
-                                    destination, StandardOpenOption.WRITE),
+                    asset.equals("SHA256SUMS") ? MAX_METADATA_BYTES : UpdateArchive.MAX_ARCHIVE_BYTES,
+                    () -> HttpResponse.BodySubscribers.ofFile(destination, StandardOpenOption.WRITE),
                     cancellation);
             if (Files.size(destination) == 0) throw new IOException("Empty download: " + asset);
             cancellation.check();
@@ -153,28 +146,21 @@ public final class GitHubReleaseSource implements ReleaseSource {
         cancellation.check();
         // NORMAL follows GitHub's signed CDN redirect, but refuses HTTPS -> HTTP downgrades.
         // No Authenticator, CookieHandler, Authorization header, token or gh configuration is used.
-        try (var client =
-                HttpClient.newBuilder()
-                        .connectTimeout(Duration.ofSeconds(15))
-                        .followRedirects(HttpClient.Redirect.NORMAL)
-                        .build()) {
-            var request =
-                    HttpRequest.newBuilder(uri)
-                            .timeout(timeout)
-                            .header("User-Agent", "VoxelBrew/" + BuildVersion.current())
-                            .header("Accept", accept)
-                            .header("X-GitHub-Api-Version", "2026-03-10")
-                            .GET()
-                            .build();
-            var pending =
-                    client.sendAsync(
-                            request,
-                            info -> {
-                                IOException failure = responseFailure(info, limit);
-                                return failure == null
-                                        ? new LimitedBody<>(body.get(), limit)
-                                        : new RejectedBody<T>(failure);
-                            });
+        try (var client = HttpClient.newBuilder()
+                .connectTimeout(Duration.ofSeconds(15))
+                .followRedirects(HttpClient.Redirect.NORMAL)
+                .build()) {
+            var request = HttpRequest.newBuilder(uri)
+                    .timeout(timeout)
+                    .header("User-Agent", "VoxelBrew/" + BuildVersion.current())
+                    .header("Accept", accept)
+                    .header("X-GitHub-Api-Version", "2026-03-10")
+                    .GET()
+                    .build();
+            var pending = client.sendAsync(request, info -> {
+                IOException failure = responseFailure(info, limit);
+                return failure == null ? new LimitedBody<>(body.get(), limit) : new RejectedBody<T>(failure);
+            });
             long deadline = System.nanoTime() + timeout.toNanos();
             try {
                 while (true) {
@@ -196,8 +182,7 @@ public final class GitHubReleaseSource implements ReleaseSource {
                 Throwable cause = failure.getCause();
                 if (cause instanceof UncheckedIOException io) throw io.getCause();
                 if (cause instanceof IOException io) throw io;
-                throw new IOException(
-                        "Cannot download the public GitHub release; try again", cause);
+                throw new IOException("Cannot download the public GitHub release; try again", cause);
             } finally {
                 pending.cancel(true);
                 client.shutdownNow();
@@ -217,20 +202,15 @@ public final class GitHubReleaseSource implements ReleaseSource {
                                         .orElse("")
                                         .equals("0")
                                 || info.headers().firstValue("Retry-After").isPresent())) {
-            String retry =
-                    info.headers()
-                            .firstValue("Retry-After")
-                            .map(s -> " Retry-After: " + s + ".")
-                            .orElse("");
+            String retry = info.headers()
+                    .firstValue("Retry-After")
+                    .map(s -> " Retry-After: " + s + ".")
+                    .orElse("");
             return new IOException(
-                    "GitHub's public download rate limit was reached (HTTP "
-                            + status
-                            + "). Try again later."
-                            + retry);
+                    "GitHub's public download rate limit was reached (HTTP " + status + "). Try again later." + retry);
         }
         if (status != 200)
-            return new IOException(
-                    "Public GitHub update request failed (HTTP " + status + "); try again later.");
+            return new IOException("Public GitHub update request failed (HTTP " + status + "); try again later.");
         try {
             if (info.headers().firstValueAsLong("Content-Length").orElse(0) > limit)
                 return new IOException("GitHub response exceeds size limit");

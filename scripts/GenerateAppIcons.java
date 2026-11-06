@@ -17,7 +17,8 @@ public final class GenerateAppIcons {
     private GenerateAppIcons() {}
 
     public static void main(String[] args) throws IOException {
-        var original = ImageIO.read(Path.of("gui/src/main/branding/voxelbrew.png").toFile());
+        var original =
+                ImageIO.read(Path.of("gui/src/main/branding/voxelbrew.png").toFile());
         if (original == null
                 || original.getWidth() != original.getHeight()
                 || original.getWidth() < 1024
@@ -38,8 +39,7 @@ public final class GenerateAppIcons {
                 try {
                     graphics.setComposite(AlphaComposite.Src);
                     graphics.setRenderingHint(
-                            RenderingHints.KEY_INTERPOLATION,
-                            RenderingHints.VALUE_INTERPOLATION_BICUBIC);
+                            RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BICUBIC);
                     graphics.drawImage(image, 0, 0, nextSize, nextSize, null);
                 } finally {
                     graphics.dispose();
@@ -47,8 +47,7 @@ public final class GenerateAppIcons {
                 image = resized;
             }
             var output = new ByteArrayOutputStream();
-            if (!ImageIO.write(image, "png", output))
-                throw new IOException("PNG writer unavailable");
+            if (!ImageIO.write(image, "png", output)) throw new IOException("PNG writer unavailable");
             frames.put(size, output.toByteArray());
             if (size <= 512) {
                 Files.write(resources.resolve("voxelbrew-" + size + ".png"), frames.get(size));
@@ -56,12 +55,13 @@ public final class GenerateAppIcons {
         }
         Files.write(packaging.resolve("voxelbrew.ico"), ico(frames));
         Files.write(packaging.resolve("voxelbrew.icns"), icns(frames));
-        System.out.println(
-                "Generated JavaFX PNGs, Windows ICO and macOS ICNS from original artwork.");
+        System.out.println("Generated JavaFX PNGs, Windows ICO and macOS ICNS from original artwork.");
     }
 
     private static byte[] ico(Map<Integer, byte[]> frames) throws IOException {
-        var entries = frames.entrySet().stream().filter(entry -> entry.getKey() <= 256).toList();
+        var entries = frames.entrySet().stream()
+                .filter(entry -> entry.getKey() <= 256)
+                .toList();
         var header = ByteBuffer.allocate(6 + 16 * entries.size()).order(ByteOrder.LITTLE_ENDIAN);
         header.putShort((short) 0).putShort((short) 1).putShort((short) entries.size());
         int offset = header.capacity();

@@ -12,9 +12,8 @@ class ViewOrientationTest {
         var frames = new java.util.ArrayList<dev.voxelbrew.engine.model.Transform>();
         for (String name : new String[] {"XY", "XZ", "YZ"})
             frames.add(dev.voxelbrew.engine.model.Feature.Plane.origin(name).frame());
-        frames.add(
-                dev.voxelbrew.engine.model.Transform.translation(3, 7, -9)
-                        .compose(dev.voxelbrew.engine.model.Transform.rotation(21, 33, 47)));
+        frames.add(dev.voxelbrew.engine.model.Transform.translation(3, 7, -9)
+                .compose(dev.voxelbrew.engine.model.Transform.rotation(21, 33, 47)));
         for (var frame : frames) {
             var model = frame.apply(4, -8, 12);
             assertEquals(
@@ -23,10 +22,7 @@ class ViewOrientationTest {
                             .transform(Viewport.toView(4, -8, 12))
                             .distance(Viewport.toView(model[0], model[1], model[2])),
                     1e-12);
-            assertArrayEquals(
-                    new double[] {4, -8, 12},
-                    frame.inverse().apply(model[0], model[1], model[2]),
-                    1e-12);
+            assertArrayEquals(new double[] {4, -8, 12}, frame.inverse().apply(model[0], model[1], model[2]), 1e-12);
         }
     }
 
@@ -40,20 +36,13 @@ class ViewOrientationTest {
                     var yaw = new Rotate(view.orbit(), Rotate.Y_AXIS);
                     var pitch = new Rotate(view.tilt(), Rotate.X_AXIS);
                     var direction = new Point3D(x, -z, y).normalize();
-                    assertEquals(
-                            0,
-                            pitch.transform(yaw.transform(direction))
-                                    .distance(new Point3D(0, 0, -1)),
-                            1e-12);
+                    assertEquals(0, pitch.transform(yaw.transform(direction)).distance(new Point3D(0, 0, -1)), 1e-12);
                     // Independently compare the cube projection with the main scene's FX
                     // transforms.
                     var point = new Point3D(17, -23, 41);
                     assertEquals(
                             0,
-                            view.project(point)
-                                    .distance(
-                                            pitch.transform(
-                                                    yaw.transform(new Point3D(17, -41, -23)))),
+                            view.project(point).distance(pitch.transform(yaw.transform(new Point3D(17, -41, -23)))),
                             1e-12);
                 }
     }
@@ -66,10 +55,8 @@ class ViewOrientationTest {
         assertEquals(new ViewOrientation(0, -180), ViewOrientation.named("Back"));
         assertEquals(new ViewOrientation(0, 90), ViewOrientation.named("Right"));
         assertEquals(new ViewOrientation(0, -90), ViewOrientation.named("Left"));
-        assertEquals(
-                new Point3D(1, 0, 0), ViewOrientation.named("Front").project(new Point3D(1, 0, 0)));
-        for (String name :
-                new String[] {"Isometric", "Top", "Bottom", "Front", "Back", "Right", "Left"})
+        assertEquals(new Point3D(1, 0, 0), ViewOrientation.named("Front").project(new Point3D(1, 0, 0)));
+        for (String name : new String[] {"Isometric", "Top", "Bottom", "Front", "Back", "Right", "Left"})
             assertEquals(name, ViewOrientation.named(name).name());
         assertEquals("Custom", new ViewOrientation(12, 34).name());
     }
@@ -91,9 +78,7 @@ class ViewOrientationTest {
         assertEquals(new ViewOrientation(-89, -10), new ViewOrientation(0, 0).dragged(20, -1000));
         assertEquals(new ViewOrientation(89, 10), new ViewOrientation(0, 0).dragged(-20, 1000));
         assertThrows(IllegalArgumentException.class, () -> new ViewOrientation(Double.NaN, 0));
-        assertThrows(
-                IllegalArgumentException.class,
-                () -> new ViewOrientation(0, Double.POSITIVE_INFINITY));
+        assertThrows(IllegalArgumentException.class, () -> new ViewOrientation(0, Double.POSITIVE_INFINITY));
         assertThrows(IllegalArgumentException.class, () -> new ViewOrientation(91, 0));
         assertThrows(IllegalArgumentException.class, () -> ViewOrientation.lookingFrom(0, 0, 0));
     }

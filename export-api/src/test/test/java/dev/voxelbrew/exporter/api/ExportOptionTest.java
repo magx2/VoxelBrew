@@ -13,8 +13,7 @@ class ExportOptionTest {
         var scale = new ExportOption("scale", "Scale", ExportOption.Type.DECIMAL, "1", List.of());
         assertThrows(IllegalArgumentException.class, () -> scale.validate("NaN"));
         assertThrows(IllegalArgumentException.class, () -> scale.validate("Infinity"));
-        var choice =
-                new ExportOption("mode", "Mode", ExportOption.Type.CHOICE, "a", List.of("a", "b"));
+        var choice = new ExportOption("mode", "Mode", ExportOption.Type.CHOICE, "a", List.of("a", "b"));
         assertThrows(IllegalArgumentException.class, () -> choice.validate("c"));
         assertDoesNotThrow(() -> choice.validate("b"));
     }

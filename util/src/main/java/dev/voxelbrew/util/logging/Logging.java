@@ -30,11 +30,10 @@ public final class Logging {
         initialized = true;
         previousUncaught = Thread.getDefaultUncaughtExceptionHandler();
         var previous = previousUncaught;
-        applicationUncaught =
-                (thread, failure) -> {
-                    log.error("Uncaught exception on thread {}", thread.getName(), failure);
-                    if (previous != null) previous.uncaughtException(thread, failure);
-                };
+        applicationUncaught = (thread, failure) -> {
+            log.error("Uncaught exception on thread {}", thread.getName(), failure);
+            if (previous != null) previous.uncaughtException(thread, failure);
+        };
         Thread.setDefaultUncaughtExceptionHandler(applicationUncaught);
         log.info(
                 "Starting {} version {} on {} / Java {}",
@@ -44,17 +43,15 @@ public final class Logging {
                 System.getProperty("java.version"));
     }
 
-    public static synchronized void configure(
-            UserConfiguration configuration, Path directory, String component) throws IOException {
-        if (!component.matches("[a-zA-Z0-9_-]+"))
-            throw new IllegalArgumentException("Invalid logging component");
+    public static synchronized void configure(UserConfiguration configuration, Path directory, String component)
+            throws IOException {
+        if (!component.matches("[a-zA-Z0-9_-]+")) throw new IllegalArgumentException("Invalid logging component");
         Map<String, String> options = configuration.read();
         Level level = level(options.getOrDefault("logging.level", "INFO"));
         Level consoleLevel = level(options.getOrDefault("logging.console.level", "WARNING"));
         long bytes = Long.parseLong(options.getOrDefault("logging.file.limit", "20971520"));
         int count = Integer.parseInt(options.getOrDefault("logging.file.count", "10"));
-        if (bytes < 1024 || count < 1 || count > 20)
-            throw new IllegalArgumentException("Invalid log rotation limits");
+        if (bytes < 1024 || count < 1 || count > 20) throw new IllegalArgumentException("Invalid log rotation limits");
         var file = new RollingAppLog(directory, bytes, count);
         file.setFormatter(new AppLogFormatter(component));
         file.setLevel(level);
@@ -97,8 +94,7 @@ public final class Logging {
 
     public static synchronized void close() {
         if (initialized) log.info("Application logging stopped");
-        if (applicationUncaught != null
-                && Thread.getDefaultUncaughtExceptionHandler() == applicationUncaught)
+        if (applicationUncaught != null && Thread.getDefaultUncaughtExceptionHandler() == applicationUncaught)
             Thread.setDefaultUncaughtExceptionHandler(previousUncaught);
         applicationUncaught = null;
         previousUncaught = null;

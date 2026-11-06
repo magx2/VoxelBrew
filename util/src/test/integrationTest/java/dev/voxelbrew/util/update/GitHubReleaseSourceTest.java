@@ -15,7 +15,9 @@ import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.io.TempDir;
 
 class GitHubReleaseSourceTest {
-    @TempDir Path directory;
+    @TempDir
+    Path directory;
+
     private HttpServer server;
     private ExecutorService workers;
     private URI root;
@@ -30,17 +32,14 @@ class GitHubReleaseSourceTest {
         server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
         workers = Executors.newVirtualThreadPerTaskExecutor();
         server.setExecutor(workers);
-        server.createContext(
-                "/",
-                exchange -> {
-                    paths.add(exchange.getRequestURI().getPath());
-                    for (String header : List.of("Authorization", "Proxy-Authorization", "Cookie"))
-                        if (exchange.getRequestHeaders().containsKey(header))
-                            authentication.add(header);
-                    try (exchange) {
-                        handler.get().handle(exchange);
-                    }
-                });
+        server.createContext("/", exchange -> {
+            paths.add(exchange.getRequestURI().getPath());
+            for (String header : List.of("Authorization", "Proxy-Authorization", "Cookie"))
+                if (exchange.getRequestHeaders().containsKey(header)) authentication.add(header);
+            try (exchange) {
+                handler.get().handle(exchange);
+            }
+        });
         server.start();
         root = URI.create("http://127.0.0.1:" + server.getAddress().getPort() + "/");
     }
@@ -53,23 +52,21 @@ class GitHubReleaseSourceTest {
     }
 
     @Test
-    void discoversLatestAndExplicitVersionsAndFollowsAssetRedirectWithoutAuthentication()
-            throws Exception {
+    void discoversLatestAndExplicitVersionsAndFollowsAssetRedirectWithoutAuthentication() throws Exception {
         var userAgents = new CopyOnWriteArrayList<String>();
-        handler.set(
-                exchange -> {
-                    userAgents.add(exchange.getRequestHeaders().getFirst("User-Agent"));
-                    String path = exchange.getRequestURI().getPath();
-                    if (path.startsWith("/repos/")) {
-                        assertEquals(
-                                "application/vnd.github+json",
-                                exchange.getRequestHeaders().getFirst("Accept"));
-                        respond(exchange, 200, metadata().getBytes(StandardCharsets.UTF_8));
-                    } else if (path.startsWith("/magx2/")) {
-                        exchange.getResponseHeaders().set("Location", "/cdn/asset");
-                        exchange.sendResponseHeaders(302, -1);
-                    } else respond(exchange, 200, new byte[] {0, 1, 2, (byte) 255});
-                });
+        handler.set(exchange -> {
+            userAgents.add(exchange.getRequestHeaders().getFirst("User-Agent"));
+            String path = exchange.getRequestURI().getPath();
+            if (path.startsWith("/repos/")) {
+                assertEquals(
+                        "application/vnd.github+json",
+                        exchange.getRequestHeaders().getFirst("Accept"));
+                respond(exchange, 200, metadata().getBytes(StandardCharsets.UTF_8));
+            } else if (path.startsWith("/magx2/")) {
+                exchange.getResponseHeaders().set("Location", "/cdn/asset");
+                exchange.sendResponseHeaders(302, -1);
+            } else respond(exchange, 200, new byte[] {0, 1, 2, (byte) 255});
+        });
         var source = new GitHubReleaseSource(root);
         var token = new UpdateCancellation();
         var release = source.fetch(null, token);
@@ -93,45 +90,35 @@ class GitHubReleaseSourceTest {
     void diagnosesMissingReleasesRateLimitsAndServerFailuresWithoutLoginInstructions() {
         var source = new GitHubReleaseSource(root);
         for (int status : List.of(404, 403, 429, 500)) {
-            handler.set(
-                    exchange -> {
-                        if (status == 403 || status == 429) {
-                            exchange.getResponseHeaders().set("X-RateLimit-Remaining", "0");
-                            exchange.getResponseHeaders().set("Retry-After", "60");
-                        }
-                        respond(exchange, status, "error".getBytes(StandardCharsets.UTF_8));
-                    });
-            var failure =
-                    assertThrows(
-                            IOException.class, () -> source.fetch(null, new UpdateCancellation()));
+            handler.set(exchange -> {
+                if (status == 403 || status == 429) {
+                    exchange.getResponseHeaders().set("X-RateLimit-Remaining", "0");
+                    exchange.getResponseHeaders().set("Retry-After", "60");
+                }
+                respond(exchange, status, "error".getBytes(StandardCharsets.UTF_8));
+            });
+            var failure = assertThrows(IOException.class, () -> source.fetch(null, new UpdateCancellation()));
             assertTrue(failure.getMessage().contains("HTTP " + status));
             assertFalse(failure.getMessage().contains("gh auth"));
-            if (status == 403 || status == 429)
-                assertTrue(failure.getMessage().contains("rate limit"));
+            if (status == 403 || status == 429) assertTrue(failure.getMessage().contains("rate limit"));
         }
     }
 
     @Test
-    void failedAndTruncatedDownloadsRemovePartialFilesButPreserveExistingDestinations()
-            throws Exception {
+    void failedAndTruncatedDownloadsRemovePartialFilesButPreserveExistingDestinations() throws Exception {
         var source = new GitHubReleaseSource(root);
         var release = new ReleaseSource.Release(version, Set.of(asset));
         Path file = Files.writeString(directory.resolve("existing.zip"), "keep");
-        assertThrows(
-                IOException.class,
-                () -> source.download(release, asset, file, new UpdateCancellation()));
+        assertThrows(IOException.class, () -> source.download(release, asset, file, new UpdateCancellation()));
         assertEquals("keep", Files.readString(file));
         assertTrue(paths.isEmpty());
         for (int status : List.of(404, 200)) {
-            handler.set(
-                    exchange -> {
-                        exchange.sendResponseHeaders(status, 100);
-                        exchange.getResponseBody().write(new byte[] {1, 2});
-                    });
+            handler.set(exchange -> {
+                exchange.sendResponseHeaders(status, 100);
+                exchange.getResponseBody().write(new byte[] {1, 2});
+            });
             Path partial = directory.resolve("partial-" + status);
-            assertThrows(
-                    IOException.class,
-                    () -> source.download(release, asset, partial, new UpdateCancellation()));
+            assertThrows(IOException.class, () -> source.download(release, asset, partial, new UpdateCancellation()));
             assertFalse(Files.exists(partial));
         }
     }
@@ -140,21 +127,19 @@ class GitHubReleaseSourceTest {
     void enforcesDeclaredAndStreamingMetadataAndChecksumLimits() {
         var source = new GitHubReleaseSource(root);
         for (boolean declared : List.of(true, false)) {
-            handler.set(
-                    exchange -> {
-                        exchange.sendResponseHeaders(200, declared ? 2 * 1024 * 1024 : 0);
-                        if (!declared) exchange.getResponseBody().write(new byte[2 * 1024 * 1024]);
-                    });
+            handler.set(exchange -> {
+                exchange.sendResponseHeaders(200, declared ? 2 * 1024 * 1024 : 0);
+                if (!declared) exchange.getResponseBody().write(new byte[2 * 1024 * 1024]);
+            });
             assertThrows(IOException.class, () -> source.fetch(null, new UpdateCancellation()));
             Path file = directory.resolve("SHA256SUMS");
             assertThrows(
                     IOException.class,
-                    () ->
-                            source.download(
-                                    new ReleaseSource.Release(version, Set.of("SHA256SUMS")),
-                                    "SHA256SUMS",
-                                    file,
-                                    new UpdateCancellation()));
+                    () -> source.download(
+                            new ReleaseSource.Release(version, Set.of("SHA256SUMS")),
+                            "SHA256SUMS",
+                            file,
+                            new UpdateCancellation()));
             assertFalse(Files.exists(file));
         }
     }
@@ -164,39 +149,30 @@ class GitHubReleaseSourceTest {
         for (boolean body : List.of(false, true)) {
             var entered = new CountDownLatch(1);
             var releaseServer = new CountDownLatch(1);
-            handler.set(
-                    exchange -> {
-                        if (body) {
-                            exchange.sendResponseHeaders(200, 100);
-                            exchange.getResponseBody().write(1);
-                            exchange.getResponseBody().flush();
-                        }
-                        entered.countDown();
-                        try {
-                            releaseServer.await(10, TimeUnit.SECONDS);
-                        } catch (InterruptedException interrupted) {
-                            Thread.currentThread().interrupt();
-                        }
-                    });
+            handler.set(exchange -> {
+                if (body) {
+                    exchange.sendResponseHeaders(200, 100);
+                    exchange.getResponseBody().write(1);
+                    exchange.getResponseBody().flush();
+                }
+                entered.countDown();
+                try {
+                    releaseServer.await(10, TimeUnit.SECONDS);
+                } catch (InterruptedException interrupted) {
+                    Thread.currentThread().interrupt();
+                }
+            });
             var cancellation = new UpdateCancellation();
             Path file = directory.resolve("cancelled-" + body);
-            Future<?> pending =
-                    workers.submit(
-                            () -> {
-                                new GitHubReleaseSource(root)
-                                        .download(
-                                                new ReleaseSource.Release(version, Set.of(asset)),
-                                                asset,
-                                                file,
-                                                cancellation);
-                                return null;
-                            });
+            Future<?> pending = workers.submit(() -> {
+                new GitHubReleaseSource(root)
+                        .download(new ReleaseSource.Release(version, Set.of(asset)), asset, file, cancellation);
+                return null;
+            });
             try {
                 assertTrue(entered.await(5, TimeUnit.SECONDS));
                 cancellation.cancel();
-                var failure =
-                        assertThrows(
-                                ExecutionException.class, () -> pending.get(3, TimeUnit.SECONDS));
+                var failure = assertThrows(ExecutionException.class, () -> pending.get(3, TimeUnit.SECONDS));
                 assertInstanceOf(CancellationException.class, failure.getCause());
                 assertFalse(Files.exists(file));
             } finally {
@@ -208,36 +184,30 @@ class GitHubReleaseSourceTest {
     @Test
     void timeoutIncludesAStalledResponseBody() throws Exception {
         var releaseServer = new CountDownLatch(1);
-        handler.set(
-                exchange -> {
-                    exchange.sendResponseHeaders(200, 100);
-                    exchange.getResponseBody().write(1);
-                    exchange.getResponseBody().flush();
-                    try {
-                        releaseServer.await(10, TimeUnit.SECONDS);
-                    } catch (InterruptedException interrupted) {
-                        Thread.currentThread().interrupt();
-                    }
-                });
+        handler.set(exchange -> {
+            exchange.sendResponseHeaders(200, 100);
+            exchange.getResponseBody().write(1);
+            exchange.getResponseBody().flush();
+            try {
+                releaseServer.await(10, TimeUnit.SECONDS);
+            } catch (InterruptedException interrupted) {
+                Thread.currentThread().interrupt();
+            }
+        });
         var source = new GitHubReleaseSource(root, Duration.ofMillis(350), Duration.ofMillis(350));
         Path file = directory.resolve("timed-out");
         try {
-            assertTimeoutPreemptively(
-                    Duration.ofSeconds(3),
-                    () -> {
-                        var failure =
-                                assertThrows(
-                                        IOException.class,
-                                        () ->
-                                                source.download(
-                                                        new ReleaseSource.Release(
-                                                                version, Set.of(asset)),
-                                                        asset,
-                                                        file,
-                                                        new UpdateCancellation()));
-                        assertTrue(failure.getMessage().contains("timed out"));
-                        assertFalse(Files.exists(file));
-                    });
+            assertTimeoutPreemptively(Duration.ofSeconds(3), () -> {
+                var failure = assertThrows(
+                        IOException.class,
+                        () -> source.download(
+                                new ReleaseSource.Release(version, Set.of(asset)),
+                                asset,
+                                file,
+                                new UpdateCancellation()));
+                assertTrue(failure.getMessage().contains("timed out"));
+                assertFalse(Files.exists(file));
+            });
         } finally {
             releaseServer.countDown();
         }
@@ -245,17 +215,14 @@ class GitHubReleaseSourceTest {
 
     @Test
     void fixtureOverrideCannotRedirectProductionUpdatesToARemoteOrCredentialedOrigin() {
-        for (String invalid :
-                List.of(
-                        "https://example.com/",
-                        "http://localhost:8080/",
-                        "http://127.0.0.1/",
-                        "http://user:secret@127.0.0.1:8080/",
-                        "http://127.0.0.1:8080/?token=abc",
-                        "http://127.0.0.1:8080/path/"))
-            assertThrows(
-                    IllegalArgumentException.class,
-                    () -> new GitHubReleaseSource(URI.create(invalid)));
+        for (String invalid : List.of(
+                "https://example.com/",
+                "http://localhost:8080/",
+                "http://127.0.0.1/",
+                "http://user:secret@127.0.0.1:8080/",
+                "http://127.0.0.1:8080/?token=abc",
+                "http://127.0.0.1:8080/path/"))
+            assertThrows(IllegalArgumentException.class, () -> new GitHubReleaseSource(URI.create(invalid)));
     }
 
     private String metadata() {

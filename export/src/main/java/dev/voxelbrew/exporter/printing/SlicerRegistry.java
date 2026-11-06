@@ -26,10 +26,9 @@ public final class SlicerRegistry implements AutoCloseable {
         var urls = new ArrayList<URL>();
         if (Files.isDirectory(directory))
             try (var files = Files.list(directory)) {
-                for (var file :
-                        files.filter(p -> p.getFileName().toString().endsWith(".jar"))
-                                .sorted()
-                                .toList()) urls.add(file.toUri().toURL());
+                for (var file : files.filter(p -> p.getFileName().toString().endsWith(".jar"))
+                        .sorted()
+                        .toList()) urls.add(file.toUri().toURL());
             }
         loader = new URLClassLoader(urls.toArray(URL[]::new), SlicerBackend.class.getClassLoader());
         var services = ServiceLoader.load(SlicerBackend.class, loader).iterator();
@@ -40,11 +39,7 @@ public final class SlicerRegistry implements AutoCloseable {
                 var backend = services.next();
                 var descriptor = backend.descriptor();
                 if (descriptor.apiVersion() != SlicerBackend.API_VERSION) {
-                    diagnostics.add(
-                            "Incompatible slicer "
-                                    + descriptor.id()
-                                    + ": API "
-                                    + descriptor.apiVersion());
+                    diagnostics.add("Incompatible slicer " + descriptor.id() + ": API " + descriptor.apiVersion());
                     continue;
                 }
                 if (!descriptor.id().matches("[a-z0-9][a-z0-9.-]*")) {
@@ -71,8 +66,7 @@ public final class SlicerRegistry implements AutoCloseable {
 
     public SlicerBackend require(String id) {
         var backend = providers.get(id);
-        if (backend == null)
-            throw new IllegalArgumentException("Slicer backend unavailable: " + id);
+        if (backend == null) throw new IllegalArgumentException("Slicer backend unavailable: " + id);
         return backend.provider();
     }
 

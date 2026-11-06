@@ -17,7 +17,8 @@ import org.junit.jupiter.api.io.TempDir;
 
 @Slf4j
 class LoggingTest {
-    @TempDir Path directory;
+    @TempDir
+    Path directory;
 
     @Test
     void configurationWritesUtf8RotatingLogsWithoutChangingHostHandlers() throws Exception {
@@ -47,8 +48,7 @@ class LoggingTest {
             var paths = files.filter(path -> path.toString().endsWith(".log")).toList();
             assertEquals(3, paths.size());
             boolean found = false;
-            for (Path path : paths)
-                found |= Files.readString(path).contains("Zażółć ☕ final marker");
+            for (Path path : paths) found |= Files.readString(path).contains("Zażółć ☕ final marker");
             assertTrue(found);
         }
     }
@@ -103,9 +103,7 @@ class LoggingTest {
     void rejectsInvalidConfigurationBeforeOpeningLogFiles() throws Exception {
         var config = new UserConfiguration(directory.resolve("config.properties"));
         config.set("logging.file.count", "0");
-        assertThrows(
-                IllegalArgumentException.class,
-                () -> Logging.configure(config, directory.resolve("logs"), "cli"));
+        assertThrows(IllegalArgumentException.class, () -> Logging.configure(config, directory.resolve("logs"), "cli"));
         assertFalse(Files.exists(directory.resolve("logs")));
     }
 
@@ -128,8 +126,8 @@ class LoggingTest {
         assertTrue(active.contains("INFO [cli:"));
         assertFalse(active.contains("first-session-marker"));
         try (var files = Files.list(logs)) {
-            var archives =
-                    files.filter(p -> p.getFileName().toString().startsWith("app-")).toList();
+            var archives = files.filter(p -> p.getFileName().toString().startsWith("app-"))
+                    .toList();
             assertEquals(1, archives.size());
             assertTrue(Files.readString(archives.getFirst()).contains("first-session-marker"));
         }
@@ -151,11 +149,10 @@ class LoggingTest {
             var paths = files.filter(p -> p.toString().endsWith(".log")).toList();
             assertEquals(2, paths.size());
             for (var path : paths) assertTrue(Files.size(path) <= 20L * 1024 * 1024);
-            long archived =
-                    paths.stream()
-                            .filter(p -> !p.getFileName().toString().equals("app.log"))
-                            .mapToLong(p -> p.toFile().length())
-                            .sum();
+            long archived = paths.stream()
+                    .filter(p -> !p.getFileName().toString().equals("app.log"))
+                    .mapToLong(p -> p.toFile().length())
+                    .sum();
             assertTrue(archived >= 19L * 1024 * 1024);
             String active = Files.readString(logs.resolve("app.log"));
             assertTrue(active.contains("record-20 "));
@@ -167,13 +164,7 @@ class LoggingTest {
     void consoleCanBeMoreVerboseThanFileAndUnrelatedArchivesArePreserved() throws Exception {
         var config = new UserConfiguration(directory.resolve("config.properties"));
         config.update(
-                Map.of(
-                        "logging.level",
-                        "ERROR",
-                        "logging.console.level",
-                        "DEBUG",
-                        "logging.file.count",
-                        "1"),
+                Map.of("logging.level", "ERROR", "logging.console.level", "DEBUG", "logging.file.count", "1"),
                 Set.of());
         Path logs = Files.createDirectory(directory.resolve("log"));
         Path unrelated = Files.writeString(logs.resolve("app-personal.log"), "keep");

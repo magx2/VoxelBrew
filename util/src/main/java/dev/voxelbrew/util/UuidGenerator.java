@@ -16,12 +16,10 @@ public final class UuidGenerator {
     }
 
     public long next() {
-        return uuid.getAndUpdate(
-                value -> {
-                    if (value == Long.MAX_VALUE)
-                        throw new IllegalStateException("UUID sequence exhausted");
-                    return value + 1;
-                });
+        return uuid.getAndUpdate(value -> {
+            if (value == Long.MAX_VALUE) throw new IllegalStateException("UUID sequence exhausted");
+            return value + 1;
+        });
     }
 
     public long nextValue() {

@@ -27,14 +27,10 @@ public final class DocumentWriter {
             DocumentReader.load(target);
         }
         ByteBuffer bytes = ByteBuffer.wrap(DocumentCodec.encode(document));
-        Path temporary =
-                Files.createTempFile(target.getParent(), "." + target.getFileName() + "-", ".tmp");
+        Path temporary = Files.createTempFile(target.getParent(), "." + target.getFileName() + "-", ".tmp");
         try {
             try (FileChannel channel =
-                    FileChannel.open(
-                            temporary,
-                            StandardOpenOption.WRITE,
-                            StandardOpenOption.TRUNCATE_EXISTING)) {
+                    FileChannel.open(temporary, StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING)) {
                 while (bytes.hasRemaining()) {
                     channel.write(bytes);
                 }
@@ -45,11 +41,7 @@ public final class DocumentWriter {
             DocumentReader.load(temporary);
             if (overwrite) {
                 // Fail safely if this filesystem cannot atomically replace a sibling file.
-                Files.move(
-                        temporary,
-                        target,
-                        StandardCopyOption.ATOMIC_MOVE,
-                        StandardCopyOption.REPLACE_EXISTING);
+                Files.move(temporary, target, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
             } else {
                 // Atomic create-if-absent: unlike ATOMIC_MOVE, a concurrent destination cannot be
                 // replaced.

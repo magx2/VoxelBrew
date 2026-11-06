@@ -6,8 +6,7 @@ import java.util.HashSet;
 import java.util.List;
 
 /** Immutable, millimeter sketch definition. Entity and constraint IDs survive editing and saves. */
-public record SketchGeometry(
-        List<Entity> entities, List<Constraint> constraints, List<String> boundary) {
+public record SketchGeometry(List<Entity> entities, List<Constraint> constraints, List<String> boundary) {
     public static final double TOLERANCE = 1e-6;
     public static final Ref ORIGIN = new Ref("origin", Part.POINT);
 
@@ -16,17 +15,14 @@ public record SketchGeometry(
         constraints = List.copyOf(constraints);
         boundary = List.copyOf(boundary);
         if (entities.size() > 64 || constraints.size() > 256)
-            throw new IllegalArgumentException(
-                    "A sketch supports up to 64 entities and 256 constraints");
+            throw new IllegalArgumentException("A sketch supports up to 64 entities and 256 constraints");
         var ids = new HashSet<String>();
         for (var e : entities)
             if (e.id().equals("origin") || !ids.add(e.id()))
-                throw new IllegalArgumentException(
-                        "Duplicate or reserved sketch entity ID: " + e.id());
+                throw new IllegalArgumentException("Duplicate or reserved sketch entity ID: " + e.id());
         ids.clear();
         for (var c : constraints)
-            if (!ids.add(c.id()))
-                throw new IllegalArgumentException("Duplicate constraint ID: " + c.id());
+            if (!ids.add(c.id())) throw new IllegalArgumentException("Duplicate constraint ID: " + c.id());
         if (new HashSet<>(boundary).size() != boundary.size())
             throw new IllegalArgumentException("Duplicate profile boundary entity");
     }
@@ -40,8 +36,7 @@ public record SketchGeometry(
         if (result.length() <= 128) return result;
         return id.substring(0, Math.min(80, id.length()))
                 + "-"
-                + java.util.UUID.nameUUIDFromBytes(
-                        result.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+                + java.util.UUID.nameUUIDFromBytes(result.getBytes(java.nio.charset.StandardCharsets.UTF_8));
     }
 
     public enum Kind {
@@ -54,16 +49,7 @@ public record SketchGeometry(
         FIT_SPLINE("Fit point spline"),
         CONTROL_SPLINE("Control point spline"),
         TEXT("Text", "x", "y", "height", "angle", "spacing"),
-        SPLINE(
-                "Cubic spline",
-                "startX",
-                "startY",
-                "control1X",
-                "control1Y",
-                "control2X",
-                "control2Y",
-                "endX",
-                "endY");
+        SPLINE("Cubic spline", "startX", "startY", "control1X", "control1Y", "control2X", "control2Y", "endX", "endY");
 
         private final String label;
         private final List<String> parameters;
@@ -104,27 +90,20 @@ public record SketchGeometry(
             if (variable
                     && (values.size() % 2 != 0
                             || values.size() > 64
-                            || values.size()
-                                    < (kind == Kind.CONTROL_SPLINE
-                                            ? (degree + 1) * 2
-                                            : closed ? 6 : 4)))
-                throw new IllegalArgumentException(
-                        "A spline needs 2–32 fit points or degree+1–32 control points");
+                            || values.size() < (kind == Kind.CONTROL_SPLINE ? (degree + 1) * 2 : closed ? 6 : 4)))
+                throw new IllegalArgumentException("A spline needs 2–32 fit points or degree+1–32 control points");
             if (kind == Kind.CONTROL_SPLINE && degree != 3 && degree != 5)
                 throw new IllegalArgumentException("Control spline degree must be 3 or 5");
             if ((kind != Kind.CONTROL_SPLINE && degree != 0) || (!variable && closed))
-                throw new IllegalArgumentException(
-                        "Degree and closed flags apply only to spline types");
+                throw new IllegalArgumentException("Degree and closed flags apply only to spline types");
             if ((kind == Kind.TEXT) != (text != null))
-                throw new IllegalArgumentException(
-                        "Text geometry requires its persisted glyph outlines");
+                throw new IllegalArgumentException("Text geometry requires its persisted glyph outlines");
             if (!variable && values.size() != kind.parameters().size())
                 throw new IllegalArgumentException(
                         kind + " needs " + kind.parameters().size() + " parameters");
             for (double value : values)
                 if (!Double.isFinite(value))
-                    throw new IllegalArgumentException(
-                            "Entity " + id + ": coordinates must be finite");
+                    throw new IllegalArgumentException("Entity " + id + ": coordinates must be finite");
         }
 
         public double value(int i) {
@@ -185,8 +164,7 @@ public record SketchGeometry(
         }
 
         public Vec point(Part part) {
-            if (!points().contains(part))
-                throw new IllegalArgumentException(id + " has no " + part + " point");
+            if (!points().contains(part)) throw new IllegalArgumentException(id + " has no " + part + " point");
             return switch (part) {
                 case POINT, CENTER -> new Vec(value(0), value(1));
                 case START -> at(0);
@@ -195,8 +173,7 @@ public record SketchGeometry(
                 case CONTROL2 -> new Vec(value(4), value(5));
                 case MAJOR -> at(0);
                 case MINOR -> at(0.25);
-                case CONTROL, FIT ->
-                        throw new IllegalArgumentException("Select an indexed spline point");
+                case CONTROL, FIT -> throw new IllegalArgumentException("Select an indexed spline point");
                 case OBJECT -> throw new IllegalArgumentException("Select an endpoint or center");
             };
         }
@@ -212,9 +189,7 @@ public record SketchGeometry(
                 case LINE -> new Vec(value(0), value(1)).mix(new Vec(value(2), value(3)), t);
                 case CIRCLE, ARC -> {
                     double angle = kind == Kind.CIRCLE ? t * Math.TAU : value(3) + t * value(4);
-                    yield new Vec(
-                            value(0) + value(2) * Math.cos(angle),
-                            value(1) + value(2) * Math.sin(angle));
+                    yield new Vec(value(0) + value(2) * Math.cos(angle), value(1) + value(2) * Math.sin(angle));
                 }
                 case SPLINE -> {
                     double s = 1 - t;
@@ -257,13 +232,9 @@ public record SketchGeometry(
         }
 
         public double curvature(double t) {
-            if (kind == Kind.ELLIPSE
-                    || kind == Kind.CONIC
-                    || kind == Kind.FIT_SPLINE
-                    || kind == Kind.CONTROL_SPLINE) {
+            if (kind == Kind.ELLIPSE || kind == Kind.CONIC || kind == Kind.FIT_SPLINE || kind == Kind.CONTROL_SPLINE) {
                 var first = SketchCurves.at(this, t, 1);
-                return first.cross(SketchCurves.at(this, t, 2))
-                        / Math.pow(Math.max(first.length(), 1e-12), 3);
+                return first.cross(SketchCurves.at(this, t, 2)) / Math.pow(Math.max(first.length(), 1e-12), 3);
             }
             if (kind == Kind.CIRCLE) return 1 / value(2);
             if (kind == Kind.ARC) return Math.copySign(1 / value(2), value(4));
@@ -272,18 +243,16 @@ public record SketchGeometry(
             var p1 = new Vec(value(2), value(3));
             var p2 = new Vec(value(4), value(5));
             var p3 = new Vec(value(6), value(7));
-            var second =
-                    p2.minus(p1.times(2))
-                            .plus(p0)
-                            .times(6 * (1 - t))
-                            .plus(p3.minus(p2.times(2)).plus(p1).times(6 * t));
+            var second = p2.minus(p1.times(2))
+                    .plus(p0)
+                    .times(6 * (1 - t))
+                    .plus(p3.minus(p2.times(2)).plus(p1).times(6 * t));
             var first = derivative(t);
             return first.cross(second) / Math.pow(Math.max(first.length(), 1e-12), 3);
         }
 
         public List<Vec> sample() {
-            if (kind == Kind.FIT_SPLINE || kind == Kind.CONTROL_SPLINE)
-                return SketchCurves.sample(this, 128);
+            if (kind == Kind.FIT_SPLINE || kind == Kind.CONTROL_SPLINE) return SketchCurves.sample(this, 128);
             int count = kind == Kind.LINE || kind == Kind.POINT ? 1 : 128;
             var result = new ArrayList<Vec>();
             for (int i = 0; i <= count; i++) result.add(at((double) i / count));
@@ -324,9 +293,7 @@ public record SketchGeometry(
                             ? ""
                             : "."
                                     + part.name().toLowerCase(java.util.Locale.ROOT)
-                                    + (part == Part.CONTROL || part == Part.FIT
-                                            ? "[" + index + "]"
-                                            : ""));
+                                    + (part == Part.CONTROL || part == Part.FIT ? "[" + index + "]" : ""));
         }
 
         public static Ref parse(String value) {
@@ -338,15 +305,11 @@ public record SketchGeometry(
                     if (bracket > 0 && suffix.endsWith("]"))
                         return new Ref(
                                 value.substring(0, dot),
-                                Part.valueOf(
-                                        suffix.substring(0, bracket)
-                                                .toUpperCase(java.util.Locale.ROOT)),
-                                Integer.parseInt(
-                                        suffix.substring(bracket + 1, suffix.length() - 1)));
+                                Part.valueOf(suffix.substring(0, bracket).toUpperCase(java.util.Locale.ROOT)),
+                                Integer.parseInt(suffix.substring(bracket + 1, suffix.length() - 1)));
                     return new Ref(
                             value.substring(0, dot),
-                            Part.valueOf(
-                                    value.substring(dot + 1).toUpperCase(java.util.Locale.ROOT)));
+                            Part.valueOf(value.substring(dot + 1).toUpperCase(java.util.Locale.ROOT)));
                 } catch (IllegalArgumentException ignored) {
                     /* A dotted entity ID is also valid. */
                 }
@@ -407,8 +370,7 @@ public record SketchGeometry(
             values = List.copyOf(values);
             for (double value : values)
                 if (!Double.isFinite(value))
-                    throw new IllegalArgumentException(
-                            "Constraint " + id + ": values must be finite");
+                    throw new IllegalArgumentException("Constraint " + id + ": values must be finite");
         }
 
         public Constraint withValue(double value) {

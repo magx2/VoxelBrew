@@ -91,7 +91,7 @@ not require the native bootstrap or a display.
 The pinned formatters cover Java (including the independent exporter fixture),
 Gradle Kotlin scripts, native C++, Protobuf, CSS, Markdown, workflow YAML and release JavaScript. Other owned
 text files and scripts receive consistent whitespace and
-LF line endings. Java uses Google Java Format's four-space AOSP style; Kotlin
+LF line endings. Java uses Palantir Java Format 2.103.0; Kotlin
 uses ktfmt's Kotlin style. Prettier requires Node.js 18 or later with npm on
 `PATH`; CI supplies Node.js 24. Python 3 with `venv` is also required (`python`
 on Windows, `python3` on Ubuntu; install `python3-venv` on Ubuntu if absent).

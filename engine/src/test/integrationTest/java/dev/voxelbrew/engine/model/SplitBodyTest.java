@@ -10,17 +10,15 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 class SplitBodyTest {
-    @TempDir Path directory;
+    @TempDir
+    Path directory;
 
     @Test
     void splitOutputsPersistReplayAndConserveExactVolume() throws Exception {
         var session = EditableEngineTest.reference();
         session.editDimension("thickness", "distance", 8);
-        session.add(
-                new Feature.SplitBody(
-                        "split",
-                        new Feature.BodyRef("cut", "body"),
-                        new Feature.SplitPlane(1, 0, 0, 30)));
+        session.add(new Feature.SplitBody(
+                "split", new Feature.BodyRef("cut", "body"), new Feature.SplitPlane(1, 0, 0, 30)));
         var file = directory.resolve("split.jcad");
         DocumentWriter.save(session.document(), file, false);
         session = new ModelSession(DocumentReader.load(file));
@@ -57,16 +55,10 @@ class SplitBodyTest {
     @Test
     void missedPlaneIsRepairableAndNamedOutputCanFeedAnotherFeature() {
         var session = EditableEngineTest.reference();
-        session.add(
-                new Feature.SplitBody(
-                        "split",
-                        new Feature.BodyRef("cut", "body"),
-                        new Feature.SplitPlane(1, 0, 0, 100)));
-        session.add(
-                new Feature.SplitBody(
-                        "quarter",
-                        new Feature.BodyRef("split", "positive"),
-                        new Feature.SplitPlane(0, 1, 0, 20)));
+        session.add(new Feature.SplitBody(
+                "split", new Feature.BodyRef("cut", "body"), new Feature.SplitPlane(1, 0, 0, 100)));
+        session.add(new Feature.SplitBody(
+                "quarter", new Feature.BodyRef("split", "positive"), new Feature.SplitPlane(0, 1, 0, 20)));
         try (var failed = session.evaluate()) {
             assertEquals(Evaluation.State.FAILED, failed.diagnostics().get(4).state());
             assertTrue(failed.diagnostics().get(4).message().contains("does not intersect"));
@@ -78,7 +70,9 @@ class SplitBodyTest {
             assertEquals(3, result.requireCompleteDocument().size());
             assertEquals(
                     (60 * 40 - 4 * Math.PI) * 5,
-                    result.bodies().stream().mapToDouble(b -> b.solid().volume()).sum(),
+                    result.bodies().stream()
+                            .mapToDouble(b -> b.solid().volume())
+                            .sum(),
                     0.01);
         }
     }

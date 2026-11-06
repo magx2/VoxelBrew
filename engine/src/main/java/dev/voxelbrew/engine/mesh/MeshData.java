@@ -18,13 +18,10 @@ public final class MeshData {
             throw new IllegalArgumentException("Incomplete mesh arrays");
         }
         for (double value : this.vertices)
-            if (!Double.isFinite(value))
-                throw new IllegalArgumentException("Nonfinite mesh coordinate");
+            if (!Double.isFinite(value)) throw new IllegalArgumentException("Nonfinite mesh coordinate");
         for (int value : this.triangles)
-            if (value < 0 || value >= vertexCount())
-                throw new IllegalArgumentException("Invalid mesh index");
-        for (int value : this.faces)
-            if (value < 0) throw new IllegalArgumentException("Invalid face index");
+            if (value < 0 || value >= vertexCount()) throw new IllegalArgumentException("Invalid mesh index");
+        for (int value : this.faces) if (value < 0) throw new IllegalArgumentException("Invalid face index");
     }
 
     public int vertexCount() {

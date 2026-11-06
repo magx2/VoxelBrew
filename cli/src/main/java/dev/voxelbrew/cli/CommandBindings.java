@@ -283,8 +283,7 @@ abstract class CommandBindings {
     @Binds
     @IntoMap
     @ClassKey(ParameterCommands.ListConfigurations.class)
-    abstract Object parameterCommandsListConfigurations(
-            ParameterCommands.ListConfigurations command);
+    abstract Object parameterCommandsListConfigurations(ParameterCommands.ListConfigurations command);
 
     @Binds
     @IntoMap
@@ -304,14 +303,12 @@ abstract class CommandBindings {
     @Binds
     @IntoMap
     @ClassKey(ParameterCommands.RenameConfiguration.class)
-    abstract Object parameterCommandsRenameConfiguration(
-            ParameterCommands.RenameConfiguration command);
+    abstract Object parameterCommandsRenameConfiguration(ParameterCommands.RenameConfiguration command);
 
     @Binds
     @IntoMap
     @ClassKey(ParameterCommands.RemoveConfiguration.class)
-    abstract Object parameterCommandsRemoveConfiguration(
-            ParameterCommands.RemoveConfiguration command);
+    abstract Object parameterCommandsRemoveConfiguration(ParameterCommands.RemoveConfiguration command);
 
     @Binds
     @IntoMap

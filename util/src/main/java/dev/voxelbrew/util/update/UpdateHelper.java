@@ -33,8 +33,7 @@ public final class UpdateHelper {
         Path stage = job.getParent();
         if (!job.getFileName().toString().equals("job.properties")
                 || !stage.getFileName().toString().startsWith(".VoxelBrew-update-")
-                || Files.isSymbolicLink(stage))
-            throw new IOException("Invalid update staging directory");
+                || Files.isSymbolicLink(stage)) throw new IOException("Invalid update staging directory");
         Properties p = ApplicationImage.read(job);
         Path target = Path.of(p.getProperty("target")).toAbsolutePath().normalize();
         if (!target.getParent().equals(stage.getParent()) || Files.isSymbolicLink(target))
@@ -48,27 +47,18 @@ public final class UpdateHelper {
         var replacement = ApplicationImage.open(source, component, platform);
         if (!replacement.version().toString().equals(p.getProperty("newVersion")))
             throw new IOException("Replacement version changed");
-        Path backup =
-                target.resolveSibling(
-                        "."
-                                + target.getFileName()
-                                + "-backup-"
-                                + stage.getFileName()
-                                        .toString()
-                                        .substring(".VoxelBrew-update-".length()));
+        Path backup = target.resolveSibling("."
+                + target.getFileName()
+                + "-backup-"
+                + stage.getFileName().toString().substring(".VoxelBrew-update-".length()));
         long pid = Long.parseLong(p.getProperty("pid"));
         Instant start = Instant.parse(p.getProperty("processStart"));
         long deadline = System.nanoTime() + java.time.Duration.ofMinutes(2).toNanos();
         try (var updateLock = waitLock(original.updateLock(), false, deadline)) {
             status(stage, "READY", "Waiting for application exit");
             while (ProcessHandle.of(pid)
-                    .filter(
-                            h ->
-                                    h.isAlive()
-                                            && h.info()
-                                                    .startInstant()
-                                                    .map(start::equals)
-                                                    .orElse(true))
+                    .filter(h -> h.isAlive()
+                            && h.info().startInstant().map(start::equals).orElse(true))
                     .isPresent()) {
                 if (System.nanoTime() > deadline)
                     throw new IOException(
@@ -81,10 +71,7 @@ public final class UpdateHelper {
                     throw new IOException("Installation changed; no files replaced");
                 status(stage, "INSTALLING", "Installing " + replacement.version());
                 replace(target, source, backup, UpdateHelper::move);
-                status(
-                        stage,
-                        "SUCCESS",
-                        "Installed " + replacement.version() + "; backup: " + backup);
+                status(stage, "SUCCESS", "Installed " + replacement.version() + "; backup: " + backup);
             }
         }
     }
@@ -97,8 +84,7 @@ public final class UpdateHelper {
             } catch (IOException failure) {
                 if (System.nanoTime() > deadline)
                     throw new IOException(
-                            "Installation is busy. Close all instances and retry; no update was installed.",
-                            failure);
+                            "Installation is busy. Close all instances and retry; no update was installed.", failure);
                 Thread.sleep(100);
             }
         }
@@ -110,8 +96,7 @@ public final class UpdateHelper {
     }
 
     static void replace(Path target, Path source, Path backup, Move move) throws IOException {
-        if (Files.exists(backup))
-            throw new IOException("Backup already exists; refusing to overwrite it");
+        if (Files.exists(backup)) throw new IOException("Backup already exists; refusing to overwrite it");
         move.move(target, backup);
         try {
             move.move(source, target);
@@ -121,8 +106,7 @@ public final class UpdateHelper {
             } catch (IOException restoreFailure) {
                 installFailure.addSuppressed(restoreFailure);
                 throw new IOException(
-                        "Could not restore installation. Recover the untouched backup at " + backup,
-                        installFailure);
+                        "Could not restore installation. Recover the untouched backup at " + backup, installFailure);
             }
             throw new IOException("Update failed; original installation restored", installFailure);
         }

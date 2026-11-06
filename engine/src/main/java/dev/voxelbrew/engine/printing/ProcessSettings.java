@@ -17,18 +17,17 @@ public record ProcessSettings(
         int interfaceLayers,
         double brimWidth,
         int raftLayers) {
-    public static final ProcessSettings DEFAULT =
-            new ProcessSettings(
-                    quantity(0.2, MILLIMETRE),
-                    2,
-                    quantity(20, PERCENT),
-                    false,
-                    false,
-                    quantity(45, DEGREE),
-                    quantity(0.2, MILLIMETRE),
-                    3,
-                    quantity(0, MILLIMETRE),
-                    0);
+    public static final ProcessSettings DEFAULT = new ProcessSettings(
+            quantity(0.2, MILLIMETRE),
+            2,
+            quantity(20, PERCENT),
+            false,
+            false,
+            quantity(45, DEGREE),
+            quantity(0.2, MILLIMETRE),
+            3,
+            quantity(0, MILLIMETRE),
+            0);
 
     public ProcessSettings(
             Quantity<Length> layerHeight,

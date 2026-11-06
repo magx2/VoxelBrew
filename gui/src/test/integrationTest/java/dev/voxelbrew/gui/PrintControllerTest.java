@@ -15,7 +15,9 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 class PrintControllerTest {
-    @TempDir Path directory;
+    @TempDir
+    Path directory;
+
     private final Queue<Runnable> callbacks = new ConcurrentLinkedQueue<>();
 
     private void await(BooleanSupplier done) throws Exception {
@@ -30,22 +32,11 @@ class PrintControllerTest {
 
     private static ModelSession document() {
         var s = new ModelSession(CadDocument.empty());
-        s.add(
-                new Feature.Sketch(
-                        "plate",
-                        "p",
-                        new Feature.Plane("xy", 0),
-                        new Feature.Rectangle(0, 0, 20, 20)));
+        s.add(new Feature.Sketch("plate", "p", new Feature.Plane("xy", 0), new Feature.Rectangle(0, 0, 20, 20)));
         s.add(new Feature.Extrude("height", new Feature.ProfileRef("plate", "p"), 8));
-        s.setPrintSetup(
-                s.document()
-                        .printSetup()
-                        .withInstances(
-                                List.of(
-                                        new BodyInstance(
-                                                "part",
-                                                "height.body",
-                                                Transform.translation(10, 10, 0)))));
+        s.setPrintSetup(s.document()
+                .printSetup()
+                .withInstances(List.of(new BodyInstance("part", "height.body", Transform.translation(10, 10, 0)))));
         return s;
     }
 
@@ -81,26 +72,16 @@ class PrintControllerTest {
         Path output = directory.resolve("existing.gcode");
         Files.writeString(output, "original");
         try (var controller = new PrintController(callbacks::add, session::document)) {
-            for (var expected :
-                    List.of(
-                            PrintController.State.CANCELLED,
-                            PrintController.State.OUTDATED,
-                            PrintController.State.FAILED)) {
+            for (var expected : List.of(
+                    PrintController.State.CANCELLED, PrintController.State.OUTDATED, PrintController.State.FAILED)) {
                 var backend = new HeldBackend();
-                var future =
-                        controller.start(
-                                session.document(), backend, Path.of("unused"), output, true);
+                var future = controller.start(session.document(), backend, Path.of("unused"), output, true);
                 assertTrue(backend.entered.await(5, TimeUnit.SECONDS));
                 if (expected == PrintController.State.CANCELLED) controller.cancel();
                 if (expected == PrintController.State.OUTDATED) {
-                    session.setPrintSetup(
-                            session.document()
-                                    .printSetup()
-                                    .withProfile(
-                                            "prusa-slicer",
-                                            "generic-marlin-200-0.4",
-                                            "PETG",
-                                            ProcessSettings.DEFAULT));
+                    session.setPrintSetup(session.document()
+                            .printSetup()
+                            .withProfile("prusa-slicer", "generic-marlin-200-0.4", "PETG", ProcessSettings.DEFAULT));
                     controller.documentChanged(session.document());
                 }
                 backend.release.countDown();
@@ -119,13 +100,8 @@ class PrintControllerTest {
         Path output = directory.resolve("existing.gcode");
         Files.writeString(output, "original");
         try (var controller = new PrintController(callbacks::add, session::document)) {
-            var future =
-                    controller.start(
-                            session.document(),
-                            new PrusaSlicerBackend(),
-                            PrusaSlicerBackend.defaultExecutable(),
-                            output,
-                            true);
+            var future = controller.start(
+                    session.document(), new PrusaSlicerBackend(), PrusaSlicerBackend.defaultExecutable(), output, true);
             // Hold owner-thread callbacks while the real slicer works; edit before publication.
             session.editDimension("height", "distance", 5);
             controller.documentChanged(session.document());
@@ -143,13 +119,8 @@ class PrintControllerTest {
         var unchanged = session.document();
         Path output = directory.resolve("reload.gcode");
         try (var controller = new PrintController(callbacks::add, session::document)) {
-            var completed =
-                    controller.start(
-                            unchanged,
-                            new PrusaSlicerBackend(),
-                            PrusaSlicerBackend.defaultExecutable(),
-                            output,
-                            false);
+            var completed = controller.start(
+                    unchanged, new PrusaSlicerBackend(), PrusaSlicerBackend.defaultExecutable(), output, false);
             await(() -> !controller.running());
             assertEquals(PrintController.State.SUCCEEDED, controller.state());
             assertNotNull(completed.join());

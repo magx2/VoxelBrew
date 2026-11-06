@@ -64,7 +64,7 @@ spotless {
             sourceProjects.map { "$it/src/**/java/**/*.java" } +
                 listOf("fixtures/updater/*.java", "scripts/*.java")
         )
-        googleJavaFormat("1.28.0").aosp()
+        palantirJavaFormat("2.103.0")
         trimTrailingWhitespace()
         endWithNewline()
     }

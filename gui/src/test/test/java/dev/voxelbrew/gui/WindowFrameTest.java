@@ -21,27 +21,9 @@ class WindowFrameTest {
     @Test
     void minimumAndMaximumSizesDoNotMoveTheAnchoredCorner() {
         var start = new Rectangle2D(100, 200, 1000, 700);
-        var small =
-                WindowFrame.resize(
-                        start,
-                        WindowFrame.LEFT | WindowFrame.TOP,
-                        5000,
-                        5000,
-                        800,
-                        540,
-                        2000,
-                        1200);
+        var small = WindowFrame.resize(start, WindowFrame.LEFT | WindowFrame.TOP, 5000, 5000, 800, 540, 2000, 1200);
         assertEquals(new Rectangle2D(300, 360, 800, 540), small);
-        var large =
-                WindowFrame.resize(
-                        start,
-                        WindowFrame.LEFT | WindowFrame.TOP,
-                        -5000,
-                        -5000,
-                        800,
-                        540,
-                        2000,
-                        1200);
+        var large = WindowFrame.resize(start, WindowFrame.LEFT | WindowFrame.TOP, -5000, -5000, 800, 540, 2000, 1200);
         assertEquals(new Rectangle2D(-900, -300, 2000, 1200), large);
     }
 }

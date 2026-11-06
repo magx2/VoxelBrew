@@ -22,19 +22,16 @@ class DocumentVersionTest {
         assertEquals(document, DocumentCodec.decode(bytes));
         assertEquals(
                 java.util.HexFormat.of()
-                        .formatHex(
-                                MessageDigest.getInstance("SHA-256")
-                                        .digest(
-                                                message.toBuilder()
-                                                        .clearApplicationVersion()
-                                                        .build()
-                                                        .toByteArray())),
+                        .formatHex(MessageDigest.getInstance("SHA-256")
+                                .digest(message.toBuilder()
+                                        .clearApplicationVersion()
+                                        .build()
+                                        .toByteArray())),
                 DocumentCodec.fingerprint(document));
         bytes[bytes.length - 1] ^= 1;
-        assertTrue(
-                assertThrows(DocumentFormatException.class, () -> DocumentCodec.decode(bytes))
-                        .getMessage()
-                        .contains("checksum"));
+        assertTrue(assertThrows(DocumentFormatException.class, () -> DocumentCodec.decode(bytes))
+                .getMessage()
+                .contains("checksum"));
     }
 
     @Test
@@ -43,12 +40,10 @@ class DocumentVersionTest {
         var current = message(DocumentCodec.encode(original));
         for (int schema = 1; schema <= DocumentCodec.SCHEMA_VERSION; schema++) {
             for (String version : List.of("", "0.0.0", Version.version())) {
-                byte[] old =
-                        envelope(
-                                current.toBuilder()
-                                        .setSchemaVersion(schema)
-                                        .setApplicationVersion(version)
-                                        .build());
+                byte[] old = envelope(current.toBuilder()
+                        .setSchemaVersion(schema)
+                        .setApplicationVersion(version)
+                        .build());
                 byte[] before = old.clone();
                 if (schema != DocumentCodec.SCHEMA_VERSION) {
                     assertThrows(DocumentFormatException.class, () -> DocumentCodec.decode(old));
@@ -60,8 +55,7 @@ class DocumentVersionTest {
                 var upgraded = message(DocumentCodec.encode(document));
                 assertEquals(DocumentCodec.SCHEMA_VERSION, upgraded.getSchemaVersion());
                 assertEquals(Version.version(), upgraded.getApplicationVersion());
-                assertEquals(
-                        DocumentCodec.fingerprint(original), DocumentCodec.fingerprint(document));
+                assertEquals(DocumentCodec.fingerprint(original), DocumentCodec.fingerprint(document));
             }
         }
     }
@@ -76,9 +70,9 @@ class DocumentVersionTest {
         if (current.snapshot()) future.add(Version.version().replace("-SNAPSHOT", ""));
         var message = message(DocumentCodec.encode(CadDocument.empty()));
         for (String version : future) {
-            byte[] bytes = envelope(message.toBuilder().setApplicationVersion(version).build());
-            var error =
-                    assertThrows(DocumentFormatException.class, () -> DocumentCodec.decode(bytes));
+            byte[] bytes =
+                    envelope(message.toBuilder().setApplicationVersion(version).build());
+            var error = assertThrows(DocumentFormatException.class, () -> DocumentCodec.decode(bytes));
             assertTrue(error.getMessage().contains("VoxelBrew " + version));
             assertTrue(error.getMessage().contains("supported version " + Version.version()));
             assertTrue(error.getMessage().contains("Update VoxelBrew"));
@@ -88,13 +82,12 @@ class DocumentVersionTest {
     @Test
     void malformedWriterVersionsAreNotTreatedAsLegacy() throws Exception {
         var message = message(DocumentCodec.encode(CadDocument.empty()));
-        for (String version :
-                List.of(" ", "1.2", "v1.2.3", "01.2.3", "-1.0.0", "1.2.3-rc1", "65535.0.0")) {
-            byte[] bytes = envelope(message.toBuilder().setApplicationVersion(version).build());
-            assertTrue(
-                    assertThrows(DocumentFormatException.class, () -> DocumentCodec.decode(bytes))
-                            .getMessage()
-                            .contains("Invalid .jcad application version"));
+        for (String version : List.of(" ", "1.2", "v1.2.3", "01.2.3", "-1.0.0", "1.2.3-rc1", "65535.0.0")) {
+            byte[] bytes =
+                    envelope(message.toBuilder().setApplicationVersion(version).build());
+            assertTrue(assertThrows(DocumentFormatException.class, () -> DocumentCodec.decode(bytes))
+                    .getMessage()
+                    .contains("Invalid .jcad application version"));
         }
     }
 

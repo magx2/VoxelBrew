@@ -13,11 +13,7 @@ import java.util.function.Consumer;
 final class ProcessRunner {
     private ProcessRunner() {}
 
-    static String run(
-            List<String> arguments,
-            Path directory,
-            Cancellation cancellation,
-            Consumer<String> sink)
+    static String run(List<String> arguments, Path directory, Cancellation cancellation, Consumer<String> sink)
             throws IOException {
         cancellation.check();
         var builder = new ProcessBuilder(arguments).redirectErrorStream(true);
@@ -25,48 +21,37 @@ final class ProcessRunner {
         var process = builder.start();
         log.debug("Started slicer process {} from {}", process.pid(), arguments.getFirst());
         var transcript = new StringBuilder();
-        Runnable stop =
-                () -> {
-                    process.descendants().forEach(ProcessHandle::destroyForcibly);
-                    process.destroyForcibly();
-                };
+        Runnable stop = () -> {
+            process.descendants().forEach(ProcessHandle::destroyForcibly);
+            process.destroyForcibly();
+        };
         var unregister = cancellation.onCancel(stop);
-        var reader =
-                Thread.ofVirtual()
-                        .start(
-                                () -> {
-                                    try (var input =
-                                            new BufferedReader(
-                                                    new InputStreamReader(
-                                                            process.getInputStream(),
-                                                            StandardCharsets.UTF_8))) {
-                                        for (String line; (line = input.readLine()) != null; ) {
-                                            synchronized (transcript) {
-                                                if (transcript.length() < 65536)
-                                                    transcript.append(line).append('\n');
-                                            }
-                                            try {
-                                                sink.accept(line);
-                                            } catch (RuntimeException failure) {
-                                                log.debug(
-                                                        "Slicer diagnostic listener failed",
-                                                        failure);
-                                            }
-                                        }
-                                    } catch (IOException failure) {
-                                        synchronized (transcript) {
-                                            transcript.append(failure.getMessage());
-                                        }
-                                        log.debug("Slicer output stream closed", failure);
-                                    }
-                                });
+        var reader = Thread.ofVirtual().start(() -> {
+            try (var input =
+                    new BufferedReader(new InputStreamReader(process.getInputStream(), StandardCharsets.UTF_8))) {
+                for (String line; (line = input.readLine()) != null; ) {
+                    synchronized (transcript) {
+                        if (transcript.length() < 65536) transcript.append(line).append('\n');
+                    }
+                    try {
+                        sink.accept(line);
+                    } catch (RuntimeException failure) {
+                        log.debug("Slicer diagnostic listener failed", failure);
+                    }
+                }
+            } catch (IOException failure) {
+                synchronized (transcript) {
+                    transcript.append(failure.getMessage());
+                }
+                log.debug("Slicer output stream closed", failure);
+            }
+        });
         try {
             sink.accept("Starting slicer");
             long deadline = System.nanoTime() + Duration.ofMinutes(10).toNanos();
             while (!process.waitFor(100, TimeUnit.MILLISECONDS)) {
                 cancellation.check();
-                if (System.nanoTime() > deadline)
-                    throw new IOException("Slicer exceeded the 10 minute limit");
+                if (System.nanoTime() > deadline) throw new IOException("Slicer exceeded the 10 minute limit");
             }
             reader.join(5000);
             cancellation.check();

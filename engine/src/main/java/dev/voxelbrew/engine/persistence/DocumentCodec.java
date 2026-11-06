@@ -44,8 +44,7 @@ public final class DocumentCodec {
         buffer.position(8);
         int length = buffer.getInt();
         if (length < 1 || length > MAX_PAYLOAD || length != bytes.length - HEADER) {
-            throw new DocumentFormatException(
-                    "Truncated or damaged .jcad payload: length does not match the header");
+            throw new DocumentFormatException("Truncated or damaged .jcad payload: length does not match the header");
         }
         byte[] expectedHash = new byte[32];
         buffer.get(expectedHash);
@@ -57,12 +56,11 @@ public final class DocumentCodec {
         try {
             DocumentProto.Document message = DocumentProto.Document.parseFrom(payload);
             if (message.getSchemaVersion() != SCHEMA_VERSION) {
-                throw new DocumentFormatException(
-                        "Unsupported .jcad schema "
-                                + message.getSchemaVersion()
-                                + "; supported version is "
-                                + SCHEMA_VERSION
-                                + ". File is read-only; no write performed.");
+                throw new DocumentFormatException("Unsupported .jcad schema "
+                        + message.getSchemaVersion()
+                        + "; supported version is "
+                        + SCHEMA_VERSION
+                        + ". File is read-only; no write performed.");
             }
             requireSupportedApplicationVersion(message.getApplicationVersion());
             if (unknownFields(message)) {
@@ -70,63 +68,52 @@ public final class DocumentCodec {
                         "Document contains unsupported fields; file is read-only to prevent data loss");
             }
             if (message.getUnits() != DocumentProto.Units.MILLIMETERS) {
-                throw new DocumentFormatException(
-                        "Unsupported document units; expected MILLIMETERS");
+                throw new DocumentFormatException("Unsupported document units; expected MILLIMETERS");
             }
             return new CadDocument(
                     message.getDocumentId(),
-                    message.getFeaturesList().stream().map(DocumentCodec::fromProto).toList(),
+                    message.getFeaturesList().stream()
+                            .map(DocumentCodec::fromProto)
+                            .toList(),
                     message.getCursor(),
-                    message.hasPrintSetup()
-                            ? fromProto(message.getPrintSetup())
-                            : PrintSetup.empty(),
+                    message.hasPrintSetup() ? fromProto(message.getPrintSetup()) : PrintSetup.empty(),
                     message.hasParameters()
                             ? ParameterCodec.fromProto(message.getParameters())
-                                    .withUuidGenerator(
-                                            new dev.voxelbrew.util.UuidGenerator(
-                                                    message.getNextUuid()))
+                                    .withUuidGenerator(new dev.voxelbrew.util.UuidGenerator(message.getNextUuid()))
                             : dev.voxelbrew.engine.parameters.ParameterSet.empty()
-                                    .withUuidGenerator(
-                                            new dev.voxelbrew.util.UuidGenerator(
-                                                    message.getNextUuid())),
+                                    .withUuidGenerator(new dev.voxelbrew.util.UuidGenerator(message.getNextUuid())),
                     message.getBodyStylesMap().entrySet().stream()
-                            .collect(
-                                    java.util.stream.Collectors.toMap(
-                                            java.util.Map.Entry::getKey,
-                                            e ->
-                                                    new dev.voxelbrew.engine.model.BodyStyle(
-                                                            e.getValue().getMaterial(),
-                                                            e.getValue().getColor()))),
+                            .collect(java.util.stream.Collectors.toMap(
+                                    java.util.Map.Entry::getKey,
+                                    e -> new dev.voxelbrew.engine.model.BodyStyle(
+                                            e.getValue().getMaterial(),
+                                            e.getValue().getColor()))),
                     message.getBodyNamesMap());
         } catch (DocumentFormatException failure) {
             throw failure;
         } catch (IOException | IllegalArgumentException failure) {
-            throw new DocumentFormatException(
-                    "Invalid .jcad feature definitions: " + failure.getMessage(), failure);
+            throw new DocumentFormatException("Invalid .jcad feature definitions: " + failure.getMessage(), failure);
         }
     }
 
     /** Encodes the shared document schema without accessing the filesystem. */
     public static byte[] encode(CadDocument document) throws IOException {
-        byte[] payload =
-                toProto(document).toBuilder()
-                        .setApplicationVersion(Version.version())
-                        .build()
-                        .toByteArray();
+        byte[] payload = toProto(document).toBuilder()
+                .setApplicationVersion(Version.version())
+                .build()
+                .toByteArray();
         if (payload.length > MAX_PAYLOAD) {
             throw new IOException("Document exceeds 16 MiB limit");
         }
-        ByteBuffer bytes =
-                ByteBuffer.allocate(HEADER + payload.length)
-                        .put(MAGIC)
-                        .putInt(payload.length)
-                        .put(sha256(payload))
-                        .put(payload);
+        ByteBuffer bytes = ByteBuffer.allocate(HEADER + payload.length)
+                .put(MAGIC)
+                .putInt(payload.length)
+                .put(sha256(payload))
+                .put(payload);
         return bytes.array();
     }
 
-    private static void requireSupportedApplicationVersion(String savedVersion)
-            throws DocumentFormatException {
+    private static void requireSupportedApplicationVersion(String savedVersion) throws DocumentFormatException {
         // Legacy documents have no writer version. Their schema still determines how to read them.
         if (savedVersion.isEmpty()) return;
         ReleaseVersion saved;
@@ -139,12 +126,11 @@ public final class DocumentCodec {
         }
         String supportedVersion = Version.version();
         if (saved.compareTo(ReleaseVersion.parse(supportedVersion)) > 0) {
-            throw new DocumentFormatException(
-                    "This file was saved by VoxelBrew "
-                            + savedVersion
-                            + ", which is newer than supported version "
-                            + supportedVersion
-                            + ". Update VoxelBrew to open it. No changes were made.");
+            throw new DocumentFormatException("This file was saved by VoxelBrew "
+                    + savedVersion
+                    + ", which is newer than supported version "
+                    + supportedVersion
+                    + ". Update VoxelBrew to open it. No changes were made.");
         }
     }
 
@@ -154,47 +140,40 @@ public final class DocumentCodec {
             case SKETCH -> {
                 var sketch = feature.getSketch();
                 var plane = plane(sketch.getPlane());
-                Feature.Profile profile =
-                        switch (sketch.getProfileCase()) {
-                            case RECTANGLE -> {
-                                var r = sketch.getRectangle();
-                                yield new Feature.Rectangle(
-                                        r.getX(), r.getY(), r.getWidth(), r.getHeight());
-                            }
-                            case CIRCLE -> {
-                                var c = sketch.getCircle();
-                                yield new Feature.Circle(
-                                        c.getCenterX(), c.getCenterY(), c.getDiameter());
-                            }
-                            case CONSTRAINED ->
-                                    new Feature.Constrained(
-                                            SketchCodec.fromProto(sketch.getConstrained()));
-                            case PROFILE_NOT_SET ->
-                                    throw new IllegalArgumentException(
-                                            "Feature '" + id + "': missing sketch profile");
-                        };
+                Feature.Profile profile = switch (sketch.getProfileCase()) {
+                    case RECTANGLE -> {
+                        var r = sketch.getRectangle();
+                        yield new Feature.Rectangle(r.getX(), r.getY(), r.getWidth(), r.getHeight());
+                    }
+                    case CIRCLE -> {
+                        var c = sketch.getCircle();
+                        yield new Feature.Circle(c.getCenterX(), c.getCenterY(), c.getDiameter());
+                    }
+                    case CONSTRAINED -> new Feature.Constrained(SketchCodec.fromProto(sketch.getConstrained()));
+                    case PROFILE_NOT_SET ->
+                        throw new IllegalArgumentException("Feature '" + id + "': missing sketch profile");
+                };
                 yield new Feature.Sketch(id, sketch.getProfileId(), plane, profile);
             }
             case EXTRUDE ->
-                    new Feature.Extrude(
-                            id,
-                            profileRef(feature.getExtrude().getProfile()),
-                            feature.getExtrude().getDistance());
+                new Feature.Extrude(
+                        id,
+                        profileRef(feature.getExtrude().getProfile()),
+                        feature.getExtrude().getDistance());
             case THROUGH_CUT ->
-                    new Feature.ThroughCut(
-                            id,
-                            profileRef(feature.getThroughCut().getProfile()),
-                            new Feature.BodyRef(
-                                    feature.getThroughCut().getBody().getFeatureId(),
-                                    feature.getThroughCut().getBody().getOutputName()));
+                new Feature.ThroughCut(
+                        id,
+                        profileRef(feature.getThroughCut().getProfile()),
+                        new Feature.BodyRef(
+                                feature.getThroughCut().getBody().getFeatureId(),
+                                feature.getThroughCut().getBody().getOutputName()));
             case SPLIT_BODY -> {
                 var s = feature.getSplitBody();
                 yield new Feature.SplitBody(
                         id,
                         new Feature.BodyRef(
                                 s.getBody().getFeatureId(), s.getBody().getOutputName()),
-                        new Feature.SplitPlane(
-                                s.getNormalX(), s.getNormalY(), s.getNormalZ(), s.getOffset()));
+                        new Feature.SplitPlane(s.getNormalX(), s.getNormalY(), s.getNormalZ(), s.getOffset()));
             }
             case CUSTOM -> {
                 var custom = feature.getCustom();
@@ -206,8 +185,7 @@ public final class DocumentCodec {
                         custom.getPayload().toByteArray());
             }
             case DEFINITION_NOT_SET ->
-                    throw new IllegalArgumentException(
-                            "Feature '" + id + "': missing or unsupported feature definition");
+                throw new IllegalArgumentException("Feature '" + id + "': missing or unsupported feature definition");
         };
     }
 
@@ -217,46 +195,42 @@ public final class DocumentCodec {
     }
 
     private static DocumentProto.Document toProto(CadDocument document) {
-        var message =
-                DocumentProto.Document.newBuilder()
-                        .setSchemaVersion(SCHEMA_VERSION)
-                        .setNextUuid(document.uuidGenerator().nextValue())
-                        .setDocumentId(document.id())
-                        .setUnits(DocumentProto.Units.MILLIMETERS)
-                        .setCursor(document.cursor())
-                        .setPrintSetup(toProto(document.printSetup()))
-                        .setParameters(ParameterCodec.toProto(document.parameters()));
+        var message = DocumentProto.Document.newBuilder()
+                .setSchemaVersion(SCHEMA_VERSION)
+                .setNextUuid(document.uuidGenerator().nextValue())
+                .setDocumentId(document.id())
+                .setUnits(DocumentProto.Units.MILLIMETERS)
+                .setCursor(document.cursor())
+                .setPrintSetup(toProto(document.printSetup()))
+                .setParameters(ParameterCodec.toProto(document.parameters()));
         document.features().forEach(feature -> message.addFeatures(toProto(feature)));
         document.bodyNames().entrySet().stream()
                 .sorted(java.util.Map.Entry.comparingByKey())
                 .forEach(entry -> message.putBodyNames(entry.getKey(), entry.getValue()));
         document.bodyStyles().entrySet().stream()
                 .sorted(java.util.Map.Entry.comparingByKey())
-                .forEach(
-                        e ->
-                                message.putBodyStyles(
-                                        e.getKey(),
-                                        DocumentProto.BodyStyle.newBuilder()
-                                                .setMaterial(e.getValue().material())
-                                                .setColor(e.getValue().color())
-                                                .build()));
+                .forEach(e -> message.putBodyStyles(
+                        e.getKey(),
+                        DocumentProto.BodyStyle.newBuilder()
+                                .setMaterial(e.getValue().material())
+                                .setColor(e.getValue().color())
+                                .build()));
         return message.build();
     }
 
     private static PrintSetup fromProto(DocumentProto.PrintSetup setup) {
         var p = setup.getProcess();
-        var process =
-                new ProcessSettings(
-                        p.getLayerHeight(),
-                        p.getWalls(),
-                        p.getInfillPercent(),
-                        p.getAutomaticSupports(),
-                        p.getSupportsOnBedOnly(),
-                        p.getSupportThreshold(),
-                        p.getSupportContactGap(),
-                        p.getInterfaceLayers(),
-                        p.getBrimWidth(),
-                        p.getRaftLayers());
+        var process = new ProcessSettings(
+                p.getLayerHeight(),
+                p.getWalls(),
+                p.getInfillPercent(),
+                p.getAutomaticSupports(),
+                p.getSupportsOnBedOnly(),
+                p.getSupportThreshold(),
+                p.getSupportContactGap(),
+                p.getInterfaceLayers(),
+                p.getBrimWidth(),
+                p.getRaftLayers());
         return new PrintSetup(
                 setup.getId(),
                 setup.getVersion(),
@@ -265,110 +239,94 @@ public final class DocumentCodec {
                 setup.getMaterialId(),
                 process,
                 setup.getInstancesList().stream()
-                        .map(
-                                i ->
-                                        new BodyInstance(
-                                                i.getId(),
-                                                i.getBodyId(),
-                                                new Transform(
-                                                        i.getTransformList().stream()
-                                                                .mapToDouble(Double::doubleValue)
-                                                                .toArray())))
+                        .map(i -> new BodyInstance(
+                                i.getId(),
+                                i.getBodyId(),
+                                new Transform(i.getTransformList().stream()
+                                        .mapToDouble(Double::doubleValue)
+                                        .toArray())))
                         .toList(),
                 setup.getSupportsList().stream()
-                        .map(
-                                s ->
-                                        new SupportVolume(
-                                                s.getId(),
-                                                s.getInstanceId(),
-                                                switch (s.getRole()) {
-                                                    case BLOCKER -> SupportVolume.Role.BLOCKER;
-                                                    case ENFORCER -> SupportVolume.Role.ENFORCER;
-                                                    case SOLID_SUPPORT ->
-                                                            SupportVolume.Role.SOLID_SUPPORT;
-                                                    default ->
-                                                            throw new IllegalArgumentException(
-                                                                    "Unsupported support role "
-                                                                            + s.getRole());
-                                                },
-                                                s.getX(),
-                                                s.getY(),
-                                                s.getZ(),
-                                                s.getWidth(),
-                                                s.getDepth(),
-                                                s.getHeight()))
+                        .map(s -> new SupportVolume(
+                                s.getId(),
+                                s.getInstanceId(),
+                                switch (s.getRole()) {
+                                    case BLOCKER -> SupportVolume.Role.BLOCKER;
+                                    case ENFORCER -> SupportVolume.Role.ENFORCER;
+                                    case SOLID_SUPPORT -> SupportVolume.Role.SOLID_SUPPORT;
+                                    default ->
+                                        throw new IllegalArgumentException("Unsupported support role " + s.getRole());
+                                },
+                                s.getX(),
+                                s.getY(),
+                                s.getZ(),
+                                s.getWidth(),
+                                s.getDepth(),
+                                s.getHeight()))
                         .toList());
     }
 
     private static DocumentProto.PrintSetup toProto(PrintSetup setup) {
         var p = setup.process();
-        var out =
-                DocumentProto.PrintSetup.newBuilder()
-                        .setId(setup.id())
-                        .setVersion(setup.version())
-                        .setBackendId(setup.backendId())
-                        .setPrinterId(setup.printerId())
-                        .setMaterialId(setup.materialId())
-                        .setProcess(
-                                DocumentProto.PrintProcess.newBuilder()
-                                        .setLayerHeight(p.layerHeight())
-                                        .setWalls(p.walls())
-                                        .setInfillPercent(p.infillPercent())
-                                        .setAutomaticSupports(p.automaticSupports())
-                                        .setSupportsOnBedOnly(p.supportsOnBedOnly())
-                                        .setSupportThreshold(p.supportThreshold())
-                                        .setSupportContactGap(p.supportContactGap())
-                                        .setInterfaceLayers(p.interfaceLayers())
-                                        .setBrimWidth(p.brimWidth())
-                                        .setRaftLayers(p.raftLayers()));
+        var out = DocumentProto.PrintSetup.newBuilder()
+                .setId(setup.id())
+                .setVersion(setup.version())
+                .setBackendId(setup.backendId())
+                .setPrinterId(setup.printerId())
+                .setMaterialId(setup.materialId())
+                .setProcess(DocumentProto.PrintProcess.newBuilder()
+                        .setLayerHeight(p.layerHeight())
+                        .setWalls(p.walls())
+                        .setInfillPercent(p.infillPercent())
+                        .setAutomaticSupports(p.automaticSupports())
+                        .setSupportsOnBedOnly(p.supportsOnBedOnly())
+                        .setSupportThreshold(p.supportThreshold())
+                        .setSupportContactGap(p.supportContactGap())
+                        .setInterfaceLayers(p.interfaceLayers())
+                        .setBrimWidth(p.brimWidth())
+                        .setRaftLayers(p.raftLayers()));
         for (var i : setup.instances())
-            out.addInstances(
-                    DocumentProto.PrintInstance.newBuilder()
-                            .setId(i.id())
-                            .setBodyId(i.bodyId())
-                            .addAllTransform(
-                                    Arrays.stream(i.transform().matrix()).boxed().toList()));
+            out.addInstances(DocumentProto.PrintInstance.newBuilder()
+                    .setId(i.id())
+                    .setBodyId(i.bodyId())
+                    .addAllTransform(
+                            Arrays.stream(i.transform().matrix()).boxed().toList()));
         for (var s : setup.supports())
-            out.addSupports(
-                    DocumentProto.SupportVolume.newBuilder()
-                            .setId(s.id())
-                            .setInstanceId(s.instanceId())
-                            .setRole(
-                                    switch (s.role()) {
-                                        case BLOCKER -> DocumentProto.SupportVolume.Role.BLOCKER;
-                                        case ENFORCER -> DocumentProto.SupportVolume.Role.ENFORCER;
-                                        case SOLID_SUPPORT ->
-                                                DocumentProto.SupportVolume.Role.SOLID_SUPPORT;
-                                    })
-                            .setX(s.x())
-                            .setY(s.y())
-                            .setZ(s.z())
-                            .setWidth(s.width())
-                            .setDepth(s.depth())
-                            .setHeight(s.height()));
+            out.addSupports(DocumentProto.SupportVolume.newBuilder()
+                    .setId(s.id())
+                    .setInstanceId(s.instanceId())
+                    .setRole(
+                            switch (s.role()) {
+                                case BLOCKER -> DocumentProto.SupportVolume.Role.BLOCKER;
+                                case ENFORCER -> DocumentProto.SupportVolume.Role.ENFORCER;
+                                case SOLID_SUPPORT -> DocumentProto.SupportVolume.Role.SOLID_SUPPORT;
+                            })
+                    .setX(s.x())
+                    .setY(s.y())
+                    .setZ(s.z())
+                    .setWidth(s.width())
+                    .setDepth(s.depth())
+                    .setHeight(s.height()));
         return out.build();
     }
 
     private static DocumentProto.Feature toProto(Feature feature) {
         var out = DocumentProto.Feature.newBuilder().setId(feature.id());
         if (feature instanceof Feature.Sketch s) {
-            var sketch =
-                    DocumentProto.Sketch.newBuilder()
-                            .setProfileId(s.profileId())
-                            .setPlane(plane(s.plane()));
+            var sketch = DocumentProto.Sketch.newBuilder()
+                    .setProfileId(s.profileId())
+                    .setPlane(plane(s.plane()));
             if (s.profile() instanceof Feature.Rectangle r) {
-                sketch.setRectangle(
-                        DocumentProto.Rectangle.newBuilder()
-                                .setX(r.x())
-                                .setY(r.y())
-                                .setWidth(r.width())
-                                .setHeight(r.height()));
+                sketch.setRectangle(DocumentProto.Rectangle.newBuilder()
+                        .setX(r.x())
+                        .setY(r.y())
+                        .setWidth(r.width())
+                        .setHeight(r.height()));
             } else if (s.profile() instanceof Feature.Circle c) {
-                sketch.setCircle(
-                        DocumentProto.Circle.newBuilder()
-                                .setCenterX(c.centerX())
-                                .setCenterY(c.centerY())
-                                .setDiameter(c.diameter()));
+                sketch.setCircle(DocumentProto.Circle.newBuilder()
+                        .setCenterX(c.centerX())
+                        .setCenterY(c.centerY())
+                        .setDiameter(c.diameter()));
             } else if (s.profile() instanceof Feature.Constrained c) {
                 sketch.setConstrained(SketchCodec.toProto(c.geometry()));
             } else {
@@ -376,63 +334,52 @@ public final class DocumentCodec {
             }
             out.setSketch(sketch);
         } else if (feature instanceof Feature.Extrude e) {
-            out.setExtrude(
-                    DocumentProto.Extrude.newBuilder()
-                            .setProfile(profileRef(e.profile()))
-                            .setDistance(e.distance()));
+            out.setExtrude(DocumentProto.Extrude.newBuilder()
+                    .setProfile(profileRef(e.profile()))
+                    .setDistance(e.distance()));
         } else if (feature instanceof Feature.ThroughCut c) {
-            out.setThroughCut(
-                    DocumentProto.ThroughCut.newBuilder()
-                            .setProfile(profileRef(c.profile()))
-                            .setBody(
-                                    DocumentProto.BodyRef.newBuilder()
-                                            .setFeatureId(c.body().featureId())
-                                            .setOutputName(c.body().outputName())));
+            out.setThroughCut(DocumentProto.ThroughCut.newBuilder()
+                    .setProfile(profileRef(c.profile()))
+                    .setBody(DocumentProto.BodyRef.newBuilder()
+                            .setFeatureId(c.body().featureId())
+                            .setOutputName(c.body().outputName())));
         } else if (feature instanceof Feature.SplitBody s) {
-            out.setSplitBody(
-                    DocumentProto.SplitBody.newBuilder()
-                            .setBody(
-                                    DocumentProto.BodyRef.newBuilder()
-                                            .setFeatureId(s.body().featureId())
-                                            .setOutputName(s.body().outputName()))
-                            .setNormalX(s.plane().normalX())
-                            .setNormalY(s.plane().normalY())
-                            .setNormalZ(s.plane().normalZ())
-                            .setOffset(s.plane().offset()));
+            out.setSplitBody(DocumentProto.SplitBody.newBuilder()
+                    .setBody(DocumentProto.BodyRef.newBuilder()
+                            .setFeatureId(s.body().featureId())
+                            .setOutputName(s.body().outputName()))
+                    .setNormalX(s.plane().normalX())
+                    .setNormalY(s.plane().normalY())
+                    .setNormalZ(s.plane().normalZ())
+                    .setOffset(s.plane().offset()));
         } else {
             if (feature instanceof Feature.Custom custom) {
-                out.setCustom(
-                        DocumentProto.CustomFeature.newBuilder()
-                                .setProviderId(custom.providerId())
-                                .setType(custom.type())
-                                .setPayloadVersion(custom.payloadVersion())
-                                .setPayload(
-                                        com.google.protobuf.ByteString.copyFrom(custom.payload())));
+                out.setCustom(DocumentProto.CustomFeature.newBuilder()
+                        .setProviderId(custom.providerId())
+                        .setType(custom.type())
+                        .setPayloadVersion(custom.payloadVersion())
+                        .setPayload(com.google.protobuf.ByteString.copyFrom(custom.payload())));
             } else throw new IllegalArgumentException("Unsupported feature " + feature.id());
         }
         return out.build();
     }
 
     private static Feature.Plane plane(DocumentProto.Plane value) {
-        var frame =
-                value.getFrameCount() == 0
-                        ? dev.voxelbrew.engine.model.Transform.IDENTITY
-                        : new dev.voxelbrew.engine.model.Transform(
-                                value.getFrameList().stream()
-                                        .mapToDouble(Double::doubleValue)
-                                        .toArray());
+        var frame = value.getFrameCount() == 0
+                ? dev.voxelbrew.engine.model.Transform.IDENTITY
+                : new dev.voxelbrew.engine.model.Transform(value.getFrameList().stream()
+                        .mapToDouble(Double::doubleValue)
+                        .toArray());
         dev.voxelbrew.engine.model.FaceSupport support = null;
         if (value.hasSupport()) {
             var s = value.getSupport();
-            support =
-                    new dev.voxelbrew.engine.model.FaceSupport(
-                            new Feature.BodyRef(
-                                    s.getBody().getFeatureId(), s.getBody().getOutputName()),
-                            s.getNormalX(),
-                            s.getNormalY(),
-                            s.getNormalZ(),
-                            s.getRank(),
-                            s.getCount());
+            support = new dev.voxelbrew.engine.model.FaceSupport(
+                    new Feature.BodyRef(s.getBody().getFeatureId(), s.getBody().getOutputName()),
+                    s.getNormalX(),
+                    s.getNormalY(),
+                    s.getNormalZ(),
+                    s.getRank(),
+                    s.getCount());
         }
         return new Feature.Plane(value.getId(), value.getOffsetZ(), frame, support);
     }
@@ -442,17 +389,15 @@ public final class DocumentCodec {
         for (double coordinate : value.frame().matrix()) out.addFrame(coordinate);
         if (value.support() != null) {
             var s = value.support();
-            out.setSupport(
-                    DocumentProto.FaceSupport.newBuilder()
-                            .setBody(
-                                    DocumentProto.BodyRef.newBuilder()
-                                            .setFeatureId(s.body().featureId())
-                                            .setOutputName(s.body().outputName()))
-                            .setNormalX(s.nx())
-                            .setNormalY(s.ny())
-                            .setNormalZ(s.nz())
-                            .setRank(s.rank())
-                            .setCount(s.count()));
+            out.setSupport(DocumentProto.FaceSupport.newBuilder()
+                    .setBody(DocumentProto.BodyRef.newBuilder()
+                            .setFeatureId(s.body().featureId())
+                            .setOutputName(s.body().outputName()))
+                    .setNormalX(s.nx())
+                    .setNormalY(s.ny())
+                    .setNormalZ(s.nz())
+                    .setRank(s.rank())
+                    .setCount(s.count()));
         }
         return out.build();
     }

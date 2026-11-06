@@ -64,22 +64,10 @@ final class FeatureTimeline extends HBox implements AutoCloseable {
         setAlignment(Pos.CENTER_LEFT);
         setSpacing(8);
         first = transport("timeline-first", "M4 3H6V17H4Z M17 3L7 10L17 17Z", () -> seek(0));
-        previous =
-                transport(
-                        "timeline-previous",
-                        "M5 3H7V17H5Z M16 4L8 10L16 16Z",
-                        () -> seek(position - 1));
+        previous = transport("timeline-previous", "M5 3H7V17H5Z M16 4L8 10L16 16Z", () -> seek(position - 1));
         play = transport("timeline-play", "M5 3L17 10L5 17Z", this::togglePlayback);
-        next =
-                transport(
-                        "timeline-next",
-                        "M13 3H15V17H13Z M4 4L12 10L4 16Z",
-                        () -> seek(position + 1));
-        last =
-                transport(
-                        "timeline-last",
-                        "M14 3H16V17H14Z M3 3L13 10L3 17Z",
-                        () -> seek(definitions.size()));
+        next = transport("timeline-next", "M13 3H15V17H13Z M4 4L12 10L4 16Z", () -> seek(position + 1));
+        last = transport("timeline-last", "M14 3H16V17H14Z M3 3L13 10L3 17Z", () -> seek(definitions.size()));
         var navigation = new HBox(2, first, previous, play, next, last);
         navigation.setAlignment(Pos.CENTER);
         navigation.getStyleClass().add("timeline-navigation");
@@ -116,75 +104,65 @@ final class FeatureTimeline extends HBox implements AutoCloseable {
         marker.setCursor(Cursor.H_RESIZE);
         marker.setAccessibleText(translations.text("timeline.marker"));
         UiHelp.install(marker, translations);
-        marker.setOnMousePressed(
-                e -> {
-                    if (e.getButton() != MouseButton.PRIMARY) return;
-                    stop();
-                    dragging = true;
-                    dragStartX = track.sceneToLocal(e.getSceneX(), e.getSceneY()).getX();
-                    dragStartPosition = position;
-                    marker.requestFocus();
-                    e.consume();
-                });
-        marker.setOnMouseDragged(
-                e -> {
-                    if (!dragging || unavailable) return;
-                    double x = track.sceneToLocal(e.getSceneX(), e.getSceneY()).getX();
-                    request(dragStartPosition + (int) Math.round((x - dragStartX) / STEP));
-                    revealMarker();
-                    e.consume();
-                });
+        marker.setOnMousePressed(e -> {
+            if (e.getButton() != MouseButton.PRIMARY) return;
+            stop();
+            dragging = true;
+            dragStartX = track.sceneToLocal(e.getSceneX(), e.getSceneY()).getX();
+            dragStartPosition = position;
+            marker.requestFocus();
+            e.consume();
+        });
+        marker.setOnMouseDragged(e -> {
+            if (!dragging || unavailable) return;
+            double x = track.sceneToLocal(e.getSceneX(), e.getSceneY()).getX();
+            request(dragStartPosition + (int) Math.round((x - dragStartX) / STEP));
+            revealMarker();
+            e.consume();
+        });
         marker.setOnMouseReleased(e -> dragging = false);
-        marker.setOnContextMenuRequested(
-                e -> {
-                    stop();
-                    var item = new MenuItem(translations.text("timeline.deleteBefore"));
-                    item.setDisable(unavailable || rebuilding || position == 0);
-                    item.setOnAction(action -> delete.accept(0, position));
-                    new ContextMenu(item).show(marker, e.getScreenX(), e.getScreenY());
-                    e.consume();
-                });
-        marker.addEventFilter(
-                KeyEvent.KEY_PRESSED,
-                e -> {
-                    int target =
-                            switch (e.getCode()) {
-                                case HOME -> 0;
-                                case END -> definitions.size();
-                                case LEFT, DOWN -> position - 1;
-                                case RIGHT, UP -> position + 1;
-                                default -> -1;
-                            };
-                    if (target >= 0 || e.getCode() == KeyCode.LEFT || e.getCode() == KeyCode.DOWN) {
-                        seek(target);
-                        e.consume();
-                    }
-                });
+        marker.setOnContextMenuRequested(e -> {
+            stop();
+            var item = new MenuItem(translations.text("timeline.deleteBefore"));
+            item.setDisable(unavailable || rebuilding || position == 0);
+            item.setOnAction(action -> delete.accept(0, position));
+            new ContextMenu(item).show(marker, e.getScreenX(), e.getScreenY());
+            e.consume();
+        });
+        marker.addEventFilter(KeyEvent.KEY_PRESSED, e -> {
+            int target = switch (e.getCode()) {
+                case HOME -> 0;
+                case END -> definitions.size();
+                case LEFT, DOWN -> position - 1;
+                case RIGHT, UP -> position + 1;
+                default -> -1;
+            };
+            if (target >= 0 || e.getCode() == KeyCode.LEFT || e.getCode() == KeyCode.DOWN) {
+                seek(target);
+                e.consume();
+            }
+        });
         track.getChildren().addAll(rail, ticks, features, empty, marker);
-        track.setOnMousePressed(
-                e -> {
-                    if (e.getButton() == MouseButton.PRIMARY && e.getTarget() == track) {
-                        seek((int) Math.round((e.getX() - INSET) / STEP));
-                        marker.requestFocus();
-                    }
-                });
-        scroll.setOnScroll(
-                e -> {
-                    double overflow = track.getWidth() - scroll.getViewportBounds().getWidth();
-                    if (overflow > 0) {
-                        double delta = e.getDeltaX() == 0 ? e.getDeltaY() : e.getDeltaX();
-                        scroll.setHvalue(Math.clamp(scroll.getHvalue() - delta / overflow, 0, 1));
-                        e.consume();
-                    }
-                });
+        track.setOnMousePressed(e -> {
+            if (e.getButton() == MouseButton.PRIMARY && e.getTarget() == track) {
+                seek((int) Math.round((e.getX() - INSET) / STEP));
+                marker.requestFocus();
+            }
+        });
+        scroll.setOnScroll(e -> {
+            double overflow = track.getWidth() - scroll.getViewportBounds().getWidth();
+            if (overflow > 0) {
+                double delta = e.getDeltaX() == 0 ? e.getDeltaY() : e.getDeltaX();
+                scroll.setHvalue(Math.clamp(scroll.getHvalue() - delta / overflow, 0, 1));
+                e.consume();
+            }
+        });
         playback.setOnFinished(e -> advance());
         track.widthProperty().addListener((o, a, b) -> revealMarker());
         scroll.viewportBoundsProperty().addListener((o, a, b) -> revealMarker());
-        disabledProperty()
-                .addListener(
-                        (o, a, b) -> {
-                            if (b) stop();
-                        });
+        disabledProperty().addListener((o, a, b) -> {
+            if (b) stop();
+        });
     }
 
     void update(
@@ -194,30 +172,25 @@ final class FeatureTimeline extends HBox implements AutoCloseable {
             boolean unavailable,
             boolean rebuilding,
             boolean valid) {
-        boolean changed =
-                !Objects.equals(documentId, document.id())
-                        || !definitions.equals(document.features());
+        boolean changed = !Objects.equals(documentId, document.id()) || !definitions.equals(document.features());
         this.unavailable = unavailable;
         this.rebuilding = rebuilding;
         this.failed = !valid && !rebuilding;
-        if (changed || unavailable || failed || (playing && document.cursor() != playbackPosition))
-            stop();
+        if (changed || unavailable || failed || (playing && document.cursor() != playbackPosition)) stop();
         documentId = document.id();
         definitions = document.features();
         position = document.cursor();
         if (changed) {
             rebuildFeatures();
-            javafx.application.Platform.runLater(
-                    () -> {
-                        if (!closed) revealMarker();
-                    });
+            javafx.application.Platform.runLater(() -> {
+                if (!closed) revealMarker();
+            });
         }
         count.setText(position + " / " + definitions.size());
         marker.resizeRelocate(INSET + position * STEP - 7, 3, 14, 48);
-        marker.setAccessibleHelp(
-                translations.text("timeline.markerPosition", position, definitions.size())
-                        + " "
-                        + translations.text("help.history-cursor"));
+        marker.setAccessibleHelp(translations.text("timeline.markerPosition", position, definitions.size())
+                + " "
+                + translations.text("help.history-cursor"));
         marker.setDisable(unavailable || definitions.isEmpty());
         first.setDisable(unavailable || position == 0);
         previous.setDisable(unavailable || position == 0);
@@ -228,33 +201,23 @@ final class FeatureTimeline extends HBox implements AutoCloseable {
             var feature = definitions.get(i);
             var button = (Button) features.getChildren().get(i);
             button.getStyleClass()
-                    .setAll(
-                            "button",
-                            "timeline-feature",
-                            i < position ? "history-active" : "history-future");
+                    .setAll("button", "timeline-feature", i < position ? "history-active" : "history-future");
             if (feature.id().equals(selection)) button.getStyleClass().add("history-selected");
-            var diagnostic =
-                    diagnostics.stream()
-                            .filter(
-                                    d ->
-                                            d.featureId().equals(feature.id())
-                                                    && (d.state() == Evaluation.State.FAILED
-                                                            || d.state()
-                                                                    == Evaluation.State.BLOCKED))
-                            .findFirst();
+            var diagnostic = diagnostics.stream()
+                    .filter(d -> d.featureId().equals(feature.id())
+                            && (d.state() == Evaluation.State.FAILED || d.state() == Evaluation.State.BLOCKED))
+                    .findFirst();
             // Diagnostics belong to the evaluated prefix, never to rolled-back future operations.
             boolean broken = i < position && !rebuilding && diagnostic.isPresent();
             if (broken) button.getStyleClass().add("history-error");
-            String description =
-                    (i + 1)
-                            + " · "
-                            + name.apply(feature)
-                            + "\n"
-                            + translations.text(
-                                    i < position ? "timeline.evaluated" : "timeline.rolledBack")
-                            + (broken ? "\n" + diagnostic.orElseThrow().message() : "")
-                            + "\n"
-                            + translations.text("help.history-feature");
+            String description = (i + 1)
+                    + " · "
+                    + name.apply(feature)
+                    + "\n"
+                    + translations.text(i < position ? "timeline.evaluated" : "timeline.rolledBack")
+                    + (broken ? "\n" + diagnostic.orElseThrow().message() : "")
+                    + "\n"
+                    + translations.text("help.history-feature");
             UiHelp.describe(button, description);
             button.setDisable(unavailable);
         }
@@ -272,26 +235,23 @@ final class FeatureTimeline extends HBox implements AutoCloseable {
             var button = new Button(name.apply(feature), featureIcon(feature));
             button.setId("history-" + i);
             final int index = i;
-            button.setOnContextMenuRequested(
-                    e -> {
-                        stop();
-                        var remove = new MenuItem(translations.text("timeline.deleteFeature"));
-                        remove.setDisable(unavailable || rebuilding || index >= position);
-                        remove.setOnAction(action -> delete.accept(index, index + 1));
-                        var after = new MenuItem(translations.text("timeline.deleteAfter"));
-                        after.setDisable(
-                                unavailable || rebuilding || index + 1 == definitions.size());
-                        after.setOnAction(action -> delete.accept(index + 1, definitions.size()));
-                        new ContextMenu(remove, after).show(button, e.getScreenX(), e.getScreenY());
-                        e.consume();
-                    });
+            button.setOnContextMenuRequested(e -> {
+                stop();
+                var remove = new MenuItem(translations.text("timeline.deleteFeature"));
+                remove.setDisable(unavailable || rebuilding || index >= position);
+                remove.setOnAction(action -> delete.accept(index, index + 1));
+                var after = new MenuItem(translations.text("timeline.deleteAfter"));
+                after.setDisable(unavailable || rebuilding || index + 1 == definitions.size());
+                after.setOnAction(action -> delete.accept(index + 1, definitions.size()));
+                new ContextMenu(remove, after).show(button, e.getScreenX(), e.getScreenY());
+                e.consume();
+            });
             button.setContentDisplay(ContentDisplay.GRAPHIC_ONLY);
             button.setAccessibleText((i + 1) + ". " + name.apply(feature));
-            button.setOnAction(
-                    e -> {
-                        stop();
-                        select.accept(feature.id());
-                    });
+            button.setOnAction(e -> {
+                stop();
+                select.accept(feature.id());
+            });
             button.resizeRelocate(INSET + i * STEP + 3, 10, STEP - 6, 32);
             button.setMinSize(STEP - 6, 32);
             button.setMaxSize(STEP - 6, 32);
@@ -375,10 +335,7 @@ final class FeatureTimeline extends HBox implements AutoCloseable {
     }
 
     private void showPlaybackState() {
-        play.setGraphic(
-                path(
-                        playing ? "M4 3H8V17H4Z M12 3H16V17H12Z" : "M5 3L17 10L5 17Z",
-                        "timeline-transport-icon"));
+        play.setGraphic(path(playing ? "M4 3H8V17H4Z M12 3H16V17H12Z" : "M5 3L17 10L5 17Z", "timeline-transport-icon"));
         String text = translations.text(playing ? "help.timeline-pause" : "help.timeline-play");
         play.setAccessibleText(text);
         UiHelp.describe(play, text);
@@ -395,8 +352,7 @@ final class FeatureTimeline extends HBox implements AutoCloseable {
         }
         double left = scroll.getHvalue() * overflow, x = INSET + position * STEP;
         if (x < left + 12) scroll.setHvalue(Math.max(0, (x - 12) / overflow));
-        else if (x > left + viewport - 12)
-            scroll.setHvalue(Math.min(1, (x - viewport + 12) / overflow));
+        else if (x > left + viewport - 12) scroll.setHvalue(Math.min(1, (x - viewport + 12) / overflow));
     }
 
     private static SVGPath path(String content, String style) {
@@ -412,16 +368,14 @@ final class FeatureTimeline extends HBox implements AutoCloseable {
             return new Group(
                     path("M2 4H15V17H2Z", "timeline-sketch-icon"),
                     path("M7 18L8 14L17 5L20 8L11 17Z", "timeline-pencil-icon"));
-        var cube =
-                new Group(
-                        path("M2 6L10 2L18 6L10 10Z", "timeline-cube-top"),
-                        path("M2 6L10 10V20L2 16Z", "timeline-cube-left"),
-                        path("M10 10L18 6V16L10 20Z", "timeline-cube-right"));
+        var cube = new Group(
+                path("M2 6L10 2L18 6L10 10Z", "timeline-cube-top"),
+                path("M2 6L10 10V20L2 16Z", "timeline-cube-left"),
+                path("M10 10L18 6V16L10 20Z", "timeline-cube-right"));
         if (feature instanceof Feature.Extrude)
             cube.getChildren().add(path("M17 5L20 1L23 5H21V14H19V5Z", "timeline-extrude-icon"));
         else if (feature instanceof Feature.ThroughCut)
-            cube.getChildren()
-                    .add(path("M8 5L10 4L13 5L13 8L11 9L8 8Z M10 9V16", "timeline-cut-icon"));
+            cube.getChildren().add(path("M8 5L10 4L13 5L13 8L11 9L8 8Z M10 9V16", "timeline-cut-icon"));
         else if (feature instanceof Feature.SplitBody)
             cube.getChildren().add(path("M6 1L14 21", "timeline-split-icon"));
         else cube.getChildren().add(path("M17 2V10 M13 6H21", "timeline-plugin-icon"));

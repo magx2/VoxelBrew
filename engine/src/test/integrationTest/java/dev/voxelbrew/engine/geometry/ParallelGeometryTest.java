@@ -18,8 +18,9 @@ class ParallelGeometryTest {
         ManufacturingModel detached;
         try (var evaluation = Evaluator.evaluate(document)) {
             var bodies = evaluation.requireCompleteDocument();
-            var serial =
-                    bodies.stream().map(b -> b.solid().tessellate(MeshOptions.DEFAULT)).toList();
+            var serial = bodies.stream()
+                    .map(b -> b.solid().tessellate(MeshOptions.DEFAULT))
+                    .toList();
             var volumes = bodies.stream().map(b -> b.solid().volume()).toList();
             detached = ManufacturingModel.from(document, evaluation, MeshOptions.DEFAULT);
             assertEquals(
@@ -37,16 +38,12 @@ class ParallelGeometryTest {
             }
             assertThrows(
                     IllegalStateException.class,
-                    () ->
-                            CpuWork.map(
-                                    bodies,
-                                    body -> {
-                                        var mesh = body.solid().tessellate(MeshOptions.DEFAULT);
-                                        if (body.id().equals(bodies.getFirst().id()))
-                                            throw new IllegalStateException(
-                                                    "injected batch failure");
-                                        return mesh;
-                                    }));
+                    () -> CpuWork.map(bodies, body -> {
+                        var mesh = body.solid().tessellate(MeshOptions.DEFAULT);
+                        if (body.id().equals(bodies.getFirst().id()))
+                            throw new IllegalStateException("injected batch failure");
+                        return mesh;
+                    }));
         }
         assertEquals(before, NativeKernel.liveHandles());
         assertTrue(PrintValidation.validate(detached).valid());

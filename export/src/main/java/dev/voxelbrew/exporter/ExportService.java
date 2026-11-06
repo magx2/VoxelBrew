@@ -32,22 +32,15 @@ public final class ExportService {
         var descriptor = entry.descriptor();
         if (view.instances().isEmpty()) throw new IllegalArgumentException("Nothing to export");
         if (!descriptor.multipleInstances() && view.instances().size() != 1)
-            throw new IllegalArgumentException(
-                    "Exporter " + format + " requires one selected body/instance");
+            throw new IllegalArgumentException("Exporter " + format + " requires one selected body/instance");
         var options = new LinkedHashMap<String, String>();
         for (var option : descriptor.options()) options.put(option.key(), option.defaultValue());
         for (var option : supplied.entrySet()) {
-            var spec =
-                    descriptor.options().stream()
-                            .filter(o -> o.key().equals(option.getKey()))
-                            .findFirst()
-                            .orElseThrow(
-                                    () ->
-                                            new IllegalArgumentException(
-                                                    "Unknown option '"
-                                                            + option.getKey()
-                                                            + "' for "
-                                                            + format));
+            var spec = descriptor.options().stream()
+                    .filter(o -> o.key().equals(option.getKey()))
+                    .findFirst()
+                    .orElseThrow(() ->
+                            new IllegalArgumentException("Unknown option '" + option.getKey() + "' for " + format));
             spec.validate(option.getValue());
             options.put(option.getKey(), option.getValue());
         }
@@ -60,38 +53,28 @@ public final class ExportService {
             try (var channel = FileChannel.open(temporary, StandardOpenOption.WRITE);
                     var stream = Channels.newOutputStream(channel)) {
                 // A provider cannot close the host-owned channel before the durability flush.
-                OutputStream borrowed =
-                        new FilterOutputStream(stream) {
-                            @Override
-                            public void close() throws IOException {
-                                flush();
-                            }
+                OutputStream borrowed = new FilterOutputStream(stream) {
+                    @Override
+                    public void close() throws IOException {
+                        flush();
+                    }
 
-                            @Override
-                            public void write(byte[] b, int off, int len) throws IOException {
-                                out.write(b, off, len);
-                            }
-                        };
+                    @Override
+                    public void write(byte[] b, int off, int len) throws IOException {
+                        out.write(b, off, len);
+                    }
+                };
                 entry.provider().write(view, meshOptions, Map.copyOf(options), borrowed);
                 borrowed.flush();
                 channel.force(true);
             }
             if (overwrite)
-                Files.move(
-                        temporary,
-                        target,
-                        StandardCopyOption.ATOMIC_MOVE,
-                        StandardCopyOption.REPLACE_EXISTING);
+                Files.move(temporary, target, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
             else Files.createLink(target, temporary);
             log.info("Exported {} to {}", format, target);
-        } catch (IOException
-                | RuntimeException
-                | LinkageError
-                | ServiceConfigurationError
-                | AssertionError failure) {
+        } catch (IOException | RuntimeException | LinkageError | ServiceConfigurationError | AssertionError failure) {
             log.error("Export failed for {} using {}", target, format, failure);
-            throw new IOException(
-                    "Exporter '" + format + "' failed: " + failure.getMessage(), failure);
+            throw new IOException("Exporter '" + format + "' failed: " + failure.getMessage(), failure);
         } finally {
             Files.deleteIfExists(temporary);
         }

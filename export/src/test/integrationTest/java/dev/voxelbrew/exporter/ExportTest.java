@@ -18,7 +18,8 @@ import org.junit.jupiter.api.io.TempDir;
 import org.w3c.dom.Element;
 
 class ExportTest {
-    @TempDir Path directory;
+    @TempDir
+    Path directory;
 
     static CadDocument reference() {
         return new CadDocument(
@@ -29,8 +30,7 @@ class ExportTest {
                                 "plate.profile",
                                 new Feature.Plane("origin-xy", 0),
                                 new Feature.Rectangle(0, 0, 60, 40)),
-                        new Feature.Extrude(
-                                "thickness", new Feature.ProfileRef("plate", "plate.profile"), 8),
+                        new Feature.Extrude("thickness", new Feature.ProfileRef("plate", "plate.profile"), 8),
                         new Feature.Sketch(
                                 "hole",
                                 "hole.profile",
@@ -70,17 +70,11 @@ class ExportTest {
     void stlIsIndependentlyReadAndPlacementAppliedExactlyOnce() throws Exception {
         try (var evaluation = Evaluator.evaluate(reference());
                 var registry = new ExporterRegistry(directory)) {
-            var view =
-                    ModelViews.placed(
-                            evaluation,
-                            List.of(
-                                    new BodyInstance(
-                                            "translated",
-                                            "thickness.body",
-                                            Transform.translation(25, -7, 3))));
+            var view = ModelViews.placed(
+                    evaluation,
+                    List.of(new BodyInstance("translated", "thickness.body", Transform.translation(25, -7, 3))));
             var destination = directory.resolve("reference.stl");
-            ExportService.export(
-                    registry, "stl", view, MeshOptions.DEFAULT, Map.of(), destination, false);
+            ExportService.export(registry, "stl", view, MeshOptions.DEFAULT, Map.of(), destination, false);
             byte[] bytes = Files.readAllBytes(destination);
             var buffer = ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN);
             buffer.position(80);
@@ -90,8 +84,7 @@ class ExportTest {
             for (int i = 0; i < count; i++) {
                 double[] normal = {buffer.getFloat(), buffer.getFloat(), buffer.getFloat()};
                 var points = new double[3][3];
-                for (var point : points)
-                    for (int axis = 0; axis < 3; axis++) point[axis] = buffer.getFloat();
+                for (var point : points) for (int axis = 0; axis < 3; axis++) point[axis] = buffer.getFloat();
                 assertEquals(0, buffer.getShort());
                 var cross = cross(points);
                 assertTrue(dot(normal, cross) > 0, "outward normal agrees with winding");
@@ -105,19 +98,16 @@ class ExportTest {
     void threeMfPackageHasSharedResourcesUnitsAndIndependentInstanceTransforms() throws Exception {
         try (var evaluation = Evaluator.evaluate(reference());
                 var registry = new ExporterRegistry(directory)) {
-            var view =
-                    ModelViews.placed(
-                            evaluation,
-                            List.of(
-                                    new BodyInstance("first", "thickness.body", Transform.IDENTITY),
-                                    new BodyInstance(
-                                            "second",
-                                            "thickness.body",
-                                            new Transform(
-                                                    0, -1, 0, 100, 1, 0, 0, 20, 0, 0, 1, 3))));
+            var view = ModelViews.placed(
+                    evaluation,
+                    List.of(
+                            new BodyInstance("first", "thickness.body", Transform.IDENTITY),
+                            new BodyInstance(
+                                    "second",
+                                    "thickness.body",
+                                    new Transform(0, -1, 0, 100, 1, 0, 0, 20, 0, 0, 1, 3))));
             Path destination = directory.resolve("reference.3mf");
-            ExportService.export(
-                    registry, "3mf", view, MeshOptions.DEFAULT, Map.of(), destination, false);
+            ExportService.export(registry, "3mf", view, MeshOptions.DEFAULT, Map.of(), destination, false);
             try (var zip = new ZipFile(destination.toFile())) {
                 assertNotNull(zip.getEntry("[Content_Types].xml"));
                 assertNotNull(zip.getEntry("_rels/.rels"));
@@ -126,66 +116,51 @@ class ExportTest {
                 factory.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true);
                 var builder = factory.newDocumentBuilder();
                 var rels = builder.parse(zip.getInputStream(zip.getEntry("_rels/.rels")));
-                var relationship =
-                        (Element) rels.getElementsByTagNameNS("*", "Relationship").item(0);
+                var relationship = (Element)
+                        rels.getElementsByTagNameNS("*", "Relationship").item(0);
                 assertEquals("/3D/3dmodel.model", relationship.getAttribute("Target"));
                 var model = builder.parse(zip.getInputStream(zip.getEntry("3D/3dmodel.model")));
                 assertEquals("millimeter", model.getDocumentElement().getAttribute("unit"));
                 assertEquals(1, model.getElementsByTagNameNS("*", "object").getLength());
                 assertEquals(
                         "thickness.body",
-                        ((Element) model.getElementsByTagNameNS("*", "object").item(0))
-                                .getAttribute("name"));
+                        ((Element) model.getElementsByTagNameNS("*", "object").item(0)).getAttribute("name"));
                 var vertexNodes = model.getElementsByTagNameNS("*", "vertex");
                 var points = new ArrayList<double[]>();
                 for (int i = 0; i < vertexNodes.getLength(); i++) {
                     var v = (Element) vertexNodes.item(i);
-                    points.add(
-                            new double[] {
-                                Double.parseDouble(v.getAttribute("x")),
-                                Double.parseDouble(v.getAttribute("y")),
-                                Double.parseDouble(v.getAttribute("z"))
-                            });
+                    points.add(new double[] {
+                        Double.parseDouble(v.getAttribute("x")),
+                        Double.parseDouble(v.getAttribute("y")),
+                        Double.parseDouble(v.getAttribute("z"))
+                    });
                 }
                 var triangleNodes = model.getElementsByTagNameNS("*", "triangle");
                 var triangles = new ArrayList<double[][]>();
                 for (int i = 0; i < triangleNodes.getLength(); i++) {
                     var t = (Element) triangleNodes.item(i);
-                    triangles.add(
-                            new double[][] {
-                                points.get(Integer.parseInt(t.getAttribute("v1"))),
-                                points.get(Integer.parseInt(t.getAttribute("v2"))),
-                                points.get(Integer.parseInt(t.getAttribute("v3")))
-                            });
+                    triangles.add(new double[][] {
+                        points.get(Integer.parseInt(t.getAttribute("v1"))),
+                        points.get(Integer.parseInt(t.getAttribute("v2"))),
+                        points.get(Integer.parseInt(t.getAttribute("v3")))
+                    });
                 }
                 verifyTriangles(triangles, 0, 0, 0);
                 var items = model.getElementsByTagNameNS("*", "item");
                 assertEquals(2, items.getLength());
                 for (int i = 0; i < items.getLength(); i++)
                     assertEquals("1", ((Element) items.item(i)).getAttribute("objectid"));
-                double[] m =
-                        Arrays.stream(
-                                        ((Element) items.item(1))
-                                                .getAttribute("transform")
-                                                .split(" "))
-                                .mapToDouble(Double::parseDouble)
-                                .toArray();
+                double[] m = Arrays.stream(((Element) items.item(1))
+                                .getAttribute("transform")
+                                .split(" "))
+                        .mapToDouble(Double::parseDouble)
+                        .toArray();
                 assertEquals(12, m.length);
-                double[]
-                        min =
-                                {
-                                    Double.POSITIVE_INFINITY,
-                                    Double.POSITIVE_INFINITY,
-                                    Double.POSITIVE_INFINITY
-                                },
+                double[] min = {Double.POSITIVE_INFINITY, Double.POSITIVE_INFINITY, Double.POSITIVE_INFINITY},
                         max = {-1e99, -1e99, -1e99};
                 for (var p : points)
                     for (int axis = 0; axis < 3; axis++) {
-                        double value =
-                                p[0] * m[axis]
-                                        + p[1] * m[3 + axis]
-                                        + p[2] * m[6 + axis]
-                                        + m[9 + axis];
+                        double value = p[0] * m[axis] + p[1] * m[3 + axis] + p[2] * m[6 + axis] + m[9 + axis];
                         min[axis] = Math.min(min[axis], value);
                         max[axis] = Math.max(max[axis], value);
                     }
@@ -198,9 +173,7 @@ class ExportTest {
     @Test
     void independentConsumerLoadsAndFailuresPreserveDestination() throws Exception {
         Path plugins = Files.createDirectory(directory.resolve("plugins with spaces"));
-        Files.copy(
-                Path.of(System.getProperty("voxelbrew.test.plugin")),
-                plugins.resolve("external provider.jar"));
+        Files.copy(Path.of(System.getProperty("voxelbrew.test.plugin")), plugins.resolve("external provider.jar"));
         try (var registry = new ExporterRegistry(plugins);
                 var evaluation = Evaluator.evaluate(reference())) {
             assertEquals(
@@ -212,54 +185,24 @@ class ExportTest {
             var view = ModelViews.from(evaluation);
             Path destination = directory.resolve("report.txt");
             ExportService.export(
-                    registry,
-                    "probe",
-                    view,
-                    MeshOptions.DEFAULT,
-                    Map.of("label", "custom value"),
-                    destination,
-                    false);
-            assertTrue(
-                    Files.readString(destination).startsWith("custom value bodies=1 triangles="));
+                    registry, "probe", view, MeshOptions.DEFAULT, Map.of("label", "custom value"), destination, false);
+            assertTrue(Files.readString(destination).startsWith("custom value bodies=1 triangles="));
             byte[] expected = Files.readAllBytes(destination);
             assertThrows(
                     java.io.IOException.class,
-                    () ->
-                            ExportService.export(
-                                    registry,
-                                    "failing",
-                                    view,
-                                    MeshOptions.DEFAULT,
-                                    Map.of(),
-                                    destination,
-                                    true));
+                    () -> ExportService.export(
+                            registry, "failing", view, MeshOptions.DEFAULT, Map.of(), destination, true));
             assertArrayEquals(expected, Files.readAllBytes(destination));
             assertThrows(
                     java.io.IOException.class,
-                    () ->
-                            ExportService.export(
-                                    registry,
-                                    "probe",
-                                    view,
-                                    MeshOptions.DEFAULT,
-                                    Map.of(),
-                                    destination,
-                                    false));
+                    () -> ExportService.export(
+                            registry, "probe", view, MeshOptions.DEFAULT, Map.of(), destination, false));
             assertThrows(
                     IllegalArgumentException.class,
-                    () ->
-                            ExportService.export(
-                                    registry,
-                                    "probe",
-                                    view,
-                                    MeshOptions.DEFAULT,
-                                    Map.of("unknown", "x"),
-                                    destination,
-                                    true));
+                    () -> ExportService.export(
+                            registry, "probe", view, MeshOptions.DEFAULT, Map.of("unknown", "x"), destination, true));
             try (var paths = Files.list(directory)) {
-                assertTrue(
-                        paths.noneMatch(
-                                p -> p.getFileName().toString().startsWith(".voxelbrew-export-")));
+                assertTrue(paths.noneMatch(p -> p.getFileName().toString().startsWith(".voxelbrew-export-")));
             }
         }
     }
@@ -270,14 +213,8 @@ class ExportTest {
         try (var evaluation = Evaluator.evaluate(new CadDocument(doc.id(), doc.features(), 3))) {
             assertThrows(IllegalStateException.class, () -> ModelViews.from(evaluation));
         }
-        try (var evaluation =
-                Evaluator.evaluate(
-                        new CadDocument(
-                                "bad",
-                                List.of(
-                                        new Feature.Extrude(
-                                                "bad", new Feature.ProfileRef("missing", "p"), 8)),
-                                1))) {
+        try (var evaluation = Evaluator.evaluate(new CadDocument(
+                "bad", List.of(new Feature.Extrude("bad", new Feature.ProfileRef("missing", "p"), 8)), 1))) {
             assertThrows(IllegalStateException.class, () -> ModelViews.from(evaluation));
         }
     }
@@ -287,16 +224,14 @@ class ExportTest {
         for (int t = 0; t < mesh.triangleCount(); t++) {
             double[][] points = new double[3][3];
             for (int c = 0; c < 3; c++)
-                for (int a = 0; a < 3; a++)
-                    points[c][a] = mesh.coordinate(mesh.vertexIndex(t, c), a);
+                for (int a = 0; a < 3; a++) points[c][a] = mesh.coordinate(mesh.vertexIndex(t, c), a);
             result.add(points);
         }
         return result;
     }
 
     /** Reader-side checks deliberately do not call production preflight or geometry exporters. */
-    private static void verifyTriangles(
-            List<double[][]> triangles, double dx, double dy, double dz) {
+    private static void verifyTriangles(List<double[][]> triangles, double dx, double dy, double dz) {
         double[] min = {1e99, 1e99, 1e99}, max = {-1e99, -1e99, -1e99};
         double volume = 0;
         int holeSegments = 0;
@@ -313,15 +248,12 @@ class ExportTest {
                 }
             double[] cross = cross(p);
             assertTrue(dot(cross, cross) > 1e-20);
-            volume +=
-                    dot(
-                                    p[0],
-                                    new double[] {
-                                        p[1][1] * p[2][2] - p[1][2] * p[2][1],
-                                        p[1][2] * p[2][0] - p[1][0] * p[2][2],
-                                        p[1][0] * p[2][1] - p[1][1] * p[2][0]
-                                    })
-                            / 6;
+            volume += dot(p[0], new double[] {
+                        p[1][1] * p[2][2] - p[1][2] * p[2][1],
+                        p[1][2] * p[2][0] - p[1][0] * p[2][2],
+                        p[1][0] * p[2][1] - p[1][1] * p[2][0]
+                    })
+                    / 6;
             var section = new ArrayList<double[]>();
             for (int c = 0; c < 3; c++) {
                 var a = p[c];
@@ -335,8 +267,7 @@ class ExportTest {
                     section.add(new double[] {a[0] + f * (b[0] - a[0]), a[1] + f * (b[1] - a[1])});
                 }
             }
-            if (section.size() == 2
-                    && section.stream().allMatch(q -> Math.hypot(q[0] - 10, q[1] - 10) < 3)) {
+            if (section.size() == 2 && section.stream().allMatch(q -> Math.hypot(q[0] - 10, q[1] - 10) < 3)) {
                 holeSegments++;
                 for (double fraction : new double[] {0, 0.5, 1}) {
                     double x = section.get(0)[0] * (1 - fraction) + section.get(1)[0] * fraction,
@@ -360,9 +291,7 @@ class ExportTest {
     private static double[] cross(double[][] p) {
         double[] a = {p[1][0] - p[0][0], p[1][1] - p[0][1], p[1][2] - p[0][2]},
                 b = {p[2][0] - p[0][0], p[2][1] - p[0][1], p[2][2] - p[0][2]};
-        return new double[] {
-            a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]
-        };
+        return new double[] {a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]};
     }
 
     private static double dot(double[] a, double[] b) {

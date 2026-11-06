@@ -14,16 +14,16 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 class DocumentControllerTest {
-    @TempDir Path directory;
+    @TempDir
+    Path directory;
+
     private final ConcurrentLinkedQueue<Runnable> callbacks = new ConcurrentLinkedQueue<>();
 
     @Test
     void bodyStylesDirtySaveUndoAndRejectStaleOrInactiveSelections() throws Exception {
         try (var controller = new DocumentController(callbacks::add)) {
             controller.add(sketch("plate", 0));
-            controller.add(
-                    new Feature.Extrude(
-                            "solid", new Feature.ProfileRef("plate", "plate.profile"), 5));
+            controller.add(new Feature.Extrude("solid", new Feature.ProfileRef("plate", "plate.profile"), 5));
             await(() -> !controller.rebuilding());
             Path file = directory.resolve("body style.jcad");
             controller.save(file, false);
@@ -32,12 +32,10 @@ class DocumentControllerTest {
             var red = new BodyStyle("PETG", "#FF0000");
             controller.bodyStyle("solid.body", red);
             assertTrue(controller.dirty());
-            assertThrows(
-                    IllegalStateException.class, () -> controller.bodyStyle("solid.body", red));
+            assertThrows(IllegalStateException.class, () -> controller.bodyStyle("solid.body", red));
             await(() -> !controller.rebuilding());
             assertEquals(12000, controller.build().bodies().getFirst().volume(), .01);
-            assertThrows(
-                    IllegalStateException.class, () -> controller.bodyStyle("missing.body", red));
+            assertThrows(IllegalStateException.class, () -> controller.bodyStyle("missing.body", red));
             controller.undo();
             await(() -> !controller.rebuilding());
             assertFalse(controller.dirty());
@@ -49,26 +47,19 @@ class DocumentControllerTest {
             assertEquals(red, DocumentReader.load(file).bodyStyle("solid.body"));
             controller.cursor(1);
             await(() -> !controller.rebuilding());
-            assertThrows(
-                    IllegalStateException.class, () -> controller.bodyStyle("solid.body", red));
+            assertThrows(IllegalStateException.class, () -> controller.bodyStyle("solid.body", red));
         }
     }
 
     @Test
     void importedDocumentsAreUnsavedAndFailuresPreserveTheCurrentDocument() throws Exception {
         Path plugins = Files.createDirectories(directory.resolve("import providers"));
-        Files.copy(
-                Path.of(System.getProperty("voxelbrew.test.plugin")),
-                plugins.resolve("provider.jar"));
+        Files.copy(Path.of(System.getProperty("voxelbrew.test.plugin")), plugins.resolve("provider.jar"));
         Path source = directory.resolve("plate.vbplate");
         Files.writeString(source, "60,40,4");
         try (var controller = new DocumentController(callbacks::add, plugins)) {
-            var imported =
-                    controller.importFile(
-                            dev.voxelbrew.importer.ImporterRegistry::new,
-                            "plate",
-                            source,
-                            java.util.Map.of("scale", "2"));
+            var imported = controller.importFile(
+                    dev.voxelbrew.importer.ImporterRegistry::new, "plate", source, java.util.Map.of("scale", "2"));
             assertTrue(controller.ioBusy());
             await(() -> imported.isDone() && !controller.rebuilding());
             imported.join();
@@ -82,12 +73,8 @@ class DocumentControllerTest {
             controller.edit("thickness", "distance", 9);
             await(() -> !controller.rebuilding());
             var before = controller.snapshot();
-            var failed =
-                    controller.importFile(
-                            dev.voxelbrew.importer.ImporterRegistry::new,
-                            "failing",
-                            source,
-                            java.util.Map.of());
+            var failed = controller.importFile(
+                    dev.voxelbrew.importer.ImporterRegistry::new, "failing", source, java.util.Map.of());
             await(failed::isDone);
             assertTrue(failed.isCompletedExceptionally());
             assertEquals(before, controller.snapshot());
@@ -122,17 +109,12 @@ class DocumentControllerTest {
             var sketch = sketch("plate", 0);
             controller.add(sketch);
             await(() -> !controller.rebuilding());
-            var p =
-                    dev.voxelbrew.engine.parameters.ParameterSet.empty()
-                            .put(
-                                    "thickness",
-                                    dev.voxelbrew.engine.parameters.ParameterUnit.MM,
-                                    "5",
-                                    "")
-                            .addConfiguration("Thick", false)
-                            .override("thickness", "Thick", "8")
-                            .addConfiguration("Invalid", false)
-                            .override("thickness", "Invalid", "0");
+            var p = dev.voxelbrew.engine.parameters.ParameterSet.empty()
+                    .put("thickness", dev.voxelbrew.engine.parameters.ParameterUnit.MM, "5", "")
+                    .addConfiguration("Thick", false)
+                    .override("thickness", "Thick", "8")
+                    .addConfiguration("Invalid", false)
+                    .override("thickness", "Invalid", "0");
             controller.parameters(p);
             await(() -> !controller.rebuilding());
             controller.previewExtrusion(sketch, "thickness");
@@ -149,13 +131,13 @@ class DocumentControllerTest {
             assertEquals(1, controller.snapshot().document().features().size());
             controller.redo();
             await(() -> !controller.rebuilding());
-            assertEquals(1, controller.snapshot().document().parameters().bindings().size());
+            assertEquals(
+                    1, controller.snapshot().document().parameters().bindings().size());
             controller.configuration("Thick");
             assertFalse(controller.canExport());
             await(() -> !controller.rebuilding());
             assertEquals(19200, controller.build().bodies().getFirst().volume(), .01);
-            assertEquals(
-                    8, ((Feature.Extrude) controller.effectiveFeatures().getLast()).distance());
+            assertEquals(8, ((Feature.Extrude) controller.effectiveFeatures().getLast()).distance());
             controller.configuration("Invalid");
             await(() -> !controller.rebuilding());
             assertFalse(controller.canExport());
@@ -167,8 +149,7 @@ class DocumentControllerTest {
     }
 
     @Test
-    void customFeaturesRebuildOffThreadAndMissingPluginsNeverExposeStaleGeometry()
-            throws Exception {
+    void customFeaturesRebuildOffThreadAndMissingPluginsNeverExposeStaleGeometry() throws Exception {
         Path plugins = Files.createDirectory(directory.resolve("custom plugins"));
         Path jar = plugins.resolve("provider.jar");
         Files.copy(Path.of(System.getProperty("voxelbrew.test.plugin")), jar);
@@ -180,10 +161,12 @@ class DocumentControllerTest {
             controller.add(custom);
             await(() -> !controller.rebuilding());
             assertTrue(controller.canExport());
-            assertEquals(Math.PI * 96 * 8, controller.build().bodies().getFirst().volume(), 0.01);
+            assertEquals(
+                    Math.PI * 96 * 8, controller.build().bodies().getFirst().volume(), 0.01);
             controller.edit("spacer", "height", 12);
             await(() -> !controller.rebuilding());
-            assertEquals(Math.PI * 96 * 12, controller.build().bodies().getFirst().volume(), 0.01);
+            assertEquals(
+                    Math.PI * 96 * 12, controller.build().bodies().getFirst().volume(), 0.01);
             var before = controller.snapshot();
             Files.delete(jar);
             controller.rebuild();
@@ -203,7 +186,8 @@ class DocumentControllerTest {
             assertEquals(before, controller.snapshot());
             controller.undo();
             await(() -> !controller.rebuilding());
-            assertEquals(Math.PI * 96 * 8, controller.build().bodies().getFirst().volume(), 0.01);
+            assertEquals(
+                    Math.PI * 96 * 8, controller.build().bodies().getFirst().volume(), 0.01);
         }
     }
 
@@ -254,37 +238,31 @@ class DocumentControllerTest {
         var entered = new CountDownLatch(1);
         var release = new CountDownLatch(1);
         var calls = new AtomicInteger();
-        try (var controller =
-                new DocumentController(
-                        callbacks::add,
-                        document -> {
-                            if (calls.incrementAndGet() == 1) {
-                                entered.countDown();
-                                try {
-                                    if (!release.await(10, TimeUnit.SECONDS))
-                                        throw new IllegalStateException("Test latch timeout");
-                                } catch (InterruptedException e) {
-                                    throw new IllegalStateException(e);
-                                }
-                            }
-                            return DocumentController.evaluate(document);
-                        })) {
+        try (var controller = new DocumentController(callbacks::add, document -> {
+            if (calls.incrementAndGet() == 1) {
+                entered.countDown();
+                try {
+                    if (!release.await(10, TimeUnit.SECONDS)) throw new IllegalStateException("Test latch timeout");
+                } catch (InterruptedException e) {
+                    throw new IllegalStateException(e);
+                }
+            }
+            return DocumentController.evaluate(document);
+        })) {
             controller.add(sketch("old", 0));
             assertTrue(entered.await(5, TimeUnit.SECONDS));
             String oldId = controller.snapshot().document().id();
             controller.newDocument();
             controller.add(sketch("new", 0));
-            controller.add(
-                    new Feature.Extrude(
-                            "new-solid", new Feature.ProfileRef("new", "new.profile"), 8));
+            controller.add(new Feature.Extrude("new-solid", new Feature.ProfileRef("new", "new.profile"), 8));
             release.countDown();
             await(() -> !controller.rebuilding());
             assertNotEquals(oldId, controller.snapshot().document().id());
             assertEquals(2, calls.get());
-            assertEquals("new-solid.body", controller.build().bodies().getFirst().id());
-            assertTrue(
-                    controller.build().diagnostics().stream()
-                            .noneMatch(d -> d.featureId().equals("old")));
+            assertEquals(
+                    "new-solid.body", controller.build().bodies().getFirst().id());
+            assertTrue(controller.build().diagnostics().stream()
+                    .noneMatch(d -> d.featureId().equals("old")));
         } finally {
             release.countDown();
         }
@@ -323,9 +301,7 @@ class DocumentControllerTest {
     @Test
     void brokenDefinitionsClearGeometryAndRemainRepairable() throws Exception {
         var s = sketch("plate", 0);
-        var invalid =
-                new Feature.Extrude(
-                        "solid", new Feature.ProfileRef("missing", "missing.profile"), 8);
+        var invalid = new Feature.Extrude("solid", new Feature.ProfileRef("missing", "missing.profile"), 8);
         Path file = directory.resolve("broken.jcad");
         DocumentWriter.save(new CadDocument("broken", List.of(s, invalid), 2), file, false);
         try (var controller = new DocumentController(callbacks::add)) {
@@ -334,8 +310,7 @@ class DocumentControllerTest {
             assertFalse(controller.build().valid());
             assertTrue(controller.build().bodies().isEmpty());
             assertFalse(controller.canExport());
-            controller.replaceFeature(
-                    new Feature.Extrude("solid", new Feature.ProfileRef(s.id(), s.profileId()), 8));
+            controller.replaceFeature(new Feature.Extrude("solid", new Feature.ProfileRef(s.id(), s.profileId()), 8));
             await(() -> !controller.rebuilding());
             assertTrue(controller.canExport());
             assertEquals(19200, controller.build().bodies().getFirst().volume(), 0.01);
@@ -356,14 +331,12 @@ class DocumentControllerTest {
             assertTrue(controller.dirty());
             assertEquals(
                     61,
-                    ((Feature.Rectangle)
-                                    ((Feature.Sketch)
-                                                    controller
-                                                            .snapshot()
-                                                            .document()
-                                                            .features()
-                                                            .getFirst())
-                                            .profile())
+                    ((Feature.Rectangle) ((Feature.Sketch) controller
+                                            .snapshot()
+                                            .document()
+                                            .features()
+                                            .getFirst())
+                                    .profile())
                             .width());
         }
     }

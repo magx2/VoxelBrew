@@ -15,9 +15,7 @@ public class ProbeImporter implements FileImporter {
                 API_VERSION,
                 List.of("vbplate"),
                 ImportResult.Kind.DOCUMENT,
-                List.of(
-                        new ImportOption(
-                                "scale", "Scale", ImportOption.Type.DECIMAL, "1", List.of())));
+                List.of(new ImportOption("scale", "Scale", ImportOption.Type.DECIMAL, "1", List.of())));
     }
 
     public ImportResult read(InputStream input, Map<String, String> options) throws IOException {
@@ -28,23 +26,15 @@ public class ProbeImporter implements FileImporter {
         if (dimensions.length != 3) throw new IOException("Expected width,height,thickness");
         // Closing a borrowed stream must not take ownership away from the host.
         input.close();
-        var sketch =
-                new Feature.Sketch(
-                        "plate",
-                        "profile",
-                        new Feature.Plane("origin-xy", 0),
-                        new Feature.Rectangle(
-                                0,
-                                0,
-                                Double.parseDouble(dimensions[0]) * scale,
-                                Double.parseDouble(dimensions[1]) * scale));
-        var extrude =
-                new Feature.Extrude(
-                        "thickness",
-                        new Feature.ProfileRef("plate", "profile"),
-                        Double.parseDouble(dimensions[2]) * scale);
-        return new ImportResult.Document(
-                new CadDocument("imported-plate", List.of(sketch, extrude), 2));
+        var sketch = new Feature.Sketch(
+                "plate",
+                "profile",
+                new Feature.Plane("origin-xy", 0),
+                new Feature.Rectangle(
+                        0, 0, Double.parseDouble(dimensions[0]) * scale, Double.parseDouble(dimensions[1]) * scale));
+        var extrude = new Feature.Extrude(
+                "thickness", new Feature.ProfileRef("plate", "profile"), Double.parseDouble(dimensions[2]) * scale);
+        return new ImportResult.Document(new CadDocument("imported-plate", List.of(sketch, extrude), 2));
     }
 
     public static final class Duplicate extends ProbeImporter {}
@@ -53,12 +43,7 @@ public class ProbeImporter implements FileImporter {
         @Override
         public ImporterDescriptor descriptor() {
             return new ImporterDescriptor(
-                    "future",
-                    "Future",
-                    999,
-                    List.of("vbplate"),
-                    ImportResult.Kind.DOCUMENT,
-                    List.of());
+                    "future", "Future", 999, List.of("vbplate"), ImportResult.Kind.DOCUMENT, List.of());
         }
     }
 
@@ -82,8 +67,7 @@ public class ProbeImporter implements FileImporter {
         }
 
         @Override
-        public ImportResult read(InputStream input, Map<String, String> options)
-                throws IOException {
+        public ImportResult read(InputStream input, Map<String, String> options) throws IOException {
             input.read();
             throw new IOException("Deliberate importer failure");
         }
@@ -93,12 +77,7 @@ public class ProbeImporter implements FileImporter {
         @Override
         public ImporterDescriptor descriptor() {
             return new ImporterDescriptor(
-                    "wrong-kind",
-                    "Wrong result",
-                    API_VERSION,
-                    List.of("vbplate"),
-                    ImportResult.Kind.GCODE,
-                    List.of());
+                    "wrong-kind", "Wrong result", API_VERSION, List.of("vbplate"), ImportResult.Kind.GCODE, List.of());
         }
 
         @Override

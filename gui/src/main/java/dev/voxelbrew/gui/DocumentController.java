@@ -47,10 +47,7 @@ public final class DocumentController implements AutoCloseable {
     }
 
     public record Build(
-            List<Body> bodies,
-            List<Evaluation.Diagnostic> diagnostics,
-            boolean valid,
-            List<Feature> features) {
+            List<Body> bodies, List<Evaluation.Diagnostic> diagnostics, boolean valid, List<Feature> features) {
         public Build(List<Body> bodies, List<Evaluation.Diagnostic> diagnostics, boolean valid) {
             this(bodies, diagnostics, valid, List.of());
         }
@@ -62,8 +59,7 @@ public final class DocumentController implements AutoCloseable {
         }
     }
 
-    private record Request(
-            long sequence, long generation, long revision, CadDocument document, boolean preview) {}
+    private record Request(long sequence, long generation, long revision, CadDocument document, boolean preview) {}
 
     private final ExecutorService worker;
     private final ExecutorService io;
@@ -126,9 +122,7 @@ public final class DocumentController implements AutoCloseable {
     }
 
     private DocumentController(
-            Consumer<Runnable> dispatch,
-            Function<CadDocument, Build> evaluator,
-            Path pluginDirectory) {
+            Consumer<Runnable> dispatch, Function<CadDocument, Build> evaluator, Path pluginDirectory) {
         this(
                 dispatch,
                 evaluator,
@@ -179,7 +173,9 @@ public final class DocumentController implements AutoCloseable {
     }
 
     public List<Feature> effectiveFeatures() {
-        return !rebuilding && build.features().size() == session.document().features().size()
+        return !rebuilding
+                        && build.features().size()
+                                == session.document().features().size()
                 ? build.features()
                 : session.document().features();
     }
@@ -202,10 +198,7 @@ public final class DocumentController implements AutoCloseable {
         schedule(session.document(), false);
     }
 
-    public void sketch(
-            Feature.Sketch sketch,
-            dev.voxelbrew.engine.parameters.ParameterSet parameters,
-            boolean create) {
+    public void sketch(Feature.Sketch sketch, dev.voxelbrew.engine.parameters.ParameterSet parameters, boolean create) {
         if (create) session.add(sketch, parameters);
         else session.replace(sketch, parameters);
         preview = null;
@@ -273,8 +266,7 @@ public final class DocumentController implements AutoCloseable {
     }
 
     public void deleteFeatures(int from, int to) {
-        if (ioBusy || rebuilding || hasPreview())
-            throw new IllegalStateException("Wait for the current operation");
+        if (ioBusy || rebuilding || hasPreview()) throw new IllegalStateException("Wait for the current operation");
         session.deleteFeatures(from, to);
         schedule(session.document(), false);
     }
@@ -292,8 +284,7 @@ public final class DocumentController implements AutoCloseable {
 
     public void bodyStyle(String bodyId, BodyStyle style) {
         if (!canExport() || build.bodies().stream().noneMatch(b -> b.id().equals(bodyId))) {
-            throw new IllegalStateException(
-                    "Select a current body at the end of a successful rebuild");
+            throw new IllegalStateException("Select a current body at the end of a successful rebuild");
         }
         session.setBodyStyle(bodyId, style);
         schedule(session.document(), false);
@@ -301,12 +292,12 @@ public final class DocumentController implements AutoCloseable {
 
     public void renameBody(String bodyId, String name) {
         if (!canExport() || build.bodies().stream().noneMatch(b -> b.id().equals(bodyId)))
-            throw new IllegalStateException(
-                    "Select a current body at the end of a successful rebuild");
+            throw new IllegalStateException("Select a current body at the end of a successful rebuild");
         long before = session.revision();
         session.renameBody(bodyId, name);
         if (session.revision() != before) {
-            log.info("Renamed body {} in document {}", bodyId, session.document().id());
+            log.info(
+                    "Renamed body {} in document {}", bodyId, session.document().id());
             schedule(session.document(), false);
         }
     }
@@ -331,13 +322,10 @@ public final class DocumentController implements AutoCloseable {
 
     public void previewExtrusion(Feature.Sketch sketch, double distance) {
         previewExpression = "";
-        String id =
-                preview == null
-                        ? "extrude-" + session.document().uuidGenerator().next()
-                        : preview.id();
-        var candidate =
-                new Feature.Extrude(
-                        id, new Feature.ProfileRef(sketch.id(), sketch.profileId()), distance);
+        String id = preview == null
+                ? "extrude-" + session.document().uuidGenerator().next()
+                : preview.id();
+        var candidate = new Feature.Extrude(id, new Feature.ProfileRef(sketch.id(), sketch.profileId()), distance);
         var temporary = new ModelSession(session.document());
         temporary.add(candidate);
         preview = candidate;
@@ -346,9 +334,7 @@ public final class DocumentController implements AutoCloseable {
 
     public void previewExtrusion(Feature.Sketch sketch, String expression) {
         double value =
-                session.document()
-                        .parameters()
-                        .value(expression, dev.voxelbrew.engine.parameters.ParameterUnit.MM);
+                session.document().parameters().value(expression, dev.voxelbrew.engine.parameters.ParameterUnit.MM);
         previewExtrusion(sketch, value);
         if (!expression.matches("[+-]?(?:[0-9]+(?:\\.[0-9]*)?|\\.[0-9]+)(?:[eE][+-]?[0-9]+)?"))
             previewExpression = expression;
@@ -359,13 +345,11 @@ public final class DocumentController implements AutoCloseable {
         var feature = preview;
         if (previewExpression.isEmpty()) add(feature);
         else {
-            var parameters =
-                    session.document()
-                            .parameters()
-                            .bind(
-                                    new dev.voxelbrew.engine.parameters.ParameterSet.Target(
-                                            feature.id(), "distance"),
-                                    previewExpression);
+            var parameters = session.document()
+                    .parameters()
+                    .bind(
+                            new dev.voxelbrew.engine.parameters.ParameterSet.Target(feature.id(), "distance"),
+                            previewExpression);
             session.add(feature, parameters);
             preview = null;
             previewExpression = "";
@@ -385,25 +369,23 @@ public final class DocumentController implements AutoCloseable {
         ioBusy = true;
         onChanged.run();
         var result = new CompletableFuture<Void>();
-        io.execute(
-                () -> {
-                    try {
-                        var document = documents.load(source);
-                        dispatch.accept(
-                                () -> {
-                                    if (closed) {
-                                        result.cancel(false);
-                                        return;
-                                    }
-                                    ioBusy = false;
-                                    replace(document, source.toAbsolutePath());
-                                    log.info("Opened document {} from {}", document.id(), source);
-                                    result.complete(null);
-                                });
-                    } catch (Exception failure) {
-                        finishIo(result, failure);
+        io.execute(() -> {
+            try {
+                var document = documents.load(source);
+                dispatch.accept(() -> {
+                    if (closed) {
+                        result.cancel(false);
+                        return;
                     }
+                    ioBusy = false;
+                    replace(document, source.toAbsolutePath());
+                    log.info("Opened document {} from {}", document.id(), source);
+                    result.complete(null);
                 });
+            } catch (Exception failure) {
+                finishIo(result, failure);
+            }
+        });
         return result;
     }
 
@@ -414,29 +396,27 @@ public final class DocumentController implements AutoCloseable {
         ioBusy = true;
         onChanged.run();
         var result = new CompletableFuture<Void>();
-        io.execute(
-                () -> {
-                    try {
-                        documentWriter.save(captured, destination, overwrite);
-                        dispatch.accept(
-                                () -> {
-                                    if (closed) {
-                                        result.cancel(false);
-                                        return;
-                                    }
-                                    ioBusy = false;
-                                    if (documentGeneration == generation) {
-                                        saved = captured;
-                                        unsavedImport = false;
-                                        path = destination.toAbsolutePath();
-                                    }
-                                    onChanged.run();
-                                    result.complete(null);
-                                });
-                    } catch (Exception failure) {
-                        finishIo(result, failure);
+        io.execute(() -> {
+            try {
+                documentWriter.save(captured, destination, overwrite);
+                dispatch.accept(() -> {
+                    if (closed) {
+                        result.cancel(false);
+                        return;
                     }
+                    ioBusy = false;
+                    if (documentGeneration == generation) {
+                        saved = captured;
+                        unsavedImport = false;
+                        path = destination.toAbsolutePath();
+                    }
+                    onChanged.run();
+                    result.complete(null);
                 });
+            } catch (Exception failure) {
+                finishIo(result, failure);
+            }
+        });
         return result;
     }
 
@@ -451,36 +431,32 @@ public final class DocumentController implements AutoCloseable {
         ioBusy = true;
         onChanged.run();
         var result = new CompletableFuture<Void>();
-        io.execute(
-                () -> {
-                    try {
-                        CadDocument document;
-                        try (var registry = importers.open(pluginDirectory)) {
-                            if (registry.require(format).descriptor().resultKind()
-                                    != dev.voxelbrew.importer.api.ImportResult.Kind.DOCUMENT)
-                                throw new IllegalArgumentException("Choose a document importer");
-                            document =
-                                    ((dev.voxelbrew.importer.api.ImportResult.Document)
-                                                    dev.voxelbrew.importer.ImportService.read(
-                                                            registry, format, source, values))
-                                            .document();
-                        }
-                        dispatch.accept(
-                                () -> {
-                                    if (closed) {
-                                        result.cancel(false);
-                                        return;
-                                    }
-                                    ioBusy = false;
-                                    replace(document, null);
-                                    unsavedImport = true;
-                                    onChanged.run();
-                                    result.complete(null);
-                                });
-                    } catch (Exception failure) {
-                        finishIo(result, failure);
+        io.execute(() -> {
+            try {
+                CadDocument document;
+                try (var registry = importers.open(pluginDirectory)) {
+                    if (registry.require(format).descriptor().resultKind()
+                            != dev.voxelbrew.importer.api.ImportResult.Kind.DOCUMENT)
+                        throw new IllegalArgumentException("Choose a document importer");
+                    document = ((dev.voxelbrew.importer.api.ImportResult.Document)
+                                    dev.voxelbrew.importer.ImportService.read(registry, format, source, values))
+                            .document();
+                }
+                dispatch.accept(() -> {
+                    if (closed) {
+                        result.cancel(false);
+                        return;
                     }
+                    ioBusy = false;
+                    replace(document, null);
+                    unsavedImport = true;
+                    onChanged.run();
+                    result.complete(null);
                 });
+            } catch (Exception failure) {
+                finishIo(result, failure);
+            }
+        });
         return result;
     }
 
@@ -492,14 +468,7 @@ public final class DocumentController implements AutoCloseable {
             Map<String, String> values,
             Path destination,
             boolean overwrite) {
-        return export(
-                registry,
-                format,
-                ExportSelection.design(body),
-                options,
-                values,
-                destination,
-                overwrite);
+        return export(registry, format, ExportSelection.design(body), options, values, destination, overwrite);
     }
 
     public CompletableFuture<Void> export(
@@ -511,59 +480,51 @@ public final class DocumentController implements AutoCloseable {
             Path destination,
             boolean overwrite) {
         if (!canExport())
-            throw new IllegalStateException(
-                    "Export requires the current complete, successfully rebuilt document");
+            throw new IllegalStateException("Export requires the current complete, successfully rebuilt document");
         var captured = session.document();
         ioBusy = true;
         onChanged.run();
         var result = new CompletableFuture<Void>();
-        io.execute(
-                () -> {
-                    try (var evaluation = Evaluator.evaluate(captured, pluginDirectory)) {
-                        ModelView view = selection.view(captured, evaluation, options);
-                        ExportService.export(
-                                registry, format, view, options, values, destination, overwrite);
-                        finishIo(result, null);
-                    } catch (Exception failure) {
-                        finishIo(result, failure);
-                    }
-                });
+        io.execute(() -> {
+            try (var evaluation = Evaluator.evaluate(captured, pluginDirectory)) {
+                ModelView view = selection.view(captured, evaluation, options);
+                ExportService.export(registry, format, view, options, values, destination, overwrite);
+                finishIo(result, null);
+            } catch (Exception failure) {
+                finishIo(result, failure);
+            }
+        });
         return result;
     }
 
     private void finishIo(CompletableFuture<Void> future, Exception failure) {
         if (failure != null) log.error("Document file operation failed", failure);
-        dispatch.accept(
-                () -> {
-                    if (closed) {
-                        future.cancel(false);
-                        return;
-                    }
-                    ioBusy = false;
-                    if (failure != null) error = failure.getMessage();
-                    onChanged.run();
-                    if (failure == null) future.complete(null);
-                    else future.completeExceptionally(failure);
-                });
+        dispatch.accept(() -> {
+            if (closed) {
+                future.cancel(false);
+                return;
+            }
+            ioBusy = false;
+            if (failure != null) error = failure.getMessage();
+            onChanged.run();
+            if (failure == null) future.complete(null);
+            else future.completeExceptionally(failure);
+        });
     }
 
     private void requireIdleIo() {
-        if (closed || ioBusy)
-            throw new IllegalStateException("Wait for the current file operation");
+        if (closed || ioBusy) throw new IllegalStateException("Wait for the current file operation");
         error = "";
     }
 
     private void schedule(CadDocument document, boolean isPreview) {
         if (closed) return;
         long ticket = ++sequence;
-        log.debug(
-                "Queued rebuild {} for document {} (preview={})", ticket, document.id(), isPreview);
+        log.debug("Queued rebuild {} for document {} (preview={})", ticket, document.id(), isPreview);
         rebuilding = true;
         error = "";
         synchronized (queueLock) {
-            pending =
-                    new Request(
-                            ticket, documentGeneration, session.revision(), document, isPreview);
+            pending = new Request(ticket, documentGeneration, session.revision(), document, isPreview);
             if (!running) {
                 running = true;
                 worker.execute(this::drain);
@@ -598,32 +559,31 @@ public final class DocumentController implements AutoCloseable {
             }
             Build complete = result;
             String failureMessage = message;
-            dispatch.accept(
-                    () -> {
-                        var current = session.snapshot();
-                        if (closed
-                                || request.sequence() != sequence
-                                || request.generation() != documentGeneration
-                                || request.revision() != current.revision()
-                                || !request.document().id().equals(current.document().id())) {
-                            log.debug("Discarding obsolete rebuild {}", request.sequence());
-                            return;
-                        }
-                        if (!complete.valid() && !request.preview())
-                            log.warn(
-                                    "Document {} revision {} has rebuild diagnostics; geometry is unavailable",
-                                    request.document().id(),
-                                    request.revision());
-                        log.debug(
-                                "Published rebuild {} with {} bodies",
-                                request.sequence(),
-                                complete.bodies().size());
-                        build = complete;
-                        rebuilding = false;
-                        displayedPreview = request.preview();
-                        error = failureMessage;
-                        onChanged.run();
-                    });
+            dispatch.accept(() -> {
+                var current = session.snapshot();
+                if (closed
+                        || request.sequence() != sequence
+                        || request.generation() != documentGeneration
+                        || request.revision() != current.revision()
+                        || !request.document().id().equals(current.document().id())) {
+                    log.debug("Discarding obsolete rebuild {}", request.sequence());
+                    return;
+                }
+                if (!complete.valid() && !request.preview())
+                    log.warn(
+                            "Document {} revision {} has rebuild diagnostics; geometry is unavailable",
+                            request.document().id(),
+                            request.revision());
+                log.debug(
+                        "Published rebuild {} with {} bodies",
+                        request.sequence(),
+                        complete.bodies().size());
+                build = complete;
+                rebuilding = false;
+                displayedPreview = request.preview();
+                error = failureMessage;
+                onChanged.run();
+            });
         }
     }
 
@@ -634,18 +594,15 @@ public final class DocumentController implements AutoCloseable {
     static Build evaluate(CadDocument document, Path pluginDirectory) {
         try (var evaluation = Evaluator.evaluate(document, pluginDirectory)) {
             if (!evaluation.valid())
-                return new Build(
-                        List.of(), evaluation.diagnostics(), false, evaluation.resolvedFeatures());
-            var bodies =
-                    dev.voxelbrew.util.concurrent.CpuWork.map(
-                            evaluation.bodies(),
-                            b ->
-                                    new Body(
-                                            b.id(),
-                                            b.output(),
-                                            b.solid().tessellate(MeshOptions.DEFAULT),
-                                            b.solid().volume(),
-                                            b.solid().planarFaces()));
+                return new Build(List.of(), evaluation.diagnostics(), false, evaluation.resolvedFeatures());
+            var bodies = dev.voxelbrew.util.concurrent.CpuWork.map(
+                    evaluation.bodies(),
+                    b -> new Body(
+                            b.id(),
+                            b.output(),
+                            b.solid().tessellate(MeshOptions.DEFAULT),
+                            b.solid().volume(),
+                            b.solid().planarFaces()));
             return new Build(bodies, evaluation.diagnostics(), true, evaluation.resolvedFeatures());
         }
     }

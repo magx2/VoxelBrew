@@ -16,34 +16,29 @@ import org.junit.jupiter.api.io.TempDir;
 import picocli.CommandLine;
 
 class DependencyInjectionTest {
-    @TempDir Path directory;
+    @TempDir
+    Path directory;
 
     @Test
-    void injectedPortsReachNestedCommandsAndParsedArgumentsNeverLeakToTheNextParser()
-            throws Exception {
+    void injectedPortsReachNestedCommandsAndParsedArgumentsNeverLeakToTheNextParser() throws Exception {
         var document = new AtomicReference<>(CadDocument.empty());
         var overwrites = new ArrayList<Boolean>();
         var reads = new AtomicInteger();
-        var files =
-                new FileIoModule(
-                        path -> {
-                            reads.incrementAndGet();
-                            return document.get();
-                        },
-                        (value, path, overwrite) -> {
-                            document.set(value);
-                            overwrites.add(overwrite);
-                        },
-                        path -> {
-                            throw new IOException("Injected G-code reader");
-                        });
-        var graph =
-                graph(
-                        "en",
-                        files,
-                        () -> {
-                            throw new AssertionError("Unexpected update lookup");
-                        });
+        var files = new FileIoModule(
+                path -> {
+                    reads.incrementAndGet();
+                    return document.get();
+                },
+                (value, path, overwrite) -> {
+                    document.set(value);
+                    overwrites.add(overwrite);
+                },
+                path -> {
+                    throw new IOException("Injected G-code reader");
+                });
+        var graph = graph("en", files, () -> {
+            throw new AssertionError("Unexpected update lookup");
+        });
         var first = quiet(graph.commandLine());
         Path destination = directory.resolve("virtual design.jcad");
         assertEquals(0, first.execute("new", destination.toString(), "--overwrite"));
@@ -54,35 +49,29 @@ class DependencyInjectionTest {
         assertNotSame(
                 first.getSubcommands().get("new").getCommand(),
                 second.getSubcommands().get("new").getCommand());
-        assertEquals(
-                0,
-                quiet(graph.commandLine()).execute("parameters", "list", destination.toString()));
+        assertEquals(0, quiet(graph.commandLine()).execute("parameters", "list", destination.toString()));
         assertEquals(1, reads.get());
         assertEquals(1, quiet(graph.commandLine()).execute("inspect-job", "injected.gcode"));
         assertSame(graph.commands(), first.getFactory());
         assertSame(
                 first.getFactory(),
-                first.getSubcommands().get("sketch").getSubcommands().get("draw").getFactory());
+                first.getSubcommands()
+                        .get("sketch")
+                        .getSubcommands()
+                        .get("draw")
+                        .getFactory());
     }
 
     @Test
     void configurationAndUpdateFactoriesAreScopedToIndependentApplicationGraphs() throws Exception {
         var updates = new AtomicInteger();
-        var polish =
-                graph(
-                        "pl",
-                        new FileIoModule(),
-                        () -> {
-                            updates.incrementAndGet();
-                            throw new IOException("Offline test updater");
-                        });
-        var english =
-                graph(
-                        "en",
-                        new FileIoModule(),
-                        () -> {
-                            throw new AssertionError("Other graph's updater was called");
-                        });
+        var polish = graph("pl", new FileIoModule(), () -> {
+            updates.incrementAndGet();
+            throw new IOException("Offline test updater");
+        });
+        var english = graph("en", new FileIoModule(), () -> {
+            throw new AssertionError("Other graph's updater was called");
+        });
         assertEquals("pl", polish.translations().locale().getLanguage());
         assertEquals("en", english.translations().locale().getLanguage());
         assertSame(polish.translations(), polish.translations());
@@ -94,15 +83,13 @@ class DependencyInjectionTest {
         assertEquals(0, quiet(english.commandLine()).execute("--help"));
     }
 
-    private CliComponent graph(String language, FileIoModule files, UpdateServiceFactory updates)
-            throws IOException {
+    private CliComponent graph(String language, FileIoModule files, UpdateServiceFactory updates) throws IOException {
         var config = new UserConfiguration(directory.resolve(language + ".properties"));
         config.set("language", language);
         return DaggerCliComponent.factory().create(new ApplicationModule(config, updates), files);
     }
 
     private static CommandLine quiet(CommandLine command) {
-        return command.setOut(new PrintWriter(new StringWriter()))
-                .setErr(new PrintWriter(new StringWriter()));
+        return command.setOut(new PrintWriter(new StringWriter())).setErr(new PrintWriter(new StringWriter()));
     }
 }

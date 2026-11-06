@@ -54,10 +54,7 @@ final class PrintingCommands {
         @Option(names = "--axis", defaultValue = "X", description = "Plane normal: X, Y or Z")
         Axis axis;
 
-        @Option(
-                names = "--offset",
-                required = true,
-                description = "Plane offset in design-space mm")
+        @Option(names = "--offset", required = true, description = "Plane offset in design-space mm")
         double offset;
 
         enum Axis {
@@ -69,15 +66,11 @@ final class PrintingCommands {
         @Override
         public Integer call() throws Exception {
             var session = session();
-            session.add(
-                    new Feature.SplitBody(
-                            id,
-                            new Feature.BodyRef(body, output),
-                            new Feature.SplitPlane(
-                                    axis == Axis.X ? 1 : 0,
-                                    axis == Axis.Y ? 1 : 0,
-                                    axis == Axis.Z ? 1 : 0,
-                                    offset)));
+            session.add(new Feature.SplitBody(
+                    id,
+                    new Feature.BodyRef(body, output),
+                    new Feature.SplitPlane(
+                            axis == Axis.X ? 1 : 0, axis == Axis.Y ? 1 : 0, axis == Axis.Z ? 1 : 0, offset)));
             return save(session);
         }
     }
@@ -125,11 +118,7 @@ final class PrintingCommands {
             var instances = new ArrayList<>(setup.instances());
             instances.removeIf(i -> i.id().equals(id));
             instances.add(
-                    new BodyInstance(
-                            id,
-                            body,
-                            Transform.translation(x, y, z)
-                                    .compose(Transform.rotation(rx, ry, rz))));
+                    new BodyInstance(id, body, Transform.translation(x, y, z).compose(Transform.rotation(rx, ry, rz))));
             session.setPrintSetup(setup.withInstances(instances));
             return save(session);
         }
@@ -152,10 +141,7 @@ final class PrintingCommands {
         @Option(names = "--id", required = true)
         String id;
 
-        @Option(
-                names = "--offset-x",
-                defaultValue = "70",
-                description = "Translation relative to source (mm)")
+        @Option(names = "--offset-x", defaultValue = "70", description = "Translation relative to source (mm)")
         double x;
 
         @Option(names = "--offset-y", defaultValue = "0")
@@ -170,25 +156,21 @@ final class PrintingCommands {
             var setup = session.document().printSetup();
             var original = instance(setup, source);
             var instances = new ArrayList<>(setup.instances());
-            instances.add(
-                    new BodyInstance(
-                            id,
-                            original.bodyId(),
-                            Transform.translation(x, y, z).compose(original.transform())));
+            instances.add(new BodyInstance(
+                    id, original.bodyId(), Transform.translation(x, y, z).compose(original.transform())));
             var supports = new ArrayList<>(setup.supports());
             for (var s : setup.supports())
                 if (s.instanceId().equals(source))
-                    supports.add(
-                            new SupportVolume(
-                                    "support-" + session.document().uuidGenerator().next(),
-                                    id,
-                                    s.role(),
-                                    s.x(),
-                                    s.y(),
-                                    s.z(),
-                                    s.width(),
-                                    s.depth(),
-                                    s.height()));
+                    supports.add(new SupportVolume(
+                            "support-" + session.document().uuidGenerator().next(),
+                            id,
+                            s.role(),
+                            s.x(),
+                            s.y(),
+                            s.z(),
+                            s.width(),
+                            s.depth(),
+                            s.height()));
             session.setPrintSetup(setup.withInstances(instances).withSupports(supports));
             return save(session);
         }
@@ -197,8 +179,7 @@ final class PrintingCommands {
     @Command(
             name = "lay-on-face",
             mixinStandardHelpOptions = true,
-            description =
-                    "Lay an evaluated planar face on bed Z=0. Face IDs belong only to the current revision.")
+            description = "Lay an evaluated planar face on bed Z=0. Face IDs belong only to the current revision.")
     static final class LayOnFace extends VoxelBrew.FileCommand {
 
         @javax.inject.Inject
@@ -217,22 +198,11 @@ final class PrintingCommands {
             var session = session();
             var setup = session.document().printSetup();
             var selected = instance(setup, id);
-            var model =
-                    ManufacturingModel.evaluate(
-                            session.document(), MeshOptions.DEFAULT, pluginDirectory);
-            var transform =
-                    MeshGeometry.layOnFace(
-                            model.mesh(selected.bodyId()), face, selected.transform());
-            session.setPrintSetup(
-                    setup.withInstances(
-                            setup.instances().stream()
-                                    .map(
-                                            i ->
-                                                    i.id().equals(id)
-                                                            ? new BodyInstance(
-                                                                    i.id(), i.bodyId(), transform)
-                                                            : i)
-                                    .toList()));
+            var model = ManufacturingModel.evaluate(session.document(), MeshOptions.DEFAULT, pluginDirectory);
+            var transform = MeshGeometry.layOnFace(model.mesh(selected.bodyId()), face, selected.transform());
+            session.setPrintSetup(setup.withInstances(setup.instances().stream()
+                    .map(i -> i.id().equals(id) ? new BodyInstance(i.id(), i.bodyId(), transform) : i)
+                    .toList()));
             return save(session);
         }
     }
@@ -273,9 +243,7 @@ final class PrintingCommands {
         @Option(names = "--bed-only", negatable = true)
         Boolean bedOnly;
 
-        @Option(
-                names = "--support-threshold",
-                description = "Overhang threshold in degrees from horizontal")
+        @Option(names = "--support-threshold", description = "Overhang threshold in degrees from horizontal")
         Double threshold;
 
         @Option(names = "--contact-gap", description = "Support contact gap (mm)")
@@ -295,24 +263,22 @@ final class PrintingCommands {
             var session = session();
             var setup = session.document().printSetup();
             var p = setup.process();
-            var next =
-                    new ProcessSettings(
-                            or(height, p.layerHeight()),
-                            or(walls, p.walls()),
-                            or(infill, p.infillPercent()),
-                            or(supports, p.automaticSupports()),
-                            or(bedOnly, p.supportsOnBedOnly()),
-                            or(threshold, p.supportThreshold()),
-                            or(gap, p.supportContactGap()),
-                            or(interfaces, p.interfaceLayers()),
-                            or(brim, p.brimWidth()),
-                            or(raft, p.raftLayers()));
-            session.setPrintSetup(
-                    setup.withProfile(
-                            or(backend, setup.backendId()),
-                            or(printer, setup.printerId()),
-                            or(material, setup.materialId()),
-                            next));
+            var next = new ProcessSettings(
+                    or(height, p.layerHeight()),
+                    or(walls, p.walls()),
+                    or(infill, p.infillPercent()),
+                    or(supports, p.automaticSupports()),
+                    or(bedOnly, p.supportsOnBedOnly()),
+                    or(threshold, p.supportThreshold()),
+                    or(gap, p.supportContactGap()),
+                    or(interfaces, p.interfaceLayers()),
+                    or(brim, p.brimWidth()),
+                    or(raft, p.raftLayers()));
+            session.setPrintSetup(setup.withProfile(
+                    or(backend, setup.backendId()),
+                    or(printer, setup.printerId()),
+                    or(material, setup.materialId()),
+                    next));
             PrintProfile.resolve(session.document().printSetup());
             return save(session);
         }
@@ -336,10 +302,7 @@ final class PrintingCommands {
         @Option(names = "--instance", required = true)
         String instance;
 
-        @Option(
-                names = "--role",
-                required = true,
-                description = "BLOCKER, ENFORCER or SOLID_SUPPORT")
+        @Option(names = "--role", required = true, description = "BLOCKER, ENFORCER or SOLID_SUPPORT")
         SupportVolume.Role role;
 
         @Option(names = "--x", defaultValue = "0")
@@ -375,8 +338,7 @@ final class PrintingCommands {
     @Command(
             name = "remove-instance",
             mixinStandardHelpOptions = true,
-            description =
-                    "Remove a build instance; keep attached instructions available for repair.")
+            description = "Remove a build instance; keep attached instructions available for repair.")
     static final class RemoveInstance extends VoxelBrew.FileCommand {
 
         @javax.inject.Inject
@@ -392,9 +354,8 @@ final class PrintingCommands {
             var session = session();
             var setup = session.document().printSetup();
             instance(setup, id);
-            session.setPrintSetup(
-                    setup.withInstances(
-                            setup.instances().stream().filter(i -> !i.id().equals(id)).toList()));
+            session.setPrintSetup(setup.withInstances(
+                    setup.instances().stream().filter(i -> !i.id().equals(id)).toList()));
             return save(session);
         }
     }
@@ -419,9 +380,8 @@ final class PrintingCommands {
             var setup = session.document().printSetup();
             if (setup.supports().stream().noneMatch(s -> s.id().equals(id)))
                 throw new IllegalArgumentException("Unknown support " + id);
-            session.setPrintSetup(
-                    setup.withSupports(
-                            setup.supports().stream().filter(s -> !s.id().equals(id)).toList()));
+            session.setPrintSetup(setup.withSupports(
+                    setup.supports().stream().filter(s -> !s.id().equals(id)).toList()));
             return save(session);
         }
     }
@@ -441,14 +401,13 @@ final class PrintingCommands {
         public Integer call() throws Exception {
             var setup = session().document().printSetup();
             var out = spec.commandLine().getOut();
-            out.println(
-                    setup.backendId()
-                            + " printer="
-                            + setup.printerId()
-                            + " material="
-                            + setup.materialId()
-                            + " process="
-                            + setup.process());
+            out.println(setup.backendId()
+                    + " printer="
+                    + setup.printerId()
+                    + " material="
+                    + setup.materialId()
+                    + " process="
+                    + setup.process());
             setup.instances().forEach(out::println);
             setup.supports().forEach(out::println);
             return 0;
@@ -458,8 +417,7 @@ final class PrintingCommands {
     @Command(
             name = "validate",
             mixinStandardHelpOptions = true,
-            description =
-                    "Validate build-space meshes, bed polygon, overlap, height and support attachments.")
+            description = "Validate build-space meshes, bed polygon, overlap, height and support attachments.")
     static final class Validate extends VoxelBrew.FileCommand {
 
         @javax.inject.Inject
@@ -469,13 +427,9 @@ final class PrintingCommands {
 
         @Override
         public Integer call() throws Exception {
-            var result =
-                    PrintValidation.validate(
-                            ManufacturingModel.evaluate(
-                                    session().document(), MeshOptions.DEFAULT, pluginDirectory));
-            result.meshes()
-                    .forEach(
-                            (id, report) -> spec.commandLine().getOut().println(id + " " + report));
+            var result = PrintValidation.validate(
+                    ManufacturingModel.evaluate(session().document(), MeshOptions.DEFAULT, pluginDirectory));
+            result.meshes().forEach((id, report) -> spec.commandLine().getOut().println(id + " " + report));
             result.diagnostics().forEach(spec.commandLine().getErr()::println);
             spec.commandLine().getOut().println(result.valid() ? "VALID" : "INVALID");
             return result.valid() ? 0 : 1;
@@ -485,8 +439,7 @@ final class PrintingCommands {
     @Command(
             name = "slicers",
             mixinStandardHelpOptions = true,
-            description =
-                    "List versioned backend capabilities; unsupported features are not silently substituted.")
+            description = "List versioned backend capabilities; unsupported features are not silently substituted.")
     static final class Slicers implements Callable<Integer> {
         private final SlicerRegistry.Factory slicers;
 
@@ -498,7 +451,8 @@ final class PrintingCommands {
         @Option(names = "--plugin-dir")
         Path plugins = ExporterRegistry.defaultDirectory();
 
-        @Spec CommandLine.Model.CommandSpec spec;
+        @Spec
+        CommandLine.Model.CommandSpec spec;
 
         @Override
         public Integer call() throws Exception {
@@ -519,10 +473,7 @@ final class PrintingCommands {
         private final SlicerRegistry.Factory slicers;
 
         @javax.inject.Inject
-        Slice(
-                DocumentSource documents,
-                DocumentSink documentWriter,
-                SlicerRegistry.Factory slicers) {
+        Slice(DocumentSource documents, DocumentSink documentWriter, SlicerRegistry.Factory slicers) {
             super(documents, documentWriter);
             this.slicers = slicers;
         }
@@ -540,33 +491,29 @@ final class PrintingCommands {
         public Integer call() throws Exception {
             var cancellation = new Cancellation();
             var finished = new CountDownLatch(1);
-            var shutdown =
-                    new Thread(
-                            () -> {
-                                cancellation.cancel();
-                                try {
-                                    finished.await(5, TimeUnit.SECONDS);
-                                } catch (InterruptedException e) {
-                                    Thread.currentThread().interrupt();
-                                }
-                            },
-                            "voxelbrew-slice-cancel");
+            var shutdown = new Thread(
+                    () -> {
+                        cancellation.cancel();
+                        try {
+                            finished.await(5, TimeUnit.SECONDS);
+                        } catch (InterruptedException e) {
+                            Thread.currentThread().interrupt();
+                        }
+                    },
+                    "voxelbrew-slice-cancel");
             Runtime.getRuntime().addShutdownHook(shutdown);
             try (var registry = slicers.open(pluginDirectory)) {
-                var model =
-                        ManufacturingModel.evaluate(
-                                session().document(), MeshOptions.DEFAULT, pluginDirectory);
+                var model = ManufacturingModel.evaluate(session().document(), MeshOptions.DEFAULT, pluginDirectory);
                 registry.diagnostics().forEach(spec.commandLine().getErr()::println);
-                var result =
-                        SliceService.slice(
-                                registry.require(model.setup().backendId()),
-                                model,
-                                executable,
-                                output,
-                                overwrite,
-                                cancellation,
-                                spec.commandLine().getErr()::println,
-                                SliceService.DIRECT);
+                var result = SliceService.slice(
+                        registry.require(model.setup().backendId()),
+                        model,
+                        executable,
+                        output,
+                        overwrite,
+                        cancellation,
+                        spec.commandLine().getErr()::println,
+                        SliceService.DIRECT);
                 describe(result.job(), spec.commandLine().getOut());
                 spec.commandLine().getOut().println("Job: " + result.output());
                 return 0;
@@ -584,8 +531,7 @@ final class PrintingCommands {
     @Command(
             name = "inspect-job",
             mixinStandardHelpOptions = true,
-            description =
-                    "Independently inspect actual G-code deposition layers, roles, estimates and job provenance.")
+            description = "Independently inspect actual G-code deposition layers, roles, estimates and job provenance.")
     static final class InspectJob implements Callable<Integer> {
         private final dev.voxelbrew.importer.api.GcodeSource gcode;
 
@@ -597,7 +543,8 @@ final class PrintingCommands {
         @Parameters(index = "0")
         Path file;
 
-        @Spec CommandLine.Model.CommandSpec spec;
+        @Spec
+        CommandLine.Model.CommandSpec spec;
 
         @Override
         public Integer call() throws Exception {
@@ -618,18 +565,14 @@ final class PrintingCommands {
     }
 
     private static void describe(GcodeJob job, java.io.PrintWriter out) {
-        out.println(
-                "model_layers="
-                        + job.modelLayers().size()
-                        + " deposition_moves="
-                        + job.segments().stream().filter(GcodeJob.Segment::deposits).count());
-        out.println(
-                "estimated_time="
-                        + job.estimatedTime().orElse("unknown")
-                        + " filament_mm="
-                        + (job.filamentMm().isPresent()
-                                ? job.filamentMm().getAsDouble()
-                                : "unknown"));
+        out.println("model_layers="
+                + job.modelLayers().size()
+                + " deposition_moves="
+                + job.segments().stream().filter(GcodeJob.Segment::deposits).count());
+        out.println("estimated_time="
+                + job.estimatedTime().orElse("unknown")
+                + " filament_mm="
+                + (job.filamentMm().isPresent() ? job.filamentMm().getAsDouble() : "unknown"));
         for (var role : GcodeJob.Role.values()) {
             long count = job.segments().stream().filter(s -> s.role() == role).count();
             if (count > 0) out.println(role + "=" + count);

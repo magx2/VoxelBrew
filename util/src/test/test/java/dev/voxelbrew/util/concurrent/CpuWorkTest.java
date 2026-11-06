@@ -26,21 +26,14 @@ class CpuWorkTest {
             var active = new AtomicInteger();
             var peak = new AtomicInteger();
             var visits = new AtomicIntegerArray(48);
-            var result =
-                    caller.submit(
-                            () ->
-                                    pool.forEach(
-                                            48,
-                                            index -> {
-                                                int count = active.incrementAndGet();
-                                                peak.accumulateAndGet(count, Math::max);
-                                                started.countDown();
-                                                await(release);
-                                                pool.forEach(
-                                                        2,
-                                                        ignored -> visits.incrementAndGet(index));
-                                                active.decrementAndGet();
-                                            }));
+            var result = caller.submit(() -> pool.forEach(48, index -> {
+                int count = active.incrementAndGet();
+                peak.accumulateAndGet(count, Math::max);
+                started.countDown();
+                await(release);
+                pool.forEach(2, ignored -> visits.incrementAndGet(index));
+                active.decrementAndGet();
+            }));
             try {
                 await(started);
                 assertEquals(3, active.get());
@@ -62,20 +55,15 @@ class CpuWorkTest {
             var failed = new CountDownLatch(1);
             var release = new CountDownLatch(1);
             var exception = new IllegalStateException("meshing failed");
-            var result =
-                    caller.submit(
-                            () ->
-                                    pool.forEach(
-                                            2,
-                                            index -> {
-                                                started.countDown();
-                                                await(started);
-                                                if (index == 0) {
-                                                    failed.countDown();
-                                                    throw exception;
-                                                }
-                                                await(release);
-                                            }));
+            var result = caller.submit(() -> pool.forEach(2, index -> {
+                started.countDown();
+                await(started);
+                if (index == 0) {
+                    failed.countDown();
+                    throw exception;
+                }
+                await(release);
+            }));
             try {
                 await(failed);
                 assertThrows(TimeoutException.class, () -> result.get(100, TimeUnit.MILLISECONDS));
@@ -97,24 +85,19 @@ class CpuWorkTest {
             var returned = new CountDownLatch(1);
             var failure = new AtomicReference<Throwable>();
             var interrupted = new AtomicBoolean();
-            var caller =
-                    Thread.ofPlatform()
-                            .start(
-                                    () -> {
-                                        try {
-                                            pool.forEach(
-                                                    20,
-                                                    index -> {
-                                                        started.countDown();
-                                                        await(release);
-                                                    });
-                                        } catch (Throwable problem) {
-                                            failure.set(problem);
-                                            interrupted.set(Thread.currentThread().isInterrupted());
-                                        } finally {
-                                            returned.countDown();
-                                        }
-                                    });
+            var caller = Thread.ofPlatform().start(() -> {
+                try {
+                    pool.forEach(20, index -> {
+                        started.countDown();
+                        await(release);
+                    });
+                } catch (Throwable problem) {
+                    failure.set(problem);
+                    interrupted.set(Thread.currentThread().isInterrupted());
+                } finally {
+                    returned.countDown();
+                }
+            });
             try {
                 await(started);
                 caller.interrupt();

@@ -13,12 +13,13 @@ import org.junit.jupiter.api.io.TempDir;
 /** Deliberately failing fixture, executed only by the cleanup contract's nested test engine. */
 public class CleanupExample {
     public static final List<Path> paths = new ArrayList<>();
-    @TempDir Path directory;
+
+    @TempDir
+    Path directory;
 
     private void write() throws IOException {
         paths.add(directory);
-        Files.writeString(
-                Files.createDirectories(directory.resolve("nested")).resolve("locked.txt"), "test");
+        Files.writeString(Files.createDirectories(directory.resolve("nested")).resolve("locked.txt"), "test");
     }
 
     @Test

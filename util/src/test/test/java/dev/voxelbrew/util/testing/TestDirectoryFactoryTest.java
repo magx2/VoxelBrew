@@ -24,9 +24,7 @@ class TestDirectoryFactoryTest {
         EngineTestKit.engine("junit-jupiter")
                 .selectors(selectClass(CleanupExample.class))
                 .configurationParameter("junit.jupiter.tempdir.cleanup.mode.default", "NEVER")
-                .configurationParameter(
-                        "junit.jupiter.tempdir.factory.default",
-                        TestDirectoryFactory.class.getName())
+                .configurationParameter("junit.jupiter.tempdir.factory.default", TestDirectoryFactory.class.getName())
                 .execute()
                 .testEvents()
                 .assertStatistics(stats -> stats.succeeded(1).failed(1));
@@ -39,39 +37,34 @@ class TestDirectoryFactoryTest {
         paths.clear();
         var records = new ArrayList<LogRecord>();
         Logger logger = Logger.getLogger(TestDirectoryFactory.class.getName());
-        Handler handler =
-                new Handler() {
-                    @Override
-                    public void publish(LogRecord record) {
-                        records.add(record);
-                    }
+        Handler handler = new Handler() {
+            @Override
+            public void publish(LogRecord record) {
+                records.add(record);
+            }
 
-                    @Override
-                    public void flush() {}
+            @Override
+            public void flush() {}
 
-                    @Override
-                    public void close() {}
-                };
+            @Override
+            public void close() {}
+        };
         logger.addHandler(handler);
         DeniedFactory.deny = true;
         try {
             EngineTestKit.engine("junit-jupiter")
                     .selectors(selectClass(CleanupExample.class))
                     .configurationParameter("junit.jupiter.tempdir.cleanup.mode.default", "NEVER")
-                    .configurationParameter(
-                            "junit.jupiter.tempdir.factory.default", DeniedFactory.class.getName())
+                    .configurationParameter("junit.jupiter.tempdir.factory.default", DeniedFactory.class.getName())
                     .execute()
                     .testEvents()
                     .assertStatistics(stats -> stats.succeeded(1).failed(1));
             assertEquals(2, paths.size());
             assertTrue(paths.stream().allMatch(Files::exists));
-            assertTrue(
-                    records.stream()
-                            .anyMatch(
-                                    record ->
-                                            record.getLevel() == Level.SEVERE
-                                                    && record.getThrown() instanceof IOException
-                                                    && record.getMessage().contains("locked.txt")));
+            assertTrue(records.stream()
+                    .anyMatch(record -> record.getLevel() == Level.SEVERE
+                            && record.getThrown() instanceof IOException
+                            && record.getMessage().contains("locked.txt")));
         } finally {
             DeniedFactory.deny = false;
             DeniedFactory.instances.forEach(TestDirectoryFactory::close);

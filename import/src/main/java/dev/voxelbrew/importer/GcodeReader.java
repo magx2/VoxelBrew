@@ -13,8 +13,7 @@ public final class GcodeReader {
     private GcodeReader() {}
 
     private static final Pattern PARAMETER =
-            Pattern.compile(
-                    "(?:^|\\s)([XYZEF])([-+]?(?:[0-9]+(?:\\.[0-9]*)?|\\.[0-9]+)(?:[eE][-+]?[0-9]+)?)");
+            Pattern.compile("(?:^|\\s)([XYZEF])([-+]?(?:[0-9]+(?:\\.[0-9]*)?|\\.[0-9]+)(?:[eE][-+]?[0-9]+)?)");
 
     public static GcodeJob read(Path path) throws IOException {
         try (var input = Files.newInputStream(path)) {
@@ -32,8 +31,7 @@ public final class GcodeReader {
         double x = 0, y = 0, z = 0, e = 0, width = 0.45, height = 0.2;
         boolean absolute = true, absoluteE = true;
         Role role = Role.UNKNOWN;
-        try (var reader =
-                new BufferedReader(new InputStreamReader(input, StandardCharsets.UTF_8))) {
+        try (var reader = new BufferedReader(new InputStreamReader(input, StandardCharsets.UTF_8))) {
             String line;
             while ((line = reader.readLine()) != null) {
                 if (line.startsWith(";TYPE:")) role = role(line.substring(6).strip());
@@ -55,8 +53,7 @@ public final class GcodeReader {
                 if (command.isEmpty()) continue;
                 String code = command.split("\\s+", 2)[0];
                 if (code.equals("G20"))
-                    throw new IOException(
-                            "Inch G-code is unsupported; printer job must use millimeters");
+                    throw new IOException("Inch G-code is unsupported; printer job must use millimeters");
                 if (code.equals("G90")) {
                     absolute = true;
                     continue;
@@ -92,28 +89,16 @@ public final class GcodeReader {
                 double ne = values.containsKey("E") ? values.get("E") + (absoluteE ? 0 : e) : e;
                 double extrusion = ne - e;
                 if (Math.hypot(nx - x, ny - y) > 1e-8) {
-                    var segment =
-                            new Segment(
-                                    x,
-                                    y,
-                                    z,
-                                    nx,
-                                    ny,
-                                    nz,
-                                    extrusion,
-                                    width,
-                                    height,
-                                    extrusion > 1e-8 ? role : Role.TRAVEL);
+                    var segment = new Segment(
+                            x, y, z, nx, ny, nz, extrusion, width, height, extrusion > 1e-8 ? role : Role.TRAVEL);
                     segments.add(segment);
-                    if (segment.deposits() && segment.role().model())
-                        layers.add(Math.rint(nz * 1e6) / 1e6);
+                    if (segment.deposits() && segment.role().model()) layers.add(Math.rint(nz * 1e6) / 1e6);
                 }
                 x = nx;
                 y = ny;
                 z = nz;
                 e = ne;
-                if (segments.size() > 5_000_000)
-                    throw new IOException("Job exceeds preview limit of 5 million moves");
+                if (segments.size() > 5_000_000) throw new IOException("Job exceeds preview limit of 5 million moves");
             }
         } catch (NumberFormatException failure) {
             throw new IOException("Invalid numeric G-code", failure);

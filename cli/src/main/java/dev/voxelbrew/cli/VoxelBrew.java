@@ -46,7 +46,8 @@ public final class VoxelBrew implements Runnable {
     @javax.inject.Inject
     VoxelBrew() {}
 
-    @Spec private CommandSpec spec;
+    @Spec
+    private CommandSpec spec;
 
     @Override
     public void run() {
@@ -58,9 +59,8 @@ public final class VoxelBrew implements Runnable {
         dev.voxelbrew.util.logging.Logging.initialize("cli");
         configureInstalledRuntime();
         int result;
-        try (var lease =
-                dev.voxelbrew.util.update.ApplicationImage.running(
-                        dev.voxelbrew.util.update.ApplicationImage.Component.CLI)) {
+        try (var lease = dev.voxelbrew.util.update.ApplicationImage.running(
+                dev.voxelbrew.util.update.ApplicationImage.Component.CLI)) {
             result = commandLine().execute(args);
         } catch (java.io.IOException | RuntimeException | LinkageError failure) {
             log.error("CLI startup or execution failed", failure);
@@ -81,52 +81,35 @@ public final class VoxelBrew implements Runnable {
                 .commandLine();
     }
 
-    static CommandLine commandLine(
-            CommandLine.IFactory factory, dev.voxelbrew.util.i18n.Translations translations) {
-        var cliCommand =
-                new CommandLine(VoxelBrew.class, factory)
-                        .addSubcommand("exporters", Exporters.class)
-                        .addSubcommand("export", Export.class)
-                        .setExecutionExceptionHandler(
-                                (failure, command, parsed) -> {
-                                    if (failure instanceof IllegalArgumentException)
-                                        log.warn(
-                                                "Command {} rejected: {}",
-                                                command.getCommandName(),
-                                                failure.getMessage());
-                                    else
-                                        log.error(
-                                                "Command {} failed",
-                                                command.getCommandName(),
-                                                failure);
-                                    command.getErr().println("ERROR: " + failure.getMessage());
-                                    return 1;
-                                });
-        cliCommand
-                .getCommandSpec()
-                .usageMessage()
-                .description(translations.text("app.description"));
+    static CommandLine commandLine(CommandLine.IFactory factory, dev.voxelbrew.util.i18n.Translations translations) {
+        var cliCommand = new CommandLine(VoxelBrew.class, factory)
+                .addSubcommand("exporters", Exporters.class)
+                .addSubcommand("export", Export.class)
+                .setExecutionExceptionHandler((failure, command, parsed) -> {
+                    if (failure instanceof IllegalArgumentException)
+                        log.warn("Command {} rejected: {}", command.getCommandName(), failure.getMessage());
+                    else log.error("Command {} failed", command.getCommandName(), failure);
+                    command.getErr().println("ERROR: " + failure.getMessage());
+                    return 1;
+                });
+        cliCommand.getCommandSpec().usageMessage().description(translations.text("app.description"));
         PrintingCommands.register(cliCommand);
         ImportCommands.register(cliCommand);
         FeatureCommands.register(cliCommand);
         SketchCommands.register(cliCommand);
         ParameterCommands.register(cliCommand);
         UpdateCommands.register(cliCommand);
-        cliCommand.setExecutionStrategy(
-                parsed -> {
-                    var selected = parsed;
-                    while (selected.hasSubcommand()) selected = selected.subcommand();
-                    String command = selected.commandSpec().name();
-                    log.info("Executing CLI command {}", command);
-                    return new CommandLine.RunLast().execute(parsed);
-                });
+        cliCommand.setExecutionStrategy(parsed -> {
+            var selected = parsed;
+            while (selected.hasSubcommand()) selected = selected.subcommand();
+            String command = selected.commandSpec().name();
+            log.info("Executing CLI command {}", command);
+            return new CommandLine.RunLast().execute(parsed);
+        });
         return cliCommand;
     }
 
-    @Command(
-            name = "exporters",
-            mixinStandardHelpOptions = true,
-            description = "List built-in and external exporters")
+    @Command(name = "exporters", mixinStandardHelpOptions = true, description = "List built-in and external exporters")
     static final class Exporters implements Callable<Integer> {
         private final dev.voxelbrew.exporter.ExporterRegistry.Factory exporters;
 
@@ -138,7 +121,8 @@ public final class VoxelBrew implements Runnable {
         @Option(names = "--plugin-dir")
         Path pluginDirectory = ExporterRegistry.defaultDirectory();
 
-        @Spec CommandSpec spec;
+        @Spec
+        CommandSpec spec;
 
         @Override
         public Integer call() throws Exception {
@@ -146,14 +130,13 @@ public final class VoxelBrew implements Runnable {
                 for (var descriptor : registry.descriptors()) {
                     spec.commandLine()
                             .getOut()
-                            .println(
-                                    descriptor.id()
-                                            + "\t"
-                                            + descriptor.name()
-                                            + "\tAPI="
-                                            + descriptor.apiVersion()
-                                            + "\toptions="
-                                            + descriptor.options());
+                            .println(descriptor.id()
+                                    + "\t"
+                                    + descriptor.name()
+                                    + "\tAPI="
+                                    + descriptor.apiVersion()
+                                    + "\toptions="
+                                    + descriptor.options());
                 }
                 registry.diagnostics().forEach(spec.commandLine().getErr()::println);
             }
@@ -170,9 +153,7 @@ public final class VoxelBrew implements Runnable {
         private final dev.voxelbrew.exporter.ExporterRegistry.Factory exporters;
 
         @javax.inject.Inject
-        Export(
-                DocumentSource documents,
-                dev.voxelbrew.exporter.ExporterRegistry.Factory exporters) {
+        Export(DocumentSource documents, dev.voxelbrew.exporter.ExporterRegistry.Factory exporters) {
             this.documents = documents;
             this.exporters = exporters;
         }
@@ -189,9 +170,7 @@ public final class VoxelBrew implements Runnable {
         @Option(names = "--body")
         String body;
 
-        @Option(
-                names = "--instance",
-                description = "Selected build instance ID; requires BUILD_PLATE space")
+        @Option(names = "--instance", description = "Selected build instance ID; requires BUILD_PLATE space")
         String instance;
 
         @Option(
@@ -203,23 +182,16 @@ public final class VoxelBrew implements Runnable {
         @Option(
                 names = "--selection",
                 defaultValue = "MODEL",
-                description =
-                        "MODEL (default), SUPPORTS or ALL; support solids require BUILD_PLATE")
+                description = "MODEL (default), SUPPORTS or ALL; support solids require BUILD_PLATE")
         ExportSelection.Contents contents;
 
         @Option(names = "--plugin-dir")
         Path pluginDirectory = ExporterRegistry.defaultDirectory();
 
-        @Option(
-                names = "--chord-tolerance",
-                defaultValue = "0.02",
-                description = "Absolute chordal tolerance (mm)")
+        @Option(names = "--chord-tolerance", defaultValue = "0.02", description = "Absolute chordal tolerance (mm)")
         double chord;
 
-        @Option(
-                names = "--angular-tolerance",
-                defaultValue = "5",
-                description = "Angular tolerance (degrees)")
+        @Option(names = "--angular-tolerance", defaultValue = "5", description = "Angular tolerance (degrees)")
         double angle;
 
         @Option(names = "--option", description = "Provider option KEY=VALUE; repeatable")
@@ -228,7 +200,8 @@ public final class VoxelBrew implements Runnable {
         @Option(names = "--overwrite")
         boolean overwrite;
 
-        @Spec CommandSpec spec;
+        @Spec
+        CommandSpec spec;
 
         @Override
         public Integer call() throws Exception {
@@ -236,20 +209,10 @@ public final class VoxelBrew implements Runnable {
             try (var evaluation = Evaluator.evaluate(document, pluginDirectory);
                     var registry = exporters.open(pluginDirectory)) {
                 registry.diagnostics().forEach(spec.commandLine().getErr()::println);
-                ModelView view =
-                        new ExportSelection(space, contents, body, instance)
-                                .view(document, evaluation, new MeshOptions(chord, angle));
-                ExportService.export(
-                        registry,
-                        format,
-                        view,
-                        new MeshOptions(chord, angle),
-                        options,
-                        output,
-                        overwrite);
-                spec.commandLine()
-                        .getOut()
-                        .println("Exported " + format + " to " + output.toAbsolutePath());
+                ModelView view = new ExportSelection(space, contents, body, instance)
+                        .view(document, evaluation, new MeshOptions(chord, angle));
+                ExportService.export(registry, format, view, new MeshOptions(chord, angle), options, output, overwrite);
+                spec.commandLine().getOut().println("Exported " + format + " to " + output.toAbsolutePath());
             }
             return 0;
         }
@@ -260,13 +223,11 @@ public final class VoxelBrew implements Runnable {
             return;
         }
         try {
-            Path jar =
-                    Path.of(
-                            VoxelBrew.class
-                                    .getProtectionDomain()
-                                    .getCodeSource()
-                                    .getLocation()
-                                    .toURI());
+            Path jar = Path.of(VoxelBrew.class
+                    .getProtectionDomain()
+                    .getCodeSource()
+                    .getLocation()
+                    .toURI());
             Path runtime = jar.getParent().resolve("native");
             if (!Files.isDirectory(runtime))
                 runtime = jar.getParent().getParent().resolve("native");
@@ -293,7 +254,8 @@ public final class VoxelBrew implements Runnable {
         @Option(names = "--plugin-dir", description = "Trusted feature and service JAR directory")
         Path pluginDirectory = ExporterRegistry.defaultDirectory();
 
-        @Spec CommandSpec spec;
+        @Spec
+        CommandSpec spec;
 
         ModelSession session() throws java.io.IOException {
             return new ModelSession(documents.load(file));
@@ -304,20 +266,10 @@ public final class VoxelBrew implements Runnable {
             try (Evaluation evaluation = session.evaluate(pluginDirectory)) {
                 if (!evaluation.valid()) {
                     evaluation.diagnostics().stream()
-                            .filter(
-                                    d ->
-                                            d.state() == Evaluation.State.FAILED
-                                                    || d.state() == Evaluation.State.BLOCKED)
-                            .forEach(
-                                    d ->
-                                            spec.commandLine()
-                                                    .getErr()
-                                                    .println(
-                                                            d.featureId()
-                                                                    + " "
-                                                                    + d.state()
-                                                                    + " "
-                                                                    + d.message()));
+                            .filter(d -> d.state() == Evaluation.State.FAILED || d.state() == Evaluation.State.BLOCKED)
+                            .forEach(d -> spec.commandLine()
+                                    .getErr()
+                                    .println(d.featureId() + " " + d.state() + " " + d.message()));
                     return 1;
                 }
             }
@@ -346,7 +298,8 @@ public final class VoxelBrew implements Runnable {
         @Override
         ModelSession session() throws java.io.IOException {
             var session = super.session();
-            if (id == null) id = Long.toString(session.document().uuidGenerator().next());
+            if (id == null)
+                id = Long.toString(session.document().uuidGenerator().next());
             return session;
         }
     }
@@ -362,35 +315,24 @@ public final class VoxelBrew implements Runnable {
 
         @Option(
                 names = "--plane-id",
-                description =
-                        "Stable plane ID (default: origin-xy or a sketch-specific offset plane)")
+                description = "Stable plane ID (default: origin-xy or a sketch-specific offset plane)")
         String planeId;
 
-        @Option(
-                names = "--profile-id",
-                description = "Stable profile ID (default: <feature-id>.profile)")
+        @Option(names = "--profile-id", description = "Stable profile ID (default: <feature-id>.profile)")
         String profileId;
 
         int sketch(Feature.Profile profile) throws java.io.IOException {
             var session = session();
-            session.add(
-                    new Feature.Sketch(
-                            id,
-                            profileId == null ? id + ".profile" : profileId,
-                            new Feature.Plane(
-                                    planeId == null
-                                            ? (z == 0 ? "origin-xy" : id + ".plane")
-                                            : planeId,
-                                    z),
-                            profile));
+            session.add(new Feature.Sketch(
+                    id,
+                    profileId == null ? id + ".profile" : profileId,
+                    new Feature.Plane(planeId == null ? (z == 0 ? "origin-xy" : id + ".plane") : planeId, z),
+                    profile));
             return save(session);
         }
     }
 
-    @Command(
-            name = "new",
-            description = "Create an empty editable document.",
-            mixinStandardHelpOptions = true)
+    @Command(name = "new", description = "Create an empty editable document.", mixinStandardHelpOptions = true)
     static final class Create extends FileCommand {
 
         @javax.inject.Inject
@@ -398,9 +340,7 @@ public final class VoxelBrew implements Runnable {
             super(documents, documentWriter);
         }
 
-        @Option(
-                names = "--overwrite",
-                description = "Explicitly replace an existing supported document")
+        @Option(names = "--overwrite", description = "Explicitly replace an existing supported document")
         boolean overwrite;
 
         @Override
@@ -439,10 +379,7 @@ public final class VoxelBrew implements Runnable {
         }
     }
 
-    @Command(
-            name = "circle",
-            description = "Add a circle by center and diameter, mm.",
-            mixinStandardHelpOptions = true)
+    @Command(name = "circle", description = "Add a circle by center and diameter, mm.", mixinStandardHelpOptions = true)
     static final class Circle extends AddSketch {
 
         @javax.inject.Inject
@@ -504,10 +441,7 @@ public final class VoxelBrew implements Runnable {
         @Option(names = "--sketch", required = true)
         String sketch;
 
-        @Option(
-                names = "--body-feature",
-                required = true,
-                description = "Earlier feature providing the body output")
+        @Option(names = "--body-feature", required = true, description = "Earlier feature providing the body output")
         String body;
 
         @Option(
@@ -519,9 +453,7 @@ public final class VoxelBrew implements Runnable {
         @Override
         public Integer call() throws Exception {
             var session = session();
-            session.add(
-                    new Feature.ThroughCut(
-                            id, profileRef(session, sketch), new Feature.BodyRef(body, output)));
+            session.add(new Feature.ThroughCut(id, profileRef(session, sketch), new Feature.BodyRef(body, output)));
             return save(session);
         }
     }
@@ -549,9 +481,7 @@ public final class VoxelBrew implements Runnable {
         @Option(names = "--value")
         Double value;
 
-        @Option(
-                names = "--expression",
-                description = "Formula or named parameter (instead of --value)")
+        @Option(names = "--expression", description = "Formula or named parameter (instead of --value)")
         String expression;
 
         @Override
@@ -592,8 +522,7 @@ public final class VoxelBrew implements Runnable {
 
     @Command(
             name = "repair",
-            description =
-                    "Repair an extrusion/cut sketch reference or cut body input, preserving IDs.",
+            description = "Repair an extrusion/cut sketch reference or cut body input, preserving IDs.",
             mixinStandardHelpOptions = true)
     static final class Repair extends FileCommand {
 
@@ -617,36 +546,29 @@ public final class VoxelBrew implements Runnable {
         @Override
         public Integer call() throws Exception {
             var session = session();
-            Feature original =
-                    session.document().features().stream()
-                            .filter(f -> f.id().equals(feature))
-                            .findFirst()
-                            .orElseThrow(
-                                    () -> new ModelException(feature, "feature does not exist"));
+            Feature original = session.document().features().stream()
+                    .filter(f -> f.id().equals(feature))
+                    .findFirst()
+                    .orElseThrow(() -> new ModelException(feature, "feature does not exist"));
             if (original instanceof Feature.Extrude e && sketch != null && body == null) {
-                session.replace(
-                        new Feature.Extrude(e.id(), profileRef(session, sketch), e.distance()));
+                session.replace(new Feature.Extrude(e.id(), profileRef(session, sketch), e.distance()));
             } else if (original instanceof Feature.ThroughCut c
                     && (sketch != null || body != null || bodyOutput != null)) {
-                session.replace(
-                        new Feature.ThroughCut(
-                                c.id(),
-                                sketch == null ? c.profile() : profileRef(session, sketch),
-                                new Feature.BodyRef(
-                                        body == null ? c.body().featureId() : body,
-                                        bodyOutput == null ? c.body().outputName() : bodyOutput)));
-            } else if (original instanceof Feature.SplitBody s
-                    && (body != null || bodyOutput != null)) {
-                session.replace(
-                        new Feature.SplitBody(
-                                s.id(),
-                                new Feature.BodyRef(
-                                        body == null ? s.body().featureId() : body,
-                                        bodyOutput == null ? s.body().outputName() : bodyOutput),
-                                s.plane()));
+                session.replace(new Feature.ThroughCut(
+                        c.id(),
+                        sketch == null ? c.profile() : profileRef(session, sketch),
+                        new Feature.BodyRef(
+                                body == null ? c.body().featureId() : body,
+                                bodyOutput == null ? c.body().outputName() : bodyOutput)));
+            } else if (original instanceof Feature.SplitBody s && (body != null || bodyOutput != null)) {
+                session.replace(new Feature.SplitBody(
+                        s.id(),
+                        new Feature.BodyRef(
+                                body == null ? s.body().featureId() : body,
+                                bodyOutput == null ? s.body().outputName() : bodyOutput),
+                        s.plane()));
             } else {
-                throw new ModelException(
-                        feature, "specify a supported --sketch or --body-feature repair");
+                throw new ModelException(feature, "specify a supported --sketch or --body-feature repair");
             }
             return save(session);
         }
@@ -701,11 +623,7 @@ public final class VoxelBrew implements Runnable {
             super(documents, documentWriter);
         }
 
-        @Option(
-                names = "--point",
-                split = ",",
-                arity = "1",
-                description = "Classify x,y,z in each body")
+        @Option(names = "--point", split = ",", arity = "1", description = "Classify x,y,z in each body")
         double[] point;
 
         @Override
@@ -742,13 +660,12 @@ public final class VoxelBrew implements Runnable {
                     if (point != null) {
                         spec.commandLine()
                                 .getOut()
-                                .println(
-                                        "contains="
-                                                + body.solid()
-                                                        .contains(point[0], point[1], point[2]));
+                                .println("contains=" + body.solid().contains(point[0], point[1], point[2]));
                     }
                 }
-                spec.commandLine().getOut().println("bodyCount=" + evaluation.bodies().size());
+                spec.commandLine()
+                        .getOut()
+                        .println("bodyCount=" + evaluation.bodies().size());
                 return 0;
             }
         }

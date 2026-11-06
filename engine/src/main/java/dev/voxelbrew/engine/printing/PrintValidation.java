@@ -20,8 +20,7 @@ public final class PrintValidation {
         }
 
         public void requireValid() {
-            if (!valid())
-                throw new IllegalArgumentException("Print setup is invalid: " + diagnostics);
+            if (!valid()) throw new IllegalArgumentException("Print setup is invalid: " + diagnostics);
         }
     }
 
@@ -39,43 +38,30 @@ public final class PrintValidation {
         var bed = MeshGeometry.polygon(model.profile().printer().bed());
         bed.add(new Area(new BasicStroke(0.002f).createStrokedShape(bed)));
         // Mesh topology belongs to a body, so repeated placements only need one inspection.
-        var bodyIds =
-                model.instances().stream()
-                        .map(i -> i.bodyId())
-                        .distinct()
-                        .filter(model.meshes()::containsKey)
-                        .toList();
-        var bodyReports =
-                dev.voxelbrew.util.concurrent.CpuWork.map(
-                        bodyIds, id -> MeshValidation.inspect(model.meshes().get(id)));
+        var bodyIds = model.instances().stream()
+                .map(i -> i.bodyId())
+                .distinct()
+                .filter(model.meshes()::containsKey)
+                .toList();
+        var bodyReports = dev.voxelbrew.util.concurrent.CpuWork.map(
+                bodyIds, id -> MeshValidation.inspect(model.meshes().get(id)));
         var reportsByBody = new HashMap<String, MeshValidation.Report>();
-        for (int i = 0; i < bodyIds.size(); i++)
-            reportsByBody.put(bodyIds.get(i), bodyReports.get(i));
-        var placements =
-                dev.voxelbrew.util.concurrent.CpuWork.map(
-                        model.instances(),
-                        instance -> {
-                            if (!model.meshes().containsKey(instance.bodyId()))
-                                return new Placement(null, null);
-                            var placed = model.placedMesh(instance);
-                            return new Placement(
-                                    MeshGeometry.footprint(placed), MeshGeometry.bounds(placed));
-                        });
+        for (int i = 0; i < bodyIds.size(); i++) reportsByBody.put(bodyIds.get(i), bodyReports.get(i));
+        var placements = dev.voxelbrew.util.concurrent.CpuWork.map(model.instances(), instance -> {
+            if (!model.meshes().containsKey(instance.bodyId())) return new Placement(null, null);
+            var placed = model.placedMesh(instance);
+            return new Placement(MeshGeometry.footprint(placed), MeshGeometry.bounds(placed));
+        });
         for (int index = 0; index < model.instances().size(); index++) {
             var instance = model.instances().get(index);
             var mesh = model.meshes().get(instance.bodyId());
             if (mesh == null) {
-                diagnostics.add(
-                        new Diagnostic(
-                                instance.id(),
-                                "MISSING_BODY",
-                                "Missing body " + instance.bodyId()));
+                diagnostics.add(new Diagnostic(instance.id(), "MISSING_BODY", "Missing body " + instance.bodyId()));
                 continue;
             }
             var report = reportsByBody.get(instance.bodyId());
             reports.put(instance.id(), report);
-            if (!report.closed())
-                diagnostics.add(new Diagnostic(instance.id(), "MESH", report.toString()));
+            if (!report.closed()) diagnostics.add(new Diagnostic(instance.id(), "MESH", report.toString()));
             var footprint = placements.get(index).footprint();
             var box = placements.get(index).bounds();
             footprints.put(instance.id(), footprint);
@@ -91,28 +77,21 @@ public final class PrintValidation {
                 var overlap = new Area(footprints.get(ids.get(i)));
                 overlap.intersect(footprints.get(ids.get(j)));
                 if (!overlap.isEmpty()) {
-                    diagnostics.add(
-                            new Diagnostic(
-                                    ids.get(i), "OVERLAP", "Footprint overlaps " + ids.get(j)));
-                    diagnostics.add(
-                            new Diagnostic(
-                                    ids.get(j), "OVERLAP", "Footprint overlaps " + ids.get(i)));
+                    diagnostics.add(new Diagnostic(ids.get(i), "OVERLAP", "Footprint overlaps " + ids.get(j)));
+                    diagnostics.add(new Diagnostic(ids.get(j), "OVERLAP", "Footprint overlaps " + ids.get(i)));
                 }
             }
         for (var support : model.setup().supports()) {
-            var owner =
-                    model.instances().stream()
-                            .filter(i -> i.id().equals(support.instanceId()))
-                            .findFirst();
+            var owner = model.instances().stream()
+                    .filter(i -> i.id().equals(support.instanceId()))
+                    .findFirst();
             if (owner.isEmpty() || !footprints.containsKey(support.instanceId())) {
-                diagnostics.add(
-                        new Diagnostic(
-                                support.id(),
-                                "MISSING_INSTANCE",
-                                "Support attachment is missing: " + support.instanceId()));
+                diagnostics.add(new Diagnostic(
+                        support.id(), "MISSING_INSTANCE", "Support attachment is missing: " + support.instanceId()));
                 continue;
             }
-            var mesh = MeshGeometry.transform(MeshGeometry.box(support), owner.get().transform());
+            var mesh = MeshGeometry.transform(
+                    MeshGeometry.box(support), owner.get().transform());
             var footprint = MeshGeometry.footprint(mesh);
             var box = MeshGeometry.bounds(mesh);
             if (support.role() == SupportVolume.Role.SOLID_SUPPORT)
@@ -121,45 +100,33 @@ public final class PrintValidation {
                 var overlap = new Area(footprint);
                 overlap.intersect(footprints.get(support.instanceId()));
                 var part = bounds.get(support.instanceId());
-                if (overlap.isEmpty()
-                        || box.maxZ() < part.minZ() - 0.001
-                        || box.minZ() > part.maxZ() + 0.001)
-                    diagnostics.add(
-                            new Diagnostic(
-                                    support.id(),
-                                    "DETACHED_MODIFIER",
-                                    "Support instruction no longer intersects its attached instance"));
+                if (overlap.isEmpty() || box.maxZ() < part.minZ() - 0.001 || box.minZ() > part.maxZ() + 0.001)
+                    diagnostics.add(new Diagnostic(
+                            support.id(),
+                            "DETACHED_MODIFIER",
+                            "Support instruction no longer intersects its attached instance"));
             }
         }
         return new Result(diagnostics, reports);
     }
 
     private static void checkBed(
-            String id,
-            Area footprint,
-            Bounds box,
-            Area bed,
-            PrintProfile profile,
-            List<Diagnostic> diagnostics) {
+            String id, Area footprint, Bounds box, Area bed, PrintProfile profile, List<Diagnostic> diagnostics) {
         var outside = new Area(footprint);
         outside.subtract(bed);
         if (!outside.isEmpty())
-            diagnostics.add(
-                    new Diagnostic(id, "OUTSIDE_BED", "Footprint lies outside the bed polygon"));
-        if (box.minZ() < -0.001)
-            diagnostics.add(new Diagnostic(id, "BELOW_BED", "Material lies below Z=0"));
+            diagnostics.add(new Diagnostic(id, "OUTSIDE_BED", "Footprint lies outside the bed polygon"));
+        if (box.minZ() < -0.001) diagnostics.add(new Diagnostic(id, "BELOW_BED", "Material lies below Z=0"));
         if (box.maxZ() > profile.printer().usableHeight() + 0.001)
-            diagnostics.add(
-                    new Diagnostic(
-                            id,
-                            "OVER_HEIGHT",
-                            "Exceeds usable height " + profile.printer().usableHeight() + " mm"));
+            diagnostics.add(new Diagnostic(
+                    id,
+                    "OVER_HEIGHT",
+                    "Exceeds usable height " + profile.printer().usableHeight() + " mm"));
         for (var zone : profile.printer().excludedZones()) {
             var intersection = new Area(footprint);
             intersection.intersect(MeshGeometry.polygon(zone));
             if (!intersection.isEmpty())
-                diagnostics.add(
-                        new Diagnostic(id, "EXCLUDED_ZONE", "Footprint enters an excluded zone"));
+                diagnostics.add(new Diagnostic(id, "EXCLUDED_ZONE", "Footprint enters an excluded zone"));
         }
     }
 }

@@ -25,8 +25,7 @@ public final class CpuWork {
         try {
             return Integer.parseInt(configured);
         } catch (NumberFormatException failure) {
-            throw new IllegalArgumentException(
-                    "voxelbrew.compute.threads must be an integer from 1 to 32", failure);
+            throw new IllegalArgumentException("voxelbrew.compute.threads must be an integer from 1 to 32", failure);
         }
     }
 
@@ -57,19 +56,17 @@ public final class CpuWork {
 
         WorkPool(int parallelism) {
             if (parallelism < 1 || parallelism > 32)
-                throw new IllegalArgumentException(
-                        "voxelbrew.compute.threads must be from 1 to 32");
+                throw new IllegalArgumentException("voxelbrew.compute.threads must be from 1 to 32");
             this.parallelism = parallelism;
             log.debug("Creating computation pool with parallelism {}", parallelism);
-            executor =
-                    parallelism == 1
-                            ? null
-                            : Executors.newFixedThreadPool(
-                                    parallelism,
-                                    Thread.ofPlatform()
-                                            .daemon()
-                                            .name("voxelbrew-compute-", 0)
-                                            .factory());
+            executor = parallelism == 1
+                    ? null
+                    : Executors.newFixedThreadPool(
+                            parallelism,
+                            Thread.ofPlatform()
+                                    .daemon()
+                                    .name("voxelbrew-compute-", 0)
+                                    .factory());
         }
 
         void forEach(int size, IntConsumer operation) {
@@ -91,23 +88,22 @@ public final class CpuWork {
             for (int worker = 0; worker < workers; worker++) {
                 final int slot = worker;
                 try {
-                    executor.execute(
-                            () -> {
-                                WORKER.set(true);
-                                try {
-                                    while (!stop.get()) {
-                                        int index = next.getAndIncrement();
-                                        if (index >= size) break;
-                                        operation.accept(index);
-                                    }
-                                } catch (RuntimeException | Error failure) {
-                                    failures[slot] = failure;
-                                    stop.set(true);
-                                } finally {
-                                    WORKER.remove();
-                                    finished.countDown();
-                                }
-                            });
+                    executor.execute(() -> {
+                        WORKER.set(true);
+                        try {
+                            while (!stop.get()) {
+                                int index = next.getAndIncrement();
+                                if (index >= size) break;
+                                operation.accept(index);
+                            }
+                        } catch (RuntimeException | Error failure) {
+                            failures[slot] = failure;
+                            stop.set(true);
+                        } finally {
+                            WORKER.remove();
+                            finished.countDown();
+                        }
+                    });
                 } catch (RuntimeException | Error failure) {
                     failures[slot] = failure;
                     stop.set(true);
@@ -141,7 +137,6 @@ public final class CpuWork {
     }
 
     private static void checkInterrupted() {
-        if (Thread.currentThread().isInterrupted())
-            throw new CancellationException("Computation cancelled");
+        if (Thread.currentThread().isInterrupted()) throw new CancellationException("Computation cancelled");
     }
 }

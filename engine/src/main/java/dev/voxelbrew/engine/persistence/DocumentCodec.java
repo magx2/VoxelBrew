@@ -90,7 +90,8 @@ public final class DocumentCodec {
                                             e ->
                                                     new dev.voxelbrew.engine.model.BodyStyle(
                                                             e.getValue().getMaterial(),
-                                                            e.getValue().getColor()))));
+                                                            e.getValue().getColor()))),
+                    message.getBodyNamesMap());
         } catch (DocumentFormatException failure) {
             throw failure;
         } catch (IOException | IllegalArgumentException failure) {
@@ -219,6 +220,9 @@ public final class DocumentCodec {
                         .setPrintSetup(toProto(document.printSetup()))
                         .setParameters(ParameterCodec.toProto(document.parameters()));
         document.features().forEach(feature -> message.addFeatures(toProto(feature)));
+        document.bodyNames().entrySet().stream()
+                .sorted(java.util.Map.Entry.comparingByKey())
+                .forEach(entry -> message.putBodyNames(entry.getKey(), entry.getValue()));
         document.bodyStyles().entrySet().stream()
                 .sorted(java.util.Map.Entry.comparingByKey())
                 .forEach(

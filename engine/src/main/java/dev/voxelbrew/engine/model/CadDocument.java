@@ -12,7 +12,18 @@ public record CadDocument(
         int cursor,
         dev.voxelbrew.engine.printing.PrintSetup printSetup,
         dev.voxelbrew.engine.parameters.ParameterSet parameters,
-        Map<String, BodyStyle> bodyStyles) {
+        Map<String, BodyStyle> bodyStyles,
+        Map<String, String> bodyNames) {
+    public CadDocument(
+            String id,
+            List<Feature> features,
+            int cursor,
+            dev.voxelbrew.engine.printing.PrintSetup printSetup,
+            dev.voxelbrew.engine.parameters.ParameterSet parameters,
+            Map<String, BodyStyle> bodyStyles) {
+        this(id, features, cursor, printSetup, parameters, bodyStyles, Map.of());
+    }
+
     public CadDocument(
             String id,
             List<Feature> features,
@@ -44,6 +55,9 @@ public record CadDocument(
         java.util.Objects.requireNonNull(parameters);
         bodyStyles = Map.copyOf(bodyStyles);
         bodyStyles.keySet().forEach(BodyStyle::requireBodyId);
+        bodyNames = Map.copyOf(bodyNames);
+        bodyNames.keySet().forEach(BodyStyle::requireBodyId);
+        bodyNames.values().forEach(CadDocument::requireBodyName);
         identifier(id, "document ID");
         features = List.copyOf(features);
         var ids = new HashSet<String>();
@@ -60,6 +74,20 @@ public record CadDocument(
 
     public static CadDocument empty() {
         return new CadDocument(UUID.randomUUID().toString(), List.of(), 0);
+    }
+
+    /** Display names never replace stable body identities or feature references. */
+    public String bodyName(String bodyId, String fallback) {
+        return bodyNames.getOrDefault(bodyId, fallback);
+    }
+
+    public static void requireBodyName(String name) {
+        if (name == null
+                || name.isBlank()
+                || name.length() > 128
+                || name.codePoints().anyMatch(Character::isISOControl))
+            throw new IllegalArgumentException(
+                    "Body name must contain 1–128 characters and no control characters");
     }
 
     /**

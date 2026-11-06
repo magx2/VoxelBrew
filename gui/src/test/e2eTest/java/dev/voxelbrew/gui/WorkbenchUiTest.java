@@ -675,6 +675,284 @@ class WorkbenchUiTest {
     }
 
     @Test
+    void bodyContextRenameAndInlineEditingPersistWithoutChangingGeometry() throws Exception {
+        createRenameBodies();
+        var original = document();
+        long before = fx(() -> workbench.controller().snapshot().revision());
+        var ids =
+                fx(
+                        () ->
+                                workbench.controller().build().bodies().stream()
+                                        .map(DocumentController.Body::id)
+                                        .toList());
+        double volume = fx(() -> workbench.controller().build().bodies().getFirst().volume());
+        bodyTreeClick("Body 1", MouseButton.SECONDARY, 1);
+        assertFalse(fx(() -> node("#body-rename").getAccessibleHelp().isBlank()));
+        click("body-rename");
+        assertEquals("Body 1", fx(() -> ((TextField) node("#body-rename-field")).getText()));
+        text("body-rename-field", "Mounting plate");
+        fx(
+                () -> {
+                    Screenshot.save(
+                            stage.getScene(),
+                            Path.of(
+                                    System.getProperty("voxelbrew.ui.artifacts"),
+                                    "body-rename-light.png"));
+                    return null;
+                });
+        key(KeyCode.ENTER);
+        ready();
+        assertEquals(Map.of("named0.body", "Mounting plate"), document().bodyNames());
+        assertEquals(before + 1, fx(() -> workbench.controller().snapshot().revision()));
+        assertEquals(original.features(), document().features());
+        assertEquals(
+                ids,
+                fx(
+                        () ->
+                                workbench.controller().build().bodies().stream()
+                                        .map(DocumentController.Body::id)
+                                        .toList()));
+        assertEquals(
+                volume,
+                fx(() -> workbench.controller().build().bodies().getFirst().volume()),
+                0.000001);
+        click("undo");
+        ready();
+        assertTrue(document().bodyNames().isEmpty());
+        click("redo");
+        ready();
+        long renamed = fx(() -> workbench.controller().snapshot().revision());
+        bodyTreeClick("Mounting plate", MouseButton.PRIMARY, 2);
+        key(KeyCode.ENTER);
+        ready();
+        assertEquals(
+                renamed,
+                fx(() -> workbench.controller().snapshot().revision()),
+                "Accepting an unchanged name creates no undo entry");
+        bodyTreeClick("Mounting plate", MouseButton.PRIMARY, 2);
+        text("body-rename-field", "");
+        key(KeyCode.ENTER);
+        assertFalse(fx(() -> ((Label) node("#body-rename-error")).getText().isBlank()));
+        assertEquals(renamed, fx(() -> workbench.controller().snapshot().revision()));
+        text("body-rename-field", "Discard this");
+        key(KeyCode.ESCAPE);
+        assertEquals(renamed, fx(() -> workbench.controller().snapshot().revision()));
+        assertEquals("Mounting plate", document().bodyNames().get("named0.body"));
+        bodyTreeClick("Mounting plate", MouseButton.PRIMARY, 2);
+        text("body-rename-field", "Uncommitted");
+        click("body-material-name");
+        assertNull(fx(() -> ((TreeView<?>) node("#model-tree")).getEditingItem()));
+        assertEquals(renamed, fx(() -> workbench.controller().snapshot().revision()));
+        Path file = directory.resolve("named bodies.jcad");
+        click("save-as");
+        text("file-path", file.toString());
+        click("file-confirm");
+        ready();
+        click("open");
+        text("file-path", file.toString());
+        click("file-confirm");
+        ready();
+        assertEquals("Mounting plate", document().bodyNames().get("named0.body"));
+        assertEquals(
+                ids,
+                fx(
+                        () ->
+                                workbench.controller().build().bodies().stream()
+                                        .map(DocumentController.Body::id)
+                                        .toList()));
+        bodyTreeClick("Mounting plate", MouseButton.PRIMARY, 2);
+        text("body-rename-field", "Stale draft");
+        fx(
+                () -> {
+                    workbench.controller().cursor(3);
+                    return null;
+                });
+        ready();
+        assertNull(fx(() -> ((TreeView<?>) node("#model-tree")).getEditingItem()));
+        bodyTreeClick("Mounting plate", MouseButton.SECONDARY, 1);
+        assertTrue(
+                fx(
+                        () ->
+                                Window.getWindows().stream()
+                                        .filter(ContextMenu.class::isInstance)
+                                        .map(ContextMenu.class::cast)
+                                        .filter(Window::isShowing)
+                                        .flatMap(menu -> menu.getItems().stream())
+                                        .filter(item -> "body-rename".equals(item.getId()))
+                                        .findFirst()
+                                        .orElseThrow()
+                                        .isDisable()),
+                "Cannot rename while rolled back");
+        key(KeyCode.ESCAPE);
+        bodyTreeClick("Mounting plate", MouseButton.PRIMARY, 2);
+        assertNull(fx(() -> ((TreeView<?>) node("#model-tree")).getEditingItem()));
+        fx(
+                () -> {
+                    workbench.controller().cursor(4);
+                    return null;
+                });
+        ready();
+        assertEquals("Mounting plate", document().bodyNames().get("named0.body"));
+        String featureLabel =
+                fx(
+                        () ->
+                                ((TreeView<?>) node("#model-tree"))
+                                        .getRoot()
+                                        .getChildren()
+                                        .getFirst()
+                                        .getChildren()
+                                        .getFirst()
+                                        .getValue()
+                                        .toString());
+        bodyTreeClick(featureLabel, MouseButton.PRIMARY, 2);
+        assertNull(
+                fx(() -> ((TreeView<?>) node("#model-tree")).getEditingItem()),
+                "Feature rows do not enter body-name editing");
+    }
+
+    @Test
+    void polishBodyRenameTargetsTheClickedBodyAndSupportsDarkPalette() throws Exception {
+        createRenameBodies();
+        choice("appearance", 2);
+        var translations = new dev.voxelbrew.util.i18n.Translations(Locale.forLanguageTag("pl"));
+        bodyTreeClick(translations.text("feature.body", 2), MouseButton.SECONDARY, 1);
+        assertEquals(
+                "Zmień nazwę", fx(() -> ((Label) node("#body-rename").lookup(".label")).getText()));
+        fx(
+                () -> {
+                    Screenshot.save(
+                            node("#body-rename").getScene(),
+                            Path.of(
+                                    System.getProperty("voxelbrew.ui.artifacts"),
+                                    "body-context-pl.png"));
+                    return null;
+                });
+        click("body-rename");
+        text("body-rename-field", "Obudowa");
+        fx(
+                () -> {
+                    var editor = node("#body-rename-field");
+                    var clip = node("#model-tree").lookup(".clipped-container");
+                    assertNotNull(clip);
+                    var fieldBounds = editor.localToScene(editor.getLayoutBounds());
+                    var visibleBounds = clip.localToScene(clip.getLayoutBounds());
+                    assertTrue(fieldBounds.getMinY() >= visibleBounds.getMinY() - 1);
+                    assertTrue(
+                            fieldBounds.getMaxY() <= visibleBounds.getMaxY() + 1,
+                            "The entire inline editor must remain visible on the last row");
+                    return null;
+                });
+        fx(
+                () -> {
+                    Screenshot.save(
+                            stage.getScene(),
+                            Path.of(
+                                    System.getProperty("voxelbrew.ui.artifacts"),
+                                    "body-rename-dark.png"));
+                    return null;
+                });
+        key(KeyCode.ENTER);
+        ready();
+        assertEquals(Map.of("named1.body", "Obudowa"), document().bodyNames());
+        long revision = fx(() -> workbench.controller().snapshot().revision());
+        bodyTreeClick("Obudowa", MouseButton.SECONDARY, 1);
+        click("body-fit");
+        assertEquals(revision, fx(() -> workbench.controller().snapshot().revision()));
+        bodyTreeClick("Obudowa", MouseButton.PRIMARY, 2);
+        fx(
+                () -> {
+                    workbench.controller().newDocument();
+                    return null;
+                });
+        ready();
+        assertTrue(document().bodyNames().isEmpty());
+        assertNull(fx(() -> ((TreeView<?>) node("#model-tree")).getEditingItem()));
+    }
+
+    private void createRenameBodies() throws Exception {
+        fx(
+                () -> {
+                    for (int i = 0; i < 2; i++) {
+                        workbench
+                                .controller()
+                                .add(
+                                        new Feature.Sketch(
+                                                "named-sketch" + i,
+                                                "profile" + i,
+                                                new Feature.Plane("origin-xy", 0),
+                                                new Feature.Rectangle(i * 40, 0, 30, 30)));
+                        workbench
+                                .controller()
+                                .add(
+                                        new Feature.Extrude(
+                                                "named" + i,
+                                                new Feature.ProfileRef(
+                                                        "named-sketch" + i, "profile" + i),
+                                                5));
+                    }
+                    return null;
+                });
+        ready();
+    }
+
+    private void bodyTreeClick(String label, MouseButton button, int count) throws Exception {
+        focus(stage);
+        int targetRow =
+                fx(
+                        () -> {
+                            var view = (TreeView<?>) node("#model-tree");
+                            for (int row = 0; row < view.getExpandedItemCount(); row++) {
+                                if (label.equals(view.getTreeItem(row).getValue().toString())) {
+                                    view.scrollTo(row);
+                                    return row;
+                                }
+                            }
+                            throw new AssertionError("Missing body item " + label);
+                        });
+        Thread.sleep(150);
+        var point =
+                fx(
+                        () -> {
+                            stage.getScene().getRoot().applyCss();
+                            stage.getScene().getRoot().layout();
+                            var cell =
+                                    node("#model-tree").lookupAll(".tree-cell").stream()
+                                            .filter(
+                                                    n ->
+                                                            n instanceof TreeCell<?> row
+                                                                    && row.getIndex() == targetRow
+                                                                    && label.equals(row.getText()))
+                                            .findFirst()
+                                            .orElseThrow(
+                                                    () ->
+                                                            new AssertionError(
+                                                                    "Missing body label " + label));
+                            var bounds = cell.localToScreen(cell.getBoundsInLocal());
+                            return new Point2D(bounds.getCenterX(), bounds.getCenterY());
+                        });
+        for (int i = 0; i < count; i++) {
+            fx(
+                    () -> {
+                        robot.mouseMove(point);
+                        robot.mouseClick(button);
+                        return null;
+                    });
+            Thread.sleep(80);
+        }
+        Thread.sleep(250);
+        assertEquals(
+                label,
+                fx(
+                        () ->
+                                ((TreeView<?>) node("#model-tree"))
+                                        .getSelectionModel()
+                                        .getSelectedItem()
+                                        .getValue()
+                                        .toString()),
+                "Native click selects the intended row");
+    }
+
+    @Test
     void bodyMaterialAndColorPickingUndoSaveAndBothPalettes() throws Exception {
         var session = new ModelSession(CadDocument.empty());
         for (int i = 0; i < 2; i++) {

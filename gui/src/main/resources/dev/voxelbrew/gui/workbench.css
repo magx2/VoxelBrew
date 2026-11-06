@@ -27,6 +27,10 @@
 .dark .about-content .hyperlink {
   -fx-text-fill: #9bbfff;
 }
+.body-rename-field:invalid {
+  -fx-border-color: #d44b4b;
+  -fx-border-radius: 3;
+}
 .dark .table-view .table-row-cell:selected {
   -fx-background-color: -fx-selection-bar;
 }

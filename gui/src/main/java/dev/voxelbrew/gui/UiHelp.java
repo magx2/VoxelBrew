@@ -100,6 +100,12 @@ final class UiHelp {
         observeMenu(menu);
     }
 
+    static void menu(ContextMenu menu) {
+        menu.addEventHandler(
+                javafx.stage.WindowEvent.WINDOW_SHOWN,
+                event -> Platform.runLater(() -> menu.getItems().forEach(UiHelp::attach)));
+    }
+
     private static void observeMenu(MenuButton menu) {
         menu.showingProperty()
                 .addListener(

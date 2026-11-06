@@ -282,6 +282,18 @@ public final class DocumentController implements AutoCloseable {
         schedule(session.document(), false);
     }
 
+    public void renameBody(String bodyId, String name) {
+        if (!canExport() || build.bodies().stream().noneMatch(b -> b.id().equals(bodyId)))
+            throw new IllegalStateException(
+                    "Select a current body at the end of a successful rebuild");
+        long before = session.revision();
+        session.renameBody(bodyId, name);
+        if (session.revision() != before) {
+            log.info("Renamed body {} in document {}", bodyId, session.document().id());
+            schedule(session.document(), false);
+        }
+    }
+
     public void cursor(int position) {
         preview = null;
         session.setCursor(position);

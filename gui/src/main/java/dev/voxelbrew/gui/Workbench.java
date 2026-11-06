@@ -31,6 +31,184 @@ public final class Workbench extends BorderPane implements AutoCloseable {
         }
     }
 
+    private final class BodyTreeCell extends TreeCell<Entry> {
+        private final ContextMenu menu = new ContextMenu();
+        private TextField editor;
+        private Label validation;
+        private ModelSession.Snapshot editingSnapshot;
+        private Entry editingEntry;
+
+        BodyTreeCell() {
+            var rename = new MenuItem(translations.text("body.rename"));
+            rename.setId("body-rename");
+            UiHelp.menuItem(rename, translations.text("help.body-rename"));
+            rename.setOnAction(
+                    event -> {
+                        var item = getTreeItem();
+                        Platform.runLater(
+                                () -> {
+                                    if (item == getTreeItem()) tree.edit(item);
+                                });
+                    });
+            var fit = new MenuItem(translations.text("body.fit"));
+            fit.setId("body-fit");
+            UiHelp.menuItem(fit, translations.text("help.body-fit"));
+            fit.setOnAction(
+                    event -> {
+                        var entry = getItem();
+                        if (entry == null || entry.id() == null) return;
+                        var mesh = meshes().get(entry.id());
+                        if (mesh != null) viewport.fit(Map.of(entry.id(), mesh));
+                    });
+            menu.getItems().addAll(rename, fit);
+            UiHelp.menu(menu);
+            menu.setOnShowing(
+                    event -> {
+                        tree.getSelectionModel().select(getTreeItem());
+                        rename.setDisable(!canRename());
+                        fit.setDisable(
+                                tool != Tool.NONE
+                                        || controller.rebuilding()
+                                        || !controller.build().valid());
+                    });
+            setOnMouseClicked(
+                    event -> {
+                        if (event.getButton() == MouseButton.PRIMARY
+                                && event.getClickCount() == 2
+                                && canRename()) {
+                            tree.edit(getTreeItem());
+                            event.consume();
+                        }
+                    });
+        }
+
+        private boolean canRename() {
+            var entry = getItem();
+            return entry != null
+                    && entry.body()
+                    && entry.id() != null
+                    && tool == Tool.NONE
+                    && controller.canExport()
+                    && controller.build().bodies().stream()
+                            .anyMatch(body -> body.id().equals(entry.id()));
+        }
+
+        @Override
+        protected void updateItem(Entry entry, boolean empty) {
+            super.updateItem(entry, empty);
+            if (!isEditing()) {
+                setText(empty || entry == null ? null : entry.label());
+                setGraphic(null);
+            }
+            setContextMenu(
+                    !empty && entry != null && entry.body() && entry.id() != null ? menu : null);
+            if (empty) menu.hide();
+        }
+
+        @Override
+        public void startEdit() {
+            if (isEditing()) return;
+            if (!canRename()) {
+                if (tree.getEditingItem() == getTreeItem()) tree.edit(null);
+                return;
+            }
+            super.startEdit();
+            if (!isEditing()) return;
+            editingEntry = getItem();
+            editingSnapshot = controller.snapshot();
+            editor = new TextField(editingEntry.label());
+            editor.setId("body-rename-field");
+            editor.setMinWidth(0);
+            editor.getStyleClass().add("body-rename-field");
+            editor.setAccessibleText(translations.text("body.name"));
+            UiHelp.install(editor, translations);
+            validation = new Label();
+            validation.setId("body-rename-error");
+            validation.setWrapText(true);
+            validation.getStyleClass().add("error");
+            validation.managedProperty().bind(validation.textProperty().isNotEmpty());
+            validation.visibleProperty().bind(validation.managedProperty());
+            var content = new VBox(3, editor, validation);
+            content.prefWidthProperty()
+                    .bind(javafx.beans.binding.Bindings.max(50, widthProperty().subtract(44)));
+            setText(null);
+            setGraphic(content);
+            editor.setOnAction(
+                    event -> {
+                        applyName();
+                        event.consume();
+                    });
+            editor.textProperty()
+                    .addListener(
+                            (observable, before, after) -> {
+                                validation.setText("");
+                                editor.pseudoClassStateChanged(
+                                        javafx.css.PseudoClass.getPseudoClass("invalid"), false);
+                            });
+            var input = editor;
+            input.focusedProperty()
+                    .addListener(
+                            (observable, before, focused) -> {
+                                if (!focused)
+                                    Platform.runLater(
+                                            () -> {
+                                                if (isEditing()
+                                                        && editor == input
+                                                        && !input.isFocused()) tree.edit(null);
+                                            });
+                            });
+            focusEditor(true);
+        }
+
+        private void focusEditor(boolean selectAll) {
+            Platform.runLater(
+                    () -> {
+                        if (isEditing()) {
+                            tree.applyCss();
+                            tree.layout();
+                            tree.scrollTo(getIndex());
+                            editor.requestFocus();
+                            if (selectAll) editor.selectAll();
+                        }
+                    });
+        }
+
+        private void applyName() {
+            if (!isEditing()) return;
+            String name = editor.getText();
+            try {
+                CadDocument.requireBodyName(name);
+                name = name.strip();
+            } catch (IllegalArgumentException invalid) {
+                validation.setText(translations.text("body.rename.invalid"));
+                editor.pseudoClassStateChanged(
+                        javafx.css.PseudoClass.getPseudoClass("invalid"), true);
+                focusEditor(false);
+                return;
+            }
+            var current = controller.snapshot();
+            boolean currentBody =
+                    canRename()
+                            && current.revision() == editingSnapshot.revision()
+                            && current.document().id().equals(editingSnapshot.document().id());
+            var original = editingEntry;
+            tree.edit(null);
+            if (currentBody && !name.equals(original.label())) {
+                String accepted = name;
+                attempt(() -> controller.renameBody(original.id(), accepted));
+            }
+        }
+
+        @Override
+        public void cancelEdit() {
+            super.cancelEdit();
+            editingEntry = null;
+            editingSnapshot = null;
+            setText(getItem() == null ? null : getItem().label());
+            setGraphic(null);
+        }
+    }
+
     private enum Tool {
         NONE,
         PLANE,
@@ -93,6 +271,7 @@ public final class Workbench extends BorderPane implements AutoCloseable {
     private final Map<String, TextField> fields = new LinkedHashMap<>();
     private List<Feature> lastFeatures = List.of();
     private Map<String, BodyStyle> lastBodyStyles = Map.of();
+    private Map<String, String> lastBodyNames = Map.of();
     private boolean lastRebuilding;
     private boolean lastIoBusy;
     private DocumentController.Build lastBuild;
@@ -397,6 +576,8 @@ public final class Workbench extends BorderPane implements AutoCloseable {
         setTop(toolbar);
         tree.setId("model-tree");
         tree.setShowRoot(false);
+        tree.setEditable(true);
+        tree.setCellFactory(view -> new BodyTreeCell());
         tree.getSelectionModel()
                 .selectedItemProperty()
                 .addListener(
@@ -525,6 +706,11 @@ public final class Workbench extends BorderPane implements AutoCloseable {
                     var focus = getScene().getFocusOwner();
                     if (KeyboardShortcuts.textUndo(e, focus)) return;
                     if (e.getCode() == KeyCode.ESCAPE) {
+                        if (tree.getEditingItem() != null) {
+                            tree.edit(null);
+                            e.consume();
+                            return;
+                        }
                         cancelTool();
                         e.consume();
                         return;
@@ -716,6 +902,7 @@ public final class Workbench extends BorderPane implements AutoCloseable {
             boolean changed =
                     !lastFeatures.equals(effective)
                             || !lastBodyStyles.equals(document.bodyStyles())
+                            || !lastBodyNames.equals(document.bodyNames())
                             || !lastParameters.equals(document.parameters())
                             || !lastDocument.equals(document.id());
             if (!lastDocument.equals(document.id())) {
@@ -752,6 +939,7 @@ public final class Workbench extends BorderPane implements AutoCloseable {
             lastIoBusy = controller.ioBusy();
             lastFeatures = effective;
             lastBodyStyles = document.bodyStyles();
+            lastBodyNames = document.bodyNames();
             lastParameters = document.parameters();
             lastDocument = document.id();
             timeline.update(
@@ -876,6 +1064,7 @@ public final class Workbench extends BorderPane implements AutoCloseable {
     }
 
     private void rebuildTree(CadDocument document) {
+        tree.edit(null);
         var root = new TreeItem<>(new Entry(null, translations.text("gui.document"), false));
         var features = new TreeItem<>(new Entry(null, translations.text("gui.features"), false));
         features.setExpanded(true);
@@ -907,7 +1096,9 @@ public final class Workbench extends BorderPane implements AutoCloseable {
                             new TreeItem<>(
                                     new Entry(
                                             body.id(),
-                                            translations.text("feature.body", index++),
+                                            document.bodyName(
+                                                    body.id(),
+                                                    translations.text("feature.body", index++)),
                                             true)));
         root.getChildren().add(features);
         root.getChildren().add(bodies);
@@ -926,6 +1117,19 @@ public final class Workbench extends BorderPane implements AutoCloseable {
                     return;
                 }
         tree.getSelectionModel().clearSelection();
+    }
+
+    private String bodyLabel(String id) {
+        int index = 1;
+        for (var body : controller.build().bodies()) {
+            if (body.id().equals(id))
+                return controller
+                        .snapshot()
+                        .document()
+                        .bodyName(id, translations.text("feature.body", index));
+            index++;
+        }
+        return id;
     }
 
     private Feature selected() {
@@ -961,10 +1165,7 @@ public final class Workbench extends BorderPane implements AutoCloseable {
         printing.selectedFace(id, face);
         inspect();
         if (face >= 0)
-            selectionLabel.setText(
-                    translations.text("feature.face", face)
-                            + " · "
-                            + shortName(Objects.requireNonNull(selected())));
+            selectionLabel.setText(translations.text("feature.face", face) + " · " + bodyLabel(id));
         refresh();
     }
 
@@ -985,7 +1186,7 @@ public final class Workbench extends BorderPane implements AutoCloseable {
             form.getChildren().add(hint);
             return;
         }
-        selectionLabel.setText(shortName(feature));
+        selectionLabel.setText(selectedBody == null ? shortName(feature) : bodyLabel(selectedBody));
         var identity = new Label(feature.id());
         identity.setWrapText(true);
         identity.getStyleClass().add("muted");

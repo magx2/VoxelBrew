@@ -58,9 +58,19 @@ cursor. Profile references contain both sketch and profile IDs. Solids are named
 target body identity and publishes its own named output. An edit never recreates
 feature IDs. Body results and meshes are disposable, not serialized.
 
+Body display names are separate metadata keyed by stable body ID and saved in
+`.jcad`. In the GUI, right-click a body and choose **Rename**, or double-click its
+label to edit it inline. Enter applies one undoable change; Escape or clicking
+elsewhere discards the draft. Empty names and control characters are rejected;
+names may contain up to 128 characters. Rename is enabled for a current body at
+the end of a successful rebuild. The same menu can fit the view to that body.
+Renaming preserves geometry, references, material/color assignments and timeline
+features. Cuts keep the existing body's name because they retain its identity;
+new split bodies have their own identities and labels.
+
 `ModelSession` is the frontend-neutral transaction boundary. It supports `add`,
 `replace`, `editDimension`, `setCursor`, `undo`, `redo`, and `evaluate`.
-Undo/redo retain feature definitions only; cursor changes never become undo
+Undo/redo retain feature definitions and document metadata; cursor changes never become undo
 transactions. A cursor at the end follows the end when adding/removing a feature;
 an explicitly rolled-back cursor stays at its position (clamped if needed).
 Undo history is in-memory session state and is not preserved across processes.

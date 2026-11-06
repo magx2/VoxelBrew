@@ -17,6 +17,9 @@ message Document {
   // tracking.
   string application_version = 18;
   map<string, BodyStyle> body_styles = 19;
+  // Optional display labels keyed by stable body identity; never used as
+  // references.
+  map<string, string> body_names = 20;
   reserved 6 to 15;
 }
 // Stable body IDs, including inactive ancestors retained for split inheritance.

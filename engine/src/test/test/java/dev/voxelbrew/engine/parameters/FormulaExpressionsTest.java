@@ -7,6 +7,24 @@ import org.junit.jupiter.api.Test;
 
 class FormulaExpressionsTest {
     @Test
+    void dottedNamesValidateEvaluateAndRenameAsWholeReferences() {
+        for (var name : List.of("x", "x.fo", "x.bo", "Plate.width", "a_b", "a.."))
+            assertDoesNotThrow(() -> ParameterSet.requireName(name));
+        for (var name : List.of("_x", ".x", "x1", "1x", "vb.width", "vb.", "a-b", "é"))
+            assertThrows(IllegalArgumentException.class, () -> ParameterSet.requireName(name));
+        var p =
+                ParameterSet.empty()
+                        .put("x.fo", ParameterUnit.MM, "10", "")
+                        .put("x.bo", ParameterUnit.MM, "=$x.fo * 2", "");
+        assertEquals(30, p.value("=$x.fo + x.bo", ParameterUnit.MM));
+        var renamed = p.rename("x.fo", "y.width");
+        assertEquals(30, renamed.value("=$y.width + x.bo", ParameterUnit.MM));
+        assertEquals(
+                "$x.foobar + $y.width + 1e-3 + \"x.fo\"",
+                Expressions.rename("$x.foobar + $x.fo + 1e-3 + \"x.fo\"", "x.fo", "y.width"));
+    }
+
+    @Test
     void literalFieldsRemainUsableWhenRepairingBrokenParameters() {
         var broken = ParameterSet.empty().put("width", ParameterUnit.MM, "=$missing", "");
         assertEquals("repair.jcad", broken.text("repair.jcad"));
@@ -76,6 +94,6 @@ class FormulaExpressionsTest {
         assertEquals("width $width 5", p.text(p.binding(target)));
         assertEquals("width $width 8", p.select("Wide").text(p.binding(target)));
         assertThrows(IllegalArgumentException.class, () -> p.remove("size"));
-        assertEquals("1e3 + $renamed", Expressions.rename("1e3 + $e3", "e3", "renamed"));
+        assertEquals("1e3 + $renamed", Expressions.rename("1e3 + $eValue", "eValue", "renamed"));
     }
 }

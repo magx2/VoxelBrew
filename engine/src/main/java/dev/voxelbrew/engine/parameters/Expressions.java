@@ -18,7 +18,7 @@ public final class Expressions {
                     "abs", "sqrt", "min", "max", "sin", "cos", "tan", "asin", "acos", "atan",
                     "floor", "ceil", "round");
     private static final Pattern TOKEN =
-            Pattern.compile("\"(?:[^\"]|\"\")*\"|(?<![A-Za-z_0-9.])[A-Za-z_][A-Za-z_0-9]*");
+            Pattern.compile("\"(?:[^\"]|\"\")*\"|(?<![A-Za-z_0-9.])[A-Za-z][A-Za-z_.]*");
 
     public static boolean isFormula(String text) {
         return text != null && text.stripLeading().startsWith("=");
@@ -215,15 +215,19 @@ public final class Expressions {
             }
         }
 
+        private static boolean asciiLetter(char c) {
+            return c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z';
+        }
+
         String word() {
             skip();
             int start = index;
-            if (index < input.length()
-                    && (Character.isLetter(input.charAt(index)) || input.charAt(index) == '_')) {
+            if (index < input.length() && asciiLetter(input.charAt(index))) {
                 index++;
                 while (index < input.length()
-                        && (Character.isLetterOrDigit(input.charAt(index))
-                                || input.charAt(index) == '_')) index++;
+                        && (asciiLetter(input.charAt(index))
+                                || input.charAt(index) == '_'
+                                || input.charAt(index) == '.')) index++;
             }
             return input.substring(start, index);
         }

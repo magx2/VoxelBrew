@@ -99,7 +99,7 @@ class MeasurementsTest {
     void unitCatalogueKeepsLegacyNamesAndDoesNotReserveAdditionalParameterNames() {
         assertEquals("MM", ParameterUnit.MM.name());
         assertSame(ParameterUnit.IN, ParameterUnit.parse("in"));
-        for (String name : new String[] {"s", "kg", "K", "mm2", "degC"}) {
+        for (String name : new String[] {"s", "kg", "K", "mmSquared", "degC"}) {
             var p = ParameterSet.empty().put(name, ParameterUnit.MM, "2", "");
             p.validate();
             assertEquals(2, p.value(name, ParameterUnit.MM));

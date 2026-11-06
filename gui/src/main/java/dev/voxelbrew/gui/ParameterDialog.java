@@ -465,12 +465,24 @@ final class ParameterDialog {
         if (p != null && id != null) override.setText(draft.expression(p, id));
     }
 
+    static List<ParameterSet.Parameter> groupedParameters(ParameterSet set) {
+        return set.parameters().stream()
+                .sorted(
+                        Comparator.comparing(
+                                        (ParameterSet.Parameter p) -> {
+                                            int dot = p.name().indexOf('.');
+                                            return dot < 0 ? "" : p.name().substring(0, dot);
+                                        })
+                                .thenComparing(ParameterSet.Parameter::name))
+                .toList();
+    }
+
     private void refresh() {
         refreshing = true;
         try {
             var config = configurations.getSelectionModel().getSelectedItem();
             var chosen = overrideParameter.getValue();
-            parameters.getItems().setAll(draft.parameters());
+            parameters.getItems().setAll(groupedParameters(draft));
             if (selectedParameter != null)
                 parameters
                         .getSelectionModel()

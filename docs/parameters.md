@@ -129,7 +129,10 @@ accept angle quantities or bare numbers interpreted as degrees; inverse trig
 returns degrees. Rounding of dimensional quantities operates on their canonical
 mm/degree value. `round` uses nearest-even rounding. `min`/`max` accept two
 arguments; other functions accept one. Names are case-sensitive, start with an
-ASCII letter or underscore, and contain letters, digits and underscores.
+ASCII letter, and contain only ASCII letters, underscores and dots (pattern
+`[a-zA-Z][a-zA-Z_.]*`). The `vb.` prefix is reserved for built-in parameters.
+The parameter table groups dotted names by everything before the first dot;
+for example, `x.bo` and `x.fo` appear together. Names without a dot appear first.
 
 Unknown names, cycles, invalid syntax, incompatible units, division by zero and
 nonfinite results remain editable errors. Formula validity is checked across

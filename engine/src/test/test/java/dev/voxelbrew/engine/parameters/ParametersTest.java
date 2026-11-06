@@ -26,7 +26,7 @@ class ParametersTest {
         assertEquals(8, p.value("max(3 mm,8 mm)", ParameterUnit.MM));
         assertEquals(70.8, p.value("width + 2", ParameterUnit.CM), 1e-10);
         assertEquals(100, p.value("max(width,10)", ParameterUnit.CM), 1e-10);
-        assertEquals("1e3 + renamed", Expressions.rename("1e3 + e3", "e3", "renamed"));
+        assertEquals("1e3 + renamed", Expressions.rename("1e3 + eValue", "eValue", "renamed"));
         assertThrows(
                 IllegalArgumentException.class, () -> p.value("width + 3 deg", ParameterUnit.MM));
         assertThrows(IllegalArgumentException.class, () -> p.value("width", ParameterUnit.DEG));
@@ -103,7 +103,12 @@ class ParametersTest {
                 () -> ParameterSet.empty().put("mm", ParameterUnit.MM, "5", ""));
         var deep = ParameterSet.empty();
         for (int i = 0; i < 34; i++)
-            deep = deep.put("p" + i, ParameterUnit.MM, i == 33 ? "1" : "p" + (i + 1), "");
+            deep =
+                    deep.put(
+                            "p" + "_".repeat(i),
+                            ParameterUnit.MM,
+                            i == 33 ? "1" : "p" + "_".repeat(i + 1),
+                            "");
         assertTrue(
                 assertThrows(IllegalArgumentException.class, deep::validate)
                         .getMessage()

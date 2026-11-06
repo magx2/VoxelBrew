@@ -9,6 +9,25 @@ import org.junit.jupiter.api.Test;
 
 class ParameterSuggestionsTest {
     @Test
+    void dottedReferencesCompleteAndTableGroupsByFirstPrefix() {
+        assertEquals(
+                new ParameterSuggestions.Reference(1, 6, "x.f"),
+                ParameterSuggestions.reference("=$x.fo", 5));
+        var p =
+                ParameterSet.empty()
+                        .put("x.fo", ParameterUnit.MM, "1", "")
+                        .put("y.fo", ParameterUnit.MM, "2", "")
+                        .put("x.bo", ParameterUnit.MM, "3", "")
+                        .put("width", ParameterUnit.MM, "4", "");
+        assertEquals(List.of("x.bo", "x.fo"), ParameterSuggestions.matches(p, "x."));
+        assertEquals(
+                List.of("width", "x.bo", "x.fo", "y.fo"),
+                ParameterDialog.groupedParameters(p).stream()
+                        .map(ParameterSet.Parameter::name)
+                        .toList());
+    }
+
+    @Test
     void findsOnlyTheReferenceAtTheCaretAndReplacesItsEntireToken() {
         assertEquals(
                 new ParameterSuggestions.Reference(1, 2, ""),

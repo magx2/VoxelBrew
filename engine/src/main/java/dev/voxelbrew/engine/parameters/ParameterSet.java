@@ -100,10 +100,11 @@ public record ParameterSet(
 
     public static void requireName(String name) {
         if (name == null
-                || !name.matches("[A-Za-z_][A-Za-z_0-9]{0,63}")
+                || !name.matches("[A-Za-z][A-Za-z_.]{0,63}")
+                || name.startsWith("vb.")
                 || Expressions.reserved(name))
             throw new IllegalArgumentException(
-                    "Parameter name must start with a letter/underscore, contain at most 64 letters/digits/underscores, and not be a unit or function");
+                    "Parameter name must start with an ASCII letter, contain at most 64 ASCII letters/underscores/dots, and not start with vb. (reserved for built-in parameters) or be a unit or function");
     }
 
     private static void requireExpression(String expression) {

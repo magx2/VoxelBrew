@@ -223,7 +223,7 @@ final class ParameterSuggestions {
         int start = caret;
         while (start > 0 && identifier(text.charAt(start - 1))) start--;
         if (start == 0 || text.charAt(start - 1) != '$') return null;
-        if (start < caret && Character.isDigit(text.charAt(start))) return null;
+        if (start < caret && !asciiLetter(text.charAt(start))) return null;
         boolean quoted = false;
         for (int i = 0; i < start - 1; i++) {
             if (text.charAt(i) != '"') continue;
@@ -236,7 +236,11 @@ final class ParameterSuggestions {
         return new Reference(start - 1, end, text.substring(start, caret));
     }
 
+    private static boolean asciiLetter(char c) {
+        return c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z';
+    }
+
     private static boolean identifier(char c) {
-        return c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z' || c >= '0' && c <= '9' || c == '_';
+        return asciiLetter(c) || c >= '0' && c <= '9' || c == '_' || c == '.';
     }
 }

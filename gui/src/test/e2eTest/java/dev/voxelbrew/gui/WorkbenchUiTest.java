@@ -1435,6 +1435,7 @@ class WorkbenchUiTest {
 
     private void click(String id) throws Exception {
         String menu = switch (id) {
+            case "extrude", "cut", "fillet", "chamfer", "shell", "split-body" -> "operations-menu";
             case "new", "open", "import", "save", "save-as", "export" -> "menu-file";
             case "language", "updates", "about" -> "menu-settings";
             case "appearance", "menu-fit" -> "menu-view";

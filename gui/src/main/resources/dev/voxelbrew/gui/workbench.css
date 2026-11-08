@@ -110,6 +110,7 @@
 }
 .command-strip {
   -fx-padding: 5 14;
+  -fx-row-valignment: center;
 }
 .light .command-strip,
 .light #workspaces > .tab-header-area > .tab-header-background {
@@ -513,6 +514,31 @@
 }
 .command-strip .button:hover {
   -fx-background-color: -fx-selection-bar;
+}
+.command-strip > .menu-button {
+  -fx-background-color: -fx-control-inner-background;
+  -fx-background-insets: 0;
+  -fx-border-color: transparent;
+  -fx-border-radius: 12;
+  -fx-background-radius: 12;
+  -fx-padding: 0;
+  -fx-min-height: 38;
+  -fx-pref-height: 38;
+  -fx-cursor: hand;
+}
+.command-strip > .menu-button > .label {
+  -fx-padding: 6 12;
+  -fx-text-fill: -fx-text-background-color;
+}
+.command-strip > .menu-button > .arrow-button {
+  -fx-padding: 0 12 0 0;
+}
+.command-strip > .menu-button:hover,
+.command-strip > .menu-button:showing {
+  -fx-background-color: -fx-selection-bar;
+}
+.command-strip > .menu-button:focused {
+  -fx-border-radius: 12;
 }
 .command-strip .primary {
   -fx-background-color: #6555ce;

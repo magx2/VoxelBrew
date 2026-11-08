@@ -555,8 +555,22 @@ public final class Workbench extends BorderPane implements AutoCloseable {
         window = new WindowFrame(stage, title, this, translations);
         var historyCommands = new HBox(2, undo, redo);
         var sketchCommands = new HBox(2, constrainedSketch);
-        var solidCommands = new HBox(2, extrude, cut, fillet, chamfer, shell, splitBody);
-        for (var group : List.of(historyCommands, sketchCommands, solidCommands))
+        var solidCommands = new MenuButton(translations.text("action.operations"));
+        solidCommands.setId("operations-menu");
+        var operationsIcon = new javafx.scene.shape.SVGPath();
+        operationsIcon.setContent("M2 6L10 2L18 6V15L10 19L2 15Z M2 6L10 10L18 6 M10 10V19");
+        operationsIcon.setFill(javafx.scene.paint.Color.TRANSPARENT);
+        operationsIcon.setStroke(javafx.scene.paint.Color.web("#658dcc"));
+        operationsIcon.setStrokeWidth(1.5);
+        operationsIcon.setMouseTransparent(true);
+        solidCommands.setGraphic(operationsIcon);
+        UiHelp.menu(solidCommands, translations);
+        for (var command : List.of(extrude, cut, fillet, chamfer, shell, splitBody)) {
+            var item = menuItem(command.getText(), command.getId(), true, command::fire);
+            item.disableProperty().bind(disabledProperty().or(command.disabledProperty()));
+            solidCommands.getItems().add(item);
+        }
+        for (var group : List.of(historyCommands, sketchCommands))
             group.getStyleClass().add("command-group");
         var toolbar = new FlowPane(10, 6, historyCommands, sketchCommands, solidCommands);
         toolbar.setId("modeling-toolbar");

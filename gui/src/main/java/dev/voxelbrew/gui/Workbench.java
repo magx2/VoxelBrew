@@ -559,7 +559,6 @@ public final class Workbench extends BorderPane implements AutoCloseable {
         var title = new HBox(12, brand, documentTitle, menuBar);
         title.getStyleClass().add("title-strip");
         window = new WindowFrame(stage, title, this, translations);
-        var historyCommands = new HBox(2, undo, redo);
         var sketchCommands = new HBox(2, constrainedSketch);
         var solidCommands = new MenuButton(translations.text("action.operations"));
         solidCommands.setId("operations-menu");
@@ -576,9 +575,8 @@ public final class Workbench extends BorderPane implements AutoCloseable {
             item.disableProperty().bind(disabledProperty().or(command.disabledProperty()));
             solidCommands.getItems().add(item);
         }
-        for (var group : List.of(historyCommands, sketchCommands))
-            group.getStyleClass().add("command-group");
-        var toolbar = new FlowPane(10, 6, historyCommands, sketchCommands, solidCommands);
+        sketchCommands.getStyleClass().add("command-group");
+        var toolbar = new FlowPane(10, 6, sketchCommands, solidCommands);
         toolbar.setId("modeling-toolbar");
         toolbar.getStyleClass().add("command-strip");
         constrainedSketch.getStyleClass().add("primary");

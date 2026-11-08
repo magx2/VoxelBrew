@@ -22,6 +22,7 @@ message Document {
   map<string, string> body_names = 20;
   // Next unused document identifier.
   int64 next_uuid = 21;
+  map<string, string> feature_names = 22;
   reserved 6 to 15;
 }
 // Stable body IDs, including inactive ancestors retained for split inheritance.

@@ -12,7 +12,19 @@ public record CadDocument(
         dev.voxelbrew.engine.printing.PrintSetup printSetup,
         dev.voxelbrew.engine.parameters.ParameterSet parameters,
         Map<String, BodyStyle> bodyStyles,
-        Map<String, String> bodyNames) {
+        Map<String, String> bodyNames,
+        Map<String, String> featureNames) {
+    public CadDocument(
+            String id,
+            List<Feature> features,
+            int cursor,
+            dev.voxelbrew.engine.printing.PrintSetup printSetup,
+            dev.voxelbrew.engine.parameters.ParameterSet parameters,
+            Map<String, BodyStyle> bodyStyles,
+            Map<String, String> bodyNames) {
+        this(id, features, cursor, printSetup, parameters, bodyStyles, bodyNames, Map.of());
+    }
+
     public CadDocument(
             String id,
             List<Feature> features,
@@ -49,6 +61,9 @@ public record CadDocument(
         bodyNames = Map.copyOf(bodyNames);
         bodyNames.keySet().forEach(BodyStyle::requireBodyId);
         bodyNames.values().forEach(CadDocument::requireBodyName);
+        featureNames = Map.copyOf(featureNames);
+        featureNames.keySet().forEach(key -> identifier(key, "feature ID"));
+        featureNames.values().forEach(CadDocument::requireBodyName);
         identifier(id, "document ID");
         features = List.copyOf(features);
         var ids = new HashSet<String>();
@@ -80,6 +95,10 @@ public record CadDocument(
     /** Display names never replace stable body identities or feature references. */
     public String bodyName(String bodyId, String fallback) {
         return bodyNames.getOrDefault(bodyId, fallback);
+    }
+
+    public String featureName(String featureId, String fallback) {
+        return featureNames.getOrDefault(featureId, fallback);
     }
 
     public static void requireBodyName(String name) {

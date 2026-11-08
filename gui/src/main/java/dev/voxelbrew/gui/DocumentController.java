@@ -302,6 +302,12 @@ public final class DocumentController implements AutoCloseable {
         }
     }
 
+    public void renameFeature(String featureId, String name) {
+        if (ioBusy || rebuilding || hasPreview()) throw new IllegalStateException("Wait for the current operation");
+        session.renameFeature(featureId, name);
+        schedule(session.document(), false);
+    }
+
     public void cursor(int position) {
         preview = null;
         session.setCursor(position);

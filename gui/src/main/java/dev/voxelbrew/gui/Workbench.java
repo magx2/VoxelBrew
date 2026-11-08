@@ -33,6 +33,7 @@ public final class Workbench extends BorderPane implements AutoCloseable {
 
     private final class BodyTreeCell extends TreeCell<Entry> {
         private final ContextMenu menu = new ContextMenu();
+        private final ContextMenu featureMenu = new ContextMenu();
         private TextField editor;
         private Label validation;
         private ModelSession.Snapshot editingSnapshot;
@@ -60,6 +61,34 @@ public final class Workbench extends BorderPane implements AutoCloseable {
             });
             menu.getItems().addAll(rename, fit);
             UiHelp.menu(menu);
+            var featureRename = new MenuItem(translations.text("body.rename"));
+            featureRename.setId("feature-rename");
+            featureRename.setOnAction(event -> {
+                var item = getTreeItem();
+                Platform.runLater(() -> {
+                    if (item == getTreeItem()) requestRename();
+                });
+            });
+            var featureFit = new MenuItem(translations.text("body.fit"));
+            featureFit.setId("feature-fit");
+            featureFit.setOnAction(event -> {
+                var entry = getItem();
+                if (entry == null) return;
+                var matching = new LinkedHashMap<String, MeshData>();
+                controller.build().bodies().stream()
+                        .filter(body -> body.output().featureId().equals(entry.id()))
+                        .forEach(body -> matching.put(body.id(), body.mesh()));
+                viewport.fit(matching.isEmpty() ? meshes() : matching);
+            });
+            featureMenu.getItems().addAll(featureRename, featureFit);
+            UiHelp.menu(featureMenu);
+            featureMenu.setOnShowing(event -> {
+                tree.getSelectionModel().select(getTreeItem());
+                featureRename.setDisable(!canRename());
+                featureFit.setDisable(controller.rebuilding()
+                        || !controller.build().valid()
+                        || controller.build().bodies().isEmpty());
+            });
             menu.setOnShowing(event -> {
                 tree.getSelectionModel().select(getTreeItem());
                 rename.setDisable(!canRename());
@@ -78,12 +107,17 @@ public final class Workbench extends BorderPane implements AutoCloseable {
         private boolean canRename() {
             var entry = getItem();
             return entry != null
-                    && entry.body()
                     && entry.id() != null
                     && tool == Tool.NONE
-                    && controller.canExport()
-                    && controller.build().bodies().stream()
-                            .anyMatch(body -> body.id().equals(entry.id()));
+                    && (entry.body()
+                            ? controller.canExport()
+                                    && controller.build().bodies().stream()
+                                            .anyMatch(body -> body.id().equals(entry.id()))
+                            : !controller.ioBusy()
+                                    && !controller.rebuilding()
+                                    && !controller.hasPreview()
+                                    && controller.snapshot().document().features().stream()
+                                            .anyMatch(feature -> feature.id().equals(entry.id())));
         }
 
         private void requestRename() {
@@ -102,8 +136,11 @@ public final class Workbench extends BorderPane implements AutoCloseable {
                 setText(empty || entry == null ? null : entry.label());
                 setGraphic(null);
             }
-            setContextMenu(!empty && entry != null && entry.body() && entry.id() != null ? menu : null);
-            if (empty) menu.hide();
+            setContextMenu(empty || entry == null || entry.id() == null ? null : entry.body() ? menu : featureMenu);
+            if (empty) {
+                menu.hide();
+                featureMenu.hide();
+            }
         }
 
         @Override
@@ -119,8 +156,14 @@ public final class Workbench extends BorderPane implements AutoCloseable {
             if (!isEditing()) return;
             editingEntry = getItem();
             editingSnapshot = controller.snapshot();
-            editor = new TextField(editingEntry.label());
-            editor.setId("body-rename-field");
+            editor = new TextField(
+                    editingEntry.body()
+                            ? editingEntry.label()
+                            : controller
+                                    .snapshot()
+                                    .document()
+                                    .featureName(editingEntry.id(), featureBaseName(editingEntry.id())));
+            editor.setId(editingEntry.body() ? "body-rename-field" : "feature-rename-field");
             editor.setMinWidth(0);
             editor.getStyleClass().add("body-rename-field");
             editor.setAccessibleText(translations.text("body.name"));
@@ -183,10 +226,16 @@ public final class Workbench extends BorderPane implements AutoCloseable {
                     && current.revision() == editingSnapshot.revision()
                     && current.document().id().equals(editingSnapshot.document().id());
             var original = editingEntry;
+            String previousName = original.body()
+                    ? original.label()
+                    : editingSnapshot.document().featureName(original.id(), featureBaseName(original.id()));
             tree.edit(null);
-            if (currentBody && !name.equals(original.label())) {
+            if (currentBody && !name.equals(previousName)) {
                 String accepted = name;
-                attempt(() -> controller.renameBody(original.id(), accepted));
+                attempt(() -> {
+                    if (original.body()) controller.renameBody(original.id(), accepted);
+                    else controller.renameFeature(original.id(), accepted);
+                });
             }
         }
 
@@ -263,6 +312,7 @@ public final class Workbench extends BorderPane implements AutoCloseable {
     private List<Feature> lastFeatures = List.of();
     private Map<String, BodyStyle> lastBodyStyles = Map.of();
     private Map<String, String> lastBodyNames = Map.of();
+    private Map<String, String> lastFeatureNames = Map.of();
     private boolean lastRebuilding;
     private boolean lastIoBusy;
     private DocumentController.Build lastBuild;
@@ -784,6 +834,7 @@ public final class Workbench extends BorderPane implements AutoCloseable {
             boolean changed = !lastFeatures.equals(effective)
                     || !lastBodyStyles.equals(document.bodyStyles())
                     || !lastBodyNames.equals(document.bodyNames())
+                    || !lastFeatureNames.equals(document.featureNames())
                     || !lastParameters.equals(document.parameters())
                     || !lastDocument.equals(document.id());
             if (!lastDocument.equals(document.id())) {
@@ -817,6 +868,7 @@ public final class Workbench extends BorderPane implements AutoCloseable {
             lastFeatures = effective;
             lastBodyStyles = document.bodyStyles();
             lastBodyNames = document.bodyNames();
+            lastFeatureNames = document.featureNames();
             lastParameters = document.parameters();
             lastDocument = document.id();
             timeline.update(
@@ -910,6 +962,20 @@ public final class Workbench extends BorderPane implements AutoCloseable {
     }
 
     private String shortName(Feature feature) {
+        String customName = controller.snapshot().document().featureNames().get(feature.id());
+        if (customName != null) return customName;
+        return defaultFeatureName(feature);
+    }
+
+    private String featureBaseName(String id) {
+        return controller.snapshot().document().features().stream()
+                .filter(feature -> feature.id().equals(id))
+                .findFirst()
+                .map(this::defaultFeatureName)
+                .orElse(id);
+    }
+
+    private String defaultFeatureName(Feature feature) {
         if (feature instanceof Feature.Custom custom) return translations.text("feature.custom", custom.type());
         return feature instanceof Feature.Sketch s
                 ? (s.profile() instanceof Feature.Circle

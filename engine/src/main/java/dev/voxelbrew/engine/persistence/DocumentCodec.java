@@ -88,7 +88,8 @@ public final class DocumentCodec {
                                     e -> new dev.voxelbrew.engine.model.BodyStyle(
                                             e.getValue().getMaterial(),
                                             e.getValue().getColor()))),
-                    message.getBodyNamesMap());
+                    message.getBodyNamesMap(),
+                    message.getFeatureNamesMap());
         } catch (DocumentFormatException failure) {
             throw failure;
         } catch (IOException | IllegalArgumentException failure) {
@@ -207,6 +208,9 @@ public final class DocumentCodec {
         document.bodyNames().entrySet().stream()
                 .sorted(java.util.Map.Entry.comparingByKey())
                 .forEach(entry -> message.putBodyNames(entry.getKey(), entry.getValue()));
+        document.featureNames().entrySet().stream()
+                .sorted(java.util.Map.Entry.comparingByKey())
+                .forEach(entry -> message.putFeatureNames(entry.getKey(), entry.getValue()));
         document.bodyStyles().entrySet().stream()
                 .sorted(java.util.Map.Entry.comparingByKey())
                 .forEach(e -> message.putBodyStyles(

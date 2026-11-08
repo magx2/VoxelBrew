@@ -15,6 +15,7 @@ public final class ModelSession {
     private dev.voxelbrew.engine.parameters.ParameterSet parameters;
     private java.util.Map<String, BodyStyle> bodyStyles;
     private java.util.Map<String, String> bodyNames;
+    private java.util.Map<String, String> featureNames;
     private int cursor;
     private long revision;
 
@@ -23,7 +24,8 @@ public final class ModelSession {
             dev.voxelbrew.engine.printing.PrintSetup printSetup,
             dev.voxelbrew.engine.parameters.ParameterSet parameters,
             java.util.Map<String, BodyStyle> bodyStyles,
-            java.util.Map<String, String> bodyNames) {}
+            java.util.Map<String, String> bodyNames,
+            java.util.Map<String, String> featureNames) {}
 
     private final Deque<State> undo = new ArrayDeque<>();
     private final Deque<State> redo = new ArrayDeque<>();
@@ -36,11 +38,12 @@ public final class ModelSession {
         parameters = document.parameters();
         bodyStyles = document.bodyStyles();
         bodyNames = document.bodyNames();
+        featureNames = document.featureNames();
         cursor = document.cursor();
     }
 
     public synchronized CadDocument document() {
-        return new CadDocument(id, features, cursor, printSetup, parameters, bodyStyles, bodyNames);
+        return new CadDocument(id, features, cursor, printSetup, parameters, bodyStyles, bodyNames, featureNames);
     }
 
     public synchronized long revision() {
@@ -227,7 +230,7 @@ public final class ModelSession {
             return false;
         }
         boolean followEnd = cursor == features.size();
-        redo.push(new State(features, printSetup, parameters, bodyStyles, bodyNames));
+        redo.push(new State(features, printSetup, parameters, bodyStyles, bodyNames, featureNames));
         var previous = undo.pop();
         log.debug("Undo in document {} from revision {}", id, revision);
         features = previous.features();
@@ -235,6 +238,7 @@ public final class ModelSession {
         parameters = previous.parameters();
         bodyStyles = previous.bodyStyles();
         bodyNames = previous.bodyNames();
+        featureNames = previous.featureNames();
         cursor = followEnd ? features.size() : Math.min(cursor, features.size());
         revision++;
         return true;
@@ -245,7 +249,7 @@ public final class ModelSession {
             return false;
         }
         boolean followEnd = cursor == features.size();
-        undo.push(new State(features, printSetup, parameters, bodyStyles, bodyNames));
+        undo.push(new State(features, printSetup, parameters, bodyStyles, bodyNames, featureNames));
         var next = redo.pop();
         log.debug("Redo in document {} from revision {}", id, revision);
         features = next.features();
@@ -253,6 +257,7 @@ public final class ModelSession {
         parameters = next.parameters();
         bodyStyles = next.bodyStyles();
         bodyNames = next.bodyNames();
+        featureNames = next.featureNames();
         cursor = followEnd ? features.size() : Math.min(cursor, features.size());
         revision++;
         return true;
@@ -326,6 +331,23 @@ public final class ModelSession {
         log.debug("Updated display name for body {} in document {}", bodyId, id);
     }
 
+    public synchronized void renameFeature(String featureId, String name) {
+        if (features.stream().noneMatch(feature -> feature.id().equals(featureId)))
+            throw new IllegalArgumentException("Unknown feature: " + featureId);
+        if (name != null) {
+            CadDocument.requireBodyName(name);
+            name = name.strip();
+        }
+        var next = new java.util.HashMap<>(featureNames);
+        if (name == null) next.remove(featureId);
+        else next.put(featureId, name);
+        if (next.equals(featureNames)) return;
+        undo.push(new State(features, printSetup, parameters, bodyStyles, bodyNames, featureNames));
+        redo.clear();
+        featureNames = java.util.Map.copyOf(next);
+        revision++;
+    }
+
     private void commit(
             List<Feature> next,
             dev.voxelbrew.engine.printing.PrintSetup setup,
@@ -341,7 +363,7 @@ public final class ModelSession {
                 && names.equals(bodyNames)) {
             return;
         }
-        undo.push(new State(features, printSetup, parameters, bodyStyles, bodyNames));
+        undo.push(new State(features, printSetup, parameters, bodyStyles, bodyNames, featureNames));
         redo.clear();
         features = validated;
         printSetup = setup;

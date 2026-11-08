@@ -86,6 +86,7 @@ final class SketchEditor extends BorderPane implements AutoCloseable {
     private Draw tool = Draw.SELECT;
     private Type activeConstraint;
     private Ref dragPoint;
+    private boolean boxCandidate, boxSelecting, boxAdditive;
     private Vec cursor = new Vec(0, 0);
     private double centerX = 30, centerY = 20, scale = 4, lastX, lastY, pressX, pressY;
     private boolean moving, panning, refreshing, closed;
@@ -383,6 +384,7 @@ final class SketchEditor extends BorderPane implements AutoCloseable {
     private void cancelDrawing() {
         if (dragPoint != null) controller.cancelDrag();
         dragPoint = null;
+        boxCandidate = boxSelecting = false;
         moving = false;
         drawing.clear();
         snaps.clear();
@@ -520,11 +522,15 @@ final class SketchEditor extends BorderPane implements AutoCloseable {
             lastY = pressY = e.getY();
             moving = false;
             panning = e.getButton() == MouseButton.MIDDLE;
+            boxCandidate = boxSelecting = false;
+            boxAdditive = e.isControlDown() || e.isShiftDown();
             if (e.getButton() == MouseButton.PRIMARY && tool == Draw.SELECT && activeConstraint == null) {
                 var hit = hit(e.getX(), e.getY());
+                boxCandidate = hit == null || boxAdditive;
                 dragPoint = hit != null
                                 && hit.ref().part() != Part.OBJECT
                                 && !hit.ref().equals(ORIGIN)
+                                && !boxAdditive
                         ? hit.ref()
                         : null;
             }
@@ -534,6 +540,13 @@ final class SketchEditor extends BorderPane implements AutoCloseable {
             if (panning) {
                 centerX -= (e.getX() - lastX) / scale;
                 centerY += (e.getY() - lastY) / scale;
+                draw();
+            } else if (boxCandidate
+                    && e.isPrimaryButtonDown()
+                    && Math.hypot(e.getX() - pressX, e.getY() - pressY) > 3) {
+                moving = boxSelecting = true;
+                lastX = e.getX();
+                lastY = e.getY();
                 draw();
             } else if (dragPoint != null
                     && e.isPrimaryButtonDown()
@@ -546,6 +559,15 @@ final class SketchEditor extends BorderPane implements AutoCloseable {
             e.consume();
         });
         canvas.setOnMouseReleased(e -> {
+            if (boxSelecting) {
+                if (!boxAdditive) selection.clear();
+                constraints.getSelectionModel().clearSelection();
+                selection.addAll(SketchSelection.inBox(
+                        controller.displayed(), model(pressX, pressY), model(e.getX(), e.getY()), e.getX() < pressX));
+                boxSelecting = false;
+                selectionChanged();
+            }
+            boxCandidate = false;
             if (moving && dragPoint != null) controller.drag(dragPoint, model(e.getX(), e.getY()), true);
             dragPoint = null;
             panning = false;
@@ -566,10 +588,11 @@ final class SketchEditor extends BorderPane implements AutoCloseable {
                         return;
                     }
             }
-            if (!e.isShiftDown() && activeConstraint == null) selection.clear();
+            if (!e.isShiftDown() && !e.isControlDown() && activeConstraint == null) selection.clear();
             constraints.getSelectionModel().clearSelection();
             if (hit != null) {
-                if (e.isShiftDown() && selection.contains(hit.ref())) selection.remove(hit.ref());
+                if ((e.isShiftDown() || e.isControlDown()) && selection.contains(hit.ref()))
+                    selection.remove(hit.ref());
                 else selection.add(hit.ref());
             }
             selectionChanged();
@@ -1419,6 +1442,17 @@ final class SketchEditor extends BorderPane implements AutoCloseable {
                     /* Broken references remain removable in the constraint list. */
                 }
             }
+        }
+        if (boxSelecting) {
+            var color = Color.web(lastX < pressX ? "#42b883" : "#438de0");
+            graphics.setFill(color.deriveColor(0, 1, 1, 0.15));
+            graphics.setStroke(color);
+            graphics.setLineWidth(1);
+            graphics.setLineDashes(lastX < pressX ? new double[] {5, 4} : new double[] {});
+            double x = Math.min(pressX, lastX), y = Math.min(pressY, lastY);
+            graphics.fillRect(x, y, Math.abs(lastX - pressX), Math.abs(lastY - pressY));
+            graphics.strokeRect(x, y, Math.abs(lastX - pressX), Math.abs(lastY - pressY));
+            graphics.setLineDashes();
         }
         if (hoverSnap != null && auto.isSelected() && tool != Draw.SELECT) {
             graphics.setStroke(Color.web("#e6a239"));

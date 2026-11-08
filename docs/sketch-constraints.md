@@ -37,7 +37,11 @@ constraints. Use **Construction** before drawing, or toggle selected geometry
 in the side panel. **Use selected as profile** and **Use all as profile** choose
 the curves used for extrusion/cutting, excluding construction geometry.
 
-Click a curve or endpoint to select it; Shift-click adds or removes a selection.
+Click a curve or endpoint to select it; Ctrl-click or Shift-click adds or removes
+a selection. Drag from empty space to select with a box: left to right (blue)
+selects enclosed curves and points; right to left (green) also selects curves
+crossing the box. Hold Ctrl or Shift to add the box selection to the current
+selection, or to start a selection box over geometry instead of reshaping it.
 The reference dropdown selects overlapping endpoints and exact named references.
 Middle-drag pans, the wheel zooms and **Fit** frames the sketch. Drag endpoints,
 centers or control points to reshape while respecting constraints. Escape

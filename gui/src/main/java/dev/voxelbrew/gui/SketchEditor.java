@@ -935,7 +935,14 @@ final class SketchEditor extends BorderPane implements AutoCloseable {
             edit(next);
             drawing.clear();
             snaps.clear();
-            tool(Draw.SELECT);
+            if (tool == Draw.LINE && (hit == null || hit.ref().part() == Part.OBJECT)) {
+                drawing.add(b);
+                snaps.add(new Ref(id, Part.END));
+                hoverSnap = null;
+                draw();
+            } else {
+                tool(Draw.SELECT);
+            }
         } catch (RuntimeException failure) {
             error.setText(failure.getMessage());
             drawing.clear();

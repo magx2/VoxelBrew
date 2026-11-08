@@ -78,7 +78,17 @@ public final class DocumentController implements AutoCloseable {
     }
 
     public record Build(
-            List<Body> bodies, List<Evaluation.Diagnostic> diagnostics, boolean valid, List<Feature> features) {
+            List<Body> bodies,
+            List<Evaluation.Diagnostic> diagnostics,
+            boolean valid,
+            List<Feature> features,
+            Map<String, dev.voxelbrew.engine.construction.ConstructionGeometry.Datum> construction,
+            List<ConstructionFeature.Input> constructionInputs) {
+        public Build(
+                List<Body> bodies, List<Evaluation.Diagnostic> diagnostics, boolean valid, List<Feature> features) {
+            this(bodies, diagnostics, valid, features, Map.of(), List.of());
+        }
+
         public Build(List<Body> bodies, List<Evaluation.Diagnostic> diagnostics, boolean valid) {
             this(bodies, diagnostics, valid, List.of());
         }
@@ -87,6 +97,8 @@ public final class DocumentController implements AutoCloseable {
             bodies = List.copyOf(bodies);
             diagnostics = List.copyOf(diagnostics);
             features = List.copyOf(features);
+            construction = Map.copyOf(construction);
+            constructionInputs = List.copyOf(constructionInputs);
         }
     }
 
@@ -642,8 +654,55 @@ public final class DocumentController implements AutoCloseable {
                             b.solid().planarFaces(),
                             b.solid().faceEdges(),
                             b.solid().edgeSamples()));
-            return new Build(bodies, evaluation.diagnostics(), true, evaluation.resolvedFeatures());
+            var inputs = new ArrayList<ConstructionFeature.Input>();
+            var zero = new dev.voxelbrew.engine.construction.ConstructionGeometry.Vector(0, 0, 0);
+            for (var body : evaluation.bodies()) {
+                for (int kind = 0; kind < 3; kind++) {
+                    int count = (int) body.solid().constructionInput(kind, -1, .5)[0];
+                    var selection = switch (kind) {
+                        case 0 -> ConstructionFeature.Selection.FACE;
+                        case 1 -> ConstructionFeature.Selection.EDGE;
+                        default -> ConstructionFeature.Selection.VERTEX;
+                    };
+                    for (int index = 0; index < count; index++)
+                        inputs.add(new ConstructionFeature.Input(
+                                selection,
+                                body.output().featureId(),
+                                body.output().outputName(),
+                                index,
+                                zero));
+                }
+            }
+            return new Build(
+                    bodies,
+                    evaluation.diagnostics(),
+                    true,
+                    evaluation.resolvedFeatures(),
+                    evaluation.construction(),
+                    inputs);
         }
+    }
+
+    public CompletableFuture<dev.voxelbrew.engine.construction.ConstructionGeometry.Datum> previewConstruction(
+            ConstructionFeature feature) {
+        var captured = session.document();
+        return CompletableFuture.supplyAsync(
+                () -> {
+                    var temporary = new ModelSession(captured);
+                    if (captured.features().stream().anyMatch(f -> f.id().equals(feature.id())))
+                        temporary.replace(feature);
+                    else temporary.add(feature);
+                    try (var evaluation = Evaluator.evaluate(temporary.document(), pluginDirectory)) {
+                        if (!evaluation.valid())
+                            throw new IllegalArgumentException(evaluation.diagnostics().stream()
+                                    .filter(d -> d.state() == Evaluation.State.FAILED
+                                            || d.state() == Evaluation.State.BLOCKED)
+                                    .map(Evaluation.Diagnostic::message)
+                                    .collect(java.util.stream.Collectors.joining("; ")));
+                        return evaluation.construction().get(feature.id());
+                    }
+                },
+                worker);
     }
 
     @Override

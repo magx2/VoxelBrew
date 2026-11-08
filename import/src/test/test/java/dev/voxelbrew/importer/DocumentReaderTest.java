@@ -17,7 +17,7 @@ class DocumentReaderTest {
     @Test
     void opensCurrentReferenceThroughTheImportModule() throws Exception {
         Path file = directory.resolve("legacy design with spaces.jcad");
-        try (var input = getClass().getResourceAsStream("/fixtures/reference-schema9.jcad")) {
+        try (var input = getClass().getResourceAsStream("/fixtures/reference-schema10.jcad")) {
             Files.copy(java.util.Objects.requireNonNull(input), file);
         }
         var document = DocumentReader.load(file);
@@ -44,7 +44,7 @@ class DocumentReaderTest {
         Files.write(file, new byte[] {'J', 'C', 'A', 'D'});
         assertThrows(DocumentFormatException.class, () -> DocumentReader.load(file));
         byte[] data;
-        try (var input = getClass().getResourceAsStream("/fixtures/reference-schema9.jcad")) {
+        try (var input = getClass().getResourceAsStream("/fixtures/reference-schema10.jcad")) {
             data = java.util.Objects.requireNonNull(input).readAllBytes();
         }
         data[data.length - 1] ^= 1;

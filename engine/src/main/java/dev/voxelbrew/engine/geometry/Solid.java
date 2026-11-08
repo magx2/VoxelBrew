@@ -174,6 +174,12 @@ public final class Solid implements AutoCloseable {
         return java.util.List.copyOf(result);
     }
 
+    /** Detached analytic topology data; face/edge/vertex indices are zero based. */
+    public synchronized double[] constructionInput(int topology, int index, double fraction) {
+        requireOpen();
+        return NativeKernel.constructionInput(token, topology, index, fraction);
+    }
+
     public record Split(Solid negative, Solid positive) implements AutoCloseable {
         @Override
         public void close() {

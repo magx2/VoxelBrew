@@ -94,7 +94,7 @@ cli inspect broken.jcad
 
 ## .jcad schema and safe writes
 
-`engine/src/main/proto/document.proto` is schema version 9. Earlier schemas are
+`engine/src/main/proto/document.proto` is schema version 10. Earlier schemas are
 rejected. Each document owns a `util` `UuidGenerator`, starting at 1; generated
 IDs use its sequential `long` values. The Protobuf `next_uuid` field stores the
 next unused value, and loading resumes from that value. Undo does not rewind the

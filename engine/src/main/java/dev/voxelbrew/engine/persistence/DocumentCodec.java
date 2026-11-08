@@ -21,7 +21,7 @@ import java.util.List;
  * and writers live in the import/export projects.
  */
 public final class DocumentCodec {
-    public static final int SCHEMA_VERSION = 9;
+    public static final int SCHEMA_VERSION = 10;
     private static final byte[] MAGIC = {'J', 'C', 'A', 'D', 13, 10, 26, 10};
     private static final int HEADER = 44;
     private static final int MAX_PAYLOAD = 16 * 1024 * 1024;
@@ -206,6 +206,24 @@ public final class DocumentCodec {
                         custom.getPayloadVersion(),
                         custom.getPayload().toByteArray());
             }
+            case CONSTRUCTION -> {
+                var value = feature.getConstruction();
+                yield new dev.voxelbrew.engine.model.ConstructionFeature(
+                        feature.getId(),
+                        dev.voxelbrew.engine.construction.ConstructionTools.Tool.valueOf(value.getTool()),
+                        value.getInputsList().stream()
+                                .map(i -> new dev.voxelbrew.engine.model.ConstructionFeature.Input(
+                                        dev.voxelbrew.engine.model.ConstructionFeature.Selection.valueOf(
+                                                i.getSelection()),
+                                        i.getSource(),
+                                        i.getOutput(),
+                                        i.getIndex(),
+                                        new dev.voxelbrew.engine.construction.ConstructionGeometry.Vector(
+                                                i.getX(), i.getY(), i.getZ())))
+                                .toList(),
+                        value.getValue(),
+                        value.getAlternate());
+            }
             case DEFINITION_NOT_SET ->
                 throw new IllegalArgumentException("Feature '" + id + "': missing or unsupported feature definition");
         };
@@ -337,7 +355,22 @@ public final class DocumentCodec {
 
     private static DocumentProto.Feature toProto(Feature feature) {
         var out = DocumentProto.Feature.newBuilder().setId(feature.id());
-        if (feature instanceof Feature.Sketch s) {
+        if (feature instanceof dev.voxelbrew.engine.model.ConstructionFeature c) {
+            var definition = DocumentProto.Construction.newBuilder()
+                    .setTool(c.tool().name())
+                    .setValue(c.value())
+                    .setAlternate(c.alternate());
+            for (var input : c.inputs())
+                definition.addInputs(DocumentProto.ConstructionInput.newBuilder()
+                        .setSelection(input.selection().name())
+                        .setSource(input.source())
+                        .setOutput(input.output())
+                        .setIndex(input.index())
+                        .setX(input.position().x())
+                        .setY(input.position().y())
+                        .setZ(input.position().z()));
+            out.setConstruction(definition);
+        } else if (feature instanceof Feature.Sketch s) {
             var sketch = DocumentProto.Sketch.newBuilder()
                     .setProfileId(s.profileId())
                     .setPlane(plane(s.plane()));
@@ -424,11 +457,12 @@ public final class DocumentCodec {
                     s.getRank(),
                     s.getCount());
         }
-        return new Feature.Plane(value.getId(), value.getOffsetZ(), frame, support);
+        return new Feature.Plane(value.getId(), value.getOffsetZ(), frame, support, value.getConstructionSupport());
     }
 
     private static DocumentProto.Plane plane(Feature.Plane value) {
         var out = DocumentProto.Plane.newBuilder().setId(value.id()).setOffsetZ(value.offsetZ());
+        out.setConstructionSupport(value.constructionSupport());
         for (double coordinate : value.frame().matrix()) out.addFrame(coordinate);
         if (value.support() != null) {
             var s = value.support();

@@ -13,13 +13,24 @@ public sealed interface Feature
                 Feature.SplitBody,
                 Feature.EdgeFinish,
                 Feature.Shell,
-                Feature.Custom {
+                Feature.Custom,
+                ConstructionFeature {
     String id();
 
     /** Local sketch XY frame, with an additional signed offset along its normal in mm. */
-    record Plane(String id, double offsetZ, Transform frame, FaceSupport support) {
+    record Plane(String id, double offsetZ, Transform frame, FaceSupport support, String constructionSupport) {
         public Plane {
             java.util.Objects.requireNonNull(frame);
+            java.util.Objects.requireNonNull(constructionSupport);
+            if (!constructionSupport.isEmpty()) {
+                CadDocument.identifier(constructionSupport, "construction plane support");
+                if (support != null)
+                    throw new IllegalArgumentException("Plane cannot have both face and construction supports");
+            }
+        }
+
+        public Plane(String id, double offsetZ, Transform frame, FaceSupport support) {
+            this(id, offsetZ, frame, support, "");
         }
 
         public Plane(String id, double offsetZ) {
@@ -35,7 +46,7 @@ public sealed interface Feature
         }
 
         public Plane withOffset(double value) {
-            return new Plane(id, value, frame, support);
+            return new Plane(id, value, frame, support, constructionSupport);
         }
 
         public boolean isOrigin() {

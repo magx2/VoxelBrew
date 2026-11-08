@@ -364,6 +364,8 @@ final class FeatureTimeline extends HBox implements AutoCloseable {
     }
 
     private static Node featureIcon(Feature feature) {
+        if (feature instanceof dev.voxelbrew.engine.model.ConstructionFeature construction)
+            return ConstructionIcons.icon(construction.tool());
         if (feature instanceof Feature.Sketch)
             return new Group(
                     path("M2 4H15V17H2Z", "timeline-sketch-icon"),

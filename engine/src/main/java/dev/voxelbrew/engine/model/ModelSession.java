@@ -174,7 +174,9 @@ public final class ModelSession {
             return;
         }
         Feature replacement;
-        if (feature instanceof Feature.Extrude e && field.equals("distance")) {
+        if (feature instanceof ConstructionFeature c && field.equals("value")) {
+            replacement = new ConstructionFeature(c.id(), c.tool(), c.inputs(), value, c.alternate());
+        } else if (feature instanceof Feature.Extrude e && field.equals("distance")) {
             replacement = new Feature.Extrude(e.id(), e.profile(), value);
         } else if (feature instanceof Feature.EdgeFinish f && field.equals("size")) {
             replacement = new Feature.EdgeFinish(f.id(), f.body(), f.kind(), value, f.edges());

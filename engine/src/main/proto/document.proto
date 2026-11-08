@@ -65,6 +65,7 @@ message Plane {
   // frame.
   repeated double frame = 8;
   FaceSupport support = 9;
+  string construction_support = 10;
 }
 message FaceSupport {
   BodyRef body = 1;
@@ -293,6 +294,23 @@ message Feature {
     CustomFeature custom = 17;
     EdgeFinish edge_finish = 18;
     Shell shell = 19;
+    Construction construction = 20;
   }
   reserved 5 to 15;
+}
+
+message ConstructionInput {
+  string selection = 1;
+  string source = 2;
+  string output = 3;
+  uint32 index = 4;
+  double x = 5;
+  double y = 6;
+  double z = 7;
+}
+message Construction {
+  string tool = 1;
+  repeated ConstructionInput inputs = 2;
+  double value = 3;
+  bool alternate = 4;
 }

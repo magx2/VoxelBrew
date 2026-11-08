@@ -82,6 +82,8 @@ final class NativeKernel {
 
     static native double[] planarFaces(long body);
 
+    static native double[] constructionInput(long body, int topology, int index, double fraction);
+
     static native double volume(long body);
 
     static native double[] bounds(long body);

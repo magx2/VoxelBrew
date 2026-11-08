@@ -253,10 +253,12 @@ public final class Workbench extends BorderPane implements AutoCloseable {
         NONE,
         PLANE,
         EXTRUDE,
-        MODIFY
+        MODIFY,
+        CONSTRUCTION
     }
 
     private final Stage stage;
+    private ConstructionEditor constructionEditor;
     private final WindowFrame window;
     private final javafx.beans.value.ChangeListener<Boolean> windowFocus;
 
@@ -576,7 +578,27 @@ public final class Workbench extends BorderPane implements AutoCloseable {
             solidCommands.getItems().add(item);
         }
         sketchCommands.getStyleClass().add("command-group");
-        var toolbar = new FlowPane(10, 6, sketchCommands, solidCommands);
+        var constructionMenu = new MenuButton(translations.text("construction.menu"));
+        constructionMenu.setId("construction-menu");
+        constructionMenu.setGraphic(
+                ConstructionIcons.icon(dev.voxelbrew.engine.construction.ConstructionTools.Tool.OFFSET_PLANE));
+        UiHelp.menu(constructionMenu, translations);
+        for (var command : dev.voxelbrew.engine.construction.ConstructionTools.Tool.values()) {
+            if (command == dev.voxelbrew.engine.construction.ConstructionTools.Tool.OFFSET_PLANE
+                    || command == dev.voxelbrew.engine.construction.ConstructionTools.Tool.AXIS_SURFACE
+                    || command == dev.voxelbrew.engine.construction.ConstructionTools.Tool.POINT_VERTEX)
+                constructionMenu.getItems().add(new SeparatorMenuItem());
+            var item = new MenuItem(translations.text("construction." + command.name()));
+            item.setGraphic(ConstructionIcons.icon(command));
+            UiHelp.menuItem(
+                    item,
+                    translations.text("construction." + command.name()) + ". "
+                            + translations.text("construction.select"));
+            item.setId("construct-" + command.name().toLowerCase(Locale.ROOT).replace('_', '-'));
+            item.setOnAction(event -> attempt(() -> beginConstruction(command, null)));
+            constructionMenu.getItems().add(item);
+        }
+        var toolbar = new FlowPane(10, 6, sketchCommands, solidCommands, constructionMenu);
         toolbar.setId("modeling-toolbar");
         toolbar.getStyleClass().add("command-strip");
         constrainedSketch.getStyleClass().add("primary");
@@ -665,6 +687,10 @@ public final class Workbench extends BorderPane implements AutoCloseable {
         statusbar.getStyleClass().add("status-strip");
         design.setBottom(new VBox(timeline, statusbar));
         viewport.onSelection((id, face) -> {
+            if (tool == Tool.CONSTRUCTION && constructionEditor != null) {
+                constructionEditor.pick(id, face);
+                return;
+            }
             if (tool == Tool.PLANE) {
                 chooseBodyPlane(id, face);
                 return;
@@ -678,7 +704,10 @@ public final class Workbench extends BorderPane implements AutoCloseable {
                 selectFeature(id);
             else selectBody(id, face);
         });
-        viewport.onEdgeSelection(this::selectModificationEdge);
+        viewport.onEdgeSelection((id, edge) -> {
+            if (constructionEditor != null) constructionEditor.pickEdge(id, edge);
+            else selectModificationEdge(id, edge);
+        });
         controller.onChanged(this::refresh);
         windowFocus = (o, old, focused) -> {
             if (!closed && focused && appearanceChoice == Appearance.Choice.SYSTEM) applyAppearance();
@@ -875,6 +904,10 @@ public final class Workbench extends BorderPane implements AutoCloseable {
             if (changed || lastBuild != controller.build()) rebuildTree(document);
             if (lastBuild != controller.build()) {
                 viewport.showBodies(controller.build().bodies());
+                viewport.showConstruction(controller.build().construction(), id -> {
+                    if (constructionEditor != null) constructionEditor.pickDatum(id);
+                    else selectFeature(id);
+                });
                 if (fitNext && !controller.build().bodies().isEmpty()) {
                     viewport.fit(meshes());
                     fitNext = false;
@@ -1008,6 +1041,8 @@ public final class Workbench extends BorderPane implements AutoCloseable {
     }
 
     private String defaultFeatureName(Feature feature) {
+        if (feature instanceof ConstructionFeature construction)
+            return translations.text("construction." + construction.tool().name());
         if (feature instanceof Feature.Custom custom) return translations.text("feature.custom", custom.type());
         if (feature instanceof Feature.EdgeFinish finish)
             return translations.text(
@@ -1138,7 +1173,12 @@ public final class Workbench extends BorderPane implements AutoCloseable {
         identity.getStyleClass().add("muted");
         form.getChildren().add(identity);
         if (selectedBody != null) bodyStyleEditor(selectedBody);
-        if (feature instanceof Feature.Sketch s) {
+        if (feature instanceof ConstructionFeature construction) {
+            var edit = new Button(translations.text("construction.edit"));
+            edit.setId("construction-edit");
+            edit.setOnAction(event -> beginConstruction(construction.tool(), construction));
+            form.getChildren().add(edit);
+        } else if (feature instanceof Feature.Sketch s) {
             if (s.profile() instanceof Feature.Rectangle r) {
                 dimension(feature, "x", r.x());
                 dimension(feature, "y", r.y());
@@ -1455,6 +1495,15 @@ public final class Workbench extends BorderPane implements AutoCloseable {
                             "choose-plane-" + name.toLowerCase(Locale.ROOT),
                             () -> choosePlane(Feature.Plane.origin(name))));
         form.getChildren().add(origins);
+        controller.build().construction().forEach((id, datum) -> {
+            if (datum instanceof dev.voxelbrew.engine.construction.ConstructionGeometry.Plane plane) {
+                var choose = new Button(controller.snapshot().document().featureName(id, featureBaseName(id)));
+                choose.setId("choose-construction-" + id);
+                choose.setOnAction(
+                        event -> choosePlane(new Feature.Plane("support-" + id, 0, plane.frame(), null, id)));
+                form.getChildren().add(choose);
+            }
+        });
         toolActions.getChildren().setAll(button(translations.text("action.cancel"), "cancel-tool", this::cancelTool));
         viewport.pickSketchPlane(this::choosePlane, (id, face) -> {
             boolean flat = controller.build().bodies().stream()
@@ -1861,7 +1910,28 @@ public final class Workbench extends BorderPane implements AutoCloseable {
         Dialogs.show(dialog, stage, translations);
     }
 
+    private void beginConstruction(
+            dev.voxelbrew.engine.construction.ConstructionTools.Tool command, ConstructionFeature original) {
+        if (controller.rebuilding()
+                || controller.ioBusy()
+                || (original == null && !controller.build().valid())) return;
+        var document = controller.snapshot().document();
+        if (document.cursor() != document.features().size())
+            throw new IllegalStateException(translations.text("construction.end"));
+        cancelTool();
+        tool = Tool.CONSTRUCTION;
+        viewport.pickEdges(true);
+        constructionEditor =
+                new ConstructionEditor(command, original, controller, viewport, translations, this::cancelTool);
+        form.getChildren().setAll(constructionEditor);
+        refresh();
+    }
+
     private void cancelTool() {
+        if (constructionEditor != null) {
+            constructionEditor.close();
+            constructionEditor = null;
+        }
         if (timeline != null) timeline.stop();
         tool = Tool.NONE;
         modificationFaces.clear();
@@ -1981,6 +2051,7 @@ public final class Workbench extends BorderPane implements AutoCloseable {
     public void close() {
         if (closed) return;
         closed = true;
+        if (constructionEditor != null) constructionEditor.close();
         timeline.close();
         window.close();
         stage.focusedProperty().removeListener(windowFocus);

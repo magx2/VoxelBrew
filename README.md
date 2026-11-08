@@ -223,6 +223,10 @@ qualification is tracked in [M6 evidence](docs/acceptance/M6.md). Packaged platf
 
 ## Desktop CAD workbench
 
+The **Construct / Konstrukcja** menu creates editable reference planes, axes,
+points and local coordinate systems. See [construction geometry](docs/construction.md).
+The current `.jcad` schema is 10; older documents are rejected without migration.
+
 Use Java 21 and the matching native bootstrap above. JavaFX **21.0.13** is
 resolved for the build platform automatically.
 

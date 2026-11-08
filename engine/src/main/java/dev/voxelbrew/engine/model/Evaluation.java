@@ -22,6 +22,18 @@ public final class Evaluation implements AutoCloseable {
     private final List<Solid> owned;
     private final List<Feature> resolvedFeatures;
     private boolean closed;
+    private java.util.Map<String, dev.voxelbrew.engine.construction.ConstructionGeometry.Datum> construction =
+            java.util.Map.of();
+
+    void construction(java.util.Map<String, dev.voxelbrew.engine.construction.ConstructionGeometry.Datum> values) {
+        construction = java.util.Map.copyOf(values);
+    }
+
+    public java.util.Map<String, dev.voxelbrew.engine.construction.ConstructionGeometry.Datum> construction() {
+        requireOpen();
+        if (!valid()) throw new IllegalStateException("Construction geometry unavailable after failed rebuild");
+        return construction;
+    }
 
     Evaluation(CadDocument document, List<Diagnostic> diagnostics, List<Body> bodies, List<Solid> owned) {
         this(document, diagnostics, bodies, owned, document.features());

@@ -54,6 +54,7 @@ public final class Evaluator {
         Map<Feature.BodyRef, Evaluation.Body> outputs = new LinkedHashMap<>();
         Map<String, Evaluation.Body> active = new LinkedHashMap<>();
         Map<String, Evaluation.State> states = new LinkedHashMap<>();
+        Map<String, dev.voxelbrew.engine.construction.ConstructionGeometry.Datum> construction = new LinkedHashMap<>();
         var resolved = new ArrayList<>(document.features());
         Map<String, javax.measure.Quantity<?>> parameterValues;
         try {
@@ -90,7 +91,32 @@ public final class Evaluator {
                             feature, document.features(), document.parameters(), parameterValues);
                     resolved.set(index, feature);
                     FeatureValidation.validate(feature);
-                    if (feature instanceof Feature.Sketch s) {
+                    if (feature instanceof ConstructionFeature definition) {
+                        construction.put(
+                                definition.id(),
+                                dev.voxelbrew.engine.construction.ConstructionEvaluator.evaluate(
+                                        definition,
+                                        construction,
+                                        ref -> outputs.containsKey(ref)
+                                                ? outputs.get(ref).solid()
+                                                : null));
+                    } else if (feature instanceof Feature.Sketch s) {
+                        if (!s.plane().constructionSupport().isEmpty()) {
+                            var datum = construction.get(s.plane().constructionSupport());
+                            if (!(datum instanceof dev.voxelbrew.engine.construction.ConstructionGeometry.Plane plane))
+                                throw new ModelException(s.id(), "Supporting construction output is not a plane");
+                            s = new Feature.Sketch(
+                                    s.id(),
+                                    s.profileId(),
+                                    new Feature.Plane(
+                                            s.plane().id(),
+                                            s.plane().offsetZ(),
+                                            plane.frame(),
+                                            null,
+                                            s.plane().constructionSupport()),
+                                    s.profile());
+                            resolved.set(index, s);
+                        }
                         if (s.plane().support() != null) {
                             var support = s.plane().support();
                             var source = outputs.get(support.body());
@@ -282,7 +308,9 @@ public final class Evaluator {
                         (System.nanoTime() - started) / 1_000_000,
                         active.size(),
                         diagnostics.stream().filter(d -> d.state() == FAILED).count());
-            return new Evaluation(document, diagnostics, new ArrayList<>(active.values()), owned, resolved);
+            var result = new Evaluation(document, diagnostics, new ArrayList<>(active.values()), owned, resolved);
+            result.construction(construction);
+            return result;
         } catch (Throwable failure) {
             owned.forEach(Solid::close);
             throw failure;
@@ -305,6 +333,10 @@ public final class Evaluator {
     }
 
     private static List<String> references(Feature feature) {
+        if (feature instanceof ConstructionFeature construction) return construction.dependencies();
+        if (feature instanceof Feature.Sketch s
+                && !s.plane().constructionSupport().isEmpty())
+            return List.of(s.plane().constructionSupport());
         if (feature instanceof Feature.Sketch s && s.plane().support() != null)
             return List.of(s.plane().support().body().featureId());
         if (feature instanceof Feature.Extrude e) {

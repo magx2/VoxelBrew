@@ -58,6 +58,13 @@ public final class FeatureDimensions {
                                 unit(d.type()),
                                 d.values().getFirst()));
             }
+        } else if (feature instanceof ConstructionFeature c) {
+            var unit = switch (c.tool()) {
+                case OFFSET_PLANE -> ParameterUnit.MM;
+                case ANGLED_PLANE -> ParameterUnit.DEG;
+                default -> ParameterUnit.NUMBER;
+            };
+            result.add(new Dimension(new ParameterSet.Target(c.id(), "value"), unit, c.value()));
         } else if (feature instanceof Feature.Extrude e) length.accept("distance", e.distance());
         else if (feature instanceof Feature.EdgeFinish f) length.accept("size", f.size());
         else if (feature instanceof Feature.Shell s) length.accept("thickness", s.thickness());
@@ -77,6 +84,9 @@ public final class FeatureDimensions {
     public static Feature apply(Feature feature, Map<String, Double> changes) {
         if (changes.isEmpty()) return feature;
         changes.keySet().forEach(k -> dimension(feature, k));
+        if (feature instanceof ConstructionFeature c)
+            return new ConstructionFeature(
+                    c.id(), c.tool(), c.inputs(), changes.getOrDefault("value", c.value()), c.alternate());
         if (feature instanceof Feature.Extrude e)
             return new Feature.Extrude(e.id(), e.profile(), changes.getOrDefault("distance", e.distance()));
         if (feature instanceof Feature.EdgeFinish f)

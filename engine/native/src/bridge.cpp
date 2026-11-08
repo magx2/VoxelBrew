@@ -22,6 +22,11 @@
 #include <BRepBuilderAPI_Transform.hxx>
 #include <BRepAdaptor_Surface.hxx>
 #include <BRepAdaptor_Curve.hxx>
+#include <GCPnts_AbscissaPoint.hxx>
+#include <gp_Cylinder.hxx>
+#include <gp_Cone.hxx>
+#include <gp_Sphere.hxx>
+#include <gp_Torus.hxx>
 #include <gp_Trsf.hxx>
 #include <BRepMesh_IncrementalMesh.hxx>
 #include <BRep_Tool.hxx>
@@ -608,6 +613,128 @@ Java_dev_voxelbrew_engine_geometry_NativeKernel_planarFaces(JNIEnv* env, jclass,
         auto result = env->NewDoubleArray(static_cast<jsize>(planes.size()));
         if (result)
             env->SetDoubleArrayRegion(result, 0, static_cast<jsize>(planes.size()), planes.data());
+        return result;
+    });
+}
+
+JNIEXPORT jdoubleArray JNICALL Java_dev_voxelbrew_engine_geometry_NativeKernel_constructionInput(
+    JNIEnv* env, jclass, jlong id, jint topology, jint selected, jdouble fraction) {
+    return guarded<jdoubleArray>(env, "construction reference", nullptr, [&]() -> jdoubleArray {
+        if (!std::isfinite(fraction) || fraction < 0 || fraction > 1)
+            throw std::invalid_argument("path fraction must be in [0, 1]");
+        if (topology < 0 || topology > 2 || selected < -1)
+            throw std::invalid_argument("invalid topology selection");
+        const auto shape = lookup(id);
+        const auto kind = topology == 0 ? TopAbs_FACE : topology == 1 ? TopAbs_EDGE : TopAbs_VERTEX;
+        std::vector<TopoDS_Shape> elements;
+        for (TopExp_Explorer it(*shape, kind); it.More(); it.Next())
+            elements.push_back(it.Current());
+        std::vector<jdouble> data;
+        if (selected == -1)
+            data.push_back(static_cast<double>(elements.size()));
+        else {
+            if (selected >= static_cast<int>(elements.size()))
+                throw std::invalid_argument("missing topology reference");
+            int type = 9;
+            double radius = 0, secondary = 0;
+            gp_Pnt center, sample;
+            gp_Dir axis(0, 0, 1), x(1, 0, 0), normal(0, 0, 1);
+            if (topology == 2)
+                center = sample = BRep_Tool::Pnt(TopoDS::Vertex(elements[selected]));
+            else if (topology == 1) {
+                BRepAdaptor_Curve curve(TopoDS::Edge(elements[selected]));
+                const double first = curve.FirstParameter(), last = curve.LastParameter();
+                double parameter = first;
+                if (fraction == 1)
+                    parameter = last;
+                else if (fraction > 0) {
+                    const double length = GCPnts_AbscissaPoint::Length(curve, first, last);
+                    GCPnts_AbscissaPoint abscissa(curve, length * fraction, first);
+                    if (!abscissa.IsDone())
+                        throw std::runtime_error("cannot sample path by arc length");
+                    parameter = abscissa.Parameter();
+                }
+                gp_Vec tangent;
+                curve.D1(parameter, sample, tangent);
+                normal = gp_Dir(tangent);
+                center = sample;
+                axis = normal;
+                type = 8;
+                if (curve.GetType() == GeomAbs_Line) type = 6;
+                if (curve.GetType() == GeomAbs_Circle) {
+                    const auto circle = curve.Circle();
+                    type = 7;
+                    center = circle.Location();
+                    axis = circle.Axis().Direction();
+                    x = circle.XAxis().Direction();
+                }
+            } else {
+                const auto face = TopoDS::Face(elements[selected]);
+                BRepAdaptor_Surface surface(face);
+                const double u = surface.FirstUParameter() +
+                                 fraction * (surface.LastUParameter() - surface.FirstUParameter());
+                const double v = (surface.FirstVParameter() + surface.LastVParameter()) / 2;
+                gp_Vec du, dv;
+                surface.D1(u, v, sample, du, dv);
+                normal = gp_Dir(du.Crossed(dv));
+                if (face.Orientation() == TopAbs_REVERSED) normal.Reverse();
+                gp_Ax3 frame;
+                switch (surface.GetType()) {
+                    case GeomAbs_Plane:
+                        type = 1;
+                        frame = surface.Plane().Position();
+                        break;
+                    case GeomAbs_Cylinder:
+                        type = 2;
+                        frame = surface.Cylinder().Position();
+                        radius = surface.Cylinder().Radius();
+                        break;
+                    case GeomAbs_Cone:
+                        type = 3;
+                        frame = surface.Cone().Position();
+                        radius = surface.Cone().RefRadius();
+                        secondary = surface.Cone().SemiAngle();
+                        break;
+                    case GeomAbs_Sphere:
+                        type = 4;
+                        frame = surface.Sphere().Position();
+                        radius = surface.Sphere().Radius();
+                        break;
+                    case GeomAbs_Torus:
+                        type = 5;
+                        frame = surface.Torus().Position();
+                        radius = surface.Torus().MajorRadius();
+                        secondary = surface.Torus().MinorRadius();
+                        break;
+                    default:
+                        throw std::invalid_argument("construction requires an analytic surface");
+                }
+                center = frame.Location();
+                axis = frame.Direction();
+                x = frame.XDirection();
+            }
+            data = {static_cast<double>(type),
+                    center.X(),
+                    center.Y(),
+                    center.Z(),
+                    axis.X(),
+                    axis.Y(),
+                    axis.Z(),
+                    x.X(),
+                    x.Y(),
+                    x.Z(),
+                    sample.X(),
+                    sample.Y(),
+                    sample.Z(),
+                    normal.X(),
+                    normal.Y(),
+                    normal.Z(),
+                    radius,
+                    secondary};
+        }
+        auto result = env->NewDoubleArray(static_cast<jsize>(data.size()));
+        if (result)
+            env->SetDoubleArrayRegion(result, 0, static_cast<jsize>(data.size()), data.data());
         return result;
     });
 }

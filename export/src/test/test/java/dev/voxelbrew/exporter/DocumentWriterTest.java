@@ -24,11 +24,11 @@ class DocumentWriterTest {
     @Test
     void currentSchemaUpdatesMetadataWithoutChangingDefinitions() throws Exception {
         byte[] baseline;
-        try (var input = getClass().getResourceAsStream("/fixtures/reference-schema9.jcad")) {
+        try (var input = getClass().getResourceAsStream("/fixtures/reference-schema10.jcad")) {
             baseline = Objects.requireNonNull(input).readAllBytes();
         }
         assertEquals(
-                "ee377084ceba2fe30348ffd54d91c04441b8fee542da9baadd142dcb8a58b8ff",
+                "68f9575b0539d811619a4197e2235f3f796eea798c3146fa3b2015cb86166939",
                 HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(baseline)));
         var document = DocumentCodec.decode(baseline);
         var upgradedDefinitions = message(baseline).toBuilder()
@@ -59,7 +59,7 @@ class DocumentWriterTest {
     @Test
     void olderApplicationVersionUpgradesOnExplicitSaveAndPreservesTheDesign() throws Exception {
         byte[] baseline;
-        try (var input = getClass().getResourceAsStream("/fixtures/reference-schema9.jcad")) {
+        try (var input = getClass().getResourceAsStream("/fixtures/reference-schema10.jcad")) {
             baseline = Objects.requireNonNull(input).readAllBytes();
         }
         byte[] older = envelope(

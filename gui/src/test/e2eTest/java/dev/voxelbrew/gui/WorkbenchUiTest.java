@@ -36,6 +36,84 @@ import org.junit.jupiter.api.io.TempDir;
 @ExtendWith(UiTestShard.class)
 class WorkbenchUiTest {
     @Test
+    void constructionMenuCreatesEditablePlaneAndCancelsDraftWithoutHistory() throws Exception {
+        ready();
+        click("construction-menu");
+        assertTrue(
+                fx(() -> ((MenuButton) node("#construction-menu")).isShowing()),
+                "Construct menu stays open after mouse click");
+        assertEquals(
+                20,
+                fx(() -> ((MenuButton) node("#construction-menu"))
+                                .getItems().stream()
+                                        .filter(item -> !(item instanceof SeparatorMenuItem))
+                                        .count())
+                        .intValue());
+        click("construct-offset-plane");
+        choice("construction-input-0", 4);
+        text("construction-value", "12");
+        click("construction-preview");
+        Thread.sleep(500);
+        assertTrue(document().features().isEmpty(), "Preview does not create a history entry");
+        click("construction-apply");
+        long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(20);
+        while (document().features().isEmpty() && System.nanoTime() < deadline) Thread.sleep(40);
+        ready();
+        assertEquals(1, document().features().size());
+        var feature = (ConstructionFeature) document().features().getFirst();
+        assertEquals(12, feature.value());
+        assertEquals(
+                12,
+                fx(() -> ((dev.voxelbrew.engine.construction.ConstructionGeometry.Plane)
+                                workbench.controller().build().construction().get(feature.id()))
+                        .origin()
+                        .z()));
+        click("history-0");
+        click("construction-edit");
+        text("construction-value", "20");
+        click("construction-cancel");
+        assertEquals(feature, document().features().getFirst());
+        click("construction-menu");
+        click("construct-point-vertex");
+        key(KeyCode.ESCAPE);
+        assertEquals(1, document().features().size());
+        shortcut(KeyCode.Z, false);
+        ready();
+        assertTrue(document().features().isEmpty());
+        shortcut(KeyCode.Z, true);
+        ready();
+        assertEquals(feature, document().features().getFirst());
+        fx(() -> {
+            workbench
+                    .controller()
+                    .replaceFeature(new ConstructionFeature(
+                            feature.id(),
+                            feature.tool(),
+                            List.of(new ConstructionFeature.Input(
+                                    ConstructionFeature.Selection.DATUM,
+                                    "missing",
+                                    "",
+                                    0,
+                                    new dev.voxelbrew.engine.construction.ConstructionGeometry.Vector(0, 0, 0))),
+                            12,
+                            false));
+            return null;
+        });
+        ready();
+        assertFalse(fx(() -> workbench.controller().build().valid()));
+        click("history-0");
+        click("construction-edit");
+        choice("construction-input-0", 4);
+        click("construction-apply");
+        deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(20);
+        while (!fx(() -> workbench.controller().build().valid()) && System.nanoTime() < deadline) Thread.sleep(40);
+        ready();
+        assertTrue(
+                fx(() -> workbench.controller().build().valid()), "Broken construction can be repaired in its editor");
+        assertEquals(feature, document().features().getFirst());
+    }
+
+    @Test
     void technicalDrawingRenderingHidesRearEdgesKeepsPickingAndRemembersStyle() throws Exception {
         var session = new ModelSession(CadDocument.empty());
         session.add(new Feature.Sketch(
@@ -863,9 +941,16 @@ class WorkbenchUiTest {
                 .getValue()
                 .toString());
         bodyTreeClick(featureLabel, MouseButton.PRIMARY, 2);
-        assertNull(
+        assertNotNull(
                 fx(() -> ((TreeView<?>) node("#model-tree")).getEditingItem()),
-                "Feature rows do not enter body-name editing");
+                "Feature rows support their own name editing");
+        text("feature-rename-field", "Base profile");
+        key(KeyCode.ENTER);
+        ready();
+        assertEquals(
+                "Base profile",
+                document().featureNames().get(document().features().getFirst().id()));
+        assertEquals("Mounting plate", document().bodyNames().get("named0.body"));
     }
 
     @Test
@@ -1434,6 +1519,11 @@ class WorkbenchUiTest {
     }
 
     private void click(String id) throws Exception {
+        if (id.equals("undo") || id.equals("redo")) {
+            click("menu-edit");
+            click("menu-" + id);
+            return;
+        }
         String menu = switch (id) {
             case "extrude", "cut", "fillet", "chamfer", "shell", "split-body" -> "operations-menu";
             case "new", "open", "import", "save", "save-as", "export" -> "menu-file";
@@ -1453,6 +1543,17 @@ class WorkbenchUiTest {
                 })
                 && System.nanoTime() < deadline) Thread.sleep(40);
         var window = fx(() -> node("#" + id).getScene().getWindow());
+        if (window instanceof ContextMenu) {
+            // Native popup coordinates can belong to a different DPI monitor in Windows Robot.
+            // Navigate the visible popup with real keys and observe focus before accepting it.
+            var item = fx(() -> node("#" + id));
+            assertFalse(fx(item::isDisabled), id + " is disabled");
+            for (int step = 0; step < 100 && !fx(item::isFocused); step++) key(KeyCode.DOWN);
+            assertTrue(fx(item::isFocused), "Native menu selection reached " + id);
+            key(KeyCode.ENTER);
+            Thread.sleep(180);
+            return;
+        }
         if (!(window instanceof javafx.stage.PopupWindow)) focus(window);
         reveal(id);
         fx(() -> {
@@ -1471,7 +1572,9 @@ class WorkbenchUiTest {
         // Native menu rows may act on hover and redirect input into their submenu popup.
         int expected = target instanceof ButtonBase ? 1 : 0;
         var pressed = new CountDownLatch(expected);
-        var released = new CountDownLatch(expected);
+        // Native menu popups can receive the release after the button receives the press.
+        var released = new CountDownLatch(target instanceof MenuButton ? 0 : expected);
+        boolean[] releaseSent = {false};
         EventHandler<MouseEvent> onPress = e -> pressed.countDown();
         EventHandler<MouseEvent> onRelease = e -> released.countDown();
         fx(() -> {
@@ -1490,12 +1593,13 @@ class WorkbenchUiTest {
             Thread.sleep(60);
             fx(() -> {
                 robot.mouseRelease(MouseButton.PRIMARY);
+                releaseSent[0] = true;
                 return null;
             });
             assertTrue(released.await(3, TimeUnit.SECONDS), "Mouse release reached " + id);
         } finally {
             fx(() -> {
-                if (released.getCount() != 0) robot.mouseRelease(MouseButton.PRIMARY);
+                if (!releaseSent[0]) robot.mouseRelease(MouseButton.PRIMARY);
                 target.removeEventFilter(MouseEvent.MOUSE_PRESSED, onPress);
                 target.removeEventFilter(MouseEvent.MOUSE_RELEASED, onRelease);
                 return null;
@@ -1757,7 +1861,19 @@ class WorkbenchUiTest {
     private void choice(String id, int index) throws Exception {
         if (id.equals("appearance")) {
             click("menu-view");
-            click("menu-appearance");
+            // A submenu opens on hover. Clicking it after the hover delay can close it again.
+            fx(() -> {
+                var item = node("#menu-appearance");
+                var bounds = item.localToScreen(item.getBoundsInLocal());
+                robot.mouseMove(bounds.getCenterX(), bounds.getCenterY());
+                return null;
+            });
+            long submenuDeadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
+            while (!fx(() -> ((Menu) command(workbench, "menu-appearance")).isShowing())
+                    && System.nanoTime() < submenuDeadline) Thread.sleep(25);
+            assertTrue(
+                    fx(() -> ((Menu) command(workbench, "menu-appearance")).isShowing()),
+                    "Appearance submenu opens on native hover");
             click("appearance-" + List.of("system", "light", "dark").get(index));
             long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(3);
             while (fx(() -> ((MenuBar) workbench.getScene().lookup("#main-menu"))
@@ -3773,8 +3889,20 @@ class WorkbenchUiTest {
     @Test
     void keyboardModelingNavigationAndSketchDraftsRespectFocusAndModalBoundaries() throws Exception {
         ready();
-        assertShortcutCaption("extrude", "↑  Extrude", "E");
-        assertShortcutCaption("split-body", "Split body (X)", "X");
+        click("operations-menu");
+        fx(() -> {
+            var menu = (MenuButton) node("#operations-menu");
+            for (var id : List.of("extrude", "split-body")) {
+                var item = menu.getItems().stream()
+                        .filter(value -> id.equals(value.getId()))
+                        .findFirst()
+                        .orElseThrow();
+                assertEquals(KeyboardShortcuts.primary(id), item.getAccelerator(), "Visible operation shortcut: " + id);
+                assertNotNull(node("#" + id));
+            }
+            return null;
+        });
+        key(KeyCode.ESCAPE);
         click("menu-fit");
         key(KeyCode.E);
         assertNull(fx(() -> workbench.lookup("#extrude-distance")), "Disabled extrusion stays unavailable");

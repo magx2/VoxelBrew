@@ -82,7 +82,18 @@ public final class Viewport extends StackPane {
         this.translations = translations;
         setId("viewport");
         setMinSize(300, 250);
-        world.getChildren().addAll(aids, bodies, outlines, sketches, handle, planeTargets, faceHighlight, selectedEdges);
+        world.getChildren()
+                .addAll(
+                        aids,
+                        bodies,
+                        outlines,
+                        sketches,
+                        handle,
+                        planeTargets,
+                        faceHighlight,
+                        selectedEdges,
+                        construction,
+                        constructionPreview);
         outlines.setMouseTransparent(true);
         outlines.setDepthTest(DepthTest.ENABLE);
         faceHighlight.setMouseTransparent(true);
@@ -239,6 +250,10 @@ public final class Viewport extends StackPane {
         return new Point3D(p.getX(), p.getZ(), -p.getY());
     }
 
+    public void onSelection(BiConsumer<String, Integer> listener) {
+        selection = listener;
+    }
+
     public void onEdgeSelection(BiConsumer<String, Integer> listener) {
         edgeSelection = listener;
     }
@@ -280,8 +295,16 @@ public final class Viewport extends StackPane {
         return closest;
     }
 
-    public void onSelection(BiConsumer<String, Integer> listener) {
-        selection = listener;
+    private final ConstructionView construction = new ConstructionView(), constructionPreview = new ConstructionView();
+
+    public void showConstruction(
+            java.util.Map<String, dev.voxelbrew.engine.construction.ConstructionGeometry.Datum> values,
+            Consumer<String> selected) {
+        construction.show(values, selected);
+    }
+
+    public void previewConstruction(dev.voxelbrew.engine.construction.ConstructionGeometry.Datum value) {
+        constructionPreview.preview(value);
     }
 
     public void drawOnPlane(double z, Consumer<Point3D> listener) {

@@ -27,7 +27,9 @@ public final class DocumentController implements AutoCloseable {
             MeshData mesh,
             double volume,
             List<dev.voxelbrew.engine.geometry.PlanarFace> planarFaces,
-            TechnicalEdges edges) {
+            TechnicalEdges edges,
+            int[] faceEdges,
+            double[] edgeSamples) {
         public Body(String id, Feature.BodyRef output, MeshData mesh, double volume) {
             this(id, output, mesh, volume, List.of());
         }
@@ -38,11 +40,40 @@ public final class DocumentController implements AutoCloseable {
                 MeshData mesh,
                 double volume,
                 List<dev.voxelbrew.engine.geometry.PlanarFace> planarFaces) {
-            this(id, output, mesh, volume, planarFaces, TechnicalEdges.from(mesh));
+            this(id, output, mesh, volume, planarFaces, TechnicalEdges.from(mesh), new int[0], new double[0]);
+        }
+
+        public Body(
+                String id,
+                Feature.BodyRef output,
+                MeshData mesh,
+                double volume,
+                List<dev.voxelbrew.engine.geometry.PlanarFace> planarFaces,
+                int[] faceEdges,
+                double[] edgeSamples) {
+            this(id, output, mesh, volume, planarFaces, TechnicalEdges.from(mesh), faceEdges, edgeSamples);
         }
 
         public Body {
             planarFaces = List.copyOf(planarFaces);
+            faceEdges = faceEdges.clone();
+            edgeSamples = edgeSamples.clone();
+        }
+
+        @Override
+        public int[] faceEdges() {
+            return faceEdges.clone();
+        }
+
+        @Override
+        public double[] edgeSamples() {
+            return edgeSamples.clone();
+        }
+
+        public List<Integer> edgesOnFace(int face) {
+            var result = new java.util.TreeSet<Integer>();
+            for (int i = 0; i < faceEdges.length; i += 2) if (faceEdges[i] == face) result.add(faceEdges[i + 1]);
+            return List.copyOf(result);
         }
     }
 
@@ -608,7 +639,9 @@ public final class DocumentController implements AutoCloseable {
                             b.output(),
                             b.solid().tessellate(MeshOptions.DEFAULT),
                             b.solid().volume(),
-                            b.solid().planarFaces()));
+                            b.solid().planarFaces(),
+                            b.solid().faceEdges(),
+                            b.solid().edgeSamples()));
             return new Build(bodies, evaluation.diagnostics(), true, evaluation.resolvedFeatures());
         }
     }

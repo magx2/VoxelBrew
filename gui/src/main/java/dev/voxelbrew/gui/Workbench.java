@@ -252,7 +252,8 @@ public final class Workbench extends BorderPane implements AutoCloseable {
     private enum Tool {
         NONE,
         PLANE,
-        EXTRUDE
+        EXTRUDE,
+        MODIFY
     }
 
     private final Stage stage;
@@ -310,6 +311,11 @@ public final class Workbench extends BorderPane implements AutoCloseable {
     private long appearanceRequest;
     private boolean closed, refreshing;
     private Tool tool = Tool.NONE;
+    private String modification;
+    private String modificationBody;
+    private final java.util.Set<Integer> modificationFaces = new java.util.TreeSet<>();
+    private final java.util.Set<Integer> modificationEdges = new java.util.TreeSet<>();
+    private Label modificationSelection;
     private String selectedFeature, selectedBody;
     private final Map<String, TextField> fields = new LinkedHashMap<>();
     private List<Feature> lastFeatures = List.of();
@@ -665,11 +671,16 @@ public final class Workbench extends BorderPane implements AutoCloseable {
                 chooseBodyPlane(id, face);
                 return;
             }
+            if (tool == Tool.MODIFY) {
+                selectModificationFace(id, face);
+                return;
+            }
             if (tool != Tool.NONE || controller.rebuilding()) return;
             if (controller.snapshot().document().features().stream().anyMatch(f -> f.id().equals(id)))
                 selectFeature(id);
             else selectBody(id, face);
         });
+        viewport.onEdgeSelection(this::selectModificationEdge);
         controller.onChanged(this::refresh);
         windowFocus = (o, old, focused) -> {
             if (!closed && focused && appearanceChoice == Appearance.Choice.SYSTEM) applyAppearance();
@@ -1660,81 +1671,126 @@ public final class Workbench extends BorderPane implements AutoCloseable {
     }
 
     private void beginFinish(boolean rounded) {
-        beginSolidModification(
-                rounded ? "action.fillet" : "action.chamfer",
-                (id, body, size, index) -> new Feature.EdgeFinish(
-                        id,
-                        body,
-                        rounded ? Feature.EdgeFinish.Kind.FILLET : Feature.EdgeFinish.Kind.CHAMFER,
-                        size,
-                        index == 0 ? java.util.List.of() : java.util.List.of(index)));
+        beginSolidModification(rounded ? "action.fillet" : "action.chamfer");
     }
 
     private void beginShell() {
-        beginSolidModification("action.shell", Feature.Shell::new);
+        beginSolidModification("action.shell");
     }
 
-    @FunctionalInterface
-    private interface SolidModification {
-        Feature create(String id, Feature.BodyRef body, double size, int index);
-    }
-
-    private void beginSolidModification(String title, SolidModification operation) {
+    private void beginSolidModification(String title) {
         cancelTool();
         var bodies = controller.build().bodies();
         if (bodies.isEmpty()) return;
-        var dialog = new Dialog<Void>();
-        dialog.setTitle(translations.text(title));
-        var body = new ComboBox<DocumentController.Body>();
-        body.getItems().setAll(bodies);
-        body.setConverter(new javafx.util.StringConverter<>() {
-            public String toString(DocumentController.Body value) {
-                return value == null ? "" : value.id();
-            }
-
-            public DocumentController.Body fromString(String value) {
-                throw new UnsupportedOperationException();
-            }
-        });
-        body.setValue(bodies.stream()
-                .filter(b -> b.id().equals(selectedBody))
-                .findFirst()
-                .orElse(bodies.getFirst()));
-        var size = new TextField("1");
-        size.setId("modify-size");
-        var index = new TextField(title.equals("action.shell") ? "1" : "0");
-        index.setId("modify-index");
-        var error = new Label();
-        error.setWrapText(true);
-        dialog.getDialogPane()
-                .setContent(new VBox(
-                        8,
-                        new Label(translations.text("gui.input_body")),
-                        body,
-                        new Label(translations.text(title.equals("action.shell") ? "gui.thickness_mm" : "gui.size_mm")),
-                        size,
-                        new Label(
-                                translations.text(title.equals("action.shell") ? "gui.face_index" : "gui.edge_index")),
-                        index,
-                        error));
-        var commit = new ButtonType(translations.text(title), ButtonBar.ButtonData.OK_DONE);
-        dialog.getDialogPane().getButtonTypes().addAll(commit, ButtonType.CANCEL);
-        dialog.getDialogPane().lookupButton(commit).addEventFilter(javafx.event.ActionEvent.ACTION, event -> {
+        tool = Tool.MODIFY;
+        modification = title;
+        modificationBody = selectedBody != null && bodies.stream().anyMatch(b -> b.id().equals(selectedBody))
+                ? selectedBody
+                : bodies.getFirst().id();
+        modificationFaces.clear();
+        modificationEdges.clear();
+        viewport.pickEdges(!title.equals("action.shell"));
+        form.getChildren().clear();
+        fields.clear();
+        error.setText("");
+        selectionLabel.setText(translations.text(title));
+        modificationSelection = new Label(translations.text("gui.choose_faces_in_viewport"));
+        modificationSelection.setWrapText(true);
+        form.getChildren().add(modificationSelection);
+        var size = field(
+                "modify-size", translations.text(title.equals("action.shell") ? "gui.thickness_mm" : "gui.size_mm"), 1);
+        finish = button(translations.text("gui.commit"), "commit-modification", () -> {
             try {
+                if (modificationFaces.isEmpty() && modificationEdges.isEmpty())
+                    throw new IllegalArgumentException(translations.text("gui.choose_faces_in_viewport"));
+                var body = controller.build().bodies().stream()
+                        .filter(b -> b.id().equals(modificationBody))
+                        .findFirst()
+                        .orElseThrow();
+                double amount = number(size, "size");
                 String id = "modify-"
                         + controller.snapshot().document().uuidGenerator().next();
-                controller.add(operation.create(
-                        id,
-                        body.getValue().output(),
-                        Double.parseDouble(size.getText()),
-                        Integer.parseInt(index.getText())));
+                Feature feature;
+                if (modification.equals("action.shell")) {
+                    if (modificationFaces.size() != 1)
+                        throw new IllegalArgumentException(translations.text("gui.choose_one_face"));
+                    feature = new Feature.Shell(
+                            id,
+                            body.output(),
+                            amount,
+                            modificationFaces.iterator().next() + 1);
+                } else {
+                    var edges = new java.util.TreeSet<Integer>();
+                    edges.addAll(modificationEdges);
+                    modificationFaces.forEach(face -> edges.addAll(body.edgesOnFace(face)));
+                    if (edges.isEmpty())
+                        throw new IllegalArgumentException(translations.text("gui.choose_faces_in_viewport"));
+                    feature = new Feature.EdgeFinish(
+                            id,
+                            body.output(),
+                            modification.equals("action.fillet")
+                                    ? Feature.EdgeFinish.Kind.FILLET
+                                    : Feature.EdgeFinish.Kind.CHAMFER,
+                            amount,
+                            java.util.List.copyOf(edges));
+                }
+                controller.add(feature);
                 selectedFeature = id;
+                tool = Tool.NONE;
+                modificationFaces.clear();
+                modificationEdges.clear();
+                viewport.pickEdges(false);
+                viewport.highlightSelectedEdges(null, java.util.Set.of());
+                inspect();
+                refresh();
             } catch (RuntimeException failure) {
                 error.setText(failure.getMessage());
-                event.consume();
             }
         });
-        dialog.showAndWait();
+        finish.getStyleClass().add("primary");
+        toolActions
+                .getChildren()
+                .setAll(finish, button(translations.text("action.cancel"), "cancel-tool", this::cancelTool));
+        size.setOnAction(e -> finish.fire());
+        viewport.select(modificationBody);
+        refresh();
+    }
+
+    private void selectModificationFace(String id, int face) {
+        if (face < 0) return;
+        if (!id.equals(modificationBody)) {
+            modificationBody = id;
+            modificationFaces.clear();
+            modificationEdges.clear();
+        }
+        if (!modificationFaces.add(face)) modificationFaces.remove(face);
+        viewport.select(id);
+        viewport.highlightFace(id, face);
+        updateModificationSelection();
+    }
+
+    private void selectModificationEdge(String id, int edge) {
+        if (tool != Tool.MODIFY) return;
+        if (!id.equals(modificationBody)) {
+            modificationBody = id;
+            modificationFaces.clear();
+            modificationEdges.clear();
+        }
+        if (!modificationEdges.add(edge)) modificationEdges.remove(edge);
+        viewport.select(id);
+        updateModificationSelection();
+    }
+
+    private void updateModificationSelection() {
+        var body = controller.build().bodies().stream()
+                .filter(b -> b.id().equals(modificationBody))
+                .findFirst()
+                .orElse(null);
+        var edges = new java.util.TreeSet<Integer>(modificationEdges);
+        if (body != null) modificationFaces.forEach(face -> edges.addAll(body.edgesOnFace(face)));
+        viewport.highlightSelectedEdges(modificationBody, edges);
+        modificationSelection.setText(
+                translations.text("gui.selected_geometry", modificationEdges.size(), modificationFaces.size()));
     }
 
     private void beginSplit() {
@@ -1810,6 +1866,12 @@ public final class Workbench extends BorderPane implements AutoCloseable {
     private void cancelTool() {
         if (timeline != null) timeline.stop();
         tool = Tool.NONE;
+        modificationFaces.clear();
+        modificationEdges.clear();
+        viewport.pickEdges(false);
+        viewport.highlightSelectedEdges(null, java.util.Set.of());
+        modification = null;
+        modificationBody = null;
         planeSnapshot = null;
         planeRepair = null;
         viewport.stopPlaneSelection();

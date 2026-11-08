@@ -22,6 +22,9 @@ class NativeKernelTest {
             assertTrue(shell.volume() < box.volume());
             assertTrue(shell.volume() > 0);
             assertEquals(4000, box.volume(), VOLUME_TOLERANCE_MM3);
+            assertTrue(box.faceEdges().length >= 2);
+            assertEquals(0, box.faceEdges().length % 2);
+            assertEquals(0, box.edgeSamples().length % 4);
         }
         assertEquals(before, NativeKernel.liveHandles());
     }

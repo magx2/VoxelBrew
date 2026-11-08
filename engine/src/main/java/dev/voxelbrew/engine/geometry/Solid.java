@@ -135,7 +135,20 @@ public final class Solid implements AutoCloseable {
     public synchronized Solid edgeFinish(boolean fillet, double size, int[] edges) {
         requireOpen();
         positive("size", size);
+        if (edges.length == 0) throw new IllegalArgumentException("Select at least one edge");
         return new Solid(NativeKernel.edgeFinish(token, fillet, size, edges.clone()));
+    }
+
+    /** Pairs of zero-based face index and one-based edge index from the same source topology. */
+    public synchronized int[] faceEdges() {
+        requireOpen();
+        return NativeKernel.faceEdges(token);
+    }
+
+    /** Nine sample points per OCCT edge, each encoded as edge index and XYZ coordinates. */
+    public synchronized double[] edgeSamples() {
+        requireOpen();
+        return NativeKernel.edgeSamples(token);
     }
 
     public synchronized Solid shell(double thickness, int removedFace) {

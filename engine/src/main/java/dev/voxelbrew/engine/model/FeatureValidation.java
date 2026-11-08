@@ -12,6 +12,7 @@ final class FeatureValidation {
             if (sketch.plane().isOrigin()
                     && (sketch.plane().offsetZ() != 0
                             || sketch.plane().support() != null
+                            || !sketch.plane().constructionSupport().isEmpty()
                             || !sketch.plane()
                                     .frame()
                                     .equals(Feature.Plane.origin(sketch.plane()
@@ -49,6 +50,7 @@ final class FeatureValidation {
         } else if (feature instanceof Feature.EdgeFinish finish) {
             positive(feature.id(), "size", finish.size());
             if (finish.kind() == null) throw new ModelException(feature.id(), "edge finish kind is missing");
+            if (finish.edges().isEmpty()) throw new ModelException(feature.id(), "select at least one edge");
             if (finish.edges().stream().anyMatch(index -> index == null || index < 1))
                 throw new ModelException(feature.id(), "edge indices must be positive");
         } else if (feature instanceof Feature.Shell shell) {

@@ -21,6 +21,7 @@
 #include <BRepBuilderAPI_Copy.hxx>
 #include <BRepBuilderAPI_Transform.hxx>
 #include <BRepAdaptor_Surface.hxx>
+#include <BRepAdaptor_Curve.hxx>
 #include <gp_Trsf.hxx>
 #include <BRepMesh_IncrementalMesh.hxx>
 #include <BRep_Tool.hxx>
@@ -461,9 +462,7 @@ JNIEXPORT jlong JNICALL Java_dev_voxelbrew_engine_geometry_NativeKernel_edgeFini
         const auto length = env->GetArrayLength(selected);
         std::vector<jint> indices(length);
         if (length) env->GetIntArrayRegion(selected, 0, length, indices.data());
-        if (!length) {
-            for (int i = 1; i <= static_cast<int>(edges.size()); ++i) indices.push_back(i);
-        }
+        if (!length) throw std::invalid_argument("select at least one edge");
         for (auto index : indices)
             if (index < 1 || index > static_cast<int>(edges.size()))
                 throw std::invalid_argument("edge index is outside source solid");
@@ -481,6 +480,58 @@ JNIEXPORT jlong JNICALL Java_dev_voxelbrew_engine_geometry_NativeKernel_edgeFini
         if (!operation.IsDone())
             throw std::runtime_error("chamfer could not be built at this distance");
         return own(operation.Shape());
+    });
+}
+
+JNIEXPORT jintArray JNICALL Java_dev_voxelbrew_engine_geometry_NativeKernel_faceEdges(JNIEnv* env,
+                                                                                      jclass,
+                                                                                      jlong id) {
+    return guarded<jintArray>(env, "face edges", nullptr, [&] {
+        const auto source = lookup(id);
+        std::vector<TopoDS_Edge> edges;
+        for (TopExp_Explorer it(*source, TopAbs_EDGE); it.More(); it.Next())
+            edges.push_back(TopoDS::Edge(it.Current()));
+        std::vector<jint> pairs;
+        jint face = 0;
+        for (TopExp_Explorer it(*source, TopAbs_FACE); it.More(); it.Next(), ++face) {
+            for (TopExp_Explorer edge(it.Current(), TopAbs_EDGE); edge.More(); edge.Next()) {
+                for (int i = 0; i < static_cast<int>(edges.size()); ++i)
+                    if (edges[i].IsSame(edge.Current())) {
+                        pairs.push_back(face);
+                        pairs.push_back(i + 1);
+                        break;
+                    }
+            }
+        }
+        auto result = env->NewIntArray(static_cast<jsize>(pairs.size()));
+        if (result && !pairs.empty())
+            env->SetIntArrayRegion(result, 0, static_cast<jsize>(pairs.size()), pairs.data());
+        return result;
+    });
+}
+
+JNIEXPORT jdoubleArray JNICALL
+Java_dev_voxelbrew_engine_geometry_NativeKernel_edgeSamples(JNIEnv* env, jclass, jlong id) {
+    return guarded<jdoubleArray>(env, "edge samples", nullptr, [&] {
+        const auto source = lookup(id);
+        std::vector<jdouble> samples;
+        int index = 0;
+        for (TopExp_Explorer it(*source, TopAbs_EDGE); it.More(); it.Next()) {
+            ++index;
+            BRepAdaptor_Curve curve(TopoDS::Edge(it.Current()));
+            const auto first = curve.FirstParameter(), last = curve.LastParameter();
+            if (!std::isfinite(first) || !std::isfinite(last)) continue;
+            for (int i = 0; i <= 8; ++i) {
+                const auto point = curve.Value(first + (last - first) * i / 8.0);
+                samples.insert(samples.end(),
+                               {static_cast<double>(index), point.X(), point.Y(), point.Z()});
+            }
+        }
+        auto result = env->NewDoubleArray(static_cast<jsize>(samples.size()));
+        if (result && !samples.empty())
+            env->SetDoubleArrayRegion(result, 0, static_cast<jsize>(samples.size()),
+                                      samples.data());
+        return result;
     });
 }
 

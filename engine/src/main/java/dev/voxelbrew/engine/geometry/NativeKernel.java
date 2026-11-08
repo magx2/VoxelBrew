@@ -72,6 +72,10 @@ final class NativeKernel {
 
     static native long edgeFinish(long body, boolean fillet, double size, int[] edges);
 
+    static native int[] faceEdges(long body);
+
+    static native double[] edgeSamples(long body);
+
     static native long shell(long body, double thickness, int removedFace);
 
     static native long transform(long body, double[] matrix);

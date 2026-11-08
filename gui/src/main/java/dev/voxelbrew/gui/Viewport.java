@@ -53,6 +53,8 @@ public final class Viewport extends StackPane {
     private boolean primaryOrbit;
     private double distance = 180;
     private BiConsumer<String, Integer> selection = (id, face) -> {};
+    private BiConsumer<String, Integer> edgeSelection = (id, edge) -> {};
+    private boolean edgePickEnabled;
     private String selected;
     private List<Feature> shownSketches = List.of();
     private String shownSketchSelection;
@@ -66,7 +68,8 @@ public final class Viewport extends StackPane {
     private final Group handle = new Group();
     private double handleDistance;
     private Point3D handleAnchor, handleNormal;
-    private final Group planeTargets = new Group(), faceHighlight = new Group();
+    private final Group planeTargets = new Group(), faceHighlight = new Group(), selectedEdges = new Group();
+    private final Map<String, double[]> edgeSamples = new LinkedHashMap<>();
     private BiConsumer<String, Integer> planeHover;
     private String highlightedBody;
     private int highlightedFace = -1;
@@ -79,11 +82,13 @@ public final class Viewport extends StackPane {
         this.translations = translations;
         setId("viewport");
         setMinSize(300, 250);
-        world.getChildren().addAll(aids, bodies, outlines, sketches, handle, planeTargets, faceHighlight);
+        world.getChildren().addAll(aids, bodies, outlines, sketches, handle, planeTargets, faceHighlight, selectedEdges);
         outlines.setMouseTransparent(true);
         outlines.setDepthTest(DepthTest.ENABLE);
         faceHighlight.setMouseTransparent(true);
         faceHighlight.setDepthTest(DepthTest.DISABLE);
+        selectedEdges.setMouseTransparent(true);
+        selectedEdges.setDepthTest(DepthTest.DISABLE);
         world.getTransforms().addAll(pan, tilt, orbit, center);
         key.setTranslateX(-100);
         key.setTranslateY(-150);
@@ -232,6 +237,47 @@ public final class Viewport extends StackPane {
 
     public static Point3D toModel(Point3D p) {
         return new Point3D(p.getX(), p.getZ(), -p.getY());
+    }
+
+    public void onEdgeSelection(BiConsumer<String, Integer> listener) {
+        edgeSelection = listener;
+    }
+
+    public void pickEdges(boolean enabled) {
+        edgePickEnabled = enabled;
+    }
+
+    public void highlightSelectedEdges(String body, java.util.Set<Integer> indices) {
+        selectedEdges.getChildren().clear();
+        var samples = edgeSamples.get(body);
+        if (samples == null) return;
+        for (int i = 4; i < samples.length; i += 4) {
+            if (samples[i] != samples[i - 4] || !indices.contains((int) samples[i])) continue;
+            var a = toView(samples[i - 3], samples[i - 2], samples[i - 1]);
+            var b = toView(samples[i + 1], samples[i + 2], samples[i + 3]);
+            if (a.distance(b) > 1e-9) selectedEdges.getChildren().add(line(a, b, .2, Color.web("#f3ad3d")));
+        }
+    }
+
+    private int nearbyEdge(double[] samples, java.util.List<Integer> allowed, double x, double y) {
+        int closest = -1;
+        double best = 7 * 7;
+        for (int i = 4; i < samples.length; i += 4) {
+            if (samples[i] != samples[i - 4]) continue;
+            if (!allowed.contains((int) samples[i])) continue;
+            var a = modelToScreen(new Point3D(samples[i - 3], samples[i - 2], samples[i - 1]));
+            var b = modelToScreen(new Point3D(samples[i + 1], samples[i + 2], samples[i + 3]));
+            if (a == null || b == null) continue;
+            double dx = b.getX() - a.getX(), dy = b.getY() - a.getY();
+            double length = dx * dx + dy * dy;
+            double t = length == 0 ? 0 : Math.clamp(((x - a.getX()) * dx + (y - a.getY()) * dy) / length, 0, 1);
+            double squared = Math.pow(x - a.getX() - t * dx, 2) + Math.pow(y - a.getY() - t * dy, 2);
+            if (squared < best) {
+                best = squared;
+                closest = (int) samples[i];
+            }
+        }
+        return closest;
     }
 
     public void onSelection(BiConsumer<String, Integer> listener) {
@@ -661,8 +707,11 @@ public final class Viewport extends StackPane {
         outlines.getChildren().clear();
         edgeViews.clear();
         edgeData.clear();
+        edgeSamples.clear();
+        selectedEdges.getChildren().clear();
         for (var body : evaluated) {
             edgeData.put(body.id(), body.edges());
+            edgeSamples.put(body.id(), body.edgeSamples());
             var mesh = new TriangleMesh();
             mesh.getTexCoords().setAll(0, 0);
             var edges = new MeshView(mesh);
@@ -685,6 +734,22 @@ public final class Viewport extends StackPane {
             view.setOnMouseClicked(e -> {
                 if (e.getButton() == MouseButton.PRIMARY && e.isStillSincePress()) {
                     int triangle = e.getPickResult().getIntersectedFace();
+                    if (edgePickEnabled) {
+                        var body = evaluated.stream()
+                                .filter(b -> b.id().equals(id))
+                                .findFirst()
+                                .orElseThrow();
+                        int edge = nearbyEdge(
+                                body.edgeSamples(),
+                                triangle < 0 ? java.util.List.of() : body.edgesOnFace(data.faceIndex(triangle)),
+                                e.getScreenX(),
+                                e.getScreenY());
+                        if (edge > 0) {
+                            edgeSelection.accept(id, edge);
+                            e.consume();
+                            return;
+                        }
+                    }
                     selection.accept(id, triangle >= 0 ? data.faceIndex(triangle) : -1);
                     e.consume();
                 }

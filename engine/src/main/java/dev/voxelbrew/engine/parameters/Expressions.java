@@ -44,12 +44,12 @@ public final class Expressions {
     }
 
     /** Text is literal unless it starts with '='. Use doubled quotes inside string literals. */
-    public static String evaluateText(String text, Function<String, Quantity<?>> names) {
+    public static String evaluateText(String text, Function<String, ?> names) {
         Objects.requireNonNull(text);
         return isFormula(text) ? format(evaluateAny(text, names)) : text;
     }
 
-    public static Object evaluateAny(String expression, Function<String, Quantity<?>> names) {
+    public static Object evaluateAny(String expression, Function<String, ?> names) {
         return new Parser(expression, names, ParameterUnit.MM).parse();
     }
 
@@ -97,23 +97,23 @@ public final class Expressions {
                         m -> java.util.regex.Matcher.quoteReplacement(m.group().equals(oldName) ? newName : m.group()));
     }
 
-    public static Quantity<?> evaluate(String expression, ParameterUnit unit, Function<String, Quantity<?>> names) {
+    public static Quantity<?> evaluate(String expression, ParameterUnit unit, Function<String, ?> names) {
         var value = numeric(new Parser(expression, names, unit).parse());
         if (scalar(value)) value = unit.quantity(value(value, ONE));
         return to(value, unit.canonicalUnit());
     }
 
-    public static Quantity<?> evaluateRaw(String expression, Function<String, Quantity<?>> names) {
+    public static Quantity<?> evaluateRaw(String expression, Function<String, ?> names) {
         return numeric(evaluateAny(expression, names));
     }
 
     private static final class Parser {
         final String input;
-        final Function<String, Quantity<?>> names;
+        final Function<String, ?> names;
         final ParameterUnit unit;
         int index, tokens, depth;
 
-        Parser(String input, Function<String, Quantity<?>> names, ParameterUnit unit) {
+        Parser(String input, Function<String, ?> names, ParameterUnit unit) {
             if (input == null || input.isBlank() || input.length() > 512)
                 throw new IllegalArgumentException("Expression must contain 1–512 characters");
             this.input = input;
@@ -244,7 +244,7 @@ public final class Expressions {
                 if (name.isEmpty()) throw error("Expected a parameter name after '$'");
                 var q = names.apply(name);
                 if (q == null) throw error("Unknown parameter '" + name + "'");
-                return normalized(q);
+                return q instanceof String ? q : normalized(numeric(q));
             }
             char first = input.charAt(index);
             if (Character.isDigit(first) || first == '.') {
@@ -277,7 +277,7 @@ public final class Expressions {
             for (var u : ParameterUnit.values()) if (u.toString().equals(name)) return normalized(u.quantity(1));
             var q = names.apply(name);
             if (q == null) throw error("Unknown parameter '" + name + "'");
-            return normalized(q);
+            return q instanceof String ? q : normalized(numeric(q));
         }
 
         Quantity<?> function(String name, List<Quantity<?>> args) {

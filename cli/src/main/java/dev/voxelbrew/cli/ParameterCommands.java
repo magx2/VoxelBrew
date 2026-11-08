@@ -91,6 +91,10 @@ final class ParameterCommands {
                         parameter.unit().displayValue(values.get(parameter.name())),
                         parameter.id(),
                         parameter.comment());
+            for (var builtin : p.builtins().parameters())
+                out.printf(
+                        "%s\tvalue=%s\t%s%n",
+                        builtin.name(), Expressions.format(p.builtins().value(builtin.name())), builtin.comment());
             for (var binding : p.bindings()) out.println("bind\t" + binding.target() + "\t" + binding.expression());
             return 0;
         }

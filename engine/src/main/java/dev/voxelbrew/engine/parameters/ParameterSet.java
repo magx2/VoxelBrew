@@ -10,11 +10,27 @@ public record ParameterSet(
         List<Configuration> configurations,
         String active,
         List<Binding> bindings,
-        dev.voxelbrew.util.UuidGenerator uuidGenerator) {
+        dev.voxelbrew.util.UuidGenerator uuidGenerator,
+        BuiltinParameters builtins) {
+    public ParameterSet(
+            List<Parameter> parameters,
+            List<Configuration> configurations,
+            String active,
+            List<Binding> bindings,
+            dev.voxelbrew.util.UuidGenerator uuidGenerator) {
+        this(parameters, configurations, active, bindings, uuidGenerator, new BuiltinParameters());
+    }
+
+    public List<Parameter> allParameters() {
+        var all = new ArrayList<>(parameters);
+        all.addAll(builtins.parameters());
+        return List.copyOf(all);
+    }
+
     public record Parameter(String id, String name, ParameterUnit unit, String expression, String comment) {
         public Parameter {
             CadDocument.identifier(id, "parameter ID");
-            requireName(name);
+            if (!name.startsWith("vb.")) requireName(name);
             Objects.requireNonNull(unit);
             requireExpression(expression);
             if (comment == null || comment.length() > 1024)
@@ -69,7 +85,7 @@ public record ParameterSet(
     }
 
     public ParameterSet withUuidGenerator(dev.voxelbrew.util.UuidGenerator generator) {
-        return new ParameterSet(parameters, configurations, active, bindings, generator);
+        return new ParameterSet(parameters, configurations, active, bindings, generator, builtins);
     }
 
     @Override
@@ -88,6 +104,7 @@ public record ParameterSet(
 
     public ParameterSet {
         Objects.requireNonNull(uuidGenerator);
+        parameters.forEach(p -> requireName(p.name()));
         parameters = List.copyOf(parameters);
         configurations = List.copyOf(configurations);
         bindings = List.copyOf(bindings);
@@ -158,6 +175,7 @@ public record ParameterSet(
     }
 
     public String expression(Parameter parameter, String configurationId) {
+        if (parameter.name().startsWith("vb.")) return parameter.expression();
         if (configurationId.isEmpty()) return parameter.expression();
         return configurations.stream()
                 .filter(c -> c.id().equals(configurationId))
@@ -176,14 +194,15 @@ public record ParameterSet(
     }
 
     public ParameterSet select(String nameOrId) {
-        return new ParameterSet(parameters, configurations, configurationId(nameOrId), bindings, uuidGenerator);
+        return new ParameterSet(
+                parameters, configurations, configurationId(nameOrId), bindings, uuidGenerator, builtins);
     }
 
     public ParameterSet bind(Target target, String expression) {
         var next = new ArrayList<>(
                 bindings.stream().filter(b -> !b.target().equals(target)).toList());
         if (!expression.isBlank()) next.add(new Binding(target, expression.strip()));
-        return new ParameterSet(parameters, configurations, active, next, uuidGenerator);
+        return new ParameterSet(parameters, configurations, active, next, uuidGenerator, builtins);
     }
 
     public ParameterSet put(String name, ParameterUnit unit, String expression, String comment) {
@@ -192,12 +211,12 @@ public record ParameterSet(
             var old = existing.get();
             var next = new ArrayList<>(parameters);
             next.set(next.indexOf(old), new Parameter(old.id(), name, unit, old.expression(), comment));
-            return new ParameterSet(next, configurations, active, bindings, uuidGenerator)
+            return new ParameterSet(next, configurations, active, bindings, uuidGenerator, builtins)
                     .override(name, active, expression);
         }
         var next = new ArrayList<>(parameters);
         next.add(new Parameter("parameter-" + uuidGenerator.next(), name, unit, expression.strip(), comment));
-        return new ParameterSet(next, configurations, active, bindings, uuidGenerator);
+        return new ParameterSet(next, configurations, active, bindings, uuidGenerator, builtins);
     }
 
     public ParameterSet override(String nameOrId, String configuration, String expression) {
@@ -213,7 +232,8 @@ public record ParameterSet(
                     configurations,
                     active,
                     bindings,
-                    uuidGenerator);
+                    uuidGenerator,
+                    builtins);
         return new ParameterSet(
                 parameters,
                 configurations.stream()
@@ -227,7 +247,8 @@ public record ParameterSet(
                         .toList(),
                 active,
                 bindings,
-                uuidGenerator);
+                uuidGenerator,
+                builtins);
     }
 
     public ParameterSet rename(String nameOrId, String nextName) {
@@ -256,7 +277,8 @@ public record ParameterSet(
                 bindings.stream()
                         .map(b -> new Binding(b.target(), Expressions.rename(b.expression(), old.name(), nextName)))
                         .toList(),
-                uuidGenerator);
+                uuidGenerator,
+                builtins);
     }
 
     public ParameterSet remove(String nameOrId) {
@@ -273,7 +295,8 @@ public record ParameterSet(
                 configs,
                 active,
                 bindings,
-                uuidGenerator);
+                uuidGenerator,
+                builtins);
         result.validate();
         return result;
     }
@@ -283,7 +306,7 @@ public record ParameterSet(
         if (copyActive) parameters.forEach(p -> overrides.put(p.id(), expression(p, active)));
         var next = new ArrayList<>(configurations);
         next.add(new Configuration("configuration-" + uuidGenerator.next(), name, overrides));
-        return new ParameterSet(parameters, next, active, bindings, uuidGenerator);
+        return new ParameterSet(parameters, next, active, bindings, uuidGenerator, builtins);
     }
 
     public ParameterSet renameConfiguration(String nameOrId, String name) {
@@ -296,7 +319,8 @@ public record ParameterSet(
                         .toList(),
                 active,
                 bindings,
-                uuidGenerator);
+                uuidGenerator,
+                builtins);
     }
 
     public ParameterSet removeConfiguration(String nameOrId) {
@@ -307,7 +331,8 @@ public record ParameterSet(
                 configurations.stream().filter(c -> !c.id().equals(id)).toList(),
                 active.equals(id) ? "" : active,
                 bindings,
-                uuidGenerator);
+                uuidGenerator,
+                builtins);
     }
 
     public Map<String, Quantity<?>> values() {
@@ -322,6 +347,11 @@ public record ParameterSet(
         var visiting = new LinkedHashSet<String>();
         class Resolver {
             Quantity<?> get(String name) {
+                if (name.startsWith("vb.")) {
+                    var value = builtins.value(name);
+                    if (value instanceof Quantity<?> q) return q;
+                    throw new IllegalArgumentException("Expected numeric parameter: " + name);
+                }
                 if (resolved.containsKey(name)) return resolved.get(name);
                 var p = byName.get(name);
                 if (p == null) throw new IllegalArgumentException("Unknown parameter: " + name);
@@ -342,6 +372,7 @@ public record ParameterSet(
         }
         var resolver = new Resolver();
         parameters.forEach(p -> resolver.get(p.name()));
+        resolved.put("vb.project.version", ParameterUnit.NUMBER.quantity(builtins.fileVersion()));
         return Collections.unmodifiableMap(resolved);
     }
 
@@ -354,12 +385,13 @@ public record ParameterSet(
     }
 
     // Literal inputs must remain usable when repairing or saving a document with bad parameters.
-    private java.util.function.Function<String, Quantity<?>> expressionValues() {
+    private java.util.function.Function<String, Object> expressionValues() {
         return new java.util.function.Function<>() {
             private Map<String, Quantity<?>> resolved;
 
             @Override
-            public Quantity<?> apply(String name) {
+            public Object apply(String name) {
+                if (name.startsWith("vb.")) return builtins.value(name);
                 if (resolved == null) resolved = values();
                 return resolved.get(name);
             }
@@ -373,7 +405,10 @@ public record ParameterSet(
         for (var id : ids) {
             try {
                 var values = values(id);
-                for (var binding : bindings) Expressions.evaluateAny(binding.expression(), values::get);
+                for (var binding : bindings)
+                    Expressions.evaluateAny(
+                            binding.expression(),
+                            name -> name.startsWith("vb.") ? builtins.value(name) : values.get(name));
             } catch (IllegalArgumentException failure) {
                 String name = id.isEmpty()
                         ? "Default"

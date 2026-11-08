@@ -17,10 +17,12 @@ final class ParameterDialog {
     private final dev.voxelbrew.util.i18n.Translations translations;
     private final List<Feature> features;
     private final TableView<ParameterSet.Parameter> parameters = new TableView<>();
+    private final CheckBox showBuiltins = new CheckBox();
     private final TableView<String> configurations = new TableView<>();
     private final TableView<FeatureDimensions.Dimension> dimensions = new TableView<>();
     private final TextField name = textField("parameter-name"), configName = textField("configuration-name");
     private final FormulaField expression = field("parameter-expression"),
+            stringExpression = field("parameter-string-expression"),
             comment = field("parameter-comment"),
             override = field("configuration-expression"),
             binding = field("parameter-binding-expression");
@@ -59,7 +61,8 @@ final class ParameterDialog {
         this.translations = translations;
         this.features = List.copyOf(features);
         draft = initial;
-        for (var field : List.of(expression, comment, override, binding)) field.localized(translations);
+        for (var field : List.of(expression, stringExpression, comment, override, binding))
+            field.localized(translations);
     }
 
     private static TextField textField(String id) {
@@ -99,6 +102,16 @@ final class ParameterDialog {
     private Button button(String label, String id, Runnable action) {
         var b = new Button(label);
         b.setId(id);
+        if (id.equals("parameter-save") || id.equals("parameter-remove"))
+            b.disableProperty()
+                    .bind(javafx.beans.binding.Bindings.createBooleanBinding(
+                            () -> parameters.getSelectionModel().getSelectedItem() != null
+                                    && parameters
+                                            .getSelectionModel()
+                                            .getSelectedItem()
+                                            .name()
+                                            .startsWith("vb."),
+                            parameters.getSelectionModel().selectedItemProperty()));
         UiHelp.install(b, translations);
         b.setOnAction(e -> attempt(action));
         return b;
@@ -120,18 +133,40 @@ final class ParameterDialog {
     }
 
     private Pane content() {
+        showBuiltins.setId("parameters-show-builtins");
+        showBuiltins.setText(translations.text("parameters.showBuiltins"));
+        showBuiltins.setSelected(true);
+        showBuiltins.selectedProperty().addListener((o, before, show) -> {
+            var selected = parameters.getSelectionModel().getSelectedItem();
+            if (!show && selected != null && selected.name().startsWith("vb.")) {
+                selectedParameter = null;
+                parameters.getSelectionModel().clearSelection();
+                name.clear();
+                expression.clear();
+                stringExpression.clear();
+                comment.clear();
+            }
+            refresh();
+        });
         parameters.setId("parameter-table");
         parameters.setPlaceholder(new Label(translations.text("parameters.empty")));
         parameters.setPrefHeight(175);
         parameters.getColumns().add(column(translations.text("gui.name"), 110, ParameterSet.Parameter::name));
         parameters
                 .getColumns()
-                .add(column(translations.text("gui.unit"), 65, p -> p.unit().toString()));
+                .add(column(
+                        translations.text("gui.unit"),
+                        65,
+                        p -> BuiltinParameters.isString(p.name())
+                                ? "string"
+                                : p.unit().toString()));
         parameters
                 .getColumns()
                 .add(column(translations.text("gui.expression"), 180, p -> draft.expression(p, draft.active())));
         parameters.getColumns().add(column(translations.text("gui.value"), 90, p -> {
             try {
+                if (p.name().startsWith("vb."))
+                    return Expressions.format(draft.builtins().value(p.name()));
                 return String.format(
                         Locale.ROOT,
                         "%.6g",
@@ -143,7 +178,24 @@ final class ParameterDialog {
         parameters.getColumns().add(column(translations.text("gui.comment"), 130, ParameterSet.Parameter::comment));
         parameters.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_FLEX_LAST_COLUMN);
         parameters.getSelectionModel().selectedItemProperty().addListener((o, a, p) -> {
+            boolean builtin = p != null && p.name().startsWith("vb.");
+            boolean string = p != null && BuiltinParameters.isString(p.name());
+            stringExpression.setVisible(string);
+            stringExpression.setManaged(string);
+            expression.setVisible(!string);
+            expression.setManaged(!string);
+            unit.setPromptText(string ? "string" : "");
+            if (!string && unit.getValue() == null) unit.setValue(ParameterUnit.MM);
+            for (var control : List.of(name, unit, expression, comment)) control.setDisable(builtin);
+            if (builtin) {
+                name.setText(p.name());
+                unit.setValue(string ? null : p.unit());
+                if (string) stringExpression.setText(p.expression());
+                else expression.setText(p.expression());
+                comment.setText(p.comment());
+            }
             if (refreshing || p == null) return;
+            if (p.name().startsWith("vb.")) return;
             selectedParameter = p.id();
             name.setText(p.name());
             unit.setValue(p.unit());
@@ -153,6 +205,10 @@ final class ParameterDialog {
         unit.setId("parameter-unit");
         unit.getItems().setAll(ParameterUnit.values());
         unit.setValue(ParameterUnit.MM);
+        stringExpression.setEditable(false);
+        stringExpression.setVisible(false);
+        stringExpression.setManaged(false);
+        var expressionFields = new StackPane(expression, stringExpression);
         var fields = new GridPane();
         fields.setHgap(8);
         fields.setVgap(5);
@@ -161,7 +217,7 @@ final class ParameterDialog {
         fields.addRow(
                 1,
                 new Label(translations.text("gui.expression")),
-                expression,
+                expressionFields,
                 new Label(translations.text("gui.comment")),
                 comment);
         var parameterButtons = new FlowPane(
@@ -196,6 +252,7 @@ final class ParameterDialog {
                 7,
                 new Label(translations.text(
                         "gui.expressions_use_names_arithmetic_and_units_edits_affect_the_active_configuration")),
+                showBuiltins,
                 parameters,
                 fields,
                 parameterButtons);
@@ -344,7 +401,7 @@ final class ParameterDialog {
     }
 
     static List<ParameterSet.Parameter> groupedParameters(ParameterSet set) {
-        return set.parameters().stream()
+        return set.allParameters().stream()
                 .sorted(Comparator.comparing((ParameterSet.Parameter p) -> {
                             int dot = p.name().indexOf('.');
                             return dot < 0 ? "" : p.name().substring(0, dot);
@@ -358,7 +415,11 @@ final class ParameterDialog {
         try {
             var config = configurations.getSelectionModel().getSelectedItem();
             var chosen = overrideParameter.getValue();
-            parameters.getItems().setAll(groupedParameters(draft));
+            parameters
+                    .getItems()
+                    .setAll(groupedParameters(draft).stream()
+                            .filter(p -> showBuiltins.isSelected() || !p.name().startsWith("vb."))
+                            .toList());
             if (selectedParameter != null)
                 parameters
                         .getSelectionModel()

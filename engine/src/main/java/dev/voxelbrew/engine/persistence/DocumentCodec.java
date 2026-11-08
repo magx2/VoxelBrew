@@ -70,7 +70,7 @@ public final class DocumentCodec {
             if (message.getUnits() != DocumentProto.Units.MILLIMETERS) {
                 throw new DocumentFormatException("Unsupported document units; expected MILLIMETERS");
             }
-            return new CadDocument(
+            var document = new CadDocument(
                     message.getDocumentId(),
                     message.getFeaturesList().stream()
                             .map(DocumentCodec::fromProto)
@@ -90,6 +90,8 @@ public final class DocumentCodec {
                                             e.getValue().getColor()))),
                     message.getBodyNamesMap(),
                     message.getFeatureNamesMap());
+            document.parameters().builtins().fileVersion(message.getFileVersion());
+            return document;
         } catch (DocumentFormatException failure) {
             throw failure;
         } catch (IOException | IllegalArgumentException failure) {
@@ -99,7 +101,12 @@ public final class DocumentCodec {
 
     /** Encodes the shared document schema without accessing the filesystem. */
     public static byte[] encode(CadDocument document) throws IOException {
+        return encode(document, document.parameters().builtins().fileVersion());
+    }
+
+    public static byte[] encode(CadDocument document, long fileVersion) throws IOException {
         byte[] payload = toProto(document).toBuilder()
+                .setFileVersion(fileVersion)
                 .setApplicationVersion(Version.version())
                 .build()
                 .toByteArray();
@@ -213,12 +220,15 @@ public final class DocumentCodec {
 
     /** Includes CAD definitions and print setup, excluding writer version and derived output. */
     public static String fingerprint(CadDocument document) {
-        return java.util.HexFormat.of().formatHex(sha256(toProto(document).toByteArray()));
+        return java.util.HexFormat.of()
+                .formatHex(sha256(
+                        toProto(document).toBuilder().clearFileVersion().build().toByteArray()));
     }
 
     private static DocumentProto.Document toProto(CadDocument document) {
         var message = DocumentProto.Document.newBuilder()
                 .setSchemaVersion(SCHEMA_VERSION)
+                .setFileVersion(document.parameters().builtins().fileVersion())
                 .setNextUuid(document.uuidGenerator().nextValue())
                 .setDocumentId(document.id())
                 .setUnits(DocumentProto.Units.MILLIMETERS)

@@ -182,7 +182,7 @@ public final class FeatureDimensions {
             result.configurations().forEach(c -> configs.add(c.id()));
             for (var id : configs) {
                 var values = result.values(id);
-                if (text) FeatureText.validate(expression, values);
+                if (text) FeatureText.validate(expression, values, result.builtins());
                 else
                     Expressions.evaluate(
                             expression, dimension(feature, target.field()).unit(), values::get);
@@ -206,7 +206,7 @@ public final class FeatureDimensions {
                 try {
                     if (FeatureText.isField(binding.target().field())) {
                         FeatureText.field(feature, binding.target().field());
-                        FeatureText.validate(binding.expression(), values);
+                        FeatureText.validate(binding.expression(), values, parameters.builtins());
                     } else {
                         var dimension = dimension(feature, binding.target().field());
                         Expressions.evaluate(binding.expression(), dimension.unit(), values::get);
@@ -234,7 +234,8 @@ public final class FeatureDimensions {
                                         && !FeatureText.isField(b.target().field()))
                                 || fields.contains(b.target().field()))
                         .toList(),
-                parameters.uuidGenerator());
+                parameters.uuidGenerator(),
+                parameters.builtins());
     }
 
     public static SketchGeometry resolveSketch(SketchGeometry geometry, String featureId, ParameterSet parameters) {
@@ -292,6 +293,7 @@ public final class FeatureDimensions {
                         parameters.configurations(),
                         parameters.active(),
                         bindings,
-                        parameters.uuidGenerator()));
+                        parameters.uuidGenerator(),
+                        parameters.builtins()));
     }
 }

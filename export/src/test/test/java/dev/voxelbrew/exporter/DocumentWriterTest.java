@@ -22,6 +22,36 @@ class DocumentWriterTest {
     Path directory;
 
     @Test
+    void saveCounterTracksPublicationAndSaveAsWithoutAffectingDesignIdentity() throws Exception {
+        var document = CadDocument.empty();
+        var fingerprint = DocumentCodec.fingerprint(document);
+        Path first = directory.resolve("first.jcad");
+        DocumentWriter.save(document, first, false);
+        assertEquals("first", document.parameters().text("=$vb.project.name"));
+        assertEquals("first.jcad", document.parameters().text("=$vb.project.filename"));
+        assertEquals(first.toAbsolutePath().toString(), document.parameters().text("=$vb.project.path"));
+        assertEquals(
+                directory.toAbsolutePath().toString(), document.parameters().text("=$vb.project.folder"));
+        assertEquals(1, document.parameters().builtins().fileVersion());
+        assertThrows(IOException.class, () -> DocumentWriter.save(document, first, false));
+        assertEquals(1, document.parameters().builtins().fileVersion());
+        var reopened = DocumentReader.load(first);
+        assertEquals(1, reopened.parameters().builtins().fileVersion());
+        assertEquals("first", reopened.parameters().text("=$vb.project.name"));
+        Path existing = directory.resolve("existing.jcad");
+        DocumentWriter.save(CadDocument.empty(), existing, false);
+        assertThrows(IOException.class, () -> DocumentWriter.save(reopened, existing, false));
+        assertEquals("first", reopened.parameters().text("=$vb.project.name"));
+        DocumentWriter.save(reopened, directory.resolve("copy.jcad"), false);
+        assertEquals("copy", reopened.parameters().text("=$vb.project.name"));
+        assertEquals(
+                "copy",
+                DocumentReader.load(directory.resolve("copy.jcad")).parameters().text("=$vb.project.name"));
+        assertEquals(2, reopened.parameters().builtins().fileVersion());
+        assertEquals(fingerprint, DocumentCodec.fingerprint(reopened));
+    }
+
+    @Test
     void currentSchemaUpdatesMetadataWithoutChangingDefinitions() throws Exception {
         byte[] baseline;
         try (var input = getClass().getResourceAsStream("/fixtures/reference-schema9.jcad")) {
@@ -50,10 +80,14 @@ class DocumentWriterTest {
         DocumentWriter.save(document, file, false);
         byte[] saved = Files.readAllBytes(file);
         assertEquals(
-                upgradedDefinitions.setApplicationVersion(Version.version()).build(), message(saved));
+                upgradedDefinitions
+                        .setApplicationVersion(Version.version())
+                        .setFileVersion(1)
+                        .build(),
+                message(saved));
         assertEquals(document, DocumentReader.load(file));
         DocumentWriter.save(document, file, true);
-        assertArrayEquals(saved, Files.readAllBytes(file));
+        assertEquals(2, DocumentReader.load(file).parameters().builtins().fileVersion());
     }
 
     @Test

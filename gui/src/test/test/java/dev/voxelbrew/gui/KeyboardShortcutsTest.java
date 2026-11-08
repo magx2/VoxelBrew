@@ -12,6 +12,37 @@ import org.junit.jupiter.api.Test;
 
 class KeyboardShortcutsTest {
     @Test
+    void operationsMenuAllowsActionsWithoutKeyboardBindings() {
+        for (var id : List.of("fillet", "chamfer", "shell")) {
+            assertTrue(KeyboardShortcuts.menuAccelerator(id).isEmpty(), id);
+            assertTrue(KeyboardShortcuts.menuAccelerator("menu-" + id).isEmpty(), id);
+        }
+        for (var id : List.of("extrude", "cut", "split-body")) {
+            assertEquals(
+                    KeyboardShortcuts.primary(id),
+                    KeyboardShortcuts.menuAccelerator(id).orElseThrow());
+        }
+    }
+
+    @Test
+    void menuAcceleratorsPreserveEveryRegisteredShortcutAndMirrorPrefix() {
+        for (var binding : KeyboardShortcuts.BINDINGS) {
+            assertEquals(
+                    binding.keys().getFirst(),
+                    KeyboardShortcuts.menuAccelerator(binding.id()).orElseThrow());
+            assertEquals(
+                    binding.keys().getFirst(),
+                    KeyboardShortcuts.menuAccelerator("menu-" + binding.id()).orElseThrow());
+        }
+    }
+
+    @Test
+    void futureMenuActionsCanOmitShortcutsWhileRequiredLookupsRemainStrict() {
+        assertTrue(KeyboardShortcuts.menuAccelerator("unbound-action").isEmpty());
+        assertThrows(RuntimeException.class, () -> KeyboardShortcuts.primary("unbound-action"));
+    }
+
+    @Test
     void modelingKeysRequireExactModifiersAndDoNotHijackCopyOrAltGr() {
         assertEquals("constrained-sketch", match(KeyCode.K, false, false, false));
         assertNull(match(KeyCode.R, false, false, false));

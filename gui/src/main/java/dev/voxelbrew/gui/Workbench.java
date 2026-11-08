@@ -764,7 +764,7 @@ public final class Workbench extends BorderPane implements AutoCloseable {
         var item = new MenuItem(text);
         item.setId(id);
         item.disableProperty().bind(disabledProperty());
-        if (shortcut) item.setAccelerator(KeyboardShortcuts.primary(id.startsWith("menu-") ? id.substring(5) : id));
+        if (shortcut) KeyboardShortcuts.menuAccelerator(id).ifPresent(item::setAccelerator);
         UiHelp.menuItem(item, UiHelp.description(translations, id));
         item.setOnAction(e -> attempt(action));
         return item;

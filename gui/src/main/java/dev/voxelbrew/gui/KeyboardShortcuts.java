@@ -151,6 +151,15 @@ final class KeyboardShortcuts {
                 .getFirst();
     }
 
+    /** Menu actions may exist without a keyboard binding. */
+    static java.util.Optional<KeyCombination> menuAccelerator(String id) {
+        String key = id.startsWith("menu-") ? id.substring(5) : id;
+        return BINDINGS.stream()
+                .filter(binding -> binding.id().equals(key))
+                .map(binding -> binding.keys().getFirst())
+                .findFirst();
+    }
+
     static String describe(Translations translations, String id, String description) {
         String key = id.startsWith("menu-") ? id.substring(5) : id;
         return BINDINGS.stream()

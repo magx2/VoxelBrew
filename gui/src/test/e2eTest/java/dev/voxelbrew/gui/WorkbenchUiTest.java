@@ -8,6 +8,7 @@ import dev.voxelbrew.engine.persistence.proto.DocumentProto;
 import dev.voxelbrew.engine.printing.*;
 import dev.voxelbrew.engine.sketch.SketchGeometry;
 import dev.voxelbrew.engine.sketch.SketchTools;
+import dev.voxelbrew.engine.sketch.Sketches;
 import dev.voxelbrew.exporter.DocumentWriter;
 import dev.voxelbrew.exporter.printing.PrusaSlicerBackend;
 import dev.voxelbrew.importer.DocumentReader;
@@ -35,6 +36,338 @@ import org.junit.jupiter.api.io.TempDir;
 /** Actual JavaFX windows, rendering, picking, keyboard input and mouse gestures on both OSes. */
 @ExtendWith(UiTestShard.class)
 class WorkbenchUiTest {
+    @Test
+    void fullyConstrainedLinesAndPointsRenderBlackWhileFreeGeometryStaysBlue() throws Exception {
+        var a = Sketches.entity("fixed", SketchGeometry.Kind.LINE, false, 10, 10, 30, 10);
+        var b = Sketches.entity("free", SketchGeometry.Kind.LINE, false, 10, 30, 30, 30);
+        var c = Sketches.entity("partial", SketchGeometry.Kind.LINE, false, 40, 10, 60, 10);
+        var g = new SketchGeometry(List.of(a, b, c), List.of(), List.of());
+        for (var constraint : List.of(
+                dev.voxelbrew.engine.sketch.SketchConstraints.create(
+                        g,
+                        "x",
+                        SketchGeometry.Type.DISTANCE_X,
+                        List.of(SketchGeometry.ORIGIN, a.ref(SketchGeometry.Part.START)),
+                        10),
+                dev.voxelbrew.engine.sketch.SketchConstraints.create(
+                        g,
+                        "y",
+                        SketchGeometry.Type.DISTANCE_Y,
+                        List.of(SketchGeometry.ORIGIN, a.ref(SketchGeometry.Part.START)),
+                        10),
+                dev.voxelbrew.engine.sketch.SketchConstraints.create(
+                        g, "length", SketchGeometry.Type.LENGTH, List.of(a.ref()), 20),
+                dev.voxelbrew.engine.sketch.SketchConstraints.create(
+                        g, "horizontal", SketchGeometry.Type.HORIZONTAL, List.of(a.ref()), 0),
+                dev.voxelbrew.engine.sketch.SketchConstraints.create(
+                        g, "partial-anchor", SketchGeometry.Type.FIX, List.of(c.ref(SketchGeometry.Part.START)), 0)))
+            g = g.add(constraint);
+        var session = new ModelSession(CadDocument.empty());
+        session.add(new Feature.Sketch("sketch", "profile", Feature.Plane.origin("XY"), new Feature.Constrained(g)));
+        Path file = directory.resolve("constraint-colors.jcad");
+        DocumentWriter.save(session.document(), file, false);
+        open(file);
+        choice("appearance", 1);
+        click("history-0");
+        click("edit-sketch-constraints");
+        sketchReady();
+        assertTrue(fx(() ->
+                ((SketchEditor) node("#sketch-editor")).controller().result().degreesOfFreedom() > 0));
+        assertSketchGeometryColor(20, 10, true);
+        assertSketchGeometryColor(10, 10, true);
+        assertSketchGeometryColor(20, 30, false);
+        assertSketchGeometryColor(40, 10, true);
+        assertSketchGeometryColor(50, 10, false);
+        sketchReference("fixed");
+        assertFalse(fx(() -> ((Label) node("#sketch-selection")).getText().isBlank()));
+        click("sketch-clear-selection");
+        assertSketchGeometryColor(20, 10, true);
+        fx(() -> {
+            Screenshot.save(
+                    stage.getScene(),
+                    Path.of(System.getProperty("voxelbrew.ui.artifacts"), "sketch-constraint-colors.png"));
+            return null;
+        });
+        click("constraint-cancel");
+    }
+
+    private void assertSketchGeometryColor(double x, double y, boolean black) throws Exception {
+        boolean matches = fx(() -> {
+            var canvas = (javafx.scene.canvas.Canvas) node("#sketch-canvas");
+            var pixel = canvas.screenToLocal(
+                    ((SketchEditor) node("#sketch-editor")).modelToScreen(new SketchGeometry.Vec(x, y)));
+            var image = canvas.snapshot(null, null);
+            for (int dx = -2; dx <= 2; dx++)
+                for (int dy = -2; dy <= 2; dy++) {
+                    var color = image.getPixelReader().getColor((int) pixel.getX() + dx, (int) pixel.getY() + dy);
+                    if (black
+                            ? color.getBrightness() < .4 && Math.abs(color.getRed() - color.getBlue()) < .04
+                            : color.getBlue() > color.getRed() + .2 && color.getBlue() > .4) return true;
+                }
+            return false;
+        });
+        assertTrue(matches, (black ? "Constrained black" : "Unconstrained blue") + " geometry at " + x + ", " + y);
+    }
+
+    @Test
+    void dimensionLabelsAndLinesDragWithoutChangingGeometryAndEscapeRestoresPlacement() throws Exception {
+        ready();
+        rectangleDraft(60, 40, 0);
+        click("sketch-tool-select");
+        key(KeyCode.D);
+        sketchClick(0, 0, false);
+        sketchClick(0, 40, false);
+        text("sketch-inline-dimension", "40");
+        key(KeyCode.ENTER);
+        sketchReady();
+        key(KeyCode.ESCAPE);
+        var before = sketchGeometry();
+        double x = fx(() -> {
+            var editor = (SketchEditor) node("#sketch-editor");
+            return 20
+                    / (editor.modelToScreen(new SketchGeometry.Vec(1, 20)).getX()
+                            - editor.modelToScreen(new SketchGeometry.Vec(0, 20))
+                                    .getX());
+        });
+        sketchDrag(x, 20, x + 10, 25, false);
+        assertDimensionLineInk(x + 10, 8, true);
+        assertDimensionLineInk(x, 8, false);
+        assertEquals(before, sketchGeometry());
+        sketchDrag(x + 10, 8, x + 20, 8, false);
+        assertDimensionLineInk(x + 20, 8, true);
+        assertDimensionLineInk(x + 10, 8, false);
+        sketchDrag(x + 20, 8, x + 30, 8, true);
+        assertDimensionLineInk(x + 20, 8, true);
+        assertDimensionLineInk(x + 30, 8, false);
+        assertEquals(before, sketchGeometry());
+        click("sketch-undo");
+        sketchReady();
+        assertFalse(sketchGeometry().constraints().stream().anyMatch(c -> c.type() == SketchGeometry.Type.DISTANCE_Y));
+        click("constraint-cancel");
+    }
+
+    private void assertDimensionLineInk(double x, double y, boolean expected) throws Exception {
+        boolean ink = fx(() -> {
+            var canvas = (javafx.scene.canvas.Canvas) node("#sketch-canvas");
+            var editor = (SketchEditor) node("#sketch-editor");
+            var pixel = canvas.screenToLocal(editor.modelToScreen(new SketchGeometry.Vec(x, y)));
+            var image = canvas.snapshot(null, null);
+            for (int dx = -2; dx <= 2; dx++)
+                for (int dy = -2; dy <= 2; dy++)
+                    if (image.getPixelReader()
+                                    .getColor((int) pixel.getX() + dx, (int) pixel.getY() + dy)
+                                    .getBrightness()
+                            < .65) return true;
+            return false;
+        });
+        assertEquals(expected, ink, "Dimension line at " + x + ", " + y);
+    }
+
+    @Test
+    void standalonePointsOpenAndDriveActualPointToPointDistance() throws Exception {
+        ready();
+        click("constrained-sketch");
+        click("choose-plane-xy");
+        sketchReady();
+        click("sketch-tool-point");
+        sketchClick(10, 10, false);
+        sketchReady();
+        click("sketch-tool-point");
+        sketchClick(40, 50, false);
+        sketchReady();
+        assertEquals(2, sketchGeometry().entities().size());
+        var placed = sketchGeometry().entities();
+        double initialDistance = placed.get(0).at(0).distance(placed.get(1).at(0));
+        click("sketch-tool-select");
+        key(KeyCode.D);
+        sketchClick(10, 10, false);
+        sketchClick(40, 50, false);
+        assertEquals(initialDistance, fx(() -> ((FormulaField) node("#sketch-inline-dimension")).value()), 1e-4);
+        text("sketch-inline-dimension", "60");
+        key(KeyCode.ENTER);
+        sketchReady();
+        var g = sketchGeometry();
+        var dimension = g.constraints().stream()
+                .filter(c -> c.type() == SketchGeometry.Type.DISTANCE)
+                .findFirst()
+                .orElseThrow();
+        assertEquals(
+                60,
+                g.point(dimension.refs().get(0))
+                        .distance(g.point(dimension.refs().get(1))),
+                1e-6);
+        key(KeyCode.ESCAPE);
+        click("constraint-cancel");
+    }
+
+    @Test
+    void dimensionSnapsAndHighlightsNearbyLinesAndPointsWithoutAutoConstraints() throws Exception {
+        ready();
+        rectangleDraft(60, 40, 0);
+        click("sketch-auto");
+        click("sketch-tool-select");
+        key(KeyCode.D);
+        dimensionSnapClick(60, 40, 7, 0);
+        String pointSelection = fx(() -> ((Label) node("#sketch-selection")).getText());
+        assertTrue(pointSelection.contains(".start") || pointSelection.contains(".end"), pointSelection);
+        assertNull(
+                fx(() -> stage.getScene().lookup("#sketch-inline-dimension")),
+                "Snapping selects the point instead of placing a label");
+        click("sketch-clear-selection");
+        dimensionSnapClick(0, 20, -7, 0);
+        assertTrue(fx(() -> ((Label) node("#sketch-selection")).getText().contains("left")));
+        dimensionSnapClick(60, 20, 7, 0);
+        assertTrue(fx(() -> ((Label) node("#sketch-selection")).getText().contains("right")));
+        assertNotNull(fx(() -> node("#sketch-inline-dimension")), "Second line opens the field immediately");
+        String pair = fx(() -> ((Label) node("#sketch-selection")).getText());
+        sketchClick(30, 0, false);
+        assertEquals(
+                pair,
+                fx(() -> ((Label) node("#sketch-selection")).getText()),
+                "Third line cannot change the active dimension");
+        text("sketch-inline-dimension", "80");
+        key(KeyCode.ENTER);
+        sketchReady();
+        assertTrue(fx(() ->
+                ((SketchEditor) node("#sketch-editor")).controller().result().solved()));
+        assertTrue(sketchGeometry().constraints().stream()
+                .anyMatch(c ->
+                        c.type() == SketchGeometry.Type.DISTANCE && c.values().getFirst() == 80));
+        key(KeyCode.ESCAPE);
+        click("constraint-cancel");
+    }
+
+    private void dimensionSnapClick(double x, double y, double dx, double dy) throws Exception {
+        fx(() -> {
+            var target = ((SketchEditor) node("#sketch-editor")).modelToScreen(new SketchGeometry.Vec(x, y));
+            robot.mouseMove(target.add(dx, dy));
+            return null;
+        });
+        long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(3);
+        boolean highlighted;
+        do {
+            Thread.sleep(30);
+            highlighted = fx(() -> {
+                var canvas = (javafx.scene.canvas.Canvas) node("#sketch-canvas");
+                var screen = ((SketchEditor) node("#sketch-editor")).modelToScreen(new SketchGeometry.Vec(x, y));
+                var pixel = canvas.screenToLocal(screen);
+                var image = canvas.snapshot(null, null);
+                for (int ox = -2; ox <= 2; ox++)
+                    for (int oy = -2; oy <= 2; oy++) {
+                        var color = image.getPixelReader().getColor((int) pixel.getX() + ox, (int) pixel.getY() + oy);
+                        if (color.getBlue() > .8 && color.getRed() < .3 && color.getGreen() > .4) return true;
+                    }
+                return false;
+            });
+        } while (!highlighted && System.nanoTime() < deadline);
+        assertTrue(highlighted, "Nearby dimension reference must visibly highlight before clicking");
+        fx(() -> {
+            robot.mousePress(MouseButton.PRIMARY);
+            return null;
+        });
+        Thread.sleep(60);
+        fx(() -> {
+            robot.mouseRelease(MouseButton.PRIMARY);
+            return null;
+        });
+        Thread.sleep(150);
+    }
+
+    @Test
+    void twoParallelLinesDimensionUsesInlineFormulaParametersAndPersists() throws Exception {
+        ready();
+        click("parameters");
+        parameter("plateWidth", "80");
+        click("parameters-apply");
+        ready();
+        rectangleDraft(60, 40, 0);
+        click("sketch-tool-select");
+        sketchClick(0, 20, false);
+        sketchClick(60, 20, true);
+        key(KeyCode.D);
+        var field = fx(() -> node("#sketch-inline-dimension"));
+        assertInstanceOf(FormulaField.class, field);
+        assertEquals(FormulaField.ExpressionType.NUMBER, ((FormulaField) field).expressionType());
+        assertTrue(fx(() -> field.lookup(".formula-mark") != null));
+        assertTrue(
+                fx(() -> field.getBoundsInLocal().getWidth() >= 200),
+                "Inline input must display the expression, not just the fx mark");
+        text("sketch-inline-dimension", "=missingParameter");
+        key(KeyCode.ENTER);
+        assertNotNull(fx(() -> node("#sketch-inline-dimension")), "Invalid input stays open for repair");
+        assertFalse(fx(() -> ((Label) node("#sketch-error")).getText().isBlank()));
+        focus(stage);
+        text("sketch-inline-dimension", "=$plateW");
+        key(KeyCode.TAB);
+        assertEquals("=$plateWidth", fx(() -> ((TextField) field).getText()));
+        fx(() -> {
+            assertEquals(80, ((FormulaField) field).value());
+            Screenshot.save(
+                    stage.getScene(),
+                    Path.of(System.getProperty("voxelbrew.ui.artifacts"), "inline-dimension-formula.png"));
+            return null;
+        });
+        key(KeyCode.ENTER);
+        sketchReady();
+        assertNull(fx(() -> stage.getScene().lookup("#sketch-inline-dimension")));
+        var geometry = sketchGeometry();
+        var distance = geometry.constraints().stream()
+                .filter(c -> c.type() == SketchGeometry.Type.DISTANCE)
+                .findFirst()
+                .orElseThrow();
+        assertEquals(80, distance.values().getFirst(), 1e-6);
+        assertTrue(fx(() ->
+                ((SketchEditor) node("#sketch-editor")).controller().result().solved()));
+        dev.voxelbrew.engine.sketch.SketchConstraints.requireSatisfied(geometry);
+        assertEquals("", fx(() -> ((Label) node("#sketch-error")).getText()));
+        click("sketch-undo");
+        sketchReady();
+        assertFalse(sketchGeometry().constraints().stream().anyMatch(c -> c.id().equals(distance.id())));
+        click("sketch-redo");
+        sketchReady();
+        key(KeyCode.ESCAPE);
+        click("constraint-finish");
+        ready();
+        var feature = (Feature.Sketch) document().features().getFirst();
+        assertEquals(
+                "=$plateWidth",
+                document().parameters().binding(new ParameterSet.Target(feature.id(), "constraint:" + distance.id())));
+        Path saved = directory.resolve("line-distance-formula.jcad");
+        save(saved);
+        open(saved);
+        assertEquals(
+                "=$plateWidth",
+                document().parameters().binding(new ParameterSet.Target(feature.id(), "constraint:" + distance.id())));
+    }
+
+    @Test
+    void secondPointImmediatelyOpensVerticalDimensionAndRejectsThirdReference() throws Exception {
+        ready();
+        rectangleDraft(60, 40, 0);
+        click("sketch-tool-select");
+        key(KeyCode.D);
+        sketchClick(0, 0, false);
+        assertNull(fx(() -> stage.getScene().lookup("#sketch-inline-dimension")));
+        sketchClick(0, 40, false);
+        assertEquals(40, fx(() -> ((FormulaField) node("#sketch-inline-dimension")).value()), 1e-6);
+        String pair = fx(() -> ((Label) node("#sketch-selection")).getText());
+        sketchClick(60, 0, false);
+        assertEquals(pair, fx(() -> ((Label) node("#sketch-selection")).getText()));
+        text("sketch-inline-dimension", "50");
+        key(KeyCode.ENTER);
+        sketchReady();
+        var dimension = sketchGeometry().constraints().stream()
+                .filter(c -> c.type() == SketchGeometry.Type.DISTANCE_Y)
+                .findFirst()
+                .orElseThrow();
+        assertEquals(2, dimension.refs().size());
+        assertEquals(50, dimension.values().getFirst(), 1e-6);
+        assertTrue(fx(() ->
+                ((SketchEditor) node("#sketch-editor")).controller().result().solved()));
+        key(KeyCode.ESCAPE);
+        click("constraint-cancel");
+    }
+
     @Test
     void technicalDrawingRenderingHidesRearEdgesKeepsPickingAndRemembersStyle() throws Exception {
         var session = new ModelSession(CadDocument.empty());

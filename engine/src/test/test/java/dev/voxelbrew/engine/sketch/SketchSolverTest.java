@@ -7,6 +7,53 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 
 class SketchSolverTest {
+    @Test
+    void mobilityClassifiesIndividualPointsAndLinesInsteadOfOnlyWholeSketchDof() {
+        var a = line("a", 10, 10, 30, 10);
+        var free = line("free", 10, 30, 30, 30);
+        var g = add(geometry(a, free), "anchor", Type.FIX, 0, a.ref(Part.START));
+        g = add(g, "length", Type.LENGTH, 20, a.ref());
+        var rotating = SketchSolver.solve(g);
+        assertTrue(rotating.solved());
+        assertTrue(rotating.fullyConstrainedReferences().contains(a.ref(Part.START)));
+        assertFalse(rotating.fullyConstrainedReferences().contains(a.ref(Part.END)));
+        assertFalse(rotating.fullyConstrainedReferences().contains(a.ref()));
+        g = add(g, "horizontal", Type.HORIZONTAL, 0, a.ref());
+        var fixed = SketchSolver.solve(g);
+        assertTrue(fixed.solved());
+        assertTrue(fixed.degreesOfFreedom() > 0, "Unrelated geometry remains free");
+        assertTrue(
+                fixed.fullyConstrainedReferences().containsAll(List.of(a.ref(), a.ref(Part.START), a.ref(Part.END))));
+        assertFalse(fixed.fullyConstrainedReferences().contains(free.ref()));
+    }
+
+    @Test
+    void pointNeedsBothCoordinatesAndCoincidentPointsInheritItsConstraintState() {
+        var a = Sketches.entity("a", Kind.POINT, false, 10, 20);
+        var b = Sketches.entity("b", Kind.POINT, false, 10, 20);
+        var g = add(geometry(a, b), "x", Type.DISTANCE_X, 10, ORIGIN, a.ref(Part.POINT));
+        g = add(g, "coincident", Type.COINCIDENT, 0, a.ref(Part.POINT), b.ref(Part.POINT));
+        assertFalse(SketchSolver.solve(g).fullyConstrainedReferences().contains(a.ref(Part.POINT)));
+        g = add(g, "y", Type.DISTANCE_Y, 20, ORIGIN, a.ref(Part.POINT));
+        var result = SketchSolver.solve(g);
+        assertTrue(result.solved());
+        assertTrue(result.fullyConstrainedReferences()
+                .containsAll(List.of(a.ref(), b.ref(), a.ref(Part.POINT), b.ref(Part.POINT))));
+    }
+
+    @Test
+    void distanceBetweenParallelLinesDrivesSeparationAndSurvivesReversedDirections() {
+        var a = line("a", 0, 0, 0, 40);
+        var b = line("b", 60, 30, 60, -10);
+        var g = add(geometry(a, b), "fixed", Type.FIX, 0, a.ref());
+        g = add(g, "distance", Type.DISTANCE, 80, a.ref(), b.ref());
+        var solved = solve(g);
+        assertEquals(80, Math.abs(solved.entity("b").at(0).x()), 1e-6);
+        assertEquals(solved.entity("b").at(0).x(), solved.entity("b").at(1).x(), 1e-6);
+        var edited = Sketches.editDimension(solved, "distance", 25);
+        assertEquals(25, Math.abs(edited.entity("b").at(0).x()), 1e-6);
+    }
+
     private static Entity line(String id, double x, double y, double xx, double yy) {
         return Sketches.entity(id, Kind.LINE, false, x, y, xx, yy);
     }

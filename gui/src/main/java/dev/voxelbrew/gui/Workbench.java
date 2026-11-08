@@ -528,6 +528,7 @@ public final class Workbench extends BorderPane implements AutoCloseable {
                                 "language",
                                 false,
                                 () -> LanguageDialog.show(stage, translations, configurationStore, preferencesWorker)),
+                        menuItem(translations.text("saveFolder.title"), "save-folder", false, this::saveFolder),
                         menuItem(translations.text("action.updates"), "updates", false, this::updates),
                         menuItem(translations.text("about.title"), "about", false, () -> {
                             if (about.get().show(stage)) updates();
@@ -1882,7 +1883,7 @@ public final class Workbench extends BorderPane implements AutoCloseable {
     }
 
     private void open() {
-        FileDialog.choose(stage, false, controller.path(), formulaParameters(), translations)
+        FileDialog.choose(stage, false, controller.path(), formulaParameters(), translations, configurationStore)
                 .ifPresent(path -> {
                     cancelTool();
                     controller.open(path).exceptionally(failure -> null);
@@ -1895,7 +1896,8 @@ public final class Workbench extends BorderPane implements AutoCloseable {
                     new IllegalStateException(translations.text("gui.file_operation_in_progress")));
         Optional<Path> chosen = !saveAs && controller.path() != null
                 ? Optional.of(controller.path())
-                : FileDialog.choose(stage, true, controller.path(), formulaParameters(), translations);
+                : FileDialog.choose(
+                        stage, true, controller.path(), formulaParameters(), translations, configurationStore);
         if (chosen.isEmpty()) return CompletableFuture.failedFuture(new java.util.concurrent.CancellationException());
         Path path = chosen.get();
         boolean existing = Files.exists(path);
@@ -1910,6 +1912,63 @@ public final class Workbench extends BorderPane implements AutoCloseable {
         var alert = new Alert(
                 Alert.AlertType.CONFIRMATION, translations.text("file.replace", path), ButtonType.YES, ButtonType.NO);
         return Dialogs.show(alert, stage, translations).orElse(ButtonType.NO) == ButtonType.YES;
+    }
+
+    private void saveFolder() {
+        try {
+            var dialog = new Dialog<String>();
+            var folder = new TextField(configurationStore.get("save.folder", ""));
+            folder.setId("save-folder-path");
+            folder.setPromptText("~/VoxelBrew");
+            var browse = new Button(translations.text("gui.browse"));
+            browse.setId("save-folder-browse");
+            UiHelp.install(browse, translations);
+            browse.setOnAction(event -> {
+                var chooser = new javafx.stage.DirectoryChooser();
+                chooser.setTitle(translations.text("saveFolder.title"));
+                try {
+                    String value = folder.getText().strip();
+                    Path home = Path.of(System.getProperty("user.home"));
+                    Path initial = value.isEmpty()
+                            ? home.resolve("VoxelBrew")
+                            : value.equals("~")
+                                    ? home
+                                    : value.startsWith("~/") || value.startsWith("~\\")
+                                            ? home.resolve(value.substring(2))
+                                            : Path.of(value);
+                    initial = initial.toAbsolutePath().normalize();
+                    while (initial != null && !Files.isDirectory(initial)) initial = initial.getParent();
+                    if (initial != null) chooser.setInitialDirectory(initial.toFile());
+                } catch (IllegalArgumentException ignored) {
+                    // Invalid typed paths can still be replaced with a folder from the picker.
+                }
+                var selected = chooser.showDialog(stage);
+                if (selected != null) folder.setText(selected.toString());
+            });
+            dialog.getDialogPane().setContent(Dialogs.pathRow(folder, browse));
+            dialog.getDialogPane().getButtonTypes().setAll(ButtonType.OK, ButtonType.CANCEL);
+            dialog.setResultConverter(button -> button == ButtonType.OK ? folder.getText() : null);
+            dialog.setTitle(translations.text("saveFolder.title"));
+            dialog.setHeaderText(translations.text("saveFolder.hint"));
+            Dialogs.show(dialog, stage, translations).ifPresent(value -> {
+                preferencesWorker.execute(() -> {
+                    try {
+                        if (value.isBlank()) configurationStore.remove("save.folder");
+                        else {
+                            Path.of(value.strip());
+                            configurationStore.set("save.folder", value.strip());
+                        }
+                    } catch (java.io.IOException | IllegalArgumentException failure) {
+                        Platform.runLater(() -> Dialogs.show(
+                                new Alert(Alert.AlertType.ERROR, failure.getMessage(), ButtonType.OK),
+                                stage,
+                                translations));
+                    }
+                });
+            });
+        } catch (java.io.IOException failure) {
+            Dialogs.show(new Alert(Alert.AlertType.ERROR, failure.getMessage(), ButtonType.OK), stage, translations);
+        }
     }
 
     private void updates() {

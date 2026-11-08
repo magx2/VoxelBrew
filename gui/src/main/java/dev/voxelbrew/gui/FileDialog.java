@@ -18,17 +18,24 @@ final class FileDialog {
             boolean save,
             Path current,
             ParameterSet parameters,
-            dev.voxelbrew.util.i18n.Translations translations) {
+            dev.voxelbrew.util.i18n.Translations translations,
+            dev.voxelbrew.util.config.UserConfiguration configuration) {
         var dialog = new Dialog<Path>();
         dialog.setTitle(
                 save ? translations.text("gui.save_editable_design") : translations.text("gui.open_editable_design"));
-        var path = FormulaField.text(
-                        current == null
-                                ? Path.of(System.getProperty("user.home"), "Untitled.jcad")
-                                        .toString()
-                                : current.toString(),
-                        () -> parameters)
-                .localized(translations);
+        Path initial = current;
+        if (initial == null) {
+            try {
+                initial = save
+                        ? configuration.defaultSaveFolder().resolve("Untitled.jcad")
+                        : Path.of(System.getProperty("user.home"), "Untitled.jcad");
+            } catch (java.io.IOException | IllegalArgumentException failure) {
+                Dialogs.show(
+                        new Alert(Alert.AlertType.ERROR, failure.getMessage(), ButtonType.OK), owner, translations);
+                return Optional.empty();
+            }
+        }
+        var path = FormulaField.text(initial.toString(), () -> parameters).localized(translations);
         path.setId("file-path");
         path.setPrefColumnCount(48);
         var browse = new Button(translations.text("gui.browse"));
@@ -39,6 +46,17 @@ final class FileDialog {
             chooser.setTitle(dialog.getTitle());
             chooser.getExtensionFilters()
                     .add(new FileChooser.ExtensionFilter(translations.text("gui.voxelbrew_design_jcad"), "*.jcad"));
+            try {
+                Path selected = Path.of(path.evaluatedText()).toAbsolutePath();
+                Path parent = selected.getParent();
+                if (save) java.nio.file.Files.createDirectories(parent);
+                if (java.nio.file.Files.isDirectory(parent)) chooser.setInitialDirectory(parent.toFile());
+                chooser.setInitialFileName(selected.getFileName().toString());
+            } catch (java.io.IOException | IllegalArgumentException failure) {
+                Dialogs.show(
+                        new Alert(Alert.AlertType.ERROR, failure.getMessage(), ButtonType.OK), owner, translations);
+                return;
+            }
             var file = save ? chooser.showSaveDialog(owner) : chooser.showOpenDialog(owner);
             if (file != null) path.setText(file.toString());
         });
@@ -56,8 +74,9 @@ final class FileDialog {
             try {
                 if (path.evaluatedText().isBlank())
                     throw new IllegalArgumentException(translations.text("gui.choose_a_file_path"));
-                Path.of(path.evaluatedText());
-            } catch (IllegalArgumentException failure) {
+                Path selected = Path.of(path.evaluatedText()).toAbsolutePath();
+                if (save) java.nio.file.Files.createDirectories(selected.getParent());
+            } catch (java.io.IOException | IllegalArgumentException failure) {
                 error.setText(failure.getMessage());
                 e.consume();
             }

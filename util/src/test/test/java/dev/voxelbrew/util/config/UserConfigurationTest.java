@@ -14,6 +14,20 @@ class UserConfigurationTest {
     Path directory;
 
     @Test
+    void defaultSaveFolderUsesHomeAndExpandsConfiguredPaths() throws Exception {
+        var config = new UserConfiguration(directory.resolve("save.properties"));
+        Path home = Path.of(System.getProperty("user.home")).toAbsolutePath();
+        assertEquals(home.resolve("VoxelBrew"), config.defaultSaveFolder());
+        assertFalse(Files.exists(config.path()));
+        config.set("save.folder", " ");
+        assertEquals(home.resolve("VoxelBrew"), config.defaultSaveFolder());
+        config.set("save.folder", directory.resolve("my designs").toString());
+        assertEquals(directory.resolve("my designs"), new UserConfiguration(config.path()).defaultSaveFolder());
+        config.set("save.folder", "~/Designs");
+        assertEquals(home.resolve("Designs"), config.defaultSaveFolder());
+    }
+
+    @Test
     void utf8RoundTripMergesUnknownKeysAndSupportsRemovalAndMigration() throws Exception {
         var config = new UserConfiguration(directory.resolve("settings with spaces/config.properties"));
         assertEquals(Map.of(), config.read());

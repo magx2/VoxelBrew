@@ -43,6 +43,17 @@ public final class UserConfiguration {
         return read().getOrDefault(key, fallback);
     }
 
+    /** Location suggested for new documents; empty values use ~/VoxelBrew. */
+    public Path defaultSaveFolder() throws IOException {
+        String value = get("save.folder", "").strip();
+        Path home = Path.of(System.getProperty("user.home"));
+        if (value.isEmpty()) return home.resolve("VoxelBrew").toAbsolutePath().normalize();
+        if (value.equals("~")) return home.toAbsolutePath().normalize();
+        if (value.startsWith("~/") || value.startsWith("~\\"))
+            return home.resolve(value.substring(2)).toAbsolutePath().normalize();
+        return Path.of(value).toAbsolutePath().normalize();
+    }
+
     public void set(String key, String value) throws IOException {
         update(Map.of(key, value), Set.of());
     }

@@ -8,6 +8,14 @@ import org.junit.jupiter.api.Test;
 
 class ViewOrientationTest {
     @Test
+    void viewportBasisPreservesMillimetersAndOrientation() {
+        var point = new Point3D(10, 20, 30);
+        assertEquals(point, Viewport.toModel(Viewport.toView(point.getX(), point.getY(), point.getZ())));
+        assertEquals(new Point3D(0, -1, 0), Viewport.toView(0, 0, 1));
+        assertEquals(Viewport.toView(0, 0, 1), Viewport.toView(1, 0, 0).crossProduct(Viewport.toView(0, 1, 0)));
+    }
+
+    @Test
     void sketchFrameConversionPreservesModelCoordinatesForAllPlanesAndArbitraryFaces() {
         var frames = new java.util.ArrayList<dev.voxelbrew.engine.model.Transform>();
         for (String name : new String[] {"XY", "XZ", "YZ"})

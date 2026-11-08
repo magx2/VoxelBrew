@@ -1115,6 +1115,15 @@ class WorkbenchUiTest {
     @Test
     void polishWorkbenchDialogsSketchPrintingAndLanguagePreferenceUseRealControls() throws Exception {
         ready();
+        // One translated dialog wiring check; message/resource matrices live in UiTextTest.
+        click("about");
+        waitForAbout("Dostępna nowa wersja: 1.1.0");
+        assertEquals("Wersja " + Version.version(), fx(() -> ((Label) node("#about-version")).getText()));
+        assertEquals("Otwórz aktualizator…", fx(() -> ((Hyperlink) node("#about-updates")).getText()));
+        assertTrue(fx(() ->
+                ((Hyperlink) node("#about-license")).getTooltip().getText().contains("licencję")));
+        click("about-close");
+        ready();
         key(KeyCode.ALT); // A focused background menu must not swallow modal Escape.
         openShortcutHelp();
         assertNotNull(fx(() -> node("#keyboard-shortcuts-list")));
@@ -1859,26 +1868,6 @@ class WorkbenchUiTest {
         click("about-check");
         waitForAbout("Development runs are not replaced");
         assertTrue(fx(() -> ((Label) node("#about-status")).getText().startsWith("New version available: 1.1.0")));
-        click("about-close");
-        ready();
-    }
-
-    @Test
-    void polishAboutShowsTranslatedVersionUpdatesAndLegalHelp() throws Exception {
-        click("about");
-        waitForAbout("Dostępna nowa wersja: 1.1.0");
-        assertEquals(
-                "Wersja " + dev.voxelbrew.util.Version.version(), fx(() -> ((Label) node("#about-version")).getText()));
-        assertEquals("Otwórz aktualizator…", fx(() -> ((Hyperlink) node("#about-updates")).getText()));
-        assertTrue(fx(() ->
-                ((Hyperlink) node("#about-license")).getTooltip().getText().contains("licencję")));
-        fx(() -> {
-            Screenshot.save(stage.getScene(), Path.of(System.getProperty("voxelbrew.ui.artifacts"), "about-pl.png"));
-            return null;
-        });
-        click("about-notices");
-        assertTrue(fx(() -> ((TextArea) node("#about-legal-text")).getText().contains("Open CASCADE")));
-        click("about-legal-close");
         click("about-close");
         ready();
     }
@@ -4156,62 +4145,35 @@ class WorkbenchUiTest {
     }
 
     @Test
-    void olderFilesUpgradeAndNewerFilesReportErrorWithoutReplacingTheDocument() throws Exception {
-        Path file = directory.resolve("older version design.jcad");
-        var original = new CadDocument(
-                "versioned-design",
-                List.of(new Feature.Sketch(
-                        "plate",
-                        "plate.profile",
-                        new Feature.Plane("origin-xy", 0),
-                        new Feature.Rectangle(0, 0, 60, 40))),
-                1);
-        DocumentWriter.save(original, file, false);
-        byte[] saved = Files.readAllBytes(file);
+    void futureFileErrorsAreVisibleAndKeepTheCurrentDesign() throws Exception {
+        // Version compatibility and byte preservation are covered headlessly in DocumentControllerTest.
+        // Keep only the real file dialog -> status label -> current design wiring here.
+        Path file = directory.resolve("current design.jcad");
+        DocumentWriter.save(
+                new CadDocument(
+                        "current",
+                        List.of(new Feature.Sketch(
+                                "plate", "profile", Feature.Plane.origin("XY"), new Feature.Rectangle(0, 0, 60, 40))),
+                        1),
+                file,
+                false);
+        open(file);
+        var before = document();
+        var saved = Files.readAllBytes(file);
         var message = DocumentProto.Document.parseFrom(Arrays.copyOfRange(saved, 44, saved.length));
-        assertEquals(Version.version(), message.getApplicationVersion());
-        byte[] older = versionedDocument(message, "0.0.0");
-        Files.write(file, older);
+        var futureFile = directory.resolve("future design.jcad");
+        Files.write(futureFile, versionedDocument(message, "65534.65534.65534"));
         click("open");
-        text("file-path", file.toString());
+        text("file-path", futureFile.toString());
         click("file-confirm");
         ready();
-        assertEquals(original, document());
+        String error = fx(() -> ((Label) node("#status")).getText());
+        assertTrue(error.contains("VoxelBrew 65534.65534.65534"), error);
+        assertTrue(error.contains("supported version " + Version.version()), error);
+        assertTrue(error.contains("Update VoxelBrew"), error);
+        assertEquals(before, document());
+        assertEquals(file.toAbsolutePath(), fx(() -> workbench.controller().path()));
         assertFalse(fx(() -> workbench.controller().dirty()));
-        assertArrayEquals(older, Files.readAllBytes(file));
-        shortcut(KeyCode.S, false);
-        ready();
-        byte[] upgraded = Files.readAllBytes(file);
-        assertEquals(
-                Version.version(),
-                DocumentProto.Document.parseFrom(Arrays.copyOfRange(upgraded, 44, upgraded.length))
-                        .getApplicationVersion());
-        assertEquals(original, DocumentReader.load(file));
-        Path futureFile = directory.resolve("future version design.jcad");
-        byte[] future = versionedDocument(message, "65534.65534.65534");
-        Files.write(futureFile, future);
-        for (int palette : List.of(1, 2)) {
-            choice("appearance", palette);
-            click("open");
-            text("file-path", futureFile.toString());
-            click("file-confirm");
-            ready();
-            String error = fx(() -> ((Label) node("#status")).getText());
-            assertTrue(error.contains("VoxelBrew 65534.65534.65534"), error);
-            assertTrue(error.contains("supported version " + Version.version()), error);
-            assertTrue(error.contains("Update VoxelBrew"), error);
-            assertEquals(original, document());
-            assertEquals(file.toAbsolutePath(), fx(() -> workbench.controller().path()));
-            assertFalse(fx(() -> workbench.controller().dirty()));
-            assertArrayEquals(future, Files.readAllBytes(futureFile));
-            assertArrayEquals(upgraded, Files.readAllBytes(file));
-            fx(() -> {
-                Screenshot.save(
-                        stage.getScene(),
-                        Path.of(System.getProperty("voxelbrew.ui.artifacts"), "document-version-" + palette + ".png"));
-                return null;
-            });
-        }
     }
 
     private static byte[] versionedDocument(DocumentProto.Document document, String version) throws Exception {
@@ -4243,13 +4205,5 @@ class WorkbenchUiTest {
         String output = Files.readString(log);
         assertEquals(0, process.exitValue(), output);
         return output;
-    }
-
-    @Test
-    void viewportBasisPreservesMillimetersAndOrientation() {
-        var p = new Point3D(10, 20, 30);
-        assertEquals(p, Viewport.toModel(Viewport.toView(p.getX(), p.getY(), p.getZ())));
-        assertEquals(new Point3D(0, -1, 0), Viewport.toView(0, 0, 1));
-        assertEquals(Viewport.toView(0, 0, 1), Viewport.toView(1, 0, 0).crossProduct(Viewport.toView(0, 1, 0)));
     }
 }

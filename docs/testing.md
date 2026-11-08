@@ -127,6 +127,30 @@ unsharded suite. To reproduce one CI partition explicitly, use
 `check` for that gate. Invalid shard numbers fail instead of silently running
 an empty selection.
 
+## UI test placement review
+
+The 41 Robot scenarios were reviewed after introducing CI shards. The suite now
+contains 39 scenarios. Importance alone is not a reason to remove a regression
+check: move it down only when the lower layer can observe the same behavior.
+
+| Coverage                                                                                                             | Decision and replacement                                                                                                                                                                                                                                                                |
+| -------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Viewport coordinate basis, units and handedness                                                                      | Moved unchanged from `WorkbenchUiTest` to the headless `ViewOrientationTest` unit suite. No window, Robot or native kernel is needed.                                                                                                                                                   |
+| Older-file upgrade, future-file rejection, path/dirty state and byte preservation                                    | Moved the compatibility matrix to `DocumentControllerTest` integration tests with real document I/O. Added both clean and dirty current documents. Kept a short Robot smoke test for file-dialog errors reaching the visible status label without replacing the current design.         |
+| Polish About messages and bundled license/notices                                                                    | Message formatting and resource contents are covered by `UiTextTest` unit tests. Removed the separate Polish About scenario and kept translated control wiring in the existing Polish workbench tour. English About tests still exercise legal links, read-only text and both palettes. |
+| Window move/resize/minimize, close/save/discard/cancel, first-launch locale and window isolation                     | Retained: native window behavior, per-window Dagger composition and displayed preferences cannot be established by controller tests. `WindowResourcesTest` already checks worker shutdown independently.                                                                                |
+| History scrolling/playback, selection, plane picking, curved-face rejection, stale picks and attached-sketch repair  | Retained: these exercise actual rendered targets, selection state and cancellation after asynchronous changes.                                                                                                                                                                          |
+| Body rename/material/color, context menus, keyboard focus, modal boundaries, autocomplete and unsaved-file shortcuts | Retained: synthetic controller calls would miss event routing, focus, wrong-target edits and accidental commits.                                                                                                                                                                        |
+| Sketch geometry families, constraints, formulas, named parameters/configurations and repair                          | Retained: engine/unit tests cover their math; these scenarios prove that their different tools and editors create and edit the intended entities through real controls.                                                                                                                 |
+| Technical rendering, grid drag, view cube, signed extrusion drag and cancellation                                    | Retained: projection, occlusion, picking and gestures need the actual JavaFX scene and input pipeline.                                                                                                                                                                                  |
+| Reference-part/export parity, plugin/import dialogs and missing-provider recovery, printing/slicing preview          | Retained: these are the integrated CAD, exchange and printing acceptance paths, including independent CLI comparison.                                                                                                                                                                   |
+| About retry/cancellation and updater unsaved-document protection                                                     | Retained: background results, disabled controls, closing/reopening dialogs and modal cancellation are UI behavior, even though transport and installation also have lower-level tests.                                                                                                  |
+
+This is a modest reduction in desktop work, not another large CI speedup. The
+macOS packaging job can still determine total run time. No interaction wait or
+CAD/export/printing acceptance gate was removed, and local `check` remains the
+complete suite.
+
 Native setup and artifact collection live in the reusable `native-check.yml`
 workflow. The standard hosted Intel Mac cannot initialize JavaFX 3D. The user
 explicitly deferred macOS GUI qualification; the narrower headless task keeps

@@ -20,6 +20,71 @@ class DocumentControllerTest {
     private final ConcurrentLinkedQueue<Runnable> callbacks = new ConcurrentLinkedQueue<>();
 
     @Test
+    void olderFilesUpgradeAndFutureFilesPreserveCleanAndDirtyDocuments() throws Exception {
+        var original = new CadDocument("versioned-design", List.of(sketch("plate", 0)), 1);
+        Path file = directory.resolve("older version design.jcad");
+        DocumentWriter.save(original, file, false);
+        byte[] saved = Files.readAllBytes(file);
+        var message = dev.voxelbrew.engine.persistence.proto.DocumentProto.Document.parseFrom(
+                java.util.Arrays.copyOfRange(saved, 44, saved.length));
+        assertEquals(dev.voxelbrew.util.Version.version(), message.getApplicationVersion());
+        byte[] older = versionedDocument(message, "0.0.0");
+        Files.write(file, older);
+        Path futureFile = directory.resolve("future version design.jcad");
+        byte[] future = versionedDocument(message, "65534.65534.65534");
+        Files.write(futureFile, future);
+        try (var controller = new DocumentController(callbacks::add)) {
+            var opened = controller.open(file);
+            await(() -> opened.isDone() && !controller.rebuilding());
+            opened.join();
+            assertEquals(original, controller.snapshot().document());
+            assertFalse(controller.dirty());
+            assertArrayEquals(older, Files.readAllBytes(file));
+            var saving = controller.save(file, true);
+            await(saving::isDone);
+            saving.join();
+            byte[] upgraded = Files.readAllBytes(file);
+            assertEquals(
+                    dev.voxelbrew.util.Version.version(),
+                    dev.voxelbrew.engine.persistence.proto.DocumentProto.Document.parseFrom(
+                                    java.util.Arrays.copyOfRange(upgraded, 44, upgraded.length))
+                            .getApplicationVersion());
+            assertEquals(original, DocumentReader.load(file));
+            for (boolean dirty : List.of(false, true)) {
+                if (dirty) {
+                    controller.edit("plate", "width", 61);
+                    await(() -> !controller.rebuilding());
+                }
+                var before = controller.snapshot();
+                var failed = controller.open(futureFile);
+                await(failed::isDone);
+                assertTrue(failed.isCompletedExceptionally());
+                assertFalse(controller.ioBusy());
+                assertEquals(before, controller.snapshot());
+                assertEquals(file.toAbsolutePath(), controller.path());
+                assertEquals(dirty, controller.dirty());
+                assertTrue(controller.error().contains("VoxelBrew 65534.65534.65534"));
+                assertTrue(controller.error().contains("supported version " + dev.voxelbrew.util.Version.version()));
+                assertTrue(controller.error().contains("Update VoxelBrew"));
+                assertArrayEquals(future, Files.readAllBytes(futureFile));
+                assertArrayEquals(upgraded, Files.readAllBytes(file));
+            }
+        }
+    }
+
+    private static byte[] versionedDocument(
+            dev.voxelbrew.engine.persistence.proto.DocumentProto.Document document, String version) throws Exception {
+        byte[] payload =
+                document.toBuilder().setApplicationVersion(version).build().toByteArray();
+        return java.nio.ByteBuffer.allocate(44 + payload.length)
+                .put(new byte[] {'J', 'C', 'A', 'D', 13, 10, 26, 10})
+                .putInt(payload.length)
+                .put(java.security.MessageDigest.getInstance("SHA-256").digest(payload))
+                .put(payload)
+                .array();
+    }
+
+    @Test
     void bodyStylesDirtySaveUndoAndRejectStaleOrInactiveSelections() throws Exception {
         try (var controller = new DocumentController(callbacks::add)) {
             controller.add(sketch("plate", 0));

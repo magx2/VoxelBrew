@@ -14,6 +14,33 @@ import org.junit.jupiter.api.Test;
 
 class UiTextTest {
     @Test
+    void aboutMessagesFormatVersionsAndPolishLegalHelpWithoutAWindow() {
+        var en = new Translations(Locale.ENGLISH);
+        var pl = new Translations(Locale.forLanguageTag("pl"));
+        assertEquals("Version 1.2.3", en.text("about.version", "1.2.3"));
+        assertEquals("Wersja 1.2.3", pl.text("about.version", "1.2.3"));
+        assertEquals("New version available: 1.1.0", en.text("about.available", "1.1.0"));
+        assertEquals("Dostępna nowa wersja: 1.1.0", pl.text("about.available", "1.1.0"));
+        assertEquals("Otwórz aktualizator…", pl.text("about.updates"));
+        assertTrue(pl.text("help.about-license").contains("licencję"));
+    }
+
+    @Test
+    void aboutLegalResourcesContainTheBundledLicenseAndNativeNotices() throws Exception {
+        for (var entry : Map.of(
+                        "LICENSE", "GNU AFFERO GENERAL PUBLIC LICENSE", "THIRD_PARTY_NOTICES.md", "Open CASCADE")
+                .entrySet()) {
+            try (var stream = AboutDialog.class.getResourceAsStream("legal/" + entry.getKey())) {
+                assertNotNull(stream, entry.getKey());
+                assertTrue(
+                        new String(stream.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8)
+                                .contains(entry.getValue()),
+                        entry.getKey());
+            }
+        }
+    }
+
+    @Test
     void everyGuiMessageAndEnumChoiceExistsInBothCatalogs() throws Exception {
         for (var locale : List.of(Locale.ENGLISH, Locale.forLanguageTag("pl"))) {
             var t = new Translations(locale);

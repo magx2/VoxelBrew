@@ -129,6 +129,20 @@ an empty selection.
 
 ## UI test placement review
 
+Robot scenarios that only need an existing profile use committed `.jcad` files
+under `gui/src/test/e2eTest/resources/dev/voxelbrew/gui/documents`. They contain
+60 × 40 mm constrained rectangles at Z=0 and Z=12, and a 5 mm plate.
+The files were generated manually with `ModelSession`, `Sketches.rectangle`
+and `DocumentWriter.save`; test setup never generates them. Regenerate and review
+these resources explicitly when the document schema changes.
+`PreparedDocuments.copy` loads a classpath resource into each test's `@TempDir`,
+then the Robot opens that private copy through the file dialog. Saves cannot
+modify the committed inputs or contaminate another scenario. The fixture check
+reopens the actual resources and verifies editable profiles and exact plate geometry.
+History, extrusion, repair, face attachment, navigation and printing scenarios use
+these inputs. Sketch creation, the full reference workflow and initially unsaved
+document scenarios still exercise creation through real controls.
+
 The 41 Robot scenarios were reviewed after introducing CI shards. The suite now
 contains 39 scenarios. Importance alone is not a reason to remove a regression
 check: move it down only when the lower layer can observe the same behavior.

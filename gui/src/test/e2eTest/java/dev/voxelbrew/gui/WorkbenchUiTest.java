@@ -168,7 +168,7 @@ class WorkbenchUiTest {
 
     @Test
     void compactHistorySupportsPickingDraggingPlaybackAndIndependentUndo() throws Exception {
-        rectangle(0);
+        openPrepared("rectangle-0.jcad");
         click("extrude");
         text("extrude-distance", "8");
         click("commit-extrusion");
@@ -405,11 +405,7 @@ class WorkbenchUiTest {
 
     @Test
     void bodyFaceSketchFollowsUpstreamEditAndSupportsPlaneRepair() throws Exception {
-        rectangle(0);
-        click("extrude");
-        text("extrude-distance", "5");
-        click("commit-extrusion");
-        ready();
+        openPrepared("plate-5mm.jcad");
         for (int palette : List.of(1, 2)) {
             choice("appearance", palette);
             click("constrained-sketch");
@@ -2013,6 +2009,14 @@ class WorkbenchUiTest {
         Thread.sleep(180);
     }
 
+    private void openPrepared(String name) throws Exception {
+        Path copy = PreparedDocuments.copy(name, directory);
+        open(copy);
+        click("history-0");
+        standardView(1);
+        click("menu-fit");
+    }
+
     private void rectangle(double offset) throws Exception {
         rectangleDraft(60, 40, offset);
         click("constraint-finish");
@@ -3199,7 +3203,7 @@ class WorkbenchUiTest {
         assertEquals(empty, fx(() -> workbench.controller().snapshot()));
         assertFalse(fx(() -> workbench.controller().dirty()));
 
-        rectangle(0);
+        openPrepared("rectangle-0.jcad");
         var top = fx(() -> workbench.viewport().orientationProperty().get());
         double fittedWidth = fx(() -> workbench
                 .viewport()
@@ -3285,11 +3289,7 @@ class WorkbenchUiTest {
 
     @Test
     void viewCubeSnapsOrbitsAndFitsWithoutChangingTheDocument() throws Exception {
-        rectangle(0);
-        click("extrude");
-        ready();
-        key(KeyCode.ENTER);
-        ready();
+        openPrepared("plate-5mm.jcad");
         save(directory.resolve("navigation.jcad"));
         var snapshot = fx(() -> workbench.controller().snapshot());
         click("view-cube-home");
@@ -3668,7 +3668,7 @@ class WorkbenchUiTest {
 
     @Test
     void signedExtrusionDragAndEscapeHaveExactUndoSemantics() throws Exception {
-        rectangle(12);
+        openPrepared("rectangle-12.jcad");
         click("extrude");
         ready();
         text("extrude-distance", "-3");
@@ -3736,7 +3736,7 @@ class WorkbenchUiTest {
 
     @Test
     void invalidDimensionsAndBrokenInputRepairStayEditable() throws Exception {
-        rectangle(12); // A parallel offset plane is editable; the origin plane is fixed.
+        openPrepared("rectangle-12.jcad"); // A parallel offset plane is editable; the origin plane is fixed.
         var original = document();
         text("dimension-offsetZ", "NaN");
         key(KeyCode.ENTER);
@@ -4045,7 +4045,7 @@ class WorkbenchUiTest {
 
     @Test
     void printingSplitPlacementPetgAndActualPreviewMatchCli() throws Exception {
-        rectangle(0);
+        openPrepared("rectangle-0.jcad");
         click("extrude");
         ready();
         text("extrude-distance", "8");

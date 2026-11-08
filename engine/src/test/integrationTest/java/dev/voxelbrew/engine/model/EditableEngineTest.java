@@ -18,6 +18,26 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 class EditableEngineTest {
+    @Test
+    void solidModificationsSurviveDocumentRoundTrip() throws Exception {
+        var session = new ModelSession(CadDocument.empty());
+        session.add(new Feature.Sketch(
+                "profile", "rectangle", Feature.Plane.origin("XY"), new Feature.Rectangle(0, 0, 20, 20)));
+        session.add(new Feature.Extrude("block", new Feature.ProfileRef("profile", "rectangle"), 10));
+        session.add(new Feature.EdgeFinish(
+                "round",
+                new Feature.BodyRef("block", "body"),
+                Feature.EdgeFinish.Kind.FILLET,
+                1,
+                java.util.List.of(1)));
+        session.add(new Feature.Shell("hollow", new Feature.BodyRef("round", "body"), 1, 1));
+        var document = DocumentCodec.decode(DocumentCodec.encode(session.document()));
+        org.junit.jupiter.api.Assertions.assertEquals(session.document().features(), document.features());
+        try (var evaluation = new ModelSession(document).evaluate()) {
+            evaluation.requireCompleteDocument();
+        }
+    }
+
     @TempDir
     Path directory;
 

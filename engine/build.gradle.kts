@@ -115,7 +115,7 @@ val configureOcct by
                     "-DBUILD_MODULE_DataExchange=OFF",
                     "-DBUILD_MODULE_Draw=OFF",
                     "-DBUILD_MODULE_DETools=OFF",
-                    "-DBUILD_ADDITIONAL_TOOLKITS=TKBool;TKPrim;TKMesh",
+                    "-DBUILD_ADDITIONAL_TOOLKITS=TKBool;TKPrim;TKMesh;TKFillet;TKOffset",
                     "-DBUILD_DOC_Overview=OFF",
                     "-DUSE_TBB=OFF",
                     "-DUSE_FREETYPE=OFF",

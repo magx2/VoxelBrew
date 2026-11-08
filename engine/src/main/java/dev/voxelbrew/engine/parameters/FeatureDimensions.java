@@ -59,6 +59,8 @@ public final class FeatureDimensions {
                                 d.values().getFirst()));
             }
         } else if (feature instanceof Feature.Extrude e) length.accept("distance", e.distance());
+        else if (feature instanceof Feature.EdgeFinish f) length.accept("size", f.size());
+        else if (feature instanceof Feature.Shell s) length.accept("thickness", s.thickness());
         else if (feature instanceof Feature.SplitBody s)
             length.accept("offset", s.plane().offset());
         return List.copyOf(result);
@@ -77,6 +79,12 @@ public final class FeatureDimensions {
         changes.keySet().forEach(k -> dimension(feature, k));
         if (feature instanceof Feature.Extrude e)
             return new Feature.Extrude(e.id(), e.profile(), changes.getOrDefault("distance", e.distance()));
+        if (feature instanceof Feature.EdgeFinish f)
+            return new Feature.EdgeFinish(
+                    f.id(), f.body(), f.kind(), changes.getOrDefault("size", f.size()), f.edges());
+        if (feature instanceof Feature.Shell s)
+            return new Feature.Shell(
+                    s.id(), s.body(), changes.getOrDefault("thickness", s.thickness()), s.removedFace());
         if (feature instanceof Feature.SplitBody s)
             return new Feature.SplitBody(
                     s.id(),

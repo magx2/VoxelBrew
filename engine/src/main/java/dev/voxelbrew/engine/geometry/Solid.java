@@ -132,6 +132,19 @@ public final class Solid implements AutoCloseable {
         return NativeKernel.volume(token);
     }
 
+    public synchronized Solid edgeFinish(boolean fillet, double size, int[] edges) {
+        requireOpen();
+        positive("size", size);
+        return new Solid(NativeKernel.edgeFinish(token, fillet, size, edges.clone()));
+    }
+
+    public synchronized Solid shell(double thickness, int removedFace) {
+        requireOpen();
+        positive("thickness", thickness);
+        if (removedFace < 0) throw new IllegalArgumentException("removedFace must be nonnegative");
+        return new Solid(NativeKernel.shell(token, thickness, removedFace));
+    }
+
     /** Independently owned rigid copy; the source geometry is never changed. */
     public synchronized Solid transformed(dev.voxelbrew.engine.model.Transform placement) {
         requireOpen();

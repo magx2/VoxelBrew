@@ -176,6 +176,10 @@ public final class ModelSession {
         Feature replacement;
         if (feature instanceof Feature.Extrude e && field.equals("distance")) {
             replacement = new Feature.Extrude(e.id(), e.profile(), value);
+        } else if (feature instanceof Feature.EdgeFinish f && field.equals("size")) {
+            replacement = new Feature.EdgeFinish(f.id(), f.body(), f.kind(), value, f.edges());
+        } else if (feature instanceof Feature.Shell s && field.equals("thickness")) {
+            replacement = new Feature.Shell(s.id(), s.body(), value, s.removedFace());
         } else if (feature instanceof Feature.SplitBody s && field.equals("offset")) {
             var p = s.plane();
             replacement = new Feature.SplitBody(

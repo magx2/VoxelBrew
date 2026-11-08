@@ -10,6 +10,22 @@ class NativeKernelTest {
     private static final double VOLUME_TOLERANCE_MM3 = 0.01;
     private static final double BOUNDS_TOLERANCE_MM = 0.001;
 
+    @Test
+    void edgeFinishesAndShellProduceValidIndependentSolids() {
+        int before = NativeKernel.liveHandles();
+        try (Solid box = Solid.rectanglePrism(0, 0, 0, 20, 20, 10);
+                Solid fillet = box.edgeFinish(true, 1, new int[] {1});
+                Solid chamfer = box.edgeFinish(false, 1, new int[] {1});
+                Solid shell = box.shell(1, 1)) {
+            assertTrue(fillet.volume() < box.volume());
+            assertTrue(chamfer.volume() < box.volume());
+            assertTrue(shell.volume() < box.volume());
+            assertTrue(shell.volume() > 0);
+            assertEquals(4000, box.volume(), VOLUME_TOLERANCE_MM3);
+        }
+        assertEquals(before, NativeKernel.liveHandles());
+    }
+
     @ParameterizedTest
     @ValueSource(doubles = {5, 8})
     void referencePlateUsesRealKernel(double thickness) {

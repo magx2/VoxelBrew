@@ -295,6 +295,9 @@ public final class Workbench extends BorderPane implements AutoCloseable {
     private final Button extrude;
     private final Button cut;
     private final Button splitBody;
+    private final Button fillet;
+    private final Button chamfer;
+    private final Button shell;
     private final ProgressIndicator progress = new ProgressIndicator();
     private final Appearance appearance;
     private final ExecutorService preferencesWorker;
@@ -424,6 +427,9 @@ public final class Workbench extends BorderPane implements AutoCloseable {
         this.extrude = button(translations.text("action.extrude"), "extrude", this::beginExtrusion);
         this.cut = button(translations.text("action.cut"), "cut", this::beginCut);
         this.splitBody = button(translations.text("action.split"), "split-body", this::beginSplit);
+        this.fillet = button(translations.text("action.fillet"), "fillet", () -> beginFinish(true));
+        this.chamfer = button(translations.text("action.chamfer"), "chamfer", () -> beginFinish(false));
+        this.shell = button(translations.text("action.shell"), "shell", this::beginShell);
         appearanceChoice = appearance.load();
         setId("workbench");
         featureDiagnostics.setId("feature-diagnostics");
@@ -549,7 +555,7 @@ public final class Workbench extends BorderPane implements AutoCloseable {
         window = new WindowFrame(stage, title, this, translations);
         var historyCommands = new HBox(2, undo, redo);
         var sketchCommands = new HBox(2, constrainedSketch);
-        var solidCommands = new HBox(2, extrude, cut, splitBody);
+        var solidCommands = new HBox(2, extrude, cut, fillet, chamfer, shell, splitBody);
         for (var group : List.of(historyCommands, sketchCommands, solidCommands))
             group.getStyleClass().add("command-group");
         var toolbar = new FlowPane(10, 6, historyCommands, sketchCommands, solidCommands);
@@ -893,6 +899,9 @@ public final class Workbench extends BorderPane implements AutoCloseable {
             splitBody.setDisable(tool != Tool.NONE
                     || !controller.canExport()
                     || controller.build().bodies().isEmpty());
+            fillet.setDisable(splitBody.isDisabled());
+            chamfer.setDisable(splitBody.isDisabled());
+            shell.setDisable(splitBody.isDisabled());
             printing.documentChanged();
             boolean atEnd = document.cursor() == document.features().size() && !controller.ioBusy();
             customFeature.setDisable(!atEnd || tool != Tool.NONE || controller.rebuilding());
@@ -977,6 +986,10 @@ public final class Workbench extends BorderPane implements AutoCloseable {
 
     private String defaultFeatureName(Feature feature) {
         if (feature instanceof Feature.Custom custom) return translations.text("feature.custom", custom.type());
+        if (feature instanceof Feature.EdgeFinish finish)
+            return translations.text(
+                    finish.kind() == Feature.EdgeFinish.Kind.FILLET ? "action.fillet" : "action.chamfer");
+        if (feature instanceof Feature.Shell) return translations.text("action.shell");
         return feature instanceof Feature.Sketch s
                 ? (s.profile() instanceof Feature.Circle
                         ? translations.text("gui.circle")
@@ -1138,6 +1151,12 @@ public final class Workbench extends BorderPane implements AutoCloseable {
         } else if (feature instanceof Feature.Extrude e) {
             dimension(feature, "distance", e.distance());
             referenceEditor(feature, e.profile(), null);
+        } else if (feature instanceof Feature.EdgeFinish f) {
+            dimension(feature, "size", f.size());
+            referenceEditor(feature, null, f.body());
+        } else if (feature instanceof Feature.Shell s) {
+            dimension(feature, "thickness", s.thickness());
+            referenceEditor(feature, null, s.body());
         } else if (feature instanceof Feature.ThroughCut c) referenceEditor(feature, c.profile(), c.body());
         else if (feature instanceof Feature.SplitBody s) {
             dimension(feature, "offset", s.plane().offset());
@@ -1311,14 +1330,23 @@ public final class Workbench extends BorderPane implements AutoCloseable {
                             output);
         }
         form.getChildren().add(button(translations.text("gui.repair_inputs"), "repair", () -> {
+            var repairedBody = body == null
+                    ? null
+                    : new Feature.BodyRef(
+                            Objects.requireNonNull(bodies.getValue(), translations.text("gui.choose_an_earlier_body")),
+                            output.getText());
+            if (feature instanceof Feature.EdgeFinish finish) {
+                controller.replaceFeature(new Feature.EdgeFinish(
+                        finish.id(), repairedBody, finish.kind(), finish.size(), finish.edges()));
+                return;
+            }
+            if (feature instanceof Feature.Shell shell) {
+                controller.replaceFeature(
+                        new Feature.Shell(shell.id(), repairedBody, shell.thickness(), shell.removedFace()));
+                return;
+            }
             if (feature instanceof Feature.SplitBody split) {
-                controller.replaceFeature(new Feature.SplitBody(
-                        split.id(),
-                        new Feature.BodyRef(
-                                Objects.requireNonNull(
-                                        bodies.getValue(), translations.text("gui.choose_an_earlier_body")),
-                                output.getText()),
-                        split.plane()));
+                controller.replaceFeature(new Feature.SplitBody(split.id(), repairedBody, split.plane()));
                 return;
             }
             var s = (Feature.Sketch) earlier.stream()
@@ -1615,6 +1643,84 @@ public final class Workbench extends BorderPane implements AutoCloseable {
             inspect();
             refresh();
         });
+    }
+
+    private void beginFinish(boolean rounded) {
+        beginSolidModification(
+                rounded ? "action.fillet" : "action.chamfer",
+                (id, body, size, index) -> new Feature.EdgeFinish(
+                        id,
+                        body,
+                        rounded ? Feature.EdgeFinish.Kind.FILLET : Feature.EdgeFinish.Kind.CHAMFER,
+                        size,
+                        index == 0 ? java.util.List.of() : java.util.List.of(index)));
+    }
+
+    private void beginShell() {
+        beginSolidModification("action.shell", Feature.Shell::new);
+    }
+
+    @FunctionalInterface
+    private interface SolidModification {
+        Feature create(String id, Feature.BodyRef body, double size, int index);
+    }
+
+    private void beginSolidModification(String title, SolidModification operation) {
+        cancelTool();
+        var bodies = controller.build().bodies();
+        if (bodies.isEmpty()) return;
+        var dialog = new Dialog<Void>();
+        dialog.setTitle(translations.text(title));
+        var body = new ComboBox<DocumentController.Body>();
+        body.getItems().setAll(bodies);
+        body.setConverter(new javafx.util.StringConverter<>() {
+            public String toString(DocumentController.Body value) {
+                return value == null ? "" : value.id();
+            }
+
+            public DocumentController.Body fromString(String value) {
+                throw new UnsupportedOperationException();
+            }
+        });
+        body.setValue(bodies.stream()
+                .filter(b -> b.id().equals(selectedBody))
+                .findFirst()
+                .orElse(bodies.getFirst()));
+        var size = new TextField("1");
+        size.setId("modify-size");
+        var index = new TextField(title.equals("action.shell") ? "1" : "0");
+        index.setId("modify-index");
+        var error = new Label();
+        error.setWrapText(true);
+        dialog.getDialogPane()
+                .setContent(new VBox(
+                        8,
+                        new Label(translations.text("gui.input_body")),
+                        body,
+                        new Label(translations.text(title.equals("action.shell") ? "gui.thickness_mm" : "gui.size_mm")),
+                        size,
+                        new Label(
+                                translations.text(title.equals("action.shell") ? "gui.face_index" : "gui.edge_index")),
+                        index,
+                        error));
+        var commit = new ButtonType(translations.text(title), ButtonBar.ButtonData.OK_DONE);
+        dialog.getDialogPane().getButtonTypes().addAll(commit, ButtonType.CANCEL);
+        dialog.getDialogPane().lookupButton(commit).addEventFilter(javafx.event.ActionEvent.ACTION, event -> {
+            try {
+                String id = "modify-"
+                        + controller.snapshot().document().uuidGenerator().next();
+                controller.add(operation.create(
+                        id,
+                        body.getValue().output(),
+                        Double.parseDouble(size.getText()),
+                        Integer.parseInt(index.getText())));
+                selectedFeature = id;
+            } catch (RuntimeException failure) {
+                error.setText(failure.getMessage());
+                event.consume();
+            }
+        });
+        dialog.showAndWait();
     }
 
     private void beginSplit() {

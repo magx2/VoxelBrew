@@ -46,6 +46,14 @@ final class FeatureValidation {
             if (Math.abs(extrusion.distance()) < 1e-6) {
                 throw new ModelException(feature.id(), "distance must have magnitude >= 0.000001 mm");
             }
+        } else if (feature instanceof Feature.EdgeFinish finish) {
+            positive(feature.id(), "size", finish.size());
+            if (finish.kind() == null) throw new ModelException(feature.id(), "edge finish kind is missing");
+            if (finish.edges().stream().anyMatch(index -> index == null || index < 1))
+                throw new ModelException(feature.id(), "edge indices must be positive");
+        } else if (feature instanceof Feature.Shell shell) {
+            positive(feature.id(), "thickness", shell.thickness());
+            if (shell.removedFace() < 0) throw new ModelException(feature.id(), "removed face must be nonnegative");
         } else if (feature instanceof Feature.SplitBody split) {
             var p = split.plane();
             finite(feature.id(), "normalX", p.normalX());

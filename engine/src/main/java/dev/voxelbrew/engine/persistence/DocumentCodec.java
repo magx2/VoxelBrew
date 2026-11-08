@@ -176,6 +176,27 @@ public final class DocumentCodec {
                                 s.getBody().getFeatureId(), s.getBody().getOutputName()),
                         new Feature.SplitPlane(s.getNormalX(), s.getNormalY(), s.getNormalZ(), s.getOffset()));
             }
+            case EDGE_FINISH -> {
+                var f = feature.getEdgeFinish();
+                yield new Feature.EdgeFinish(
+                        id,
+                        new Feature.BodyRef(
+                                f.getBody().getFeatureId(), f.getBody().getOutputName()),
+                        f.getKind() == DocumentProto.EdgeFinish.Kind.CHAMFER
+                                ? Feature.EdgeFinish.Kind.CHAMFER
+                                : Feature.EdgeFinish.Kind.FILLET,
+                        f.getSize(),
+                        f.getEdgesList());
+            }
+            case SHELL -> {
+                var s = feature.getShell();
+                yield new Feature.Shell(
+                        id,
+                        new Feature.BodyRef(
+                                s.getBody().getFeatureId(), s.getBody().getOutputName()),
+                        s.getThickness(),
+                        s.getRemovedFace());
+            }
             case CUSTOM -> {
                 var custom = feature.getCustom();
                 yield new Feature.Custom(
@@ -347,6 +368,24 @@ public final class DocumentCodec {
                     .setBody(DocumentProto.BodyRef.newBuilder()
                             .setFeatureId(c.body().featureId())
                             .setOutputName(c.body().outputName())));
+        } else if (feature instanceof Feature.EdgeFinish f) {
+            out.setEdgeFinish(DocumentProto.EdgeFinish.newBuilder()
+                    .setBody(DocumentProto.BodyRef.newBuilder()
+                            .setFeatureId(f.body().featureId())
+                            .setOutputName(f.body().outputName()))
+                    .setKind(
+                            f.kind() == Feature.EdgeFinish.Kind.FILLET
+                                    ? DocumentProto.EdgeFinish.Kind.FILLET
+                                    : DocumentProto.EdgeFinish.Kind.CHAMFER)
+                    .setSize(f.size())
+                    .addAllEdges(f.edges()));
+        } else if (feature instanceof Feature.Shell s) {
+            out.setShell(DocumentProto.Shell.newBuilder()
+                    .setBody(DocumentProto.BodyRef.newBuilder()
+                            .setFeatureId(s.body().featureId())
+                            .setOutputName(s.body().outputName()))
+                    .setThickness(s.thickness())
+                    .setRemovedFace(s.removedFace()));
         } else if (feature instanceof Feature.SplitBody s) {
             out.setSplitBody(DocumentProto.SplitBody.newBuilder()
                     .setBody(DocumentProto.BodyRef.newBuilder()

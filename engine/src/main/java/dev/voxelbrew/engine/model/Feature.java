@@ -7,7 +7,13 @@ import javax.measure.quantity.Length;
 
 /** Persistent definitions only: no UI objects, protobuf messages or native handles. */
 public sealed interface Feature
-        permits Feature.Sketch, Feature.Extrude, Feature.ThroughCut, Feature.SplitBody, Feature.Custom {
+        permits Feature.Sketch,
+                Feature.Extrude,
+                Feature.ThroughCut,
+                Feature.SplitBody,
+                Feature.EdgeFinish,
+                Feature.Shell,
+                Feature.Custom {
     String id();
 
     /** Local sketch XY frame, with an additional signed offset along its normal in mm. */
@@ -88,6 +94,22 @@ public sealed interface Feature
     }
 
     record SplitBody(String id, BodyRef body, SplitPlane plane) implements Feature {}
+
+    /** Edge indices follow the source solid's OCCT edge enumeration. Empty means every edge. */
+    record EdgeFinish(String id, BodyRef body, Kind kind, double size, java.util.List<Integer> edges)
+            implements Feature {
+        public enum Kind {
+            FILLET,
+            CHAMFER
+        }
+
+        public EdgeFinish {
+            edges = java.util.List.copyOf(edges);
+        }
+    }
+
+    /** Face index follows the source solid's OCCT face enumeration; zero makes a closed shell. */
+    record Shell(String id, BodyRef body, double thickness, int removedFace) implements Feature {}
 
     /** Opaque provider-owned definition. Missing providers must never rewrite these bytes. */
     record Custom(String id, String providerId, String type, int payloadVersion, byte[] payload) implements Feature {

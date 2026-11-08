@@ -131,9 +131,11 @@ public record CadDocument(
 
     private BodyStyle outputStyle(Feature.BodyRef output, java.util.Set<String> visited) {
         for (var feature : features) {
-            if (feature.id().equals(output.featureId()) && feature instanceof Feature.ThroughCut cut) {
+            if (feature.id().equals(output.featureId())) {
                 if (!visited.add("output:" + output.featureId())) return BodyStyle.DEFAULT;
-                return outputStyle(cut.body(), visited);
+                if (feature instanceof Feature.ThroughCut cut) return outputStyle(cut.body(), visited);
+                if (feature instanceof Feature.EdgeFinish finish) return outputStyle(finish.body(), visited);
+                if (feature instanceof Feature.Shell shell) return outputStyle(shell.body(), visited);
             }
         }
         return bodyStyle(output.featureId() + "." + output.outputName(), visited);

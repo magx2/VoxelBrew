@@ -177,6 +177,33 @@ public final class Evaluator {
                             outputs.put(additional.output(), additional);
                             active.put(additional.id(), additional);
                         }
+                    } else if (feature instanceof Feature.EdgeFinish finish) {
+                        Evaluation.Body input = outputs.get(finish.body());
+                        if (input == null)
+                            throw new ModelException(finish.id(), "missing body output " + finish.body());
+                        if (active.get(input.id()) != input)
+                            throw new ModelException(finish.id(), "body input has been superseded by a later feature");
+                        Solid solid = input.solid()
+                                .edgeFinish(
+                                        finish.kind() == Feature.EdgeFinish.Kind.FILLET,
+                                        finish.size(),
+                                        finish.edges().stream()
+                                                .mapToInt(Integer::intValue)
+                                                .toArray());
+                        owned.add(solid);
+                        var body = new Evaluation.Body(input.id(), new Feature.BodyRef(finish.id(), "body"), solid);
+                        outputs.put(body.output(), body);
+                        active.put(body.id(), body);
+                    } else if (feature instanceof Feature.Shell shell) {
+                        Evaluation.Body input = outputs.get(shell.body());
+                        if (input == null) throw new ModelException(shell.id(), "missing body output " + shell.body());
+                        if (active.get(input.id()) != input)
+                            throw new ModelException(shell.id(), "body input has been superseded by a later feature");
+                        Solid solid = input.solid().shell(shell.thickness(), shell.removedFace());
+                        owned.add(solid);
+                        var body = new Evaluation.Body(input.id(), new Feature.BodyRef(shell.id(), "body"), solid);
+                        outputs.put(body.output(), body);
+                        active.put(body.id(), body);
                     } else if (feature instanceof Feature.SplitBody split) {
                         Evaluation.Body input = outputs.get(split.body());
                         if (input == null) throw new ModelException(split.id(), "missing body output " + split.body());
@@ -288,6 +315,9 @@ public final class Evaluator {
         }
         if (feature instanceof Feature.SplitBody split)
             return List.of(split.body().featureId());
+        if (feature instanceof Feature.EdgeFinish finish)
+            return List.of(finish.body().featureId());
+        if (feature instanceof Feature.Shell shell) return List.of(shell.body().featureId());
         return List.of();
     }
 

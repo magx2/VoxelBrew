@@ -1,6 +1,9 @@
 #include <jni.h>
 #include <BRepAlgoAPI_Cut.hxx>
 #include <BRepAlgoAPI_Splitter.hxx>
+#include <BRepFilletAPI_MakeFillet.hxx>
+#include <BRepFilletAPI_MakeChamfer.hxx>
+#include <BRepOffsetAPI_MakeThickSolid.hxx>
 #include <BRepBndLib.hxx>
 #include <BRepBuilderAPI_MakeFace.hxx>
 #include <BRepBuilderAPI_MakeEdge.hxx>
@@ -12,6 +15,7 @@
 #include <gp_Elips.hxx>
 #include <TColgp_Array1OfPnt.hxx>
 #include <TopoDS_Edge.hxx>
+#include <TopoDS_Face.hxx>
 #include <TopoDS_Wire.hxx>
 #include <gp_Circ.hxx>
 #include <BRepBuilderAPI_Copy.hxx>
@@ -442,6 +446,66 @@ JNIEXPORT jlongArray JNICALL Java_dev_voxelbrew_engine_geometry_NativeKernel_spl
         registry.erase(handles[0]);
         registry.erase(handles[1]);
         return nullptr;
+    });
+}
+
+JNIEXPORT jlong JNICALL Java_dev_voxelbrew_engine_geometry_NativeKernel_edgeFinish(
+    JNIEnv* env, jclass, jlong id, jboolean fillet, jdouble size, jintArray selected) {
+    return guarded<jlong>(env, fillet ? "fillet" : "chamfer", 0, [&] {
+        requirePositive(size);
+        if (!selected) throw std::invalid_argument("edge selection is missing");
+        const auto source = lookup(id);
+        std::vector<TopoDS_Edge> edges;
+        for (TopExp_Explorer it(*source, TopAbs_EDGE); it.More(); it.Next())
+            edges.push_back(TopoDS::Edge(it.Current()));
+        const auto length = env->GetArrayLength(selected);
+        std::vector<jint> indices(length);
+        if (length) env->GetIntArrayRegion(selected, 0, length, indices.data());
+        if (!length) {
+            for (int i = 1; i <= static_cast<int>(edges.size()); ++i) indices.push_back(i);
+        }
+        for (auto index : indices)
+            if (index < 1 || index > static_cast<int>(edges.size()))
+                throw std::invalid_argument("edge index is outside source solid");
+        if (fillet) {
+            BRepFilletAPI_MakeFillet operation(*source);
+            for (auto index : indices) operation.Add(size, edges[index - 1]);
+            operation.Build();
+            if (!operation.IsDone())
+                throw std::runtime_error("fillet could not be built at this radius");
+            return own(operation.Shape());
+        }
+        BRepFilletAPI_MakeChamfer operation(*source);
+        for (auto index : indices) operation.Add(size, edges[index - 1]);
+        operation.Build();
+        if (!operation.IsDone())
+            throw std::runtime_error("chamfer could not be built at this distance");
+        return own(operation.Shape());
+    });
+}
+
+JNIEXPORT jlong JNICALL Java_dev_voxelbrew_engine_geometry_NativeKernel_shell(JNIEnv* env, jclass,
+                                                                              jlong id,
+                                                                              jdouble thickness,
+                                                                              jint removedFace) {
+    return guarded<jlong>(env, "shell", 0, [&] {
+        requirePositive(thickness);
+        if (removedFace < 0) throw std::invalid_argument("face index must be nonnegative");
+        const auto source = lookup(id);
+        TopTools_ListOfShape openings;
+        int faceIndex = 0;
+        for (TopExp_Explorer it(*source, TopAbs_FACE); it.More(); it.Next()) {
+            ++faceIndex;
+            if (faceIndex == removedFace) openings.Append(it.Current());
+        }
+        if (removedFace > faceIndex)
+            throw std::invalid_argument("face index is outside source solid");
+        BRepOffsetAPI_MakeThickSolid operation;
+        operation.MakeThickSolidByJoin(*source, openings, -thickness, 1e-5);
+        operation.Build();
+        if (!operation.IsDone())
+            throw std::runtime_error("shell could not be built at this thickness");
+        return own(operation.Shape());
     });
 }
 

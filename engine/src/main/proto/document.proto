@@ -216,6 +216,21 @@ message SplitBody {
   double normal_z = 4;
   double offset = 5;
 }
+message EdgeFinish {
+  BodyRef body = 1;
+  enum Kind {
+    FILLET = 0;
+    CHAMFER = 1;
+  }
+  Kind kind = 2;
+  double size = 3;
+  repeated uint32 edges = 4;
+}
+message Shell {
+  BodyRef body = 1;
+  double thickness = 2;
+  uint32 removed_face = 3;
+}
 message PrintProcess {
   double layer_height = 1;
   uint32 walls = 2;
@@ -276,6 +291,8 @@ message Feature {
     ThroughCut through_cut = 4;
     SplitBody split_body = 16;
     CustomFeature custom = 17;
+    EdgeFinish edge_finish = 18;
+    Shell shell = 19;
   }
   reserved 5 to 15;
 }

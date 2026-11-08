@@ -27,7 +27,9 @@ final class NativeKernel {
                         "TKShHealing",
                         "TKBO",
                         "TKBool",
-                        "TKMesh"
+                        "TKMesh",
+                        "TKFillet",
+                        "TKOffset"
                     }) {
                         System.load(runtime.resolve(library + ".dll").toString());
                     }
@@ -67,6 +69,10 @@ final class NativeKernel {
     static native long cutThroughCircle(long body, double x, double y, double diameter);
 
     static native long[] split(long body, double nx, double ny, double nz, double offset);
+
+    static native long edgeFinish(long body, boolean fillet, double size, int[] edges);
+
+    static native long shell(long body, double thickness, int removedFace);
 
     static native long transform(long body, double[] matrix);
 

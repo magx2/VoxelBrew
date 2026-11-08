@@ -29,9 +29,11 @@ import javafx.scene.robot.Robot;
 import javafx.scene.shape.Polygon;
 import javafx.stage.*;
 import org.junit.jupiter.api.*;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.io.TempDir;
 
 /** Actual JavaFX windows, rendering, picking, keyboard input and mouse gestures on both OSes. */
+@ExtendWith(UiTestShard.class)
 class WorkbenchUiTest {
     @Test
     void technicalDrawingRenderingHidesRearEdgesKeepsPickingAndRemembersStyle() throws Exception {

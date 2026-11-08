@@ -102,6 +102,31 @@ GitHub Actions splits the complete gate into independent jobs:
 - The final **Full check** requires all jobs and every platform to succeed;
   failures, cancellations and skipped prerequisites cannot produce a green gate.
 
+Routine Windows and Ubuntu platform jobs each use four isolated runners. The
+`WorkbenchUiTest` Robot methods are partitioned by a stable method-name hash;
+new methods automatically join exactly one shard. Each desktop still runs one
+test at a time. Shard one runs the remaining platform checks and uploads app
+images; shards two through four run only `:gui:e2eTest`. The CLI development
+launcher is built before lengthy CLI qualification tasks when both are requested,
+so GUI tests can overlap CLI checks. Evidence artifacts include the shard number. Methods
+assigned to another shard appear as skipped in that shard's report; inspect all
+four reports for complete coverage. `UiTestShardTest` checks that the partition
+covers every current Robot method exactly once with no empty shard.
+
+This trades additional runner minutes for shorter elapsed time. In hosted run
+`42313887269`, Windows took 25m04s, with roughly 16m36s spent in GUI end-to-end
+tests; the unit and integration jobs took about two minutes each. Sharding targets
+that bottleneck rather than removing checks or reducing interaction waits.
+The actual speedup must be measured on the next hosted run. Superseded routine
+runs on the same ref are cancelled; release workflows retain their own policy.
+
+Local commands, manual full qualification and releases default to the complete
+unsharded suite. To reproduce one CI partition explicitly, use
+`./gradlew platformCheck -PuiTestShard=1 -PuiTestShardCount=4` (Windows:
+`gradlew.bat`). A single partition does not qualify a milestone: run plain
+`check` for that gate. Invalid shard numbers fail instead of silently running
+an empty selection.
+
 Native setup and artifact collection live in the reusable `native-check.yml`
 workflow. The standard hosted Intel Mac cannot initialize JavaFX 3D. The user
 explicitly deferred macOS GUI qualification; the narrower headless task keeps

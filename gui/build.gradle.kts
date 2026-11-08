@@ -61,6 +61,13 @@ tasks
     }
 
 tasks.named<Test>("e2eTest") {
+    val shard = providers.gradleProperty("uiTestShard").orElse("1").get().toInt()
+    val shardCount = providers.gradleProperty("uiTestShardCount").orElse("1").get().toInt()
+    require(shardCount > 0 && shard in 1..shardCount) {
+        "Invalid GUI test shard $shard/$shardCount"
+    }
+    systemProperty("voxelbrew.test.shard", shard)
+    systemProperty("voxelbrew.test.shardCount", shardCount)
     inputs.file(rootProject.file("fixtures/exporter-plugin/build/libs/fixture-exporter-1.0.jar"))
     // Full CAD/Robot sessions retain substantial Prism meshes and Windows accessibility data.
     // The default 512 MiB test heap can exhaust near the end of the complete rendered suite.

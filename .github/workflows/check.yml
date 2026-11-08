@@ -2,6 +2,9 @@ name: CAD check
 on: [push, pull_request, workflow_dispatch]
 permissions:
   contents: read
+concurrency:
+  group: cad-check-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   unit:
     name: Unit tests and basic checks (Ubuntu)
@@ -44,19 +47,20 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
+        os: [ubuntu-24.04, windows-2022]
+        ui-shard: [1, 2, 3, 4]
         include:
-          - os: ubuntu-24.04
-            suite: platformCheck
-          - os: windows-2022
-            suite: platformCheck
           - os: macos-15-intel
             suite: headlessPlatformCheck
+            ui-shard: 1
     uses: ./.github/workflows/native-check.yml
     with:
       os: ${{ matrix.os }}
-      suite: ${{ matrix.suite }}
-      artifact-name: platform-${{ matrix.os }}
-      archive: true
+      suite: ${{ matrix.suite || (matrix.ui-shard == 1 && 'platformCheck' || ':gui:e2eTest') }}
+      artifact-name: platform-${{ matrix.os }}-${{ matrix.ui-shard }}
+      archive: ${{ matrix.ui-shard == 1 }}
+      ui-shard: ${{ matrix.ui-shard }}
+      ui-shard-count: ${{ matrix.os == 'macos-15-intel' && 1 || 4 }}
   full-check:
     name: Full check
     if: always()

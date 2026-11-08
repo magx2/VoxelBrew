@@ -39,6 +39,13 @@ tasks.named<Sync>("installDist") {
     from(project(":engine").layout.buildDirectory.dir("native/runtime")) { into("native") }
 }
 
+// GUI parity tests need this launcher, not the results of CLI qualification.
+// When both are requested, publish the launcher first so the two suites can overlap.
+for (taskName in
+    listOf("e2eTest", "appImage", "packageCheck", "updatePackageCheck", "releaseArchiveCheck")) {
+    tasks.named(taskName) { mustRunAfter("installDist") }
+}
+
 tasks.named<Test>("e2eTest") {
     inputs.file(rootProject.file("fixtures/exporter-plugin/build/libs/fixture-exporter-1.0.jar"))
     dependsOn(":engine:buildExporterFixture")

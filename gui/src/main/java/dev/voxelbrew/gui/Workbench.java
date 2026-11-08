@@ -634,10 +634,10 @@ public final class Workbench extends BorderPane implements AutoCloseable {
         var design = new BorderPane(split);
         design.setId("design-workspace");
         design.setTop(toolbar);
-        var designTab = new Tab(translations.text("tab.Design"), design);
+        var designTab = new Tab(translations.text("tab.Designer"), design);
         designTab.setId("workspace-design");
         designTab.setClosable(false);
-        var printTab = new Tab(translations.text("tab.Print"), printing);
+        var printTab = new Tab(translations.text("tab.Slicer"), printing);
         printTab.setId("workspace-print");
         printTab.setClosable(false);
         var workspaces = new TabPane(designTab, printTab);

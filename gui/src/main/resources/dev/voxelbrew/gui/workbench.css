@@ -576,24 +576,28 @@
   -fx-border-width: 0;
 }
 #workspaces > .tab-header-area {
-  -fx-padding: 0 14 5;
+  -fx-padding: 0 14 0;
 }
 #workspaces > .tab-header-area > .headers-region > .tab {
-  -fx-background-radius: 10;
-  -fx-border-radius: 10;
-  -fx-border-width: 1;
-  -fx-padding: 5 16;
+  -fx-background-color: transparent;
+  -fx-background-radius: 0;
+  -fx-border-color: transparent;
+  -fx-border-width: 0 0 2 0;
+  -fx-padding: 8 18;
 }
 #workspaces > .tab-header-area > .headers-region > .tab:hover {
-  -fx-background-color: -fx-selection-bar;
+  -fx-border-color: derive(-fx-accent, 55%);
 }
 .light #workspaces > .tab-header-area > .headers-region > .tab:selected {
-  -fx-background-color: #ffffff;
-  -fx-border-color: #dcd6eb;
+  -fx-background-color: transparent;
+  -fx-border-color: #6555ce;
 }
 .dark #workspaces > .tab-header-area > .headers-region > .tab:selected {
-  -fx-background-color: #40394e;
-  -fx-border-color: #655974;
+  -fx-background-color: transparent;
+  -fx-border-color: #a99cff;
+}
+#workspaces > .tab-header-area > .headers-region > .tab:selected .tab-label {
+  -fx-font-weight: bold;
 }
 .tooltip {
   -fx-background-color: #34363c;

@@ -18,7 +18,7 @@ a model tree on the left, the viewport in the center, Properties on the right,
 and history and rebuild status below. The title shows the file name, with its full
 path available on hover. Drag the panel dividers to give the model
 or inspector more space. The toolbar wraps on smaller windows and is hidden
-in the Print workspace. File actions do not take up modeling toolbar space.
+in the Slicer workspace. File actions do not take up modeling toolbar space.
 
 Window controls share the document header; there is no separate native title row.
 Drag the document name or empty header space to move the window, and double-click
@@ -107,7 +107,7 @@ evaluated revision; sketches continue to use stable XY-parallel plane references
 | Ctrl+Z / Ctrl+Y or Ctrl+Shift+Z | Undo / Redo                                            |
 | Ctrl+E                          | Export the current evaluated model                     |
 | Ctrl+Shift+P                    | Edit parameters (document or sketch draft)             |
-| Ctrl+1 / Ctrl+2                 | Switch to Design / Print                               |
+| Ctrl+1 / Ctrl+2                 | Switch to Designer / Slicer                            |
 | K                               | New sketch                                             |
 | E / H / X                       | Extrude / through cut / split body                     |
 | F / 0                           | Fit model / isometric view                             |

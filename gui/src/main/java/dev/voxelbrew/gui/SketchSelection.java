@@ -24,7 +24,7 @@ final class SketchSelection {
                     any |= intersects(points.get(i - 1), points.get(i), minX, minY, maxX, maxY);
             }
             if (hasCurve && (crossing ? any : all)) result.add(entity.ref());
-            else
+            else if (entity.kind() == Kind.POINT)
                 for (var ref : entity.pointRefs())
                     if (inside(entity.point(ref), minX, minY, maxX, maxY)) result.add(ref);
         }

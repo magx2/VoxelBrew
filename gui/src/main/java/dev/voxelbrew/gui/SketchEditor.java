@@ -51,6 +51,7 @@ final class SketchEditor extends BorderPane implements AutoCloseable {
     private final LinkedHashSet<Ref> selection = new LinkedHashSet<>();
     private final List<Vec> drawing = new ArrayList<>();
     private final List<Ref> snaps = new ArrayList<>();
+    private SketchSnapping.Snap hoverSnap;
     private final List<Badge> badges = new ArrayList<>();
     private final ListView<Constraint> constraints = new ListView<>();
     private final ComboBox<Ref> references = new ComboBox<>();
@@ -575,8 +576,8 @@ final class SketchEditor extends BorderPane implements AutoCloseable {
             e.consume();
         });
         canvas.setOnMouseMoved(e -> {
-            cursor = model(e.getX(), e.getY());
-            if (!drawing.isEmpty()) draw();
+            cursor = drawingPosition(e);
+            if (tool != Draw.SELECT) draw();
         });
         canvas.setOnScroll(e -> {
             var anchor = model(e.getX(), e.getY());
@@ -591,6 +592,7 @@ final class SketchEditor extends BorderPane implements AutoCloseable {
 
     private void tool(Draw next) {
         tool = next;
+        hoverSnap = null;
         activeConstraint = null;
         drawing.clear();
         snaps.clear();
@@ -810,19 +812,28 @@ final class SketchEditor extends BorderPane implements AutoCloseable {
         }
     }
 
+    private Vec drawingPosition(MouseEvent event) {
+        var pointer = model(event.getX(), event.getY());
+        hoverSnap = auto.isSelected() && tool != Draw.SELECT
+                ? SketchSnapping.find(controller.displayed(), pointer, scale)
+                : null;
+        if (hoverSnap != null) return hoverSnap.position();
+        if (tool == Draw.LINE && drawing.size() == 1 && (auto.isSelected() || event.isShiftDown())) {
+            var a = drawing.getFirst();
+            var d = pointer.minus(a);
+            if (event.isShiftDown() || Math.min(Math.abs(d.x()), Math.abs(d.y())) < 5 / scale)
+                return Math.abs(d.x()) >= Math.abs(d.y()) ? new Vec(pointer.x(), a.y()) : new Vec(a.x(), pointer.y());
+        }
+        return pointer;
+    }
+
     private void drawingClick(MouseEvent event) {
         try {
-            var hit = auto.isSelected() ? hitPoint(event.getX(), event.getY(), 8) : null;
-            var p = hit == null ? model(event.getX(), event.getY()) : hit.position();
+            var p = drawingPosition(event);
+            var hit = hoverSnap;
             if (tool == Draw.ADVANCED) {
                 advancedPoint(p);
                 return;
-            }
-            if (tool == Draw.LINE && drawing.size() == 1 && (auto.isSelected() || event.isShiftDown())) {
-                var a = drawing.getFirst();
-                var d = p.minus(a);
-                if (event.isShiftDown() || Math.min(Math.abs(d.x()), Math.abs(d.y())) < 5 / scale)
-                    p = Math.abs(d.x()) >= Math.abs(d.y()) ? new Vec(p.x(), a.y()) : new Vec(a.x(), p.y());
             }
             drawing.add(p);
             snaps.add(hit == null ? null : hit.ref());
@@ -1401,6 +1412,12 @@ final class SketchEditor extends BorderPane implements AutoCloseable {
                     /* Broken references remain removable in the constraint list. */
                 }
             }
+        }
+        if (hoverSnap != null && auto.isSelected() && tool != Draw.SELECT) {
+            graphics.setStroke(Color.web("#e6a239"));
+            graphics.setLineWidth(2);
+            var target = hoverSnap.position();
+            graphics.strokeOval(px(target.x()) - 6, py(target.y()) - 6, 12, 12);
         }
         if (!drawing.isEmpty()) {
             graphics.setStroke(Color.web("#e6a239"));

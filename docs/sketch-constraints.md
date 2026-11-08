@@ -27,8 +27,12 @@ Plane Z field; edit a shared plane through the main property inspector.
   polygon constraint maintains equal sides and equal turning angles.
 - Point: click its position. Points and construction geometry do not form solids.
 
-**Auto constraints** snaps nearby endpoints and adds horizontal/vertical line
-constraints. Rectangles include corner coincidences and horizontal/vertical
+**Auto constraints** snaps drawing previews and clicks to nearby points, line
+segments and curves within eight screen pixels. An amber ring marks the target.
+Points take priority over curves, and geometry snaps take priority over
+horizontal/vertical alignment. Supported point placements retain coincident
+constraints. It also adds horizontal/vertical line constraints.
+Rectangles include corner coincidences and horizontal/vertical
 constraints. Use **Construction** before drawing, or toggle selected geometry
 in the side panel. **Use selected as profile** and **Use all as profile** choose
 the curves used for extrusion/cutting, excluding construction geometry.

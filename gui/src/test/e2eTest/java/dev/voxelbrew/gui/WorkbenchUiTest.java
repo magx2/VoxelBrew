@@ -613,7 +613,7 @@ class WorkbenchUiTest {
                     stage,
                     directory.resolve("plugins with spaces"),
                     new dev.voxelbrew.util.di.ApplicationModule(configuration, updates::service),
-                    new dev.voxelbrew.exporter.di.FileIoModule());
+                    new dev.voxelbrew.gui.FileIoModule());
             stage.setScene(workbench.createScene(964, 648));
             stage.toFront();
             stage.requestFocus();
@@ -989,7 +989,7 @@ class WorkbenchUiTest {
                         stage,
                         plugins,
                         new dev.voxelbrew.util.di.ApplicationModule(configuration, updates::service),
-                        new dev.voxelbrew.exporter.di.FileIoModule());
+                        new dev.voxelbrew.gui.FileIoModule());
             } finally {
                 Locale.setDefault(Locale.Category.DISPLAY, previousDisplay);
             }
@@ -1709,7 +1709,7 @@ class WorkbenchUiTest {
                     reopenedStage,
                     directory.resolve("plugins with spaces"),
                     new dev.voxelbrew.util.di.ApplicationModule(configuration, updates::service),
-                    new dev.voxelbrew.exporter.di.FileIoModule());
+                    new dev.voxelbrew.gui.FileIoModule());
             try {
                 reopenedStage.setScene(reopened.createScene(964, 648));
                 reopenedStage.show();
@@ -1736,7 +1736,7 @@ class WorkbenchUiTest {
                             new dev.voxelbrew.util.di.ApplicationModule(config, () -> {
                                 throw new AssertionError("Startup must not create an updater");
                             }),
-                            new dev.voxelbrew.exporter.di.FileIoModule());
+                            new dev.voxelbrew.gui.FileIoModule());
             var second = graph.workbench();
             try {
                 secondStage.setScene(second.createScene(964, 648));

@@ -34,8 +34,11 @@ class ManufacturingTest {
                         new SupportVolume("pillar", "part", SupportVolume.Role.SOLID_SUPPORT, 15, 5, 0, 4, 4, 7.8))));
         ModelView view;
         try (var evaluation = session.evaluate()) {
-            view = new ExportSelection(ExportSelection.Space.BUILD_PLATE, ExportSelection.Contents.MODEL, null, null)
-                    .view(session.document(), evaluation, MeshOptions.DEFAULT);
+            view = dev.voxelbrew.exporter.ExportSelections.view(
+                    new ExportSelection(ExportSelection.Space.BUILD_PLATE, ExportSelection.Contents.MODEL, null, null),
+                    session.document(),
+                    evaluation,
+                    MeshOptions.DEFAULT);
         }
         // Export after the evaluation closes: the build-plate adapter owns detached meshes.
         try (var registry = new ExporterRegistry(directory)) {

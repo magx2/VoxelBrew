@@ -55,7 +55,10 @@ public abstract class MeshExporter implements Exporter<Path> {
                             writeFile(view, settings);
                         } else {
                             try (var evaluation = Evaluator.evaluate(document, plugins)) {
-                                writeFile(settings.selection().view(document, evaluation, settings.mesh()), settings);
+                                writeFile(
+                                        ExportSelections.view(
+                                                settings.selection(), document, evaluation, settings.mesh()),
+                                        settings);
                             }
                         }
                         return settings.destination().path().toAbsolutePath().normalize();

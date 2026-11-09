@@ -8,12 +8,7 @@ import java.util.*;
 
 /** Trusted provider JARs use a dedicated loader; one bad provider does not disable its peers. */
 @lombok.extern.slf4j.Slf4j
-public final class SlicerRegistry implements AutoCloseable {
-    @FunctionalInterface
-    public interface Factory {
-        SlicerRegistry open(Path directory) throws IOException;
-    }
-
+public final class SlicerRegistry implements dev.voxelbrew.exporter.api.SlicerCatalog {
     private final URLClassLoader loader;
 
     private record Entry(SlicerBackend provider, SlicerBackend.Descriptor descriptor) {}

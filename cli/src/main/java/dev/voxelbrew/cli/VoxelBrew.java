@@ -5,7 +5,6 @@ import dev.voxelbrew.engine.mesh.MeshOptions;
 import dev.voxelbrew.engine.model.*;
 import dev.voxelbrew.exporter.DocumentOutput;
 import dev.voxelbrew.exporter.ExportSelection;
-import dev.voxelbrew.exporter.ExporterRegistry;
 import dev.voxelbrew.exporter.MeshExportDialog;
 import dev.voxelbrew.importer.api.DocumentSource;
 import java.nio.file.Files;
@@ -78,7 +77,7 @@ public final class VoxelBrew implements Runnable {
                 .create(
                         dev.voxelbrew.util.di.ApplicationModule.system(
                                 dev.voxelbrew.util.update.ApplicationImage.Component.CLI),
-                        new dev.voxelbrew.exporter.di.FileIoModule())
+                        new dev.voxelbrew.cli.FileIoModule())
                 .commandLine();
     }
 
@@ -113,10 +112,10 @@ public final class VoxelBrew implements Runnable {
     @Command(name = "exporters", mixinStandardHelpOptions = true, description = "List built-in and external exporters")
     @RequiredArgsConstructor(access = AccessLevel.PACKAGE, onConstructor_ = @javax.inject.Inject)
     static final class Exporters implements Callable<Integer> {
-        private final dev.voxelbrew.exporter.ExporterRegistry.Factory exporters;
+        private final dev.voxelbrew.exporter.api.ExporterCatalog.Factory exporters;
 
         @Option(names = "--plugin-dir")
-        Path pluginDirectory = ExporterRegistry.defaultDirectory();
+        Path pluginDirectory = dev.voxelbrew.util.config.ApplicationPaths.plugins();
 
         @Spec
         CommandSpec spec;
@@ -140,7 +139,7 @@ public final class VoxelBrew implements Runnable {
     @RequiredArgsConstructor(access = AccessLevel.PACKAGE, onConstructor_ = @javax.inject.Inject)
     static final class Export implements Callable<Integer> {
         private final DocumentSource documents;
-        private final dev.voxelbrew.exporter.ExporterRegistry.Factory exporters;
+        private final dev.voxelbrew.exporter.api.ExporterCatalog.Factory exporters;
 
         @Parameters(index = "0")
         Path file;
@@ -170,7 +169,7 @@ public final class VoxelBrew implements Runnable {
         ExportSelection.Contents contents;
 
         @Option(names = "--plugin-dir")
-        Path pluginDirectory = ExporterRegistry.defaultDirectory();
+        Path pluginDirectory = dev.voxelbrew.util.config.ApplicationPaths.plugins();
 
         @Option(names = "--chord-tolerance", defaultValue = "0.02", description = "Absolute chordal tolerance (mm)")
         double chord;
@@ -258,7 +257,7 @@ public final class VoxelBrew implements Runnable {
         Path file;
 
         @Option(names = "--plugin-dir", description = "Trusted feature and service JAR directory")
-        Path pluginDirectory = ExporterRegistry.defaultDirectory();
+        Path pluginDirectory = dev.voxelbrew.util.config.ApplicationPaths.plugins();
 
         @Spec
         CommandSpec spec;

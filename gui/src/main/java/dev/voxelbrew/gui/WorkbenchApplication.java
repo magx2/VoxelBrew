@@ -1,7 +1,6 @@
 package dev.voxelbrew.gui;
 
 import dev.voxelbrew.engine.model.Feature;
-import dev.voxelbrew.exporter.ExporterRegistry;
 import java.nio.file.Path;
 import javafx.application.Application;
 import javafx.application.ConditionalFeature;
@@ -19,7 +18,7 @@ public final class WorkbenchApplication extends Application {
             throw new IllegalStateException(
                     dev.voxelbrew.util.i18n.Translations.current().text("graphics.unavailable"));
         var args = getParameters().getRaw();
-        Path plugins = ExporterRegistry.defaultDirectory(), open = null;
+        Path plugins = dev.voxelbrew.util.config.ApplicationPaths.plugins(), open = null;
         Path smokeOutput = Path.of(System.getProperty("voxelbrew.smoke.output", "build/gui-smoke.png"));
         for (int i = 0; i < args.size(); i++) {
             if (args.get(i).equals("--plugin-dir") && i + 1 < args.size()) plugins = Path.of(args.get(++i));

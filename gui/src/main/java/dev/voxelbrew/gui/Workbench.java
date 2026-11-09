@@ -4,7 +4,7 @@ import dev.voxelbrew.engine.feature.FeatureRegistry;
 import dev.voxelbrew.engine.mesh.MeshData;
 import dev.voxelbrew.engine.model.*;
 import dev.voxelbrew.engine.parameters.*;
-import dev.voxelbrew.exporter.ExporterRegistry;
+import dev.voxelbrew.exporter.api.ExporterCatalog;
 import dev.voxelbrew.util.i18n.Translations;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -267,8 +267,8 @@ public final class Workbench extends BorderPane implements AutoCloseable {
     private final DocumentController controller;
 
     private final Path pluginDirectory;
-    private final ExporterRegistry registry;
-    private final dev.voxelbrew.importer.ImporterRegistry.Factory importers;
+    private final ExporterCatalog registry;
+    private final dev.voxelbrew.importer.api.ImporterCatalog.Factory importers;
 
     @Getter
     @Accessors(fluent = true)
@@ -340,7 +340,7 @@ public final class Workbench extends BorderPane implements AutoCloseable {
                 plugins,
                 dev.voxelbrew.util.di.ApplicationModule.system(
                         dev.voxelbrew.util.update.ApplicationImage.Component.GUI),
-                new dev.voxelbrew.exporter.di.FileIoModule());
+                new dev.voxelbrew.gui.FileIoModule());
     }
 
     static Workbench create(Stage stage, Path plugins, dev.voxelbrew.util.update.UpdateServiceFactory updates)
@@ -350,14 +350,14 @@ public final class Workbench extends BorderPane implements AutoCloseable {
                 plugins,
                 new dev.voxelbrew.util.di.ApplicationModule(
                         dev.voxelbrew.util.config.UserConfiguration.user(), updates),
-                new dev.voxelbrew.exporter.di.FileIoModule());
+                new dev.voxelbrew.gui.FileIoModule());
     }
 
     static Workbench create(
             Stage stage,
             Path plugins,
             dev.voxelbrew.util.di.ApplicationModule application,
-            dev.voxelbrew.exporter.di.FileIoModule files)
+            dev.voxelbrew.gui.FileIoModule files)
             throws IOException {
         var graph = DaggerGuiComponent.factory().create(stage, plugins, application, files);
         WindowResources resources;
@@ -379,8 +379,8 @@ public final class Workbench extends BorderPane implements AutoCloseable {
             Stage stage,
             @javax.inject.Named("plugins") Path pluginDirectory,
             DocumentController controller,
-            ExporterRegistry registry,
-            dev.voxelbrew.importer.ImporterRegistry.Factory importers,
+            ExporterCatalog registry,
+            dev.voxelbrew.importer.api.ImporterCatalog.Factory importers,
             PrintingPane printing,
             Appearance appearance,
             Rendering rendering,
@@ -797,7 +797,7 @@ public final class Workbench extends BorderPane implements AutoCloseable {
         return new javafx.scene.Scene(window, width, height);
     }
 
-    private ExporterRegistry registry() {
+    private ExporterCatalog registry() {
         return registry;
     }
 

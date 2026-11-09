@@ -1,7 +1,7 @@
 package dev.voxelbrew.gui;
 
-import dev.voxelbrew.exporter.ExporterRegistry;
-import dev.voxelbrew.exporter.printing.SlicerRegistry;
+import dev.voxelbrew.exporter.api.ExporterCatalog;
+import dev.voxelbrew.exporter.api.SlicerCatalog;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Path;
@@ -14,8 +14,8 @@ import lombok.extern.slf4j.Slf4j;
 @Singleton
 @Slf4j
 final class WindowResources implements AutoCloseable {
-    final ExporterRegistry exporters;
-    final SlicerRegistry slicers;
+    final ExporterCatalog exporters;
+    final SlicerCatalog slicers;
     final ExecutorService rebuild, files, slicing, validation, appearance;
     private boolean closed;
     private final CompletableFuture<Void> disposal = new CompletableFuture<>();
@@ -23,9 +23,9 @@ final class WindowResources implements AutoCloseable {
     @Inject
     WindowResources(
             @Named("plugins") Path plugins,
-            ExporterRegistry.Factory exporterFactory,
-            SlicerRegistry.Factory slicerFactory) {
-        ExporterRegistry opened = null;
+            ExporterCatalog.Factory exporterFactory,
+            SlicerCatalog.Factory slicerFactory) {
+        ExporterCatalog opened = null;
         try {
             opened = exporterFactory.open(plugins);
             slicers = slicerFactory.open(plugins);

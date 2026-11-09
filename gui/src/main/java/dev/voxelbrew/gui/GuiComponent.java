@@ -2,7 +2,6 @@ package dev.voxelbrew.gui;
 
 import dagger.BindsInstance;
 import dagger.Component;
-import dev.voxelbrew.exporter.di.FileIoModule;
 import dev.voxelbrew.util.di.ApplicationModule;
 import java.nio.file.Path;
 import javafx.stage.Stage;

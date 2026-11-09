@@ -4,16 +4,16 @@ The `import` and `export` Gradle projects separate file I/O from the CAD engine.
 The Java packages are `dev.voxelbrew.importer` and `dev.voxelbrew.exporter`;
 `import` is a Java keyword, so it cannot be a package segment.
 
-| Project    | Owns                                                                                   | Production dependencies          |
-| ---------- | -------------------------------------------------------------------------------------- | -------------------------------- |
-| util       | Configuration, translations, logging, updates, generic workers                         | No other project                 |
-| engine     | Native geometry, evaluation, tessellation, document codec, feature execution           | api:model, util                  |
-| api:model  | Shared document, sketch, parameter, mesh and manufacturing values                      | No application modules           |
-| api:import | ImporterProvider SPI, typed dialogs/results, DocumentSource/GcodeSource ports          | api:model                        |
-| api:export | ExporterProvider SPI, Exporter/ExportWindow contracts                                  | api:model                        |
-| import     | Bounded .vxb/JSON/G-code reading, importer discovery and invocation                    | engine, api:import, util         |
-| export     | Atomic .vxb writing, STL/3MF writers, exporter discovery, slicer execution/publication | engine, api:export, import, util |
-| cli / gui  | Commands and desktop interactions                                                      | engine, import, export, util     |
+| Project    | Owns                                                                                   | Production dependencies                                        |
+| ---------- | -------------------------------------------------------------------------------------- | -------------------------------------------------------------- |
+| util       | Configuration, translations, logging, updates, generic workers                         | No other project                                               |
+| engine     | Native geometry, evaluation, tessellation, document codec, feature execution           | api:model, util                                                |
+| api:model  | Shared document, sketch, parameter, mesh and manufacturing values                      | No application modules                                         |
+| api:import | ImporterProvider SPI, typed dialogs/results, DocumentSource/GcodeSource ports          | api:model                                                      |
+| api:export | ExporterProvider SPI, Exporter/ExportWindow contracts                                  | api:model                                                      |
+| import     | Bounded .vxb/JSON/G-code reading, importer discovery and invocation                    | engine, api:import, util                                       |
+| export     | Atomic .vxb writing, STL/3MF writers, exporter discovery, slicer execution/publication | engine, api:export, import, util                               |
+| cli / gui  | Commands and desktop interactions                                                      | engine, api:import, api:export, util; import/export at runtime |
 
 The API projects live in `api/model`, `api/import` and `api/export`. Their binary and source JARs
 retain the `-api` suffix and bundle `META-INF/LICENSE` under MIT. See the
@@ -23,7 +23,7 @@ The APIs contain only public contracts and their value types. Concrete format cl
 registries, services and ServiceLoader registrations stay in `import` / `export`.
 Engine depends on api/model, but not on the file-I/O APIs or implementations. Export inputs
 `ModelView` and `ManufacturingView` are internal helpers in `dev.voxelbrew.exporter`; the concrete
-`ModelViews` adapters and `ExportSelection` live in `dev.voxelbrew.exporter`. Shared CAD
+`ModelViews` and `ExportSelections` adapters live in the export implementation. `ExportSelection` is an API-owned value in `dev.voxelbrew.exporter`. Shared CAD
 placements (`BodyInstance` and `Transform`) stay in `dev.voxelbrew.engine.model`.
 `ManufacturingModel` is a detached CAD/manufacturing snapshot, independent of the export API.
 The shared classes retain their `dev.voxelbrew.engine.*` package names for source
@@ -85,7 +85,7 @@ File → Export lists all registered exporters,
 then opens the selected exporter's options. Save and Save As always use VXB; they do not
 reuse the last export format. VXB and JSON remain available without exportable geometry.
 CLI exposes `export --format vxb|json|step --output PATH`.
-GUI Save As uses the same VXB exporter. `DocumentOutput` is an implementation-module
+GUI Save As uses the same VXB exporter. `DocumentOutput` is an API-module
 writer port for direct saves and injected tests, not a public plugin contract.
 All geometry formats also implement `Exporter`; the separate `ModelExporter` SPI and service registration have been removed.
 
@@ -104,8 +104,7 @@ META-INF/services/dev.voxelbrew.exporter.api.ExporterProvider
 
 Copy the JAR into `~/.voxelbrew/plugins` (or the configured plugin directory), then open
 File → Export. It rescans the directory and lists provider metadata from the registry,
-including newly added JARs. There is no frontend format list to edit. All built-in exporters are
-Dagger multibindings; external providers use ServiceLoader, so plugin builds do not need
+including newly added JARs. There is no frontend format list to edit. Built-in exporters are supplied by the export runtime; external providers use ServiceLoader, so plugin builds do not need
 Dagger or application-module dependencies. Duplicate IDs preserve the first provider,
 with built-ins registered first; broken providers produce
 diagnostics without hiding healthy providers. File → Save remains the native VXB path.
@@ -245,7 +244,7 @@ external plugins must recompile and register `ImporterProvider` instead. Reader 
 
 `ImporterRegistry`/`ImportService` and `ExporterRegistry` are implementation services.
 Trusted JARs are discovered in `~/.voxelbrew/plugins` or `--plugin-dir`. Built-in importers
-and exporters use Dagger multibindings; standalone registries compose the same built-ins.
+and exporters are composed by their runtime implementations; standalone registries use the same built-ins.
 External providers use ServiceLoader. Duplicate IDs preserve the first provider, with
 built-ins first; broken or incompatible import providers generate diagnostics without
 hiding healthy ones. Import opens a fresh registry for each menu action, retaining its
@@ -330,3 +329,29 @@ separate Ubuntu WSL checkout, including GUI interaction and real packaged/extrac
 application updates. Local evidence is in `.tools/io-api-*.log` and
 `.tools/io-api-qualification.json`; reports remain in each module's `build/reports/tests`.
 CI artifacts retain the existing three-day limit. macOS GUI qualification remains deferred.
+
+## Frontend runtime boundary
+
+CLI and GUI compile against `:api:import` and `:api:export`. Their `:import` and
+`:export` dependencies are `runtimeOnly`; all four JARs ship in each application
+distribution's `lib` directory. The application JARs remain thin JARs.
+`verifyFrontendIoDependencies` enforces both compile and runtime classpaths.
+
+`ImportRuntime` and `ExportRuntime` are host service-provider contracts, discovered
+by ServiceLoader at each application's composition root. The implementations
+register `DefaultImportRuntime` and `DefaultExportRuntime`; each frontend's local
+Dagger `FileIoModule` injects reader/writer ports, catalog factories, slicing,
+the default executable and document-exporter factories. Business objects receive
+those individual dependencies, and windows still own and close their catalogs.
+The API projects depend only on `api:model`, with no Dagger or engine dependency.
+
+`ImporterCatalog`, `ExporterCatalog` and `SlicerCatalog` expose discovery results
+without exposing concrete registries. `Slicing` owns the result, cancellation
+publication callbacks and outdated-job exception. Mesh dialogs/options, selection
+values, `DocumentOutput` and `SlicerBackend` now ship in `export-api`, retaining
+their Java package names. Native selection evaluation is performed by
+`ExportSelections.view(selection, document, evaluation, options)` in `export`.
+Standalone callers must replace `SliceService.Result/Commit/PublicationGuard/
+OutdatedException/DIRECT` references with the corresponding `Slicing` members.
+`ImportInvocation` validates provider results without reading files itself.
+External format providers retain their existing SPI and service registrations.

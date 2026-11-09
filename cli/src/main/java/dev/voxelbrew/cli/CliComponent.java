@@ -1,7 +1,6 @@
 package dev.voxelbrew.cli;
 
 import dagger.Component;
-import dev.voxelbrew.exporter.di.FileIoModule;
 import dev.voxelbrew.util.di.ApplicationModule;
 import dev.voxelbrew.util.i18n.Translations;
 import javax.inject.Singleton;

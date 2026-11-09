@@ -6,11 +6,10 @@ import dev.voxelbrew.engine.model.Transform;
 import dev.voxelbrew.engine.parameters.*;
 import dev.voxelbrew.engine.persistence.DocumentCodec;
 import dev.voxelbrew.engine.printing.*;
-import dev.voxelbrew.exporter.ExporterRegistry;
-import dev.voxelbrew.exporter.printing.PrusaSlicerBackend;
-import dev.voxelbrew.exporter.printing.SliceService;
+import dev.voxelbrew.exporter.api.ExporterCatalog;
+import dev.voxelbrew.exporter.api.SlicerCatalog;
+import dev.voxelbrew.exporter.api.Slicing;
 import dev.voxelbrew.exporter.printing.SlicerBackend;
-import dev.voxelbrew.exporter.printing.SlicerRegistry;
 import java.nio.file.Path;
 import java.util.*;
 import java.util.concurrent.*;
@@ -27,7 +26,7 @@ import javafx.util.StringConverter;
 final class PrintingPane extends BorderPane implements AutoCloseable {
     private final DocumentController document;
     private final PrintController jobs;
-    private final SlicerRegistry slicers;
+    private final SlicerCatalog slicers;
     private final ExecutorService validator;
     private final dev.voxelbrew.util.i18n.Translations translations;
     private Future<?> validationTask;
@@ -59,18 +58,19 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
     private String validatedRevision = "";
     private boolean updating, dark, closed;
     private List<Double> previewLayers = List.of();
-    private SliceService.Result displayed;
+    private Slicing.Result displayed;
 
     @javax.inject.Inject
     PrintingPane(
             DocumentController document,
             PrintController jobs,
-            SlicerRegistry slicers,
-            ExporterRegistry exporters,
+            SlicerCatalog slicers,
+            ExporterCatalog exporters,
             javafx.stage.Stage owner,
             @javax.inject.Named("validation") ExecutorService validator,
             dev.voxelbrew.util.i18n.Translations translations,
-            dev.voxelbrew.util.config.UserConfiguration configuration) {
+            dev.voxelbrew.util.config.UserConfiguration configuration,
+            @javax.inject.Named("slicerExecutable") java.nio.file.Path defaultExecutable) {
         this.translations = translations;
         autoSupports.setText(translations.text("gui.automatic_supports"));
         bedOnly.setText(translations.text("gui.build_plate_only"));
@@ -216,10 +216,7 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
         cancel = button(translations.text("gui.cancel_slicing"), "print-cancel", jobs::cancel);
         var job = new VBox(
                 7,
-                row(
-                        "print-executable",
-                        translations.text("gui.slicer_executable"),
-                        PrusaSlicerBackend.defaultExecutable().toString()),
+                row("print-executable", translations.text("gui.slicer_executable"), defaultExecutable.toString()),
                 row(
                         "print-output",
                         translations.text("gui.g_code_destination"),

@@ -11,8 +11,12 @@ val javafxPlatform =
     else "linux"
 
 dependencies {
-    implementation(project(":import"))
-    implementation(project(":export"))
+    implementation(project(":api:import"))
+    implementation(project(":api:export"))
+    runtimeOnly(project(":import"))
+    runtimeOnly(project(":export"))
+    testImplementation(project(":import"))
+    testImplementation(project(":export"))
     implementation(project(":util"))
     implementation(project(":engine"))
     testImplementation("org.apache.commons:commons-compress:1.28.0")

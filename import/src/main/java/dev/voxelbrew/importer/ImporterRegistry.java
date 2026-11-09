@@ -17,14 +17,7 @@ import java.util.ServiceLoader;
 
 /** Loads trusted JARs only. Provider errors are isolated and exposed as diagnostics. */
 @lombok.extern.slf4j.Slf4j
-public final class ImporterRegistry implements AutoCloseable {
-    @FunctionalInterface
-    public interface Factory {
-        ImporterRegistry open(Path directory) throws IOException;
-    }
-
-    public record Entry(ImporterDescriptor descriptor, ImporterProvider provider) {}
-
+public final class ImporterRegistry implements dev.voxelbrew.importer.api.ImporterCatalog {
     private final Map<String, Entry> entries = new LinkedHashMap<>();
     private final List<String> diagnostics = new ArrayList<>();
     private final URLClassLoader loader;

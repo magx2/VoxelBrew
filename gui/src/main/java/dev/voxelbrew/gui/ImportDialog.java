@@ -1,8 +1,8 @@
 package dev.voxelbrew.gui;
 
 import dev.voxelbrew.engine.parameters.*;
-import dev.voxelbrew.importer.ImporterRegistry;
 import dev.voxelbrew.importer.api.*;
+import dev.voxelbrew.importer.api.ImporterCatalog;
 import dev.voxelbrew.util.i18n.Translations;
 import java.nio.file.*;
 import java.util.*;
@@ -15,7 +15,7 @@ import javafx.stage.*;
 final class ImportDialog {
     private ImportDialog() {}
 
-    static Optional<ImporterDescriptor> choose(Window owner, ImporterRegistry registry, Translations translations) {
+    static Optional<ImporterDescriptor> choose(Window owner, ImporterCatalog registry, Translations translations) {
         var dialog = new Dialog<ImporterDescriptor>();
         dialog.setTitle(translations.text("import.title"));
         var format = new ComboBox<ImporterDescriptor>();

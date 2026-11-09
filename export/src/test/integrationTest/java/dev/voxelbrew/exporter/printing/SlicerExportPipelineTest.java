@@ -58,7 +58,7 @@ class SlicerExportPipelineTest {
                                     true,
                                     new Cancellation(),
                                     line -> {},
-                                    SliceService.DIRECT));
+                                    dev.voxelbrew.exporter.api.Slicing.DIRECT));
                     assertEquals("Backend reached after export", failure.getMessage());
                     assertEquals(1, runs.get());
                     assertEquals("original", Files.readString(output));
@@ -98,7 +98,7 @@ class SlicerExportPipelineTest {
                                 true,
                                 new Cancellation(),
                                 line -> {},
-                                SliceService.DIRECT));
+                                dev.voxelbrew.exporter.api.Slicing.DIRECT));
                 if (cancel) assertInstanceOf(CancellationException.class, failure);
                 else assertInstanceOf(IOException.class, failure);
                 assertEquals("original", Files.readString(output));

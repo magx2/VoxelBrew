@@ -1,7 +1,7 @@
 package dev.voxelbrew.cli;
 
 import dev.voxelbrew.exporter.DocumentOutput;
-import dev.voxelbrew.importer.*;
+import dev.voxelbrew.importer.api.*;
 import dev.voxelbrew.importer.api.ImportResult;
 import java.nio.file.Path;
 import java.util.*;
@@ -22,10 +22,10 @@ final class ImportCommands {
     @Command(name = "importers", mixinStandardHelpOptions = true, description = "List built-in and external importers")
     @RequiredArgsConstructor(access = AccessLevel.PACKAGE, onConstructor_ = @javax.inject.Inject)
     static final class Importers implements Callable<Integer> {
-        private final ImporterRegistry.Factory importers;
+        private final ImporterCatalog.Factory importers;
 
         @Option(names = "--plugin-dir")
-        Path plugins = ImporterRegistry.defaultDirectory();
+        Path plugins = dev.voxelbrew.util.config.ApplicationPaths.plugins();
 
         @Spec
         CommandLine.Model.CommandSpec spec;
@@ -50,7 +50,7 @@ final class ImportCommands {
             description = "Import a document to .vxb or inspect an imported toolpath")
     @RequiredArgsConstructor(access = AccessLevel.PACKAGE, onConstructor_ = @javax.inject.Inject)
     static final class ImportFile implements Callable<Integer> {
-        private final ImporterRegistry.Factory importers;
+        private final ImporterCatalog.Factory importers;
         private final DocumentOutput documents;
 
         @Parameters(index = "0")
@@ -66,7 +66,7 @@ final class ImportCommands {
         Map<String, String> options = new LinkedHashMap<>();
 
         @Option(names = "--plugin-dir")
-        Path plugins = ImporterRegistry.defaultDirectory();
+        Path plugins = dev.voxelbrew.util.config.ApplicationPaths.plugins();
 
         @Option(names = "--overwrite")
         boolean overwrite;
@@ -91,7 +91,7 @@ final class ImportCommands {
                                 || java.nio.file.Files.exists(output)
                                         && java.nio.file.Files.isSameFile(source, output)))
                     throw new IllegalArgumentException("Import destination must differ from its source");
-                var result = ImportService.read(registry, format, source, options);
+                var result = ImportInvocation.read(registry, format, source, options);
                 if (result instanceof ImportResult.Document document) {
                     documents.save(document.document(), output, overwrite);
                     spec.commandLine()

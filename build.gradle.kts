@@ -373,3 +373,49 @@ tasks.register("verifyApiDependencies") {
 }
 
 tasks.named("check") { dependsOn("verifyApiDependencies") }
+
+// Frontends compile against APIs and ship concrete implementations only at runtime.
+for (module in listOf(":cli", ":gui")) {
+    project(module) {
+        tasks.register("verifyFrontendIoDependencies") {
+            group = "verification"
+            doLast {
+                fun projects(scope: String) =
+                    configurations
+                        .getByName(scope)
+                        .incoming
+                        .resolutionResult
+                        .allComponents
+                        .mapNotNull {
+                            (it.id
+                                    as?
+                                    org.gradle.api.artifacts.component.ProjectComponentIdentifier)
+                                ?.projectPath
+                        }
+                        .toSet()
+                val compile = projects("compileClasspath")
+                val runtime = projects("runtimeClasspath")
+                check(compile.containsAll(listOf(":api:import", ":api:export"))) {
+                    "$module must compile against file-I/O APIs"
+                }
+                check(compile.intersect(setOf(":import", ":export")).isEmpty()) {
+                    "$module compiles against file-I/O implementations"
+                }
+                check(
+                    runtime.containsAll(listOf(":api:import", ":api:export", ":import", ":export"))
+                ) {
+                    "$module runtime is missing file-I/O JARs"
+                }
+            }
+        }
+        tasks.named("check") { dependsOn("verifyFrontendIoDependencies") }
+    }
+}
+
+val verifyFrontendIoDependencies by
+    tasks.registering {
+        group = "verification"
+        dependsOn(":cli:verifyFrontendIoDependencies", ":gui:verifyFrontendIoDependencies")
+    }
+
+tasks.named("check") { dependsOn(verifyFrontendIoDependencies) }

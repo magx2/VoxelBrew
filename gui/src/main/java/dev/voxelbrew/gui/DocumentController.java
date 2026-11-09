@@ -2,11 +2,11 @@ package dev.voxelbrew.gui;
 
 import dev.voxelbrew.engine.mesh.*;
 import dev.voxelbrew.engine.model.*;
-import dev.voxelbrew.exporter.DocumentWriter;
 import dev.voxelbrew.exporter.ExportSelection;
-import dev.voxelbrew.exporter.ExporterRegistry;
 import dev.voxelbrew.exporter.MeshExportDialog;
-import dev.voxelbrew.importer.DocumentReader;
+import dev.voxelbrew.exporter.api.ExportRuntime;
+import dev.voxelbrew.exporter.api.ExporterCatalog;
+import dev.voxelbrew.importer.api.ImportRuntime;
 import java.nio.file.Path;
 import java.util.*;
 import java.util.concurrent.*;
@@ -128,6 +128,9 @@ public final class DocumentController implements AutoCloseable {
     @NonNull
     private final dev.voxelbrew.exporter.DocumentOutput documentWriter;
 
+    @NonNull
+    private final ExportRuntime.DocumentExporterFactory documentExporters;
+
     private final Object queueLock = new Object();
     private Request pending;
     private boolean running;
@@ -189,8 +192,27 @@ public final class DocumentController implements AutoCloseable {
                 pluginDirectory,
                 WindowResources.worker("rebuild"),
                 WindowResources.worker("file-io"),
-                DocumentReader::load,
-                DocumentWriter::save);
+                ImportRuntime.load().documents(),
+                ExportRuntime.load().documents());
+    }
+
+    DocumentController(
+            Consumer<Runnable> dispatch,
+            Function<CadDocument, Build> evaluator,
+            Path pluginDirectory,
+            ExecutorService worker,
+            ExecutorService io,
+            dev.voxelbrew.importer.api.DocumentSource documents,
+            dev.voxelbrew.exporter.DocumentOutput documentWriter) {
+        this(
+                dispatch,
+                evaluator,
+                pluginDirectory,
+                worker,
+                io,
+                documents,
+                documentWriter,
+                ExportRuntime.load()::documentExporter);
     }
 
     @javax.inject.Inject
@@ -200,7 +222,8 @@ public final class DocumentController implements AutoCloseable {
             @javax.inject.Named("rebuild") ExecutorService worker,
             @javax.inject.Named("files") ExecutorService io,
             dev.voxelbrew.importer.api.DocumentSource documents,
-            dev.voxelbrew.exporter.DocumentOutput documentWriter) {
+            dev.voxelbrew.exporter.DocumentOutput documentWriter,
+            ExportRuntime.DocumentExporterFactory documentExporters) {
         this(
                 dispatch,
                 document -> evaluate(document, pluginDirectory),
@@ -208,7 +231,8 @@ public final class DocumentController implements AutoCloseable {
                 worker,
                 io,
                 documents,
-                documentWriter);
+                documentWriter,
+                documentExporters);
     }
 
     public ModelSession.Snapshot snapshot() {
@@ -471,7 +495,7 @@ public final class DocumentController implements AutoCloseable {
 
     /** Exporters select destinations on the UI thread and write on this window's file worker. */
     public CompletableFuture<Void> saveAs(dev.voxelbrew.exporter.api.ExportWindow parent) {
-        return exportDocument(new dev.voxelbrew.exporter.VoxelBrewExporter(io, documentWriter), true, parent);
+        return exportDocument(documentExporters.create(io, documentWriter), true, parent);
     }
 
     public CompletableFuture<Void> exportDocument(
@@ -529,7 +553,7 @@ public final class DocumentController implements AutoCloseable {
 
     /** Headless convenience path; the loader stays alive through asynchronous completion. */
     public CompletableFuture<Void> importFile(
-            dev.voxelbrew.importer.ImporterRegistry.Factory importers,
+            dev.voxelbrew.importer.api.ImporterCatalog.Factory importers,
             String format,
             Path source,
             Map<String, String> options) {
@@ -557,7 +581,7 @@ public final class DocumentController implements AutoCloseable {
 
     /** Collects provider settings on the UI thread and reads on the window-owned file worker. */
     public CompletableFuture<Void> importDocument(
-            dev.voxelbrew.importer.ImporterRegistry.Entry entry, dev.voxelbrew.importer.api.ImportWindow parent) {
+            dev.voxelbrew.importer.api.ImporterCatalog.Entry entry, dev.voxelbrew.importer.api.ImportWindow parent) {
         requireIdleIo();
         if (entry.descriptor().resultKind() != dev.voxelbrew.importer.api.ImportResult.Kind.DOCUMENT)
             throw new IllegalArgumentException("Choose a document importer");
@@ -565,39 +589,41 @@ public final class DocumentController implements AutoCloseable {
         ioBusy = true;
         onChanged.run();
         var result = new CompletableFuture<Void>();
-        dev.voxelbrew.importer.ImportService.importFrom(entry, io, parent).whenComplete((imported, failure) -> {
-            if (failure != null) {
-                while (failure instanceof CompletionException && failure.getCause() != null)
-                    failure = failure.getCause();
-                if (failure instanceof CancellationException) {
+        dev.voxelbrew.importer.api.ImportInvocation.importFrom(entry, io, parent)
+                .whenComplete((imported, failure) -> {
+                    if (failure != null) {
+                        while (failure instanceof CompletionException && failure.getCause() != null)
+                            failure = failure.getCause();
+                        if (failure instanceof CancellationException) {
+                            dispatch.accept(() -> {
+                                ioBusy = false;
+                                onChanged.run();
+                                result.cancel(false);
+                            });
+                        } else
+                            finishIo(
+                                    result,
+                                    failure instanceof Exception exception ? exception : new RuntimeException(failure));
+                        return;
+                    }
                     dispatch.accept(() -> {
+                        if (closed || documentGeneration != generation) {
+                            result.cancel(false);
+                            return;
+                        }
                         ioBusy = false;
+                        var document = ((dev.voxelbrew.importer.api.ImportResult.Document) imported).document();
+                        replace(document, null);
+                        unsavedImport = true;
                         onChanged.run();
-                        result.cancel(false);
+                        result.complete(null);
                     });
-                } else
-                    finishIo(
-                            result, failure instanceof Exception exception ? exception : new RuntimeException(failure));
-                return;
-            }
-            dispatch.accept(() -> {
-                if (closed || documentGeneration != generation) {
-                    result.cancel(false);
-                    return;
-                }
-                ioBusy = false;
-                var document = ((dev.voxelbrew.importer.api.ImportResult.Document) imported).document();
-                replace(document, null);
-                unsavedImport = true;
-                onChanged.run();
-                result.complete(null);
-            });
-        });
+                });
         return result;
     }
 
     public CompletableFuture<Void> export(
-            ExporterRegistry registry,
+            ExporterCatalog registry,
             String format,
             String body,
             MeshOptions options,
@@ -608,7 +634,7 @@ public final class DocumentController implements AutoCloseable {
     }
 
     public CompletableFuture<Void> export(
-            ExporterRegistry registry,
+            ExporterCatalog registry,
             String format,
             ExportSelection selection,
             MeshOptions options,

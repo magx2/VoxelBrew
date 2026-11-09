@@ -4,10 +4,8 @@ import dev.voxelbrew.engine.mesh.MeshOptions;
 import dev.voxelbrew.engine.model.*;
 import dev.voxelbrew.engine.printing.*;
 import dev.voxelbrew.exporter.DocumentOutput;
-import dev.voxelbrew.exporter.ExporterRegistry;
-import dev.voxelbrew.exporter.printing.PrusaSlicerBackend;
-import dev.voxelbrew.exporter.printing.SliceService;
-import dev.voxelbrew.exporter.printing.SlicerRegistry;
+import dev.voxelbrew.exporter.api.SlicerCatalog;
+import dev.voxelbrew.exporter.api.Slicing;
 import dev.voxelbrew.importer.api.DocumentSource;
 import java.nio.file.Path;
 import java.util.*;
@@ -445,10 +443,10 @@ final class PrintingCommands {
             description = "List versioned backend capabilities; unsupported features are not silently substituted.")
     @RequiredArgsConstructor(access = AccessLevel.PACKAGE, onConstructor_ = @javax.inject.Inject)
     static final class Slicers implements Callable<Integer> {
-        private final SlicerRegistry.Factory slicers;
+        private final SlicerCatalog.Factory slicers;
 
         @Option(names = "--plugin-dir")
-        Path plugins = ExporterRegistry.defaultDirectory();
+        Path plugins = dev.voxelbrew.util.config.ApplicationPaths.plugins();
 
         @Spec
         CommandLine.Model.CommandSpec spec;
@@ -469,25 +467,31 @@ final class PrintingCommands {
             description =
                     "Slice the complete persisted build setup with its explicit profiles; publish text G-code atomically.")
     static final class Slice extends VoxelBrew.FileCommand {
-        private final SlicerRegistry.Factory slicers;
-        private final dev.voxelbrew.exporter.ExporterRegistry.Factory exporters;
+        private final SlicerCatalog.Factory slicers;
+        private final dev.voxelbrew.exporter.api.ExporterCatalog.Factory exporters;
 
         @javax.inject.Inject
         Slice(
                 DocumentSource documents,
                 DocumentOutput documentWriter,
-                SlicerRegistry.Factory slicers,
-                dev.voxelbrew.exporter.ExporterRegistry.Factory exporters) {
+                SlicerCatalog.Factory slicers,
+                dev.voxelbrew.exporter.api.ExporterCatalog.Factory exporters,
+                Slicing slicing,
+                @javax.inject.Named("slicerExecutable") Path defaultExecutable) {
             super(documents, documentWriter);
             this.slicers = slicers;
             this.exporters = exporters;
+            this.slicing = slicing;
+            this.executable = defaultExecutable;
         }
 
         @Option(names = "--output", required = true)
         Path output;
 
         @Option(names = "--slicer", description = "Path to the pinned slicer executable")
-        Path executable = PrusaSlicerBackend.defaultExecutable();
+        Path executable;
+
+        private final Slicing slicing;
 
         @Option(names = "--overwrite")
         boolean overwrite;
@@ -513,7 +517,7 @@ final class PrintingCommands {
                 var model = dev.voxelbrew.engine.printing.ManufacturingModels.evaluate(
                         document, MeshOptions.DEFAULT, pluginDirectory);
                 registry.diagnostics().forEach(spec.commandLine().getErr()::println);
-                var result = SliceService.slice(
+                var result = slicing.slice(
                         registry.require(model.setup().backendId()),
                         document,
                         model,
@@ -523,7 +527,7 @@ final class PrintingCommands {
                         overwrite,
                         cancellation,
                         spec.commandLine().getErr()::println,
-                        SliceService.DIRECT);
+                        Slicing.DIRECT);
                 describe(result.job(), spec.commandLine().getOut());
                 spec.commandLine().getOut().println("Job: " + result.output());
                 return 0;

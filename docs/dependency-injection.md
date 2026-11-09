@@ -15,7 +15,7 @@ geometry algorithms, document codecs and plugin contracts stay independently usa
 | GUI window      | `Workbench.create(stage, plugins)` builds a new `GuiComponent`. Document and print controllers, workbench, plugin registries and workers belong to that window. `@Singleton` means one instance **within that graph**, never one global document.                            |
 | Update dialog   | An assisted factory combines the window's translations and lazy updater factory with the runtime save/discard callback. Each dialog gets its own worker and cancellation state and closes them when dismissed.                                                               |
 | Shared services | `ApplicationModule` supplies configuration, an immutable translation catalog and `UpdateServiceFactory`. Creating a graph or requesting help performs no update lookup.                                                                                                      |
-| File I/O        | `FileIoModule` binds the API-module `DocumentSource`/`GcodeSource` and implementation-module `DocumentOutput` ports to existing bounded readers and atomic writers. Explicit replacements support tests without filesystem writes or native loading.                         |
+| File I/O        | Each frontend’s `FileIoModule` binds the API-module `DocumentSource`/`GcodeSource` and API-module `DocumentOutput` ports to existing bounded readers and atomic writers. Explicit replacements support tests without filesystem writes or native loading.                    |
 
 Sketch sessions also use an assisted factory: geometry, parameters and feature
 identity are combined with the injected solver, UI dispatcher and a fresh worker.
@@ -27,9 +27,11 @@ looking up dependencies. Runtime values (window, plugin path, configuration and
 update factory) enter at composition roots. Dynamic plugin providers still use the
 existing ServiceLoader SPI; they do not need Dagger or new constructors.
 
-All exporters use `ExporterProvider`. `FileIoModule` contributes
-VXB, JSON, STEP, STL, 3MF, OBJ and Prusa project providers through Dagger `@IntoSet` bindings, then supplies the runtime
-`ExporterRegistry.Factory` with that set. The window receives the registry through
+All exporters use `ExporterProvider`. Each frontend owns a local `FileIoModule`.
+It discovers `ImportRuntime` and `ExportRuntime` through ServiceLoader at composition
+time, then binds their individual API services and catalog factories. Concrete
+built-ins are composed inside the runtime implementations, which are absent from
+the frontend compile classpaths. The window receives the registry through
 `GuiModule`/`WindowResources`; the CLI receives the same factory. External providers
 are discovered by ServiceLoader and construct their exporter with the host's worker.
 Dagger does not attempt to generate bindings for classes from future plugin JARs.

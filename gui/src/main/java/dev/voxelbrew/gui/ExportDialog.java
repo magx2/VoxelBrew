@@ -3,10 +3,10 @@ package dev.voxelbrew.gui;
 import dev.voxelbrew.engine.mesh.MeshOptions;
 import dev.voxelbrew.engine.parameters.*;
 import dev.voxelbrew.exporter.ExportSelection;
-import dev.voxelbrew.exporter.ExporterRegistry;
 import dev.voxelbrew.exporter.MeshExportDialog;
 import dev.voxelbrew.exporter.MeshExportOption;
 import dev.voxelbrew.exporter.MeshFormat;
+import dev.voxelbrew.exporter.api.ExporterCatalog;
 import dev.voxelbrew.exporter.api.ExporterDescriptor;
 import java.nio.file.Path;
 import java.util.*;
@@ -24,7 +24,7 @@ final class ExportDialog {
     static void choose(
             Window owner,
             DocumentController controller,
-            ExporterRegistry registry,
+            ExporterCatalog registry,
             dev.voxelbrew.util.i18n.Translations translations,
             java.util.function.Consumer<String> documentExporter) {
         try {

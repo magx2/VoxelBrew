@@ -11,14 +11,7 @@ import java.util.function.Consumer;
 
 /** Runtime providers from trusted JARs, with Dagger-supplied built-ins and isolated diagnostics. */
 @lombok.extern.slf4j.Slf4j
-public final class ExporterRegistry implements AutoCloseable {
-    @FunctionalInterface
-    public interface Factory {
-        ExporterRegistry open(Path directory) throws IOException;
-    }
-
-    public record Entry(ExporterDescriptor descriptor, ExporterProvider provider) {}
-
+public final class ExporterRegistry implements dev.voxelbrew.exporter.api.ExporterCatalog {
     private record Jar(Path path, long size, java.nio.file.attribute.FileTime modified) {}
 
     private final Path directory;

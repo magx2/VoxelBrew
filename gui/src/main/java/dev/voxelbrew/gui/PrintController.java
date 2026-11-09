@@ -4,7 +4,7 @@ import dev.voxelbrew.engine.mesh.MeshOptions;
 import dev.voxelbrew.engine.model.CadDocument;
 import dev.voxelbrew.engine.persistence.DocumentCodec;
 import dev.voxelbrew.engine.printing.*;
-import dev.voxelbrew.exporter.printing.SliceService;
+import dev.voxelbrew.exporter.api.Slicing;
 import dev.voxelbrew.exporter.printing.SlicerBackend;
 import java.io.IOException;
 import java.nio.file.Path;
@@ -33,7 +33,8 @@ public final class PrintController implements AutoCloseable {
     private final Consumer<Runnable> dispatch;
     private final Supplier<CadDocument> current;
     private final Path pluginDirectory;
-    private final dev.voxelbrew.exporter.ExporterRegistry.Factory exporters;
+    private final Slicing slicing;
+    private final dev.voxelbrew.exporter.api.ExporterCatalog.Factory exporters;
 
     @Getter
     @Accessors(fluent = true)
@@ -50,7 +51,7 @@ public final class PrintController implements AutoCloseable {
 
     @Getter
     @Accessors(fluent = true)
-    private SliceService.Result result;
+    private Slicing.Result result;
 
     @Setter
     @Accessors(fluent = true, chain = false)
@@ -73,7 +74,8 @@ public final class PrintController implements AutoCloseable {
                 current,
                 pluginDirectory,
                 WindowResources.worker("slicer"),
-                dev.voxelbrew.exporter.ExporterRegistry::new);
+                dev.voxelbrew.exporter.api.ExportRuntime.load().exporters(),
+                dev.voxelbrew.exporter.api.ExportRuntime.load().slicing());
     }
 
     @javax.inject.Inject
@@ -82,12 +84,14 @@ public final class PrintController implements AutoCloseable {
             @NonNull Supplier<CadDocument> current,
             @NonNull @javax.inject.Named("plugins") Path pluginDirectory,
             @NonNull @javax.inject.Named("slicing") ExecutorService worker,
-            dev.voxelbrew.exporter.ExporterRegistry.Factory exporters) {
+            dev.voxelbrew.exporter.api.ExporterCatalog.Factory exporters,
+            Slicing slicing) {
         this.dispatch = dispatch;
         this.current = current;
         this.pluginDirectory = pluginDirectory;
         this.worker = worker;
         this.exporters = exporters;
+        this.slicing = slicing;
     }
 
     public List<String> diagnostics() {
@@ -113,7 +117,7 @@ public final class PrintController implements AutoCloseable {
         onChanged.run();
     }
 
-    public CompletableFuture<SliceService.Result> start(
+    public CompletableFuture<Slicing.Result> start(
             CadDocument document, SlicerBackend backend, Path executable, Path destination, boolean overwrite) {
         if (closed || running) throw new IllegalStateException("Wait for the current slicer task to finish");
         running = true;
@@ -125,14 +129,14 @@ public final class PrintController implements AutoCloseable {
         var token = new Cancellation();
         cancellation = token;
         long ticket = ++generation;
-        var future = new CompletableFuture<SliceService.Result>();
+        var future = new CompletableFuture<Slicing.Result>();
         onChanged.run();
         worker.execute(() -> {
             try (var exportRegistry = exporters.open(pluginDirectory)) {
                 var model = dev.voxelbrew.engine.printing.ManufacturingModels.evaluate(
                         document, MeshOptions.DEFAULT, pluginDirectory);
                 token.check();
-                var completed = SliceService.slice(
+                var completed = slicing.slice(
                         backend,
                         document,
                         model,
@@ -159,7 +163,7 @@ public final class PrintController implements AutoCloseable {
                         state = State.OUTDATED;
                         message = "Job is outdated; slice the current revision again.";
                         result = null;
-                        future.completeExceptionally(new SliceService.OutdatedException());
+                        future.completeExceptionally(new Slicing.OutdatedException());
                     } else {
                         state = State.SUCCEEDED;
                         result = completed;
@@ -169,7 +173,7 @@ public final class PrintController implements AutoCloseable {
                     onChanged.run();
                 });
             } catch (Exception | LinkageError failure) {
-                if (failure instanceof CancellationException || failure instanceof SliceService.OutdatedException)
+                if (failure instanceof CancellationException || failure instanceof Slicing.OutdatedException)
                     log.debug("Print job cancelled or outdated", failure);
                 else log.error("Print job failed", failure);
                 dispatch.accept(() -> {
@@ -182,7 +186,7 @@ public final class PrintController implements AutoCloseable {
                     if (state != State.OUTDATED) {
                         state = failure instanceof CancellationException
                                 ? State.CANCELLED
-                                : failure instanceof SliceService.OutdatedException ? State.OUTDATED : State.FAILED;
+                                : failure instanceof Slicing.OutdatedException ? State.OUTDATED : State.FAILED;
                         message = Objects.toString(failure.getMessage(), failure.toString());
                     }
                     onChanged.run();
@@ -193,13 +197,12 @@ public final class PrintController implements AutoCloseable {
         return future;
     }
 
-    private void publish(long ticket, String captured, Cancellation token, SliceService.Commit commit)
-            throws IOException {
+    private void publish(long ticket, String captured, Cancellation token, Slicing.Commit commit) throws IOException {
         var published = new CompletableFuture<Void>();
         dispatch.accept(() -> {
             try {
                 if (closed || ticket != generation || !captured.equals(DocumentCodec.fingerprint(current.get())))
-                    throw new SliceService.OutdatedException();
+                    throw new Slicing.OutdatedException();
                 token.check();
                 commit.run();
                 published.complete(null);

@@ -5,6 +5,7 @@ import dev.voxelbrew.engine.model.CadDocument;
 import dev.voxelbrew.engine.printing.*;
 import dev.voxelbrew.exporter.*;
 import dev.voxelbrew.exporter.api.*;
+import dev.voxelbrew.exporter.api.Slicing.*;
 import dev.voxelbrew.importer.GcodeReader;
 import java.io.*;
 import java.nio.channels.FileChannel;
@@ -15,32 +16,6 @@ import java.util.function.Consumer;
 
 @lombok.extern.slf4j.Slf4j
 public final class SliceService {
-    @FunctionalInterface
-    public interface Commit {
-        void run() throws IOException;
-    }
-
-    /**
-     * Frontends serialize this callback with edits, checking revision before the atomic
-     * publication.
-     */
-    @FunctionalInterface
-    public interface PublicationGuard {
-        void publish(String revision, Commit commit) throws IOException;
-    }
-
-    public static final PublicationGuard DIRECT = (revision, commit) -> commit.run();
-
-    public static final class OutdatedException extends IOException {
-        private static final long serialVersionUID = 1L;
-
-        public OutdatedException() {
-            super("The model or print settings changed; this job is outdated");
-        }
-    }
-
-    public record Result(Path output, GcodeJob job, String backendVersion) {}
-
     private SliceService() {}
 
     /** Standalone composition for scripts/tests; application roots supply their registry. */
@@ -74,7 +49,7 @@ public final class SliceService {
             SlicerBackend backend,
             CadDocument document,
             ManufacturingModel model,
-            ExporterRegistry exporters,
+            ExporterCatalog exporters,
             Path executable,
             Path destination,
             boolean overwrite,

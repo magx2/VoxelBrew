@@ -27,6 +27,7 @@ final class FormulaField extends TextField {
     private final Supplier<ParameterSet> parameters;
     private final Supplier<ParameterUnit> unit;
     private final Tooltip preview = UiHelp.tooltip("");
+    private final Tooltip syntax = UiHelp.tooltip("");
     private dev.voxelbrew.util.i18n.Translations translations =
             new dev.voxelbrew.util.i18n.Translations(java.util.Locale.ENGLISH);
 
@@ -72,7 +73,8 @@ final class FormulaField extends TextField {
 
     private void localizeHelp() {
         setPromptText(translations.text(unit == null ? "formula.textPrompt" : "formula.numberPrompt"));
-        setAccessibleHelp(translations.text("formula.help"));
+        syntax.setText(translations.text(unit == null ? "formula.textSyntax" : "formula.numberSyntax"));
+        setAccessibleHelp(syntax.getText());
     }
 
     static ParameterUnit unit(String label) {
@@ -134,18 +136,34 @@ final class FormulaField extends TextField {
     protected Skin<?> createDefaultSkin() {
         return new TextFieldSkin(this) {
             private final Label mark = new Label(expressionType.mark);
+            private final Button help = new Button("?");
 
             {
                 mark.getStyleClass().add("formula-mark");
                 mark.setManaged(false);
                 mark.setMouseTransparent(true);
-                getChildren().add(mark);
+                help.getStyleClass().add("formula-help");
+                help.setManaged(false);
+                help.setTooltip(syntax);
+                help.accessibleTextProperty().bind(syntax.textProperty());
+                help.setOnAction(event -> {
+                    preview.hide();
+                    if (syntax.isShowing()) {
+                        syntax.hide();
+                    } else {
+                        var bounds = help.localToScreen(help.getBoundsInLocal());
+                        if (bounds != null) syntax.show(help, bounds.getMinX(), bounds.getMaxY());
+                    }
+                    event.consume();
+                });
+                getChildren().addAll(mark, help);
             }
 
             @Override
             protected void layoutChildren(double x, double y, double width, double height) {
                 super.layoutChildren(x, y, width, height);
                 mark.resizeRelocate(7, y, 18, height);
+                help.resizeRelocate(getWidth() - 25, y + (height - 18) / 2, 18, 18);
             }
         };
     }

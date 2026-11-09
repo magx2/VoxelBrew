@@ -252,9 +252,32 @@
   -fx-border-radius: 4;
 }
 .text-field.formula-field {
-  -fx-padding: 4 6 4 27;
+  -fx-padding: 4 28 4 27;
   -fx-border-color: #6c8da8;
   -fx-border-radius: 4;
+}
+.formula-field .formula-help {
+  -fx-padding: 0;
+  -fx-min-width: 18;
+  -fx-min-height: 18;
+  -fx-font-size: 12px;
+  -fx-background-color: transparent;
+  -fx-background-radius: 50%;
+  -fx-background-insets: 0;
+  -fx-border-radius: 50%;
+  -fx-border-color: #6c8da8;
+  -fx-border-width: 1;
+  -fx-text-fill: #416e92;
+  -fx-cursor: hand;
+}
+.formula-field .formula-help:hover,
+.formula-field .formula-help:focused {
+  -fx-background-color: rgba(100, 150, 200, 0.2);
+  -fx-border-radius: 50%;
+}
+.dark .formula-field .formula-help {
+  -fx-text-fill: #9ecbf0;
+  -fx-border-color: #698ba6;
 }
 .formula-field .formula-mark {
   -fx-font-weight: bold;

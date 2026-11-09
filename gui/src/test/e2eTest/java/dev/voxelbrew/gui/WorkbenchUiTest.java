@@ -2575,7 +2575,12 @@ class WorkbenchUiTest {
     }
 
     private void sketchType(SketchTools.Tool tool) throws Exception {
-        choice("sketch-create-type", tool.ordinal());
+        click("sketch-create-type");
+        fx(() -> {
+            ((ListView<?>) node("#sketch-type-results")).getSelectionModel().select(tool.ordinal());
+            return null;
+        });
+        click("sketch-type-confirm");
     }
 
     private void open(Path file) throws Exception {
@@ -4300,6 +4305,32 @@ class WorkbenchUiTest {
         assertTrue(fx(() -> ((javafx.scene.layout.VBox) node("#feature-diagnostics"))
                 .getChildren()
                 .isEmpty()));
+    }
+
+    @Test
+    void searchableSketchTypesSupportKeyboardSelectionAndCancellation() throws Exception {
+        ready();
+        key(KeyCode.K);
+        click("choose-plane-xy");
+        sketchReady();
+        key(KeyCode.M);
+        assertEquals("", fx(() -> ((TextField) node("#sketch-type-search")).getText()));
+        text("sketch-type-search", "CiRcLe");
+        assertEquals(
+                5,
+                fx(() -> ((ListView<?>) node("#sketch-type-results")).getItems().size()));
+        text("sketch-type-search", "no such tool");
+        assertTrue(fx(() -> node("#sketch-type-confirm").isDisabled()));
+        key(KeyCode.ESCAPE);
+        assertTrue(sketchGeometry().entities().isEmpty());
+        click("sketch-create-type");
+        text("sketch-type-search", "2-point rectangle");
+        key(KeyCode.ENTER);
+        sketchNumericPoint(0, 0);
+        sketchNumericPoint(60, 40);
+        assertEquals(4, sketchGeometry().entities().size());
+        click("constraint-cancel");
+        ready();
     }
 
     @Test

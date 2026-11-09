@@ -67,7 +67,7 @@ final class SketchEditor extends BorderPane implements AutoCloseable {
     private final ListView<Constraint> constraints = new ListView<>();
     private final ComboBox<Ref> references = new ComboBox<>();
     private final ComboBox<Type> dimension = new ComboBox<>();
-    private final ComboBox<SketchTools.Tool> createType = new ComboBox<>();
+    private final Button createType;
     private SketchTools.Tool advanced;
     private final VBox toolOptions = new VBox(6);
     private final FormulaField toolRadius = numeric("5", ParameterUnit.MM),
@@ -225,7 +225,6 @@ final class SketchEditor extends BorderPane implements AutoCloseable {
                 pointY,
                 dimensionValue,
                 sides)) field.localized(translations);
-        UiText.enums(createType, translations, "tool.");
         UiText.enums(dimension, translations, "constraint.");
         setId("sketch-editor");
         getStyleClass().add("sketch-editor");
@@ -254,29 +253,7 @@ final class SketchEditor extends BorderPane implements AutoCloseable {
                     () -> tool(draw));
             tools.getChildren().add(button);
         }
-        createType.setId("sketch-create-type");
-        createType.setPromptText(translations.text("gui.more_sketch_types"));
-        createType.setAccessibleText(translations.text("gui.more_sketch_types_"));
-        createType.setButtonCell(new ListCell<>() {
-            @Override
-            protected void updateItem(SketchTools.Tool item, boolean empty) {
-                super.updateItem(item, empty);
-                setText(
-                        item == null
-                                ? translations.text("gui.more_sketch_types")
-                                : translations.text("tool." + item.name()));
-            }
-        });
-        createType.setPrefWidth(185);
-        createType.getItems().setAll(SketchTools.Tool.values());
-        createType.setOnAction(event -> {
-            if (createType.getValue() == null) return;
-            advanced = createType.getValue();
-            var refs = List.copyOf(selection);
-            tool(Draw.ADVANCED);
-            selection.addAll(refs);
-            selectionChanged();
-        });
+        createType = button(translations.text("gui.more_sketch_types"), "sketch-create-type", this::chooseSketchType);
         tools.getChildren().add(createType);
         tools.getChildren()
                 .add(button(translations.text("gui.sketch_dimension"), "sketch-dimension", this::startDimension));
@@ -393,6 +370,75 @@ final class SketchEditor extends BorderPane implements AutoCloseable {
         });
         tool(Draw.SELECT);
         refresh();
+    }
+
+    private void chooseSketchType() {
+        var search = new TextField();
+        search.setId("sketch-type-search");
+        search.setPromptText(translations.text("gui.search_sketch_types"));
+        search.setAccessibleText(translations.text("gui.search_sketch_types"));
+        var results = new ListView<SketchTools.Tool>();
+        results.setId("sketch-type-results");
+        results.setPrefHeight(300);
+        results.setPlaceholder(new Label(translations.text("gui.no_sketch_types")));
+        results.setCellFactory(list -> new ListCell<>() {
+            @Override
+            protected void updateItem(SketchTools.Tool item, boolean empty) {
+                super.updateItem(item, empty);
+                setText(empty || item == null ? null : translations.text("tool." + item.name()));
+            }
+        });
+        results.getItems().setAll(SketchTools.Tool.values());
+        results.getSelectionModel().selectFirst();
+        search.textProperty().addListener((observable, oldValue, query) -> {
+            String filter = query.strip().toLowerCase(Locale.ROOT);
+            results.getItems()
+                    .setAll(Arrays.stream(SketchTools.Tool.values())
+                            .filter(value -> translations
+                                    .text("tool." + value.name())
+                                    .toLowerCase(Locale.ROOT)
+                                    .contains(filter))
+                            .toList());
+            results.getSelectionModel().selectFirst();
+        });
+        var dialog = new Dialog<SketchTools.Tool>();
+        dialog.setTitle(translations.text("gui.more_sketch_types_"));
+        var content = new VBox(8, search, results);
+        dialog.getDialogPane().setContent(content);
+        dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
+        var confirm = (Button) dialog.getDialogPane().lookupButton(ButtonType.OK);
+        confirm.setId("sketch-type-confirm");
+        confirm.disableProperty()
+                .bind(results.getSelectionModel().selectedItemProperty().isNull());
+        search.setOnKeyPressed(event -> {
+            if (event.getCode() == KeyCode.DOWN || event.getCode() == KeyCode.UP) {
+                if (event.getCode() == KeyCode.DOWN) results.getSelectionModel().selectNext();
+                else results.getSelectionModel().selectPrevious();
+                results.scrollTo(results.getSelectionModel().getSelectedIndex());
+                event.consume();
+            }
+        });
+        content.addEventFilter(KeyEvent.KEY_PRESSED, event -> {
+            if (event.getCode() == KeyCode.ENTER) {
+                confirm.fire();
+                event.consume();
+            }
+        });
+        results.setOnMouseClicked(event -> {
+            if (event.getButton() == MouseButton.PRIMARY && event.getClickCount() == 2) confirm.fire();
+        });
+        dialog.setResultConverter(
+                type -> type == ButtonType.OK ? results.getSelectionModel().getSelectedItem() : null);
+        // Focus search after the modal host's initial button focus pass.
+        Platform.runLater(() -> Platform.runLater(search::requestFocus));
+        Dialogs.show(dialog, getScene().getWindow(), translations).ifPresent(chosen -> {
+            advanced = chosen;
+            var refs = List.copyOf(selection);
+            tool(Draw.ADVANCED);
+            selection.addAll(refs);
+            selectionChanged();
+            canvas.requestFocus();
+        });
     }
 
     private void cancelDrawing() {
@@ -728,7 +774,6 @@ final class SketchEditor extends BorderPane implements AutoCloseable {
                     case ADVANCED -> translations.text("tool.hint." + advanced.name());
                 });
         showToolOptions();
-        if (next != Draw.ADVANCED) createType.setValue(null);
         draw();
     }
 

@@ -60,7 +60,7 @@ and choose **Edit sketch / constraints…** in Properties. The workspace support
 geometric constraints, driving dimensions, point dragging and local undo/redo.
 See [the constrained sketch workflow](sketch-constraints.md) for selection rules
 and an equivalent headless workflow.
-The **More sketch types…** selector provides the M8 creation variants, with
+The **More sketch types… (M)** searchable dialog provides the M8 creation variants, with
 numeric point input and tool-specific settings. See [sketch types](sketch-types.md).
 
 1. Choose **New sketch…**. In **More sketch types…**, choose **2-point rectangle**.

@@ -74,6 +74,7 @@ final class KeyboardShortcuts {
             binding(Scope.SKETCH, "sketch-tool-arc", false, "A"),
             binding(Scope.SKETCH, "sketch-tool-spline", false, "S"),
             binding(Scope.SKETCH, "sketch-tool-polygon", false, "G"),
+            binding(Scope.SKETCH, "sketch-create-type", false, "M"),
             binding(Scope.SKETCH, "sketch-dimension", false, "D"),
             binding(Scope.SKETCH, "sketch-fit", false, "F"),
             binding(Scope.SKETCH, "sketch-undo", false, "Shortcut+Z"),

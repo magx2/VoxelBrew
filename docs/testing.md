@@ -114,16 +114,19 @@ GitHub Actions splits the complete gate into independent jobs:
 - The final **Full check** requires all jobs and every platform to succeed;
   failures, cancellations and skipped prerequisites cannot produce a green gate.
 
-Routine Windows and Ubuntu platform jobs each use four isolated runners. The
+Routine Windows and Ubuntu platform jobs each use five isolated runners. The
 `WorkbenchUiTest` Robot methods are partitioned by a stable method-name hash;
-new methods automatically join exactly one shard. Each desktop still runs one
+the five-way partition preserves the original four-way batches 1–3 and splits
+batch 4 into batches 4 and 5 using the next hash bit. New methods automatically
+join exactly one shard. Each desktop still runs one
 test at a time. Shard one runs the remaining platform checks and uploads app
-images; shards two through four run only `:gui:e2eTest`. The CLI development
+images; shards two through five run only `:gui:e2eTest`. The CLI development
 launcher is built before lengthy CLI qualification tasks when both are requested,
 so GUI tests can overlap CLI checks. Evidence artifacts include the shard number. Methods
 assigned to another shard appear as skipped in that shard's report; inspect all
-four reports for complete coverage. `UiTestShardTest` checks that the partition
-covers every current Robot method exactly once with no empty shard.
+five reports for complete coverage. `UiTestShardTest` checks that the partition
+covers every current Robot method exactly once with no empty shard and preserves
+the original batches 1–3.
 
 This trades additional runner minutes for shorter elapsed time. In hosted run
 `42313887269`, Windows took 25m04s, with roughly 16m36s spent in GUI end-to-end
@@ -134,7 +137,7 @@ runs on the same ref are cancelled; release workflows retain their own policy.
 
 Local commands, manual full qualification and releases default to the complete
 unsharded suite. To reproduce one CI partition explicitly, use
-`./gradlew platformCheck -PuiTestShard=1 -PuiTestShardCount=4` (Windows:
+`./gradlew platformCheck -PuiTestShard=1 -PuiTestShardCount=5` (Windows:
 `gradlew.bat`). A single partition does not qualify a milestone: run plain
 `check` for that gate. Invalid shard numbers fail instead of silently running
 an empty selection.

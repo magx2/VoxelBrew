@@ -48,7 +48,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-24.04, windows-2022]
-        ui-shard: [1, 2, 3, 4]
+        ui-shard: [1, 2, 3, 4, 5]
         include:
           - os: macos-15-intel
             suite: headlessPlatformCheck
@@ -60,7 +60,7 @@ jobs:
       artifact-name: platform-${{ matrix.os }}-${{ matrix.ui-shard }}
       archive: ${{ matrix.ui-shard == 1 }}
       ui-shard: ${{ matrix.ui-shard }}
-      ui-shard-count: ${{ matrix.os == 'macos-15-intel' && 1 || 4 }}
+      ui-shard-count: ${{ matrix.os == 'macos-15-intel' && 1 || 5 }}
   full-check:
     name: Full check
     if: always()

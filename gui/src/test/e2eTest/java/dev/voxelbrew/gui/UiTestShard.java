@@ -8,6 +8,11 @@ import org.junit.jupiter.api.extension.ExtensionContext;
 final class UiTestShard implements ExecutionCondition {
     static int shardFor(String methodName, int count) {
         if (count < 1) throw new IllegalArgumentException("Shard count must be positive");
+        if (count == 5) {
+            // Preserve the original batches 1–3; divide only batch 4 using the next hash bit.
+            int bucket = Math.floorMod(methodName.hashCode(), 8);
+            return bucket % 4 == 3 ? 4 + bucket / 4 : bucket % 4 + 1;
+        }
         return Math.floorMod(methodName.hashCode(), count) + 1;
     }
 

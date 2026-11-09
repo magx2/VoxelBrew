@@ -182,11 +182,12 @@ else:
         model = ET.fromstring(archive.read("3D/3dmodel.model"))
         assert model.attrib["unit"] == "millimeter"
         assert len(model.findall(".//{*}build/{*}item")) == 1
-    assert "probe" in run("exporters", "--plugin-dir", plugins)
+    assert "document-probe\t" in run("exporters", "--plugin-dir", plugins)
     report = workspace / "external.txt"
-    run("export", document, "--format", "probe", "--plugin-dir", plugins,
-        "--option", "label=packaged", "--output", report)
-    assert report.read_text().startswith("packaged bodies=1 triangles=")
+    run("export", document, "--format", "document-probe", "--plugin-dir", plugins,
+        "--output", report)
+    assert history.startswith("document="), history
+    assert report.read_text() == history.split()[0]
     assert "example.spacer/spacer" in run("feature-types", "--plugin-dir", plugins)
     spacer = workspace / "custom spacer.vxb"
     run("new", spacer)

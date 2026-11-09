@@ -149,6 +149,10 @@ allprojects {
 val libraryProjects = subprojects.filter { it.path != ":api" }
 
 configure(libraryProjects) {
+    // Fixture publications share engine/build; its clean must finish before any publisher writes.
+    tasks.withType<org.gradle.api.publish.maven.tasks.PublishToMavenRepository>().configureEach {
+        if (name.endsWith("ToFixtureRepository")) mustRunAfter(":engine:clean")
+    }
     apply(plugin = "java-library")
     apply(plugin = "com.github.spotbugs")
     extensions.configure<SpotBugsExtension> {

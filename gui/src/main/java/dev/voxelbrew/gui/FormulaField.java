@@ -146,6 +146,7 @@ final class FormulaField extends TextField {
                 help.setManaged(false);
                 help.setTooltip(syntax);
                 help.accessibleTextProperty().bind(syntax.textProperty());
+                help.accessibleHelpProperty().bind(syntax.textProperty());
                 help.setOnAction(event -> {
                     preview.hide();
                     if (syntax.isShowing()) {

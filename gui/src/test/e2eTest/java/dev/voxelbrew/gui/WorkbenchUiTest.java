@@ -1575,12 +1575,15 @@ class WorkbenchUiTest {
         assertEquals("Zakończ szkic", fx(() -> ((Button) node("#constraint-finish")).getText()));
         assertTrue(fx(() ->
                 ((Button) node("#constraint-horizontal")).getTooltip().getText().contains("Wybierz linię")));
-        choice("sketch-create-type", SketchTools.Tool.ELLIPSE.ordinal());
-        assertEquals("Elipsa", fx(() -> {
-            @SuppressWarnings("unchecked")
-            var combo = (ComboBox<SketchTools.Tool>) node("#sketch-create-type");
-            return combo.getConverter().toString(combo.getValue());
-        }));
+        click("sketch-create-type");
+        text("sketch-type-search", "Elipsa");
+        assertEquals(
+                List.of(SketchTools.Tool.ELLIPSE), fx(() -> ((ListView<?>) node("#sketch-type-results")).getItems()));
+        assertTrue(fx(() -> node("#sketch-type-results").lookupAll(".list-cell").stream()
+                .filter(ListCell.class::isInstance)
+                .map(ListCell.class::cast)
+                .anyMatch(cell -> "Elipsa".equals(cell.getText()))));
+        key(KeyCode.ENTER);
         click("constraint-cancel");
         click("parameters");
         assertEquals("Zastosuj", fx(() -> ((Button) node("#parameters-apply")).getText()));
@@ -1605,6 +1608,7 @@ class WorkbenchUiTest {
         assertEquals(part, document());
         click("export");
         assertEquals("Eksportuj", fx(() -> ((Button) node("#export-confirm")).getText()));
+        chooseExporter("3mf");
         assertPathRowLabels("export-path");
         assertEquals("PROJEKT", fx(() -> {
             @SuppressWarnings("unchecked")
@@ -2147,7 +2151,10 @@ class WorkbenchUiTest {
             Node panel = row;
             while (!panel.getStyleClass().contains("dialog-overlay")) panel = panel.getParent();
             for (var control : panel.lookupAll(".button")) {
-                if (control instanceof Button button && !button.getText().isEmpty()) {
+                // Formula skin help may scroll out of view; check translated dialog actions.
+                if (control instanceof Button button
+                        && !button.getText().isEmpty()
+                        && !button.getStyleClass().contains("formula-help")) {
                     var rendered = assertInstanceOf(javafx.scene.text.Text.class, button.lookup(".text"));
                     assertEquals(
                             button.getText(),
@@ -2199,6 +2206,21 @@ class WorkbenchUiTest {
         });
         choice("export-format", index);
         click("export-confirm");
+    }
+
+    private void assertDesignRejectsMeshExport(String diagnostic) throws Exception {
+        var before = document();
+        assertFalse(fx(() -> workbench.controller().canExport()));
+        Path target = directory.resolve("invalid-design.stl");
+        click("export");
+        chooseExporter("stl");
+        text("export-path", target.toString());
+        click("export-confirm");
+        ready();
+        assertFalse(Files.exists(target), "Broken geometry must not produce an export");
+        String error = fx(() -> ((Label) node("#status")).getText());
+        assertTrue(error.contains(diagnostic), error);
+        assertEquals(before, document());
     }
 
     private void choice(String id, int index) throws Exception {
@@ -3132,11 +3154,7 @@ class WorkbenchUiTest {
         ready();
         assertFalse(fx(() -> workbench.controller().build().valid()));
         assertTrue(fx(() -> workbench.controller().build().bodies().isEmpty()));
-        click("menu-file");
-        assertTrue(fx(() -> command(workbench, "export").isDisable()));
-        assertTrue(fx(() ->
-                node("#export").getPseudoClassStates().contains(javafx.css.PseudoClass.getPseudoClass("disabled"))));
-        key(KeyCode.ESCAPE);
+        assertDesignRejectsMeshExport("Rebuild failed");
         choice("active-configuration", 0);
         ready();
         assertEquals(12000, volume(), .01);
@@ -4152,11 +4170,7 @@ class WorkbenchUiTest {
         ready();
         assertFalse(fx(() -> workbench.controller().build().valid()));
         assertEquals(0, volume(), 0);
-        click("menu-file");
-        assertTrue(fx(() -> command(workbench, "export").isDisable()));
-        assertTrue(fx(() ->
-                node("#export").getPseudoClassStates().contains(javafx.css.PseudoClass.getPseudoClass("disabled"))));
-        key(KeyCode.ESCAPE);
+        assertDesignRejectsMeshExport("Rebuild failed");
         click("save");
         ready();
         assertEquals(before, DocumentReader.load(file));
@@ -4169,6 +4183,7 @@ class WorkbenchUiTest {
         assertEquals(before, document());
         Path exported = directory.resolve("GUI spacer.3mf");
         click("export");
+        chooseExporter("3mf");
         text("export-path", exported.toString());
         click("export-confirm");
         ready();
@@ -4388,7 +4403,10 @@ class WorkbenchUiTest {
         key(KeyCode.E);
         assertNull(fx(() -> workbench.lookup("#extrude-distance")), "Disabled extrusion stays unavailable");
         shortcut(KeyCode.E, false);
-        assertFalse(fx(workbench::isDisabled), "Unavailable export does not open a dialog");
+        assertTrue(fx(workbench::isDisabled), "An empty design can still use document exporters");
+        assertNotNull(fx(() -> node("#export-format")));
+        key(KeyCode.ESCAPE);
+        assertFalse(fx(workbench::isDisabled), "Cancelling export restores the workbench");
         assertNull(fx(() -> workbench.lookup("#rectangle")));
         assertNull(fx(() -> workbench.lookup("#circle")));
         var empty = fx(() -> workbench.controller().snapshot());
@@ -4534,7 +4552,10 @@ class WorkbenchUiTest {
         key(KeyCode.K);
         assertNull(fx(() -> stage.getScene().lookup("#sketch-editor")), "Rollback blocks new features");
         shortcut(KeyCode.E, false);
-        assertFalse(fx(workbench::isDisabled), "Rollback blocks export");
+        assertNotNull(fx(() -> node("#export-format")), "Rollback still allows document exporters");
+        key(KeyCode.ESCAPE);
+        assertDesignRejectsMeshExport("Return timeline cursor to the end");
+        click("history-cursor");
         key(KeyCode.END);
         ready();
         assertEquals(part, document());
@@ -4605,7 +4626,10 @@ class WorkbenchUiTest {
 
     @Test
     void fileShortcutsAndUnsavedSaveDiscardCancelProtectDocuments() throws Exception {
-        rectangle(12); // Use an editable plane for the unsaved-dimension changes below.
+        openPrepared("rectangle-12.jcad");
+        text("dimension-offsetZ", "13");
+        key(KeyCode.ENTER);
+        ready();
         var original = document();
         assertTrue(fx(() -> stage.getTitle().startsWith("●")));
         click("new");

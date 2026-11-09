@@ -16,7 +16,8 @@ public final class AtomicExport {
 
     public static void write(FileExportDialog.Destination destination, Writer writer) throws IOException {
         Path target = destination.path().toAbsolutePath().normalize();
-        if (!destination.overwrite() && Files.exists(target)) throw new IOException("Destination exists: " + target);
+        if (!destination.overwrite() && Files.exists(target))
+            throw new IOException("Destination exists; use explicit overwrite: " + target);
         Path temporary = Files.createTempFile(target.getParent(), ".voxelbrew-export-", ".tmp");
         try {
             try (var channel = FileChannel.open(temporary, StandardOpenOption.WRITE);

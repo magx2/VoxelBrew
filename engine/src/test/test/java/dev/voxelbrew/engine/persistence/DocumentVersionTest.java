@@ -98,9 +98,10 @@ class DocumentVersionTest {
         for (String version : List.of(" ", "1.2", "v1.2.3", "01.2.3", "-1.0.0", "1.2.3-rc1", "65535.0.0")) {
             byte[] bytes =
                     envelope(message.toBuilder().setApplicationVersion(version).build());
-            assertTrue(assertThrows(DocumentFormatException.class, () -> DocumentCodec.decode(bytes))
-                    .getMessage()
-                    .contains("Invalid .jcad application version"));
+            var error = assertThrows(DocumentFormatException.class, () -> DocumentCodec.decode(bytes));
+            assertTrue(
+                    error.getMessage().contains("Invalid .vxb application version"),
+                    () -> "Unexpected diagnostic for writer version '" + version + "': " + error.getMessage());
         }
     }
 

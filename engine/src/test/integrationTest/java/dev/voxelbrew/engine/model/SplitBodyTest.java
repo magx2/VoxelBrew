@@ -19,7 +19,7 @@ class SplitBodyTest {
         session.editDimension("thickness", "distance", 8);
         session.add(new Feature.SplitBody(
                 "split", new Feature.BodyRef("cut", "body"), new Feature.SplitPlane(1, 0, 0, 30)));
-        var file = directory.resolve("split.jcad");
+        var file = directory.resolve("split.vxb");
         DocumentWriter.save(session.document(), file, false);
         session = new ModelSession(DocumentReader.load(file));
         try (var evaluated = session.evaluate()) {

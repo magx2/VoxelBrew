@@ -15,16 +15,16 @@ Split children inherit their source's style dynamically until explicitly
 assigned; resetting a child restores inheritance. Rollback preserves inactive
 assignments, and changing dimensions or parameter configurations preserves them.
 
-`.jcad` schema 7 stores body-ID/style pairs and includes them in the document
+`.vxb` schema 7 stores body-ID/style pairs and includes them in the document
 fingerprint. Older supported documents load with no overrides. Immutable
 snapshots and undo/redo carry the assignments with the CAD document. Broken
 feature references remain editable; style inheritance handles cycles safely.
 
 ```bash
-cli body-style part.jcad
-cli body-style part.jcad --body thickness.body --material PETG --color '#FF0000'
-cli body-style part.jcad --body split.positive --material PLA --color '#0000FF'
-cli body-style part.jcad --body split.positive --reset
+cli body-style part.vxb
+cli body-style part.vxb --body thickness.body --material PETG --color '#FF0000'
+cli body-style part.vxb --body split.positive --material PLA --color '#0000FF'
+cli body-style part.vxb --body split.positive --reset
 ```
 
 Listing prints body ID, material and uppercase RGB hex separated by tabs.
@@ -32,7 +32,7 @@ Assignments require an explicit active body; invalid values and selections do
 not overwrite the document. Omitting either material or color keeps its current
 value, while reset removes both overrides.
 
-These assignments are CAD metadata, saved in `.jcad`. They do not change the
+These assignments are CAD metadata, saved in `.vxb`. They do not change the
 single-material print profile, slicer temperatures, tool selection or geometry.
 STL and the current 3MF exporter do not transfer these assignments. Choose actual
 slicing settings in the Print workspace.

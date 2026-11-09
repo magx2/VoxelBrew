@@ -7,7 +7,7 @@ import java.util.concurrent.Executor;
 
 public final class VoxelBrewImporter extends FileImporter {
     public VoxelBrewImporter(Executor worker) {
-        super(worker, "VoxelBrew document", List.of("vxb", "jcad"));
+        super(worker, "VoxelBrew document", List.of("vxb"));
     }
 
     @Override

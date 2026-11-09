@@ -25,10 +25,10 @@ class DocumentWriterTest {
     void saveCounterTracksPublicationAndSaveAsWithoutAffectingDesignIdentity() throws Exception {
         var document = CadDocument.empty();
         var fingerprint = DocumentCodec.fingerprint(document);
-        Path first = directory.resolve("first.jcad");
+        Path first = directory.resolve("first.vxb");
         DocumentWriter.save(document, first, false);
         assertEquals("first", document.parameters().text("=$vb.project.name"));
-        assertEquals("first.jcad", document.parameters().text("=$vb.project.filename"));
+        assertEquals("first.vxb", document.parameters().text("=$vb.project.filename"));
         assertEquals(first.toAbsolutePath().toString(), document.parameters().text("=$vb.project.path"));
         assertEquals(
                 directory.toAbsolutePath().toString(), document.parameters().text("=$vb.project.folder"));
@@ -38,15 +38,15 @@ class DocumentWriterTest {
         var reopened = DocumentReader.load(first);
         assertEquals(1, reopened.parameters().builtins().fileVersion());
         assertEquals("first", reopened.parameters().text("=$vb.project.name"));
-        Path existing = directory.resolve("existing.jcad");
+        Path existing = directory.resolve("existing.vxb");
         DocumentWriter.save(CadDocument.empty(), existing, false);
         assertThrows(IOException.class, () -> DocumentWriter.save(reopened, existing, false));
         assertEquals("first", reopened.parameters().text("=$vb.project.name"));
-        DocumentWriter.save(reopened, directory.resolve("copy.jcad"), false);
+        DocumentWriter.save(reopened, directory.resolve("copy.vxb"), false);
         assertEquals("copy", reopened.parameters().text("=$vb.project.name"));
         assertEquals(
                 "copy",
-                DocumentReader.load(directory.resolve("copy.jcad")).parameters().text("=$vb.project.name"));
+                DocumentReader.load(directory.resolve("copy.vxb")).parameters().text("=$vb.project.name"));
         assertEquals(2, reopened.parameters().builtins().fileVersion());
         assertEquals(fingerprint, DocumentCodec.fingerprint(reopened));
     }
@@ -54,7 +54,7 @@ class DocumentWriterTest {
     @Test
     void currentSchemaUpdatesMetadataWithoutChangingDefinitions() throws Exception {
         byte[] baseline;
-        try (var input = getClass().getResourceAsStream("/fixtures/reference-schema10.jcad")) {
+        try (var input = getClass().getResourceAsStream("/fixtures/reference-schema10.vxb")) {
             baseline = Objects.requireNonNull(input).readAllBytes();
         }
         assertEquals(
@@ -76,7 +76,7 @@ class DocumentWriterTest {
                         .formatHex(MessageDigest.getInstance("SHA-256")
                                 .digest(upgradedDefinitions.build().toByteArray())),
                 DocumentCodec.fingerprint(document));
-        Path file = directory.resolve("saved with spaces.jcad");
+        Path file = directory.resolve("saved with spaces.vxb");
         DocumentWriter.save(document, file, false);
         byte[] saved = Files.readAllBytes(file);
         assertEquals(
@@ -93,12 +93,12 @@ class DocumentWriterTest {
     @Test
     void olderApplicationVersionUpgradesOnExplicitSaveAndPreservesTheDesign() throws Exception {
         byte[] baseline;
-        try (var input = getClass().getResourceAsStream("/fixtures/reference-schema10.jcad")) {
+        try (var input = getClass().getResourceAsStream("/fixtures/reference-schema10.vxb")) {
             baseline = Objects.requireNonNull(input).readAllBytes();
         }
         byte[] older = envelope(
                 message(baseline).toBuilder().setApplicationVersion("0.0.0").build());
-        Path file = directory.resolve("older application.jcad");
+        Path file = directory.resolve("older application.vxb");
         Files.write(file, older);
         var document = DocumentReader.load(file);
         assertArrayEquals(older, Files.readAllBytes(file), "Opening must not rewrite the original");
@@ -115,7 +115,7 @@ class DocumentWriterTest {
         for (String version : List.of("65534.65534.65534", "invalid")) {
             byte[] future =
                     envelope(current.toBuilder().setApplicationVersion(version).build());
-            Path file = directory.resolve(version + ".jcad");
+            Path file = directory.resolve(version + ".vxb");
             Files.write(file, future);
             assertThrows(DocumentFormatException.class, () -> DocumentReader.load(file));
             assertThrows(DocumentFormatException.class, () -> DocumentWriter.save(document, file, true));
@@ -128,7 +128,7 @@ class DocumentWriterTest {
 
     @Test
     void failedOverwritePreservesExistingBytesAndLeavesNoTemporaryFiles() throws Exception {
-        Path file = directory.resolve("existing.jcad");
+        Path file = directory.resolve("existing.vxb");
         var document = CadDocument.empty();
         DocumentWriter.save(document, file, false);
         byte[] original = Files.readAllBytes(file);
@@ -144,7 +144,7 @@ class DocumentWriterTest {
 
     @Test
     void concurrentCreateNeverReplacesTheWinningDocument() throws Exception {
-        Path destination = directory.resolve("winner.jcad");
+        Path destination = directory.resolve("winner.vxb");
         var documents = List.of(CadDocument.empty(), CadDocument.empty());
         var ready = new CountDownLatch(2);
         var start = new CountDownLatch(1);

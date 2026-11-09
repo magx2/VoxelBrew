@@ -119,7 +119,7 @@ do not become polygonal solid boundaries. Signed extrusions are supported.
 Open sketches can be saved and edited but cannot be extruded. Invalid or
 intersecting boundaries require repair.
 
-The `.jcad` schema is version 5, with entity/constraint IDs, indexed spline references,
+The `.vxb` schema is version 5, with entity/constraint IDs, indexed spline references,
 parameters, text outlines, construction flags and selected boundary curves. Versions 1–4 remain
 readable. Older applications reject unsupported data rather than rewriting it.
 Body results and display geometry remain disposable.
@@ -138,14 +138,14 @@ Use the installed `cli` launcher (`cli.bat` on Windows). Every command reopens
 the document; both frontends use the same engine solver and persistence.
 
 ```sh
-cli new constrained.jcad
-cli rectangle constrained.jcad --id plate --width 60 --height 40
-cli sketch convert constrained.jcad --sketch plate
-cli sketch entity constrained.jcad --sketch plate --id hole --kind CIRCLE --values 10,10,2
-cli sketch constrain constrained.jcad --sketch plate --id fix-hole --type FIX --refs hole
-cli sketch list constrained.jcad --sketch plate
-cli extrude constrained.jcad --id thickness --sketch plate --distance 8
-cli inspect constrained.jcad --point 10,10,4
+cli new constrained.vxb
+cli rectangle constrained.vxb --id plate --width 60 --height 40
+cli sketch convert constrained.vxb --sketch plate
+cli sketch entity constrained.vxb --sketch plate --id hole --kind CIRCLE --values 10,10,2
+cli sketch constrain constrained.vxb --sketch plate --id fix-hole --type FIX --refs hole
+cli sketch list constrained.vxb --sketch plate
+cli extrude constrained.vxb --id thickness --sketch plate --distance 8
+cli inspect constrained.vxb --point 10,10,4
 ```
 
 This produces the reference plate with volume `19099.469035085127 mm³` and an
@@ -155,7 +155,7 @@ editing. Entity references are names such as `edge.start`, `edge.end`,
 `circle.center`, `spline.control1` or `origin.point`; a bare ID selects an entity.
 Arc entity parameters use radians, while driving angle dimensions use degrees.
 Run `cli sketch <command> --help` for parameter order and options. Edit a saved
-driving dimension with `cli edit file.jcad --feature sketch-id --field
+driving dimension with `cli edit file.vxb --feature sketch-id --field
 constraint:dimension-id --value 80`. Invalid constraints and impossible point
 moves leave the prior document byte-for-byte unchanged.
 

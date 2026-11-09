@@ -36,10 +36,10 @@ class InjectedDocumentIoTest {
             json.join();
             assertNull(controller.path());
             assertTrue(Files.exists(directory.resolve("copy.json")));
-            Path saved = directory.resolve("saved.jcad");
-            var jcad = controller.saveAs(dev.voxelbrew.exporter.api.FileExportDialog.destination(saved, false));
-            await(jcad::isDone);
-            jcad.join();
+            Path saved = directory.resolve("saved.vxb");
+            var vxb = controller.saveAs(dev.voxelbrew.exporter.api.FileExportDialog.destination(saved, false));
+            await(vxb::isDone);
+            vxb.join();
             assertEquals(saved, controller.path());
             assertFalse(controller.ioBusy());
         } finally {
@@ -62,8 +62,7 @@ class InjectedDocumentIoTest {
                 rebuild,
                 files,
                 path -> {
-                    if (path.getFileName().toString().equals("bad.jcad"))
-                        throw new IOException("Injected read failure");
+                    if (path.getFileName().toString().equals("bad.vxb")) throw new IOException("Injected read failure");
                     return loaded;
                 },
                 (doc, path, overwrite) -> {
@@ -77,15 +76,15 @@ class InjectedDocumentIoTest {
                     written.set(doc);
                 });
         try {
-            var open = controller.open(directory.resolve("virtual.jcad"));
+            var open = controller.open(directory.resolve("virtual.vxb"));
             await(() -> open.isDone() && !controller.rebuilding());
             open.join();
             assertEquals(loaded, controller.snapshot().document());
-            var failed = controller.open(directory.resolve("bad.jcad"));
+            var failed = controller.open(directory.resolve("bad.vxb"));
             await(failed::isDone);
             assertTrue(failed.isCompletedExceptionally());
             assertEquals(loaded, controller.snapshot().document());
-            var save = controller.save(directory.resolve("saved.jcad"), false);
+            var save = controller.save(directory.resolve("saved.vxb"), false);
             assertTrue(entered.await(10, TimeUnit.SECONDS));
             controller.close();
             release.countDown();
@@ -94,7 +93,7 @@ class InjectedDocumentIoTest {
             assertEquals(loaded, written.get());
             assertTrue(save.isCancelled(), "Closed window must not adopt the captured write as current state");
             assertTrue(rebuild.isShutdown());
-            assertFalse(Files.exists(directory.resolve("saved.jcad")));
+            assertFalse(Files.exists(directory.resolve("saved.vxb")));
         } finally {
             release.countDown();
             controller.close();

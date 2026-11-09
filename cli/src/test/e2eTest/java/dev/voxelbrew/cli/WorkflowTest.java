@@ -24,7 +24,7 @@ class WorkflowTest {
 
     @Test
     void bodyMaterialsAndColorsPersistAcrossCommandsAndInvalidAssignmentsDoNotWrite() throws Exception {
-        String file = directory.resolve("colored objects.jcad").toString();
+        String file = directory.resolve("colored objects.vxb").toString();
         run(0, "new", file);
         run(0, "rectangle", file, "--id", "plate", "--width", "60", "--height", "40");
         run(0, "extrude", file, "--id", "solid", "--sketch", "plate", "--distance", "5");
@@ -52,7 +52,7 @@ class WorkflowTest {
         String listing = run(0, "importers", "--plugin-dir", plugins.toString());
         assertTrue(listing.contains("plate\tExternal plate"), listing);
         assertTrue(listing.contains("json\tVoxelBrew JSON document"), listing);
-        Path source = directory.resolve("source plate.vbplate"), output = directory.resolve("imported design.jcad");
+        Path source = directory.resolve("source plate.vbplate"), output = directory.resolve("imported design.vxb");
         Files.writeString(source, "60,40,4");
         run(
                 0,
@@ -111,7 +111,7 @@ class WorkflowTest {
 
     @Test
     void olderApplicationFilesUpgradeAndFutureFilesAreRejectedWithoutWrites() throws Exception {
-        Path file = directory.resolve("versioned design.jcad");
+        Path file = directory.resolve("versioned design.vxb");
         run(0, "new", file.toString());
         run(0, "rectangle", file.toString(), "--id", "plate", "--width", "60", "--height", "40");
         byte[] saved = Files.readAllBytes(file);
@@ -156,7 +156,7 @@ class WorkflowTest {
 
     @Test
     void namedParametersAndVariantsPersistAcrossProcessesAndExport() throws Exception {
-        String file = directory.resolve("parameter configurations.jcad").toString();
+        String file = directory.resolve("parameter configurations.vxb").toString();
         run(0, "new", file);
         run(0, "rectangle", file, "--id", "plate", "--width", "60", "--height", "40");
         run(0, "extrude", file, "--id", "solid", "--sketch", "plate", "--distance", "5");
@@ -197,7 +197,7 @@ class WorkflowTest {
 
     @Test
     void newSketchTypesAndTextPersistAcrossFreshProcesses() throws Exception {
-        String file = directory.resolve("new sketch types.jcad").toString();
+        String file = directory.resolve("new sketch types.vxb").toString();
         run(0, "new", file);
         run(0, "sketch", "new", file, "--id", "ellipse");
         run(
@@ -319,7 +319,7 @@ class WorkflowTest {
 
     @Test
     void constrainedProfilesPersistAndRejectConflictsAcrossFreshProcesses() throws Exception {
-        String file = directory.resolve("CLI constrained plate.jcad").toString();
+        String file = directory.resolve("CLI constrained plate.vxb").toString();
         run(0, "new", file);
         run(0, "rectangle", file, "--id", "plate", "--width", "60", "--height", "40");
         var before = DocumentReader.load(Path.of(file));
@@ -428,7 +428,7 @@ class WorkflowTest {
 
     @Test
     void polygonAndExactSplineSketchesAreAvailableHeadlessly() throws Exception {
-        String polygon = directory.resolve("polygon.jcad").toString();
+        String polygon = directory.resolve("polygon.vxb").toString();
         run(0, "new", polygon);
         run(0, "sketch", "new", polygon, "--id", "hex");
         run(0, "sketch", "polygon", polygon, "--sketch", "hex", "--id", "boundary", "--radius", "10", "--sides", "6");
@@ -440,7 +440,7 @@ class WorkflowTest {
                     evaluation.requireCompleteDocument().getFirst().solid().volume(),
                     0.001);
         }
-        String spline = directory.resolve("spline.jcad").toString();
+        String spline = directory.resolve("spline.vxb").toString();
         run(0, "new", spline);
         run(0, "sketch", "new", spline, "--id", "curve");
         run(
@@ -482,7 +482,7 @@ class WorkflowTest {
         Path plugins = Files.createDirectory(directory.resolve("feature plugins"));
         Path jar = plugins.resolve("provider.jar"), hidden = directory.resolve("removed provider.jar");
         Files.copy(Path.of(System.getProperty("voxelbrew.test.plugin")), jar);
-        String file = directory.resolve("custom spacer.jcad").toString();
+        String file = directory.resolve("custom spacer.vxb").toString();
         String plugin = plugins.toString();
         assertTrue(run(0, "feature-types", "--plugin-dir", plugin).contains("outerDiameter"));
         run(0, "new", file);
@@ -563,7 +563,7 @@ class WorkflowTest {
 
     @Test
     void publicExportCommandsAndOverwriteGuard() throws Exception {
-        Path file = directory.resolve("export input.jcad"),
+        Path file = directory.resolve("export input.vxb"),
                 stl = directory.resolve("plate.stl"),
                 threeMf = directory.resolve("plate.3mf");
         run(0, "new", file.toString());
@@ -587,7 +587,7 @@ class WorkflowTest {
 
     @Test
     void referenceWorkflowAcrossFreshProcesses() throws Exception {
-        Path file = directory.resolve("reference part.jcad");
+        Path file = directory.resolve("reference part.vxb");
         run(0, "new", file.toString());
         run(0, "rectangle", file.toString(), "--id", "plate", "--width", "60", "--height", "40");
         run(0, "extrude", file.toString(), "--id", "thickness", "--sketch", "plate", "--distance", "5");
@@ -623,7 +623,7 @@ class WorkflowTest {
 
     @Test
     void referenceRepairIsAvailableThroughPublicCommands() throws Exception {
-        Path file = directory.resolve("repair.jcad");
+        Path file = directory.resolve("repair.vxb");
         run(0, "new", file.toString());
         run(0, "rectangle", file.toString(), "--id", "plate", "--width", "60", "--height", "40");
         run(0, "extrude", file.toString(), "--id", "thickness", "--sketch", "plate", "--distance", "8");
@@ -639,7 +639,7 @@ class WorkflowTest {
 
     @Test
     void splitPlacementSupportAndSlicingAcrossFreshProcesses() throws Exception {
-        String file = directory.resolve("manufacturing fixture.jcad").toString();
+        String file = directory.resolve("manufacturing fixture.vxb").toString();
         run(0, "new", file);
         run(0, "rectangle", file, "--id", "plate", "--width", "60", "--height", "40");
         run(0, "extrude", file, "--id", "thickness", "--sketch", "plate", "--distance", "8");

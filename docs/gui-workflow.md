@@ -4,7 +4,7 @@ VoxelBrew uses Java 21, JavaFX 21.0.13 controls/CSS and a depth-tested 3D
 SubScene. The engine and CLI remain headless. Build prerequisites and native
 bootstrap commands are in the root README. Run `gradlew.bat :gui:run` on
 Windows or `./gradlew :gui:run` on Ubuntu. Gradle arguments can include
-`--args="--open fixtures/reference-8mm.jcad --plugin-dir path/to/plugins"`.
+`--args="--open fixtures/reference-8mm.vxb --plugin-dir path/to/plugins"`.
 
 `:gui:installDist` creates `gui/build/install/gui`. Its `bin/gui.bat` or
 `bin/gui` launcher requires Java 21 and locates the adjacent native libraries.
@@ -71,13 +71,13 @@ numeric point input and tool-specific settings. See [sketch types](sketch-types.
    Add numeric points (10,10) and (12,10), keeping Plane Z=0.
    Finish the sketch. Choose **Through cut**,
    select the plate body and confirm.
-4. Choose **File → Save As** to save a `.jcad` file. Open it again. Select the extrusion in the tree or
+4. Choose **File → Save As** to save a `.vxb` file. Open it again. Select the extrusion in the tree or
    timeline, change distance from 5 to 8 and press Enter or Apply.
 5. Move the timeline slider to 3: the cut is rolled back and volume is 19200
    mm³. Return to 4. Undo restores 5 mm thickness; Redo restores 8 mm.
 6. Save and choose **File → Export**. Select 3MF, choose a destination and export.
    A default export uses chordal tolerance 0.02 mm and angular tolerance 5°.
-7. In the installed CLI, run `cli inspect design.jcad --point 10,10,4`.
+7. In the installed CLI, run `cli inspect design.vxb --point 10,10,4`.
    Expected bounds are (0,0,0)–(60,40,8), volume 19099.469035085127 mm³,
    and `contains=false`. Exact tolerances remain 0.001 mm and 0.01 mm³.
 
@@ -141,7 +141,7 @@ New, Open and Close offer Save/Discard/Cancel. Workbench dialogs are modal
 overlays inside the document window, keeping keyboard focus stable under WSLg.
 File dialogs accept an editable path and offer native browsing. Saving and exporting use the export module's atomic
 publication. Existing export files require the explicit replacement checkbox.
-Camera and selection are transient and are not saved into `.jcad`.
+Camera and selection are transient and are not saved into `.vxb`.
 
 The view cube in the upper-right corner follows the viewport rotation and shows
 the X (red), Y (green), and Z (blue) axes. Hover over a face, beveled edge, or

@@ -41,7 +41,7 @@ class FormulaIntegrationTest {
         assertTrue(session.undo());
         verify(session, 30, "Width: 60");
         assertTrue(session.redo());
-        var path = directory.resolve("formula part.jcad");
+        var path = directory.resolve("formula part.vxb");
         DocumentWriter.save(session.document(), path, false);
         assertEquals(session.document(), DocumentReader.load(path));
         var reopened = new ModelSession(DocumentReader.load(path));

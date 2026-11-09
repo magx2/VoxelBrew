@@ -1,7 +1,7 @@
 # Full clean-check qualification — 2026-11-09
 
 Qualified implementation: `07045392d3dc0aba878ccf0b2a47061c5df20b40`.
-This includes construction tools, the new JCAD magic bytes, shared-edge profile
+This includes construction tools, the new VXB magic bytes, shared-edge profile
 boundaries and directional sketch selection. The subsequent report-only commit
 does not change implementation or tests.
 

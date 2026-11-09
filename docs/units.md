@@ -76,7 +76,7 @@ fields and existing numeric entry points remain doubles in their documented
 canonical units. These loops and wire formats convert at their boundaries;
 they do not allocate a quantity for each mesh vertex or solver residual. Integer
 counts, IDs, pixel coordinates and tolerances that are pure ratios remain counts
-or scalars. This preserves API-1 plugin payloads and the existing `.jcad` schema 6.
+or scalars. This preserves API-1 plugin payloads and the existing `.vxb` schema 6.
 The migration does not expand the parameter dialog's unit catalogue or change
 numeric-only CLI options into expression options.
 

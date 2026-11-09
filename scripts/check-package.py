@@ -159,7 +159,7 @@ if kind == "gui":
 else:
     assert run("--version").strip() == f"VoxelBrew {version} / vxb schema 10"
     document = workspace / "reference.vxb"
-    shutil.copy2(root / "fixtures/reference-8mm.jcad", document)
+    shutil.copy2(root / "fixtures/reference-8mm.vxb", document)
     history = run("history", document)
     run("body-style", document, "--body", "thickness.body", "--material", "PETG", "--color", "#FF0000")
     run("edit", document, "--feature", "thickness", "--field", "distance", "--value", 5)

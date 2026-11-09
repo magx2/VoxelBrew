@@ -163,7 +163,7 @@ def wait_for(predicate, timeout=40):
 
 
 assert "PACKAGE_UTIL_PASS" in run(probe + ["utilities"])
-older_document = workspace / "older writer.jcad"
+older_document = workspace / "older writer.vxb"
 assert "DOCUMENT_VERSION_PASS " + old_version in run(probe + ["write-document", old_version, older_document])
 older_document_bytes = older_document.read_bytes()
 
@@ -206,14 +206,14 @@ try:
     assert "version=" + new_version in (install / app_relative / "voxelbrew-install.properties").read_text()
     if kind == "cli":
         assert new_version in run([install / launcher_relative, "--version"])
-        assert "19099.469" in run([install / launcher_relative, "inspect", root / "fixtures/reference-8mm.jcad"])
+        assert "19099.469" in run([install / launcher_relative, "inspect", root / "fixtures/reference-8mm.vxb"])
         assert "Already current" in run([install / launcher_relative, "update", "check"])
         assert "Update available" in run([install / launcher_relative, "update", "check", "--force"])
     else:
         assert new_version in run([java, "-cp", str(install / app_relative / "*"), "dev.voxelbrew.gui.Launcher", "--version"])
     assert "DOCUMENT_READ_PASS" in run(probe + ["read-document", older_document])
     assert older_document.read_bytes() == older_document_bytes, "Opening must not modify an older document"
-    newer_document = workspace / "newer writer.jcad"
+    newer_document = workspace / "newer writer.vxb"
     assert "DOCUMENT_VERSION_PASS " + new_version in run(probe + ["write-document", new_version, newer_document])
     newer_document_bytes = newer_document.read_bytes()
     backup_java = backups[0] / runtime_relative / "bin" / ("java.exe" if os.name == "nt" else "java")

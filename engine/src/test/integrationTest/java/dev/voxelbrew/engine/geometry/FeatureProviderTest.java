@@ -104,7 +104,7 @@ class FeatureProviderTest {
                     assertThrows(IllegalStateException.class, result::bodies);
                     assertThrows(IllegalStateException.class, result::requireCompleteDocument);
                 }
-                Path file = directory.resolve(provider + ".jcad");
+                Path file = directory.resolve(provider + ".vxb");
                 DocumentWriter.save(document, file, false);
                 assertEquals(document, DocumentReader.load(file));
                 assertArrayEquals(
@@ -132,7 +132,7 @@ class FeatureProviderTest {
             assertFalse(body.solid().contains(0, 0, 4));
             assertTrue(body.solid().contains(5, 0, 4));
         }
-        Path file = directory.resolve("spacer.jcad");
+        Path file = directory.resolve("spacer.vxb");
         DocumentWriter.save(session.document(), file, false);
         session = new ModelSession(DocumentReader.load(file));
         var original = session.document();
@@ -174,7 +174,7 @@ class FeatureProviderTest {
         session.add(new Feature.SplitBody(
                 "split", new Feature.BodyRef("spacer", "body"), new Feature.SplitPlane(1, 0, 0, 0)));
         var before = session.document();
-        Path file = directory.resolve("repairable.jcad");
+        Path file = directory.resolve("repairable.vxb");
         DocumentWriter.save(before, file, false);
         Files.move(jar, hidden);
         var missing = DocumentReader.load(file);
@@ -240,7 +240,7 @@ class FeatureProviderTest {
         for (int version : new int[] {1, 999}) {
             var custom = new Feature.Custom("opaque", "example.spacer", "spacer", version, new byte[] {0, -1, 13, 10});
             var document = new CadDocument("future", List.of(custom), 1);
-            Path file = directory.resolve("payload-" + version + ".jcad");
+            Path file = directory.resolve("payload-" + version + ".vxb");
             DocumentWriter.save(document, file, false);
             try (var result = Evaluator.evaluate(DocumentReader.load(file), plugins)) {
                 assertFalse(result.valid());

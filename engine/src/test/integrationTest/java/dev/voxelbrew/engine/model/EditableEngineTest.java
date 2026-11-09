@@ -68,7 +68,7 @@ class EditableEngineTest {
         session.add(new Feature.SplitBody(
                 "split", new Feature.BodyRef("cut", "body"), new Feature.SplitPlane(1, 0, 0, 30)));
         session.setBodyStyle("split.positive", new BodyStyle("PLA", "#0000FF"));
-        Path file = directory.resolve("colored split bodies.jcad");
+        Path file = directory.resolve("colored split bodies.vxb");
         DocumentWriter.save(session.document(), file, false);
         var reopened = new ModelSession(DocumentReader.load(file));
         try (var evaluation = reopened.evaluate()) {
@@ -98,7 +98,7 @@ class EditableEngineTest {
     @Test
     void reopenEditAndRollbackPreserveStableIdsAndThroughHole() throws Exception {
         var session = reference();
-        Path file = directory.resolve("reference.jcad");
+        Path file = directory.resolve("reference.vxb");
         DocumentWriter.save(session.document(), file, false);
         var reopened = new ModelSession(DocumentReader.load(file));
         var ids = reopened.document().features().stream().map(Feature::id).toList();
@@ -151,7 +151,7 @@ class EditableEngineTest {
     void missingReferenceReopensAsFailedAndBlockedAndCanBeRepaired() throws Exception {
         var session = reference();
         session.replace(new Feature.Extrude("thickness", new Feature.ProfileRef("missing", "missing.profile"), 5));
-        Path file = directory.resolve("broken.jcad");
+        Path file = directory.resolve("broken.vxb");
         DocumentWriter.save(session.document(), file, false);
         var reopened = new ModelSession(DocumentReader.load(file));
         try (var result = reopened.evaluate()) {
@@ -189,7 +189,7 @@ class EditableEngineTest {
             session.add(new Feature.Sketch(
                     "rectangle", "profile", new Feature.Plane("plane", z), new Feature.Rectangle(0, 0, 60, 40)));
             session.add(new Feature.Extrude("extrude", new Feature.ProfileRef("rectangle", "profile"), 5));
-            Path file = directory.resolve("offset-" + z + ".jcad");
+            Path file = directory.resolve("offset-" + z + ".vxb");
             DocumentWriter.save(session.document(), file, false);
             var reopened = DocumentReader.load(file);
             assertEquals(session.document(), reopened);
@@ -230,7 +230,7 @@ class EditableEngineTest {
 
     @Test
     void truncatedAndCorruptFilesHaveUsefulErrorsAndPreserveOriginalOnFailedSave() throws Exception {
-        Path file = directory.resolve("part.jcad");
+        Path file = directory.resolve("part.vxb");
         var document = reference().document();
         DocumentWriter.save(document, file, false);
         byte[] valid = Files.readAllBytes(file);
@@ -256,7 +256,7 @@ class EditableEngineTest {
     @Test
     void newerSchemasAndUnknownFieldsCannotBeDestructivelyWritten() throws Exception {
         for (boolean newerVersion : new boolean[] {true, false}) {
-            Path file = directory.resolve("future-" + newerVersion + ".jcad");
+            Path file = directory.resolve("future-" + newerVersion + ".vxb");
             DocumentWriter.save(reference().document(), file, false);
             byte[] bytes = Files.readAllBytes(file);
             var message = DocumentProto.Document.parseFrom(Arrays.copyOfRange(bytes, 44, bytes.length)).toBuilder();
@@ -291,7 +291,7 @@ class EditableEngineTest {
     void olderSchemasAreRejectedWithoutRewritingTheSource() throws Exception {
         var original = reference().document();
         for (int version : new int[] {1, 2, 3, 4, 5}) {
-            Path file = directory.resolve("legacy-" + version + ".jcad");
+            Path file = directory.resolve("legacy-" + version + ".vxb");
             DocumentWriter.save(original, file, false);
             byte[] bytes = Files.readAllBytes(file);
             var message = DocumentProto.Document.parseFrom(Arrays.copyOfRange(bytes, 44, bytes.length)).toBuilder()
@@ -315,7 +315,7 @@ class EditableEngineTest {
 
     @Test
     void concurrentCreateNeverOverwritesAnotherDocument() throws Exception {
-        Path file = directory.resolve("race.jcad");
+        Path file = directory.resolve("race.vxb");
         var first = CadDocument.empty();
         var second = CadDocument.empty();
         var start = new java.util.concurrent.CountDownLatch(1);

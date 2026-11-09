@@ -48,7 +48,7 @@ deleting the active one returns to Default. Default cannot be renamed or deleted
 
 Each manager Apply or workbench configuration switch is one undo transaction.
 Undo/redo preserves parameter and feature identities. Timeline rollback stays
-independent. Configuration data and the active row are saved inside `.jcad`, not
+independent. Configuration data and the active row are saved inside `.vxb`, not
 in application preferences. Save/reopen starts a fresh undo history as usual.
 
 ## Expressions and units
@@ -90,7 +90,7 @@ zeros. Add a suffix explicitly, for example `="Width: " + $width + " mm"`.
 This is the CAD expression grammar, not an Excel workbook or cell-reference engine.
 
 Dimension and sketch-text content/font formulas are saved as parameter bindings
-in `.jcad`; configuration changes and undo/redo recalculate them. Text creation
+in `.vxb`; configuration changes and undo/redo recalculate them. Text creation
 height, angle and spacing formulas create driving sketch dimensions. Edit text
 through **Edit selected text…** to recover or replace its original formula.
 Unchanged text reuses persisted glyph outlines; changing its content/font needs
@@ -155,17 +155,17 @@ that `bin` directory on PATH. For an existing reference
 document whose feature IDs are `plate` and `thickness`:
 
 ```sh
-cli parameters set part.jcad --name width --unit mm --expression 60
-cli parameters set part.jcad --name thickness --unit mm --expression 5
-cli parameters bind part.jcad --feature plate --field width --expression width
-cli edit part.jcad --feature thickness --field distance --expression thickness
-cli configurations add part.jcad --name Large
-cli configurations set part.jcad --name Large --parameter width --expression 80
-cli configurations set part.jcad --name Large --parameter thickness --expression 8
-cli configurations activate part.jcad --name Large
-cli parameters list part.jcad
-cli configurations list part.jcad
-cli inspect part.jcad
+cli parameters set part.vxb --name width --unit mm --expression 60
+cli parameters set part.vxb --name thickness --unit mm --expression 5
+cli parameters bind part.vxb --feature plate --field width --expression width
+cli edit part.vxb --feature thickness --field distance --expression thickness
+cli configurations add part.vxb --name Large
+cli configurations set part.vxb --name Large --parameter width --expression 80
+cli configurations set part.vxb --name Large --parameter thickness --expression 8
+cli configurations activate part.vxb --name Large
+cli parameters list part.vxb
+cli configurations list part.vxb
+cli inspect part.vxb
 ```
 
 For constrained sketches, bind `--field constraint:<dimension-id>`; for example

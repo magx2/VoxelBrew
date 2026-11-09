@@ -129,7 +129,7 @@ an empty selection.
 
 ## UI test placement review
 
-Robot scenarios that only need an existing profile use committed `.jcad` files
+Robot scenarios that only need an existing profile use committed `.vxb` files
 under `gui/src/test/e2eTest/resources/dev/voxelbrew/gui/documents`. They contain
 60 × 40 mm constrained rectangles at Z=0 and Z=12, and a 5 mm plate.
 The files were generated manually with `ModelSession`, `Sketches.rectangle`

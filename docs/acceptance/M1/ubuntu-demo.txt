@@ -14,4 +14,4 @@ document=c9526cf0-52f0-4819-94b4-477d2804351d units=mm cursor=4 features=4
 2 OK Extrude[id=thickness, profile=ProfileRef[sketchId=plate, profileId=plate.profile], distance=8.0] rebuilt
 3 OK Sketch[id=hole, profileId=hole.profile, plane=Plane[id=origin-xy, offsetZ=0.0], profile=Circle[centerX=10.0, centerY=10.0, diameter=4.0]] rebuilt
 4 OK ThroughCut[id=cut, profile=ProfileRef[sketchId=hole, profileId=hole.profile], body=BodyRef[featureId=thickness, outputName=body]] rebuilt
-Saved editable reference part: build/demo/m1-ubuntu.jcad
+Saved editable reference part: build/demo/m1-ubuntu.vxb

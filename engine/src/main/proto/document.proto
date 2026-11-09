@@ -3,7 +3,7 @@ package voxelbrew.document.v1;
 option java_package = "dev.voxelbrew.engine.persistence.proto";
 option java_outer_classname = "DocumentProto";
 
-// .jcad envelope has a magic, length and SHA-256 before this message.
+// .vxb envelope has a magic, length and SHA-256 before this message.
 // Never reuse removed tags: reserve their numbers and names here.
 message Document {
   uint32 schema_version = 1;

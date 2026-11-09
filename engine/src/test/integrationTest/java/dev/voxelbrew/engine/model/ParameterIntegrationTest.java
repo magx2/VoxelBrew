@@ -144,7 +144,7 @@ class ParameterIntegrationTest {
         String before = DocumentCodec.fingerprint(s.document());
         s.selectConfiguration("Thick");
         assertNotEquals(before, DocumentCodec.fingerprint(s.document()));
-        var file = directory.resolve("parameter versions.jcad");
+        var file = directory.resolve("parameter versions.vxb");
         DocumentWriter.save(s.document(), file, false);
         assertEquals(s.document(), DocumentReader.load(file));
         try (var e = new ModelSession(DocumentReader.load(file)).evaluate()) {

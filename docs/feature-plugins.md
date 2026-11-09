@@ -21,7 +21,7 @@ intermediate solids; the returned independent `Solid` transfers to engine owners
 Native pointers, generated Protobuf classes and frontend types are absent from
 the contract. This is trusted in-process code, without a plugin sandbox.
 
-Custom definitions were introduced in `.jcad` schema 3; current schema 7 retains
+Custom definitions were introduced in `.vxb` schema 3; current schema 7 retains
 the provider ID, type, payload version and opaque bytes, and older documents remain
 readable. Unknown plugins or payload versions remain
 savable, with byte-for-byte payload preservation and stable IDs. Their rebuilds
@@ -47,12 +47,12 @@ for isolation tests; their listing diagnostics are expected.
 $plugins = 'fixtures/exporter-plugin/build/libs'
 $cli = '.\cli\build\install\cli\bin\cli.bat'
 & $cli feature-types --plugin-dir $plugins
-& $cli new spacer.jcad
-& $cli custom spacer.jcad --id spacer --provider example.spacer --type spacer --parameter height=5 --plugin-dir $plugins
-& $cli edit spacer.jcad --feature spacer --field height --value 8 --plugin-dir $plugins
-& $cli inspect spacer.jcad --point 0,0,4 --plugin-dir $plugins
-& $cli export spacer.jcad --format 3mf --output spacer.3mf --plugin-dir $plugins
-.\gui\build\install\gui\bin\gui.bat --open spacer.jcad --plugin-dir $plugins
+& $cli new spacer.vxb
+& $cli custom spacer.vxb --id spacer --provider example.spacer --type spacer --parameter height=5 --plugin-dir $plugins
+& $cli edit spacer.vxb --feature spacer --field height --value 8 --plugin-dir $plugins
+& $cli inspect spacer.vxb --point 0,0,4 --plugin-dir $plugins
+& $cli export spacer.vxb --format 3mf --output spacer.3mf --plugin-dir $plugins
+.\gui\build\install\gui\bin\gui.bat --open spacer.vxb --plugin-dir $plugins
 ```
 
 On Ubuntu use `./gradlew` and `cli/build/install/cli/bin/cli` (or the packaged

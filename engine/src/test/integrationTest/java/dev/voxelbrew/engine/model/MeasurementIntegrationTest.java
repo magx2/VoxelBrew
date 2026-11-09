@@ -64,11 +64,11 @@ class MeasurementIntegrationTest {
     @Test
     void currentFixturePreservesMeasurementsWhenSavingWithCurrentWriterVersion() throws Exception {
         byte[] original;
-        try (var resource = getClass().getResourceAsStream("/parameters/schema10-configurations.jcad")) {
+        try (var resource = getClass().getResourceAsStream("/parameters/schema10-configurations.vxb")) {
             assertNotNull(resource);
             original = resource.readAllBytes();
         }
-        var file = directory.resolve("old parameter versions.jcad");
+        var file = directory.resolve("old parameter versions.vxb");
         Files.write(file, original);
         var document = DocumentReader.load(file);
         assertEquals("Large", document.parameters().activeName());

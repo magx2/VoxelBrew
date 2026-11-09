@@ -81,7 +81,7 @@ class PrintingTest {
                 .withSupports(
                         List.of(new SupportVolume("block", "part", SupportVolume.Role.BLOCKER, 0, 0, 0, 10, 10, 8)));
         session.setPrintSetup(setup);
-        Path file = directory.resolve("placements.jcad");
+        Path file = directory.resolve("placements.vxb");
         DocumentWriter.save(session.document(), file, false);
         var reopened = new ModelSession(DocumentReader.load(file));
         assertEquals(session.document(), reopened.document());

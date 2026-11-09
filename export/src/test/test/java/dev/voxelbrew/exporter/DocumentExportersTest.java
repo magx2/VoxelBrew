@@ -73,7 +73,7 @@ class DocumentExportersTest {
     @Test
     void jsonPreservesCompleteSchemaWithoutChangingSaveMetadata() throws Exception {
         CadDocument document;
-        try (var input = getClass().getResourceAsStream("/fixtures/reference-schema10.jcad")) {
+        try (var input = getClass().getResourceAsStream("/fixtures/reference-schema10.vxb")) {
             document =
                     DocumentCodec.decode(java.util.Objects.requireNonNull(input).readAllBytes());
         }

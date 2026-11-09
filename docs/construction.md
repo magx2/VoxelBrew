@@ -2,7 +2,7 @@
 
 The desktop **Construct / Konstrukcja** menu contains twenty commands. Construction
 objects are editable history features, not model bodies. They participate in
-dependency checking, rollback, undo/redo and `.jcad` persistence, and do not add
+dependency checking, rollback, undo/redo and `.vxb` persistence, and do not add
 material to mesh exports.
 
 Choose references in the inspector. Activate an input field before picking a body

@@ -19,7 +19,7 @@ class DocumentImportersTest {
     @Test
     void vxbAndJsonPreserveCompleteEditableDefinitionsAndNeverWriteSource() throws Exception {
         CadDocument document;
-        try (var input = getClass().getResourceAsStream("/fixtures/reference-schema10.jcad")) {
+        try (var input = getClass().getResourceAsStream("/fixtures/reference-schema10.vxb")) {
             document = DocumentCodec.decode(Objects.requireNonNull(input).readAllBytes());
         }
         document.parameters().builtins().fileVersion(17);

@@ -40,7 +40,7 @@ class DependencyInjectionTest {
             throw new AssertionError("Unexpected update lookup");
         });
         var first = quiet(graph.commandLine());
-        Path destination = directory.resolve("virtual design.jcad");
+        Path destination = directory.resolve("virtual design.vxb");
         assertEquals(0, first.execute("new", destination.toString(), "--overwrite"));
         var second = quiet(graph.commandLine());
         assertEquals(0, second.execute("new", destination.toString()));

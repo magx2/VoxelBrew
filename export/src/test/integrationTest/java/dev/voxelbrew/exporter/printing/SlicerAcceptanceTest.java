@@ -74,7 +74,7 @@ class SlicerAcceptanceTest {
 
     GcodeJob slice(ModelSession s, String name) throws Exception {
         Files.createDirectories(artifacts);
-        DocumentWriter.save(s.document(), artifacts.resolve(name + ".jcad"), true);
+        DocumentWriter.save(s.document(), artifacts.resolve(name + ".vxb"), true);
         var messages = new ArrayList<String>();
         var result = SliceService.slice(
                 new PrusaSlicerBackend(),
@@ -135,7 +135,7 @@ class SlicerAcceptanceTest {
                         new SupportVolume("region-B", "roof", SupportVolume.Role.BLOCKER, 10, 20, 0, 20, 20, 12))));
         var blocked = slice(shelf, "shelf-blocked-B");
         assertFalse(support(blocked).stream().anyMatch(s -> s.z1() > 4 && s.z1() < 6 && inside(s, 35, 55, 45, 65)));
-        var reopened = new ModelSession(DocumentReader.load(artifacts.resolve("shelf-blocked-B.jcad")));
+        var reopened = new ModelSession(DocumentReader.load(artifacts.resolve("shelf-blocked-B.vxb")));
         var again = slice(reopened, "shelf-reopened");
         assertEquals(support(blocked), support(again));
         var model =

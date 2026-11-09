@@ -40,8 +40,8 @@ STL mesh-to-editable-CAD and STEP import remain outside the implemented workflow
 
 ## Document exporters
 
-The native document extension and format ID are `vxb`. Existing `.jcad` files
-remain readable through the same codec; the binary envelope and schema are unchanged.
+The native document extension and format ID are `vxb`. The binary envelope and schema
+are unchanged, so existing document contents remain readable through the same codec.
 Save As defaults to `.vxb`, while saving an already-open project keeps its current path.
 
 `DocumentSink.save` is replaced by `Exporter<R>.export(CadDocument, ExportWindow)`.

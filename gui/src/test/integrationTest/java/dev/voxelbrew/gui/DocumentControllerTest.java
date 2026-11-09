@@ -22,7 +22,7 @@ class DocumentControllerTest {
     @Test
     void olderFilesUpgradeAndFutureFilesPreserveCleanAndDirtyDocuments() throws Exception {
         var original = new CadDocument("versioned-design", List.of(sketch("plate", 0)), 1);
-        Path file = directory.resolve("older version design.jcad");
+        Path file = directory.resolve("older version design.vxb");
         DocumentWriter.save(original, file, false);
         byte[] saved = Files.readAllBytes(file);
         var message = dev.voxelbrew.engine.persistence.proto.DocumentProto.Document.parseFrom(
@@ -30,7 +30,7 @@ class DocumentControllerTest {
         assertEquals(dev.voxelbrew.util.Version.version(), message.getApplicationVersion());
         byte[] older = versionedDocument(message, "0.0.0");
         Files.write(file, older);
-        Path futureFile = directory.resolve("future version design.jcad");
+        Path futureFile = directory.resolve("future version design.vxb");
         byte[] future = versionedDocument(message, "65534.65534.65534");
         Files.write(futureFile, future);
         try (var controller = new DocumentController(callbacks::add)) {
@@ -90,7 +90,7 @@ class DocumentControllerTest {
             controller.add(sketch("plate", 0));
             controller.add(new Feature.Extrude("solid", new Feature.ProfileRef("plate", "plate.profile"), 5));
             await(() -> !controller.rebuilding());
-            Path file = directory.resolve("body style.jcad");
+            Path file = directory.resolve("body style.vxb");
             controller.save(file, false);
             await(() -> !controller.ioBusy());
             assertFalse(controller.dirty());
@@ -131,7 +131,7 @@ class DocumentControllerTest {
             assertTrue(controller.dirty());
             assertNull(controller.path());
             assertEquals(76800, controller.build().bodies().getFirst().volume(), .01);
-            Path saved = directory.resolve("saved.jcad");
+            Path saved = directory.resolve("saved.vxb");
             controller.save(saved, false);
             await(() -> !controller.ioBusy());
             assertFalse(controller.dirty());
@@ -240,7 +240,7 @@ class DocumentControllerTest {
             assertFalse(controller.build().valid());
             assertTrue(controller.build().bodies().isEmpty());
             assertEquals(before, controller.snapshot());
-            Path file = directory.resolve("missing plugin.jcad");
+            Path file = directory.resolve("missing plugin.vxb");
             controller.save(file, false);
             await(() -> !controller.ioBusy());
             assertEquals(before.document(), DocumentReader.load(file));
@@ -344,7 +344,7 @@ class DocumentControllerTest {
             controller.commitPreview();
             await(() -> !controller.rebuilding());
             assertTrue(controller.dirty());
-            Path file = directory.resolve("saved design.jcad");
+            Path file = directory.resolve("saved design.vxb");
             var saving = controller.save(file, false);
             await(saving::isDone);
             assertFalse(controller.dirty());
@@ -356,8 +356,8 @@ class DocumentControllerTest {
             await(() -> opening.isDone() && !controller.rebuilding());
             assertEquals(original, controller.snapshot().document());
             assertFalse(controller.dirty());
-            Files.write(directory.resolve("bad.jcad"), new byte[] {1, 2, 3});
-            var failed = controller.open(directory.resolve("bad.jcad"));
+            Files.write(directory.resolve("bad.vxb"), new byte[] {1, 2, 3});
+            var failed = controller.open(directory.resolve("bad.vxb"));
             await(failed::isDone);
             assertTrue(failed.isCompletedExceptionally());
             assertEquals(original, controller.snapshot().document());
@@ -369,7 +369,7 @@ class DocumentControllerTest {
     void brokenDefinitionsClearGeometryAndRemainRepairable() throws Exception {
         var s = sketch("plate", 0);
         var invalid = new Feature.Extrude("solid", new Feature.ProfileRef("missing", "missing.profile"), 8);
-        Path file = directory.resolve("broken.jcad");
+        Path file = directory.resolve("broken.vxb");
         DocumentWriter.save(new CadDocument("broken", List.of(s, invalid), 2), file, false);
         try (var controller = new DocumentController(callbacks::add)) {
             var opening = controller.open(file);
@@ -390,7 +390,7 @@ class DocumentControllerTest {
             controller.add(sketch("plate", 0));
             await(() -> !controller.rebuilding());
             var captured = controller.snapshot().document();
-            var file = directory.resolve("save snapshot.jcad");
+            var file = directory.resolve("save snapshot.vxb");
             var saving = controller.save(file, false);
             controller.edit("plate", "width", 61);
             await(() -> saving.isDone() && !controller.rebuilding());

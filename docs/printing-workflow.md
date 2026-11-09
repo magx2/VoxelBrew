@@ -43,7 +43,7 @@ an unqualified executable before slicing. The slicer is not bundled with VoxelBr
 **Split body** in the Design view creates one editable operation. Select an
 axis-aligned plane and signed offset; the two outputs are `negative` and
 `positive`. The inspector edits the offset and repairs the input feature/output.
-CLI: `cli split part.jcad --id halves --body-feature cut --axis X --offset 30`.
+CLI: `cli split part.vxb --id halves --body-feature cut --axis X --offset 30`.
 Each half exports separately with `--body halves.negative` or `halves.positive`.
 
 The **Print** workspace has Placement, Process, Supports and Job tabs. Add a CAD
@@ -53,7 +53,7 @@ its revision-local ID. Placements never change CAD coordinates. All these edits
 participate in undo/redo. Removing a referenced instance retains support
 instructions with a repair diagnostic.
 
-`.jcad` schema 2 persists a versioned print setup: instance identities and rigid
+`.vxb` schema 2 persists a versioned print setup: instance identities and rigid
 transforms, backend/printer/material references, process settings, and attached
 support volumes. Schema 1 files still open with an empty setup; newer/unknown
 fields remain protected. Toolpaths, camera, appearance and selection remain

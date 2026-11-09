@@ -21,7 +21,7 @@ export to engine, never in the opposite direction.
 | `obj` | Wavefront OBJ mesh, with instance transforms applied | `ObjExporter` |
 | `prusa-project` | PrusaSlicer project from a complete manufacturing view | `printing.PrusaProjectExporter` |
 
-The native document extension is `.vxb`. Existing `.jcad` documents remain readable.
+The native document extension is `.vxb`. Existing `.vxb` documents remain readable.
 **File > Save** uses the native document writer; **File > Export** lists discovered
 exporters through one registry. Exporting JSON or STEP does not change the active
 project path or save counter. STEP exports complete design solids, without print-bed

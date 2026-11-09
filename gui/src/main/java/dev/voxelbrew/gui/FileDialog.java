@@ -59,9 +59,6 @@ final class FileDialog {
             chooser.setTitle(dialog.getTitle());
             chooser.getExtensionFilters()
                     .add(new FileChooser.ExtensionFilter("VoxelBrew (*." + extension + ")", "*." + extension));
-            if (!save && extension.equals("vxb"))
-                chooser.getExtensionFilters()
-                        .add(new FileChooser.ExtensionFilter("Legacy VoxelBrew (*.jcad)", "*.jcad"));
             try {
                 Path selected = Path.of(path.evaluatedText()).toAbsolutePath();
                 Path parent = selected.getParent();

@@ -9,9 +9,9 @@ The installed `cli`/`cli.bat` supports:
 
 ```text
 cli exporters --plugin-dir "path with spaces/plugins"
-cli export part.jcad --format stl --body thickness.body --output part.stl
-cli export part.jcad --format 3mf --output part.3mf --chord-tolerance 0.02 --angular-tolerance 5
-cli export part.jcad --format probe --plugin-dir "path with spaces/plugins" --option label=custom --output report.txt
+cli export part.vxb --format stl --body thickness.body --output part.stl
+cli export part.vxb --format 3mf --output part.3mf --chord-tolerance 0.02 --angular-tolerance 5
+cli export part.vxb --format probe --plugin-dir "path with spaces/plugins" --option label=custom --output report.txt
 ```
 
 `--body` is optional for a single body. STL requires one instance; 3MF preserves

@@ -37,7 +37,7 @@ class SketchPlaneTest {
                         "cut",
                         new Feature.ProfileRef("hole", "hole.profile"),
                         new Feature.BodyRef("thickness", "body")));
-                var file = directory.resolve(plane.id() + distance + ".jcad");
+                var file = directory.resolve(plane.id() + distance + ".vxb");
                 DocumentWriter.save(session.document(), file, false);
                 var reopened = new ModelSession(DocumentReader.load(file));
                 assertEquals(session.document(), reopened.document());
@@ -83,7 +83,7 @@ class SketchPlaneTest {
         }
         session.add(new Feature.Sketch("attached", "attached.profile", attachment, new Feature.Rectangle(5, 5, 10, 8)));
         session.add(new Feature.Extrude("boss", new Feature.ProfileRef("attached", "attached.profile"), 3));
-        var file = directory.resolve("attached sketch.jcad");
+        var file = directory.resolve("attached sketch.vxb");
         DocumentWriter.save(session.document(), file, false);
         session = new ModelSession(DocumentReader.load(file));
         session.editDimension("thickness", "distance", 8);

@@ -26,8 +26,8 @@ class FormulaExpressionsTest {
     @Test
     void literalFieldsRemainUsableWhenRepairingBrokenParameters() {
         var broken = ParameterSet.empty().put("width", ParameterUnit.MM, "=$missing", "");
-        assertEquals("repair.jcad", broken.text("repair.jcad"));
-        assertEquals("repair.jcad", broken.text("=\"repair\"+\".jcad\""));
+        assertEquals("repair.vxb", broken.text("repair.vxb"));
+        assertEquals("repair.vxb", broken.text("=\"repair\"+\".vxb\""));
         assertEquals(5, broken.value("=2+3", ParameterUnit.MM));
         assertThrows(IllegalArgumentException.class, () -> broken.text("=\"Width: \"+$width"));
         assertThrows(IllegalArgumentException.class, broken::validate);

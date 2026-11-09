@@ -142,7 +142,7 @@ class WorkbenchUiTest {
             g = g.add(constraint);
         var session = new ModelSession(CadDocument.empty());
         session.add(new Feature.Sketch("sketch", "profile", Feature.Plane.origin("XY"), new Feature.Constrained(g)));
-        Path file = directory.resolve("constraint-colors.jcad");
+        Path file = directory.resolve("constraint-colors.vxb");
         DocumentWriter.save(session.document(), file, false);
         open(file);
         choice("appearance", 1);
@@ -410,7 +410,7 @@ class WorkbenchUiTest {
         assertEquals(
                 "=$plateWidth",
                 document().parameters().binding(new ParameterSet.Target(feature.id(), "constraint:" + distance.id())));
-        Path saved = directory.resolve("line-distance-formula.jcad");
+        Path saved = directory.resolve("line-distance-formula.vxb");
         save(saved);
         open(saved);
         assertEquals(
@@ -462,7 +462,7 @@ class WorkbenchUiTest {
         session.setBodyStyle("thickness.body", new BodyStyle("PETG", "#FF0000"));
         session.add(new Feature.Sketch("boss", "profile", new Feature.Plane("top", 8), new Feature.Circle(42, 22, 12)));
         session.add(new Feature.Extrude("boss-solid", new Feature.ProfileRef("boss", "profile"), 10));
-        Path file = directory.resolve("technical rendering.jcad");
+        Path file = directory.resolve("technical rendering.vxb");
         DocumentWriter.save(session.document(), file, false);
         open(file);
         var snapshot = fx(() -> workbench.controller().snapshot());
@@ -579,7 +579,7 @@ class WorkbenchUiTest {
 
     @Test
     void compactHistorySupportsPickingDraggingPlaybackAndIndependentUndo() throws Exception {
-        openPrepared("rectangle-0.jcad");
+        openPrepared("rectangle-0.vxb");
         click("extrude");
         text("extrude-distance", "8");
         click("commit-extrusion");
@@ -701,7 +701,7 @@ class WorkbenchUiTest {
             session.add(new Feature.Sketch(
                     "s" + i, "p" + i, Feature.Plane.origin("XY"), new Feature.Rectangle(0, 0, 20, 10)));
         session.add(new Feature.Extrude("broken", new Feature.ProfileRef("missing", "missing"), 5));
-        Path file = directory.resolve("long history.jcad");
+        Path file = directory.resolve("long history.vxb");
         DocumentWriter.save(session.document(), file, false);
         open(file);
         assertTrue(fx(() -> node("#timeline-play").isDisabled()));
@@ -743,7 +743,7 @@ class WorkbenchUiTest {
         var session = new ModelSession(CadDocument.empty());
         session.add(new Feature.Sketch("round", "profile", Feature.Plane.origin("XY"), new Feature.Circle(40, 30, 20)));
         session.add(new Feature.Extrude("cylinder", new Feature.ProfileRef("round", "profile"), 15));
-        var file = directory.resolve("curved support.jcad");
+        var file = directory.resolve("curved support.vxb");
         DocumentWriter.save(session.document(), file, false);
         open(file);
         var before = fx(() -> workbench.controller().snapshot());
@@ -816,7 +816,7 @@ class WorkbenchUiTest {
 
     @Test
     void bodyFaceSketchFollowsUpstreamEditAndSupportsPlaneRepair() throws Exception {
-        openPrepared("plate-5mm.jcad");
+        openPrepared("plate-5mm.vxb");
         for (int palette : List.of(1, 2)) {
             choice("appearance", palette);
             click("constrained-sketch");
@@ -849,7 +849,7 @@ class WorkbenchUiTest {
         text("extrude-distance", "3");
         click("commit-extrusion");
         ready();
-        Path saved = directory.resolve("face sketch.jcad");
+        Path saved = directory.resolve("face sketch.vxb");
         save(saved);
         open(saved);
         click("history-1");
@@ -1093,7 +1093,7 @@ class WorkbenchUiTest {
         assertEquals(original, document());
         click("window-close");
         click("unsaved-save");
-        Path file = directory.resolve("Saved by integrated Close.jcad");
+        Path file = directory.resolve("Saved by integrated Close.vxb");
         text("file-path", file.toString());
         click("file-confirm");
         awaitWindowClosed();
@@ -1217,7 +1217,7 @@ class WorkbenchUiTest {
         click("body-material-name");
         assertNull(fx(() -> ((TreeView<?>) node("#model-tree")).getEditingItem()));
         assertEquals(renamed, fx(() -> workbench.controller().snapshot().revision()));
-        Path file = directory.resolve("named bodies.jcad");
+        Path file = directory.resolve("named bodies.vxb");
         click("save-as");
         text("file-path", file.toString());
         click("file-confirm");
@@ -1405,7 +1405,7 @@ class WorkbenchUiTest {
                     new Feature.Rectangle(i * 40, 0, 30, 30)));
             session.add(new Feature.Extrude("solid" + i, new Feature.ProfileRef("sketch" + i, "profile" + i), 5));
         }
-        Path file = directory.resolve("red PETG and blue PLA.jcad");
+        Path file = directory.resolve("red PETG and blue PLA.vxb");
         DocumentWriter.save(session.document(), file, false);
         click("open");
         text("file-path", file.toString());
@@ -1599,7 +1599,7 @@ class WorkbenchUiTest {
         click("commit-extrusion");
         ready();
         var part = document();
-        Path file = directory.resolve("polish-model.jcad");
+        Path file = directory.resolve("polish-model.vxb");
         save(file);
         click("open");
         text("file-path", file.toString());
@@ -2425,7 +2425,7 @@ class WorkbenchUiTest {
 
     @Test
     void nativeAndJsonImportsOpenUnsavedEditableDesignsAndCancelWithoutChanges() throws Exception {
-        Path original = PreparedDocuments.copy("plate-5mm.jcad", directory);
+        Path original = PreparedDocuments.copy("plate-5mm.vxb", directory);
         var expected = DocumentReader.load(original);
         Path json = directory.resolve("editable plate.json");
         Files.writeString(json, dev.voxelbrew.engine.persistence.DocumentCodec.encodeJson(expected));
@@ -2476,7 +2476,7 @@ class WorkbenchUiTest {
                 76800,
                 fx(() -> workbench.controller().build().bodies().getFirst().volume()),
                 .01);
-        Path saved = directory.resolve("imported design.jcad");
+        Path saved = directory.resolve("imported design.vxb");
         save(saved);
         assertFalse(fx(() -> workbench.controller().dirty()));
         var before = document();
@@ -2578,7 +2578,7 @@ class WorkbenchUiTest {
         var session = new ModelSession(CadDocument.empty());
         session.add(new Feature.Sketch(
                 "legacy", "legacy.profile", new Feature.Plane("origin-xy", 0), new Feature.Rectangle(0, 0, 60, 40)));
-        Path file = directory.resolve("existing rectangle.jcad");
+        Path file = directory.resolve("existing rectangle.vxb");
         DocumentWriter.save(session.document(), file, false);
         open(file);
         click("history-0");
@@ -2942,7 +2942,7 @@ class WorkbenchUiTest {
                         .getRoot()
                         .lookupAll(".sketch-curves")
                         .size()));
-        var file = directory.resolve("formula fields.jcad");
+        var file = directory.resolve("formula fields.vxb");
         save(file);
         var saved = document();
         open(file);
@@ -2962,7 +2962,7 @@ class WorkbenchUiTest {
         click("constraint-cancel");
         ready();
         assertEquals(saved, document());
-        Files.copy(file, artifacts.resolve("formula-fields.jcad"), StandardCopyOption.REPLACE_EXISTING);
+        Files.copy(file, artifacts.resolve("formula-fields.vxb"), StandardCopyOption.REPLACE_EXISTING);
         Files.writeString(artifacts.resolve("formula-cli-inspection.txt"), cli("inspect", file.toString()));
     }
 
@@ -3048,7 +3048,7 @@ class WorkbenchUiTest {
                 fx(() -> workbench.controller().snapshot().document().features().stream()
                         .map(Feature::id)
                         .toList()));
-        Path file = directory.resolve("parameter versions.jcad");
+        Path file = directory.resolve("parameter versions.vxb");
         save(file);
         open(file);
         ready();
@@ -3072,7 +3072,7 @@ class WorkbenchUiTest {
         var measured = java.util.regex.Pattern.compile("volume=([0-9.eE+\\-]+)").matcher(inspection);
         assertTrue(measured.find(), inspection);
         assertEquals(25600, Double.parseDouble(measured.group(1)), .02, inspection);
-        Files.copy(file, artifacts.resolve("gui-parameter-variants.jcad"), StandardCopyOption.REPLACE_EXISTING);
+        Files.copy(file, artifacts.resolve("gui-parameter-variants.vxb"), StandardCopyOption.REPLACE_EXISTING);
         Files.writeString(artifacts.resolve("parameter-cli-inspection.txt"), inspection);
     }
 
@@ -3205,7 +3205,7 @@ class WorkbenchUiTest {
         ready();
         assertEquals(3, fx(() -> workbench.controller().build().bodies().size()));
         assertEquals((50 * Math.PI + 80 + 4 * Math.PI + 25 * Math.PI - 50) * 5, volume(), .02);
-        var file = directory.resolve("ellipse slot conic.jcad");
+        var file = directory.resolve("ellipse slot conic.vxb");
         save(file);
         open(file);
         ready();
@@ -3275,7 +3275,7 @@ class WorkbenchUiTest {
         key(KeyCode.ENTER);
         ready();
         assertEquals(4, fx(() -> workbench.controller().build().bodies().size()));
-        var file = directory.resolve("splines and editable text.jcad");
+        var file = directory.resolve("splines and editable text.vxb");
         save(file);
         var saved = document();
         click("undo");
@@ -3441,7 +3441,7 @@ class WorkbenchUiTest {
         key(KeyCode.ENTER);
         ready();
         assertEquals(19099.469035085127, volume(), 0.01);
-        Path file = directory.resolve("GUI constrained plate.jcad");
+        Path file = directory.resolve("GUI constrained plate.vxb");
         save(file);
         var saved = DocumentReader.load(file);
         click("open");
@@ -3503,7 +3503,7 @@ class WorkbenchUiTest {
                 .isEmpty()));
         click("constraint-cancel");
         assertEquals(beforeCancel, fx(() -> workbench.controller().snapshot()));
-        Files.copy(file, artifacts.resolve("gui-constrained-plate.jcad"), StandardCopyOption.REPLACE_EXISTING);
+        Files.copy(file, artifacts.resolve("gui-constrained-plate.vxb"), StandardCopyOption.REPLACE_EXISTING);
         Files.writeString(artifacts.resolve("constrained-cli-inspection.txt"), inspection);
     }
 
@@ -3792,7 +3792,7 @@ class WorkbenchUiTest {
         assertEquals(empty, fx(() -> workbench.controller().snapshot()));
         assertFalse(fx(() -> workbench.controller().dirty()));
 
-        openPrepared("rectangle-0.jcad");
+        openPrepared("rectangle-0.vxb");
         var top = fx(() -> workbench.viewport().orientationProperty().get());
         double fittedWidth = fx(() -> workbench
                 .viewport()
@@ -3834,7 +3834,7 @@ class WorkbenchUiTest {
         ready();
         key(KeyCode.ENTER);
         ready();
-        save(directory.resolve("grid navigation.jcad"));
+        save(directory.resolve("grid navigation.vxb"));
         click("view-cube-home");
         modelClick(30, 20, 5);
         var selection = fx(() -> ((Label) workbench.lookup(".selection-title")).getText());
@@ -3878,8 +3878,8 @@ class WorkbenchUiTest {
 
     @Test
     void viewCubeSnapsOrbitsAndFitsWithoutChangingTheDocument() throws Exception {
-        openPrepared("plate-5mm.jcad");
-        save(directory.resolve("navigation.jcad"));
+        openPrepared("plate-5mm.vxb");
+        save(directory.resolve("navigation.vxb"));
         var snapshot = fx(() -> workbench.controller().snapshot());
         click("view-cube-home");
         var point = new Point3D(60, 40, 5);
@@ -3999,10 +3999,10 @@ class WorkbenchUiTest {
         click("cut-confirm");
         ready();
         assertEquals(11937.168146928205, volume(), 0.01);
-        Path file = directory.resolve("GUI reference.jcad");
+        Path file = directory.resolve("GUI reference.vxb");
         save(file);
         var before = DocumentReader.load(file);
-        Path cliFile = directory.resolve("CLI reference.jcad");
+        Path cliFile = directory.resolve("CLI reference.vxb");
         Files.copy(file, cliFile);
         click("open");
         text("file-path", file.toString());
@@ -4112,7 +4112,7 @@ class WorkbenchUiTest {
         assertFalse(Arrays.equals(
                 Files.readAllBytes(artifacts.resolve("workbench-light.png")),
                 Files.readAllBytes(artifacts.resolve("workbench-dark.png"))));
-        Files.copy(file, artifacts.resolve("gui-reference-8mm.jcad"), StandardCopyOption.REPLACE_EXISTING);
+        Files.copy(file, artifacts.resolve("gui-reference-8mm.vxb"), StandardCopyOption.REPLACE_EXISTING);
         Files.copy(exported, artifacts.resolve("gui-reference.3mf"), StandardCopyOption.REPLACE_EXISTING);
         Files.copy(external, artifacts.resolve("external-provider.txt"), StandardCopyOption.REPLACE_EXISTING);
         Files.writeString(artifacts.resolve("cli-inspection.txt"), inspection);
@@ -4146,7 +4146,7 @@ class WorkbenchUiTest {
         assertEquals(Math.PI * 96 * 5, volume(), 0.01);
         click("redo");
         ready();
-        Path file = directory.resolve("GUI spacer.jcad");
+        Path file = directory.resolve("GUI spacer.vxb");
         save(file);
         var before = DocumentReader.load(file);
         Path plugins = directory.resolve("plugins with spaces"), jar = plugins.resolve("provider.jar");
@@ -4254,7 +4254,7 @@ class WorkbenchUiTest {
 
     @Test
     void signedExtrusionDragAndEscapeHaveExactUndoSemantics() throws Exception {
-        openPrepared("rectangle-12.jcad");
+        openPrepared("rectangle-12.vxb");
         click("extrude");
         ready();
         text("extrude-distance", "-3");
@@ -4322,7 +4322,7 @@ class WorkbenchUiTest {
 
     @Test
     void invalidDimensionsAndBrokenInputRepairStayEditable() throws Exception {
-        openPrepared("rectangle-12.jcad"); // A parallel offset plane is editable; the origin plane is fixed.
+        openPrepared("rectangle-12.vxb"); // A parallel offset plane is editable; the origin plane is fixed.
         var original = document();
         text("dimension-offsetZ", "NaN");
         key(KeyCode.ENTER);
@@ -4331,11 +4331,11 @@ class WorkbenchUiTest {
         var sketch = (Feature.Sketch) original.features().getFirst();
         var broken = new CadDocument(
                 "broken", List.of(sketch, new Feature.Extrude("bad", new Feature.ProfileRef("missing", "none"), 8)), 2);
-        Path file = directory.resolve("broken.jcad");
+        Path file = directory.resolve("broken.vxb");
         DocumentWriter.save(broken, file, false);
         // Open through the actual file action after saving the current document to avoid an
         // unrelated prompt.
-        save(directory.resolve("scratch.jcad"));
+        save(directory.resolve("scratch.vxb"));
         click("open");
         text("file-path", file.toString());
         click("file-confirm");
@@ -4626,7 +4626,7 @@ class WorkbenchUiTest {
 
     @Test
     void fileShortcutsAndUnsavedSaveDiscardCancelProtectDocuments() throws Exception {
-        openPrepared("rectangle-12.jcad");
+        openPrepared("rectangle-12.vxb");
         text("dimension-offsetZ", "13");
         key(KeyCode.ENTER);
         ready();
@@ -4635,7 +4635,7 @@ class WorkbenchUiTest {
         click("new");
         click("unsaved-cancel");
         assertEquals(original, document());
-        Path file = directory.resolve("Save As ~ design.jcad");
+        Path file = directory.resolve("Save As ~ design.vxb");
         shortcut(KeyCode.S, true);
         text("file-path", file.toString());
         click("file-confirm");
@@ -4675,7 +4675,7 @@ class WorkbenchUiTest {
 
     @Test
     void printingSplitPlacementPetgAndActualPreviewMatchCli() throws Exception {
-        openPrepared("rectangle-0.jcad");
+        openPrepared("rectangle-0.vxb");
         click("extrude");
         ready();
         text("extrude-distance", "8");
@@ -4714,7 +4714,7 @@ class WorkbenchUiTest {
         click("print-apply-process");
         ready();
         assertEquals("PETG", document().printSetup().materialId());
-        Path file = directory.resolve("GUI print setup.jcad");
+        Path file = directory.resolve("GUI print setup.vxb");
         save(file);
         click("open");
         text("file-path", file.toString());
@@ -4763,7 +4763,7 @@ class WorkbenchUiTest {
                 "--slicer",
                 PrusaSlicerBackend.defaultExecutable().toString());
         assertEquals(actual.segments(), GcodeReader.read(cliJob).segments());
-        Files.copy(file, evidence.resolve("GUI print setup.jcad"), StandardCopyOption.REPLACE_EXISTING);
+        Files.copy(file, evidence.resolve("GUI print setup.vxb"), StandardCopyOption.REPLACE_EXISTING);
         Files.copy(job, evidence.resolve("GUI printer job.gcode"), StandardCopyOption.REPLACE_EXISTING);
         click("print-tab-process");
         text("print-layer-height", "0.3");
@@ -4779,7 +4779,7 @@ class WorkbenchUiTest {
     void futureFileErrorsAreVisibleAndKeepTheCurrentDesign() throws Exception {
         // Version compatibility and byte preservation are covered headlessly in DocumentControllerTest.
         // Keep only the real file dialog -> status label -> current design wiring here.
-        Path file = directory.resolve("current design.jcad");
+        Path file = directory.resolve("current design.vxb");
         DocumentWriter.save(
                 new CadDocument(
                         "current",
@@ -4792,7 +4792,7 @@ class WorkbenchUiTest {
         var before = document();
         var saved = Files.readAllBytes(file);
         var message = DocumentProto.Document.parseFrom(Arrays.copyOfRange(saved, 44, saved.length));
-        var futureFile = directory.resolve("future design.jcad");
+        var futureFile = directory.resolve("future design.vxb");
         Files.write(futureFile, versionedDocument(message, "65534.65534.65534"));
         click("open");
         text("file-path", futureFile.toString());

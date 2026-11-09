@@ -43,7 +43,7 @@ class ConstrainedSketchTest {
         session.add(sketch(g));
         session.add(new Feature.Extrude("thickness", new Feature.ProfileRef("sketch", "profile"), 8));
         assertEquals(19099.469035085127, volume(session), 0.01);
-        var file = directory.resolve("constrained plate.jcad");
+        var file = directory.resolve("constrained plate.vxb");
         DocumentWriter.save(session.document(), file, false);
         assertEquals(session.document(), DocumentReader.load(file));
         session = new ModelSession(DocumentReader.load(file));
@@ -113,7 +113,7 @@ class ConstrainedSketchTest {
                         sketch(g.add(wrong)),
                         new Feature.Extrude("extrude", new Feature.ProfileRef("sketch", "profile"), 5)),
                 2);
-        var file = directory.resolve("repairable constraints.jcad");
+        var file = directory.resolve("repairable constraints.vxb");
         DocumentWriter.save(broken, file, false);
         assertEquals(broken, DocumentReader.load(file));
         try (var result = Evaluator.evaluate(DocumentReader.load(file))) {

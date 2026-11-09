@@ -16,7 +16,7 @@ class PreparedDocumentsTest {
     @Test
     void savedInputsReopenWithEditableProfilesAndExactPlateGeometry() throws Exception {
         for (int offset : new int[] {0, 12}) {
-            var document = DocumentReader.load(PreparedDocuments.copy("rectangle-" + offset + ".jcad", directory));
+            var document = DocumentReader.load(PreparedDocuments.copy("rectangle-" + offset + ".vxb", directory));
             assertEquals(1, document.cursor());
             var sketch =
                     assertInstanceOf(Feature.Sketch.class, document.features().getFirst());
@@ -28,7 +28,7 @@ class PreparedDocumentsTest {
                             .entities()
                             .size());
         }
-        var plate = DocumentReader.load(PreparedDocuments.copy("plate-5mm.jcad", directory));
+        var plate = DocumentReader.load(PreparedDocuments.copy("plate-5mm.vxb", directory));
         assertEquals(2, plate.cursor());
         try (var evaluation = Evaluator.evaluate(plate)) {
             assertEquals(1, evaluation.bodies().size());

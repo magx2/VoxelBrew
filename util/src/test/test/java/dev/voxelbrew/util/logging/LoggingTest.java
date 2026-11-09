@@ -72,7 +72,7 @@ class LoggingTest {
                 assertFalse(log.isTraceEnabled());
                 log.trace("hidden trace");
                 log.debug("revision {}", 42);
-                log.warn("Cannot read {}", "plate.jcad", new IOException("file unavailable"));
+                log.warn("Cannot read {}", "plate.vxb", new IOException("file unavailable"));
                 log.warn("Console UTF-8: Zażółć ☕");
             } finally {
                 Logging.close();
@@ -84,7 +84,7 @@ class LoggingTest {
         String console = stderr.toString(StandardCharsets.UTF_8);
         assertFalse(console.contains("revision"));
         assertFalse(console.contains("hidden trace"));
-        assertEquals(1, console.split("Cannot read plate.jcad", -1).length - 1);
+        assertEquals(1, console.split("Cannot read plate.vxb", -1).length - 1);
         assertTrue(console.contains("java.io.IOException: file unavailable"));
         assertTrue(console.contains("Console UTF-8: Zażółć ☕"));
         assertArrayEquals(rootHandlers, Logger.getLogger("").getHandlers());
@@ -94,7 +94,7 @@ class LoggingTest {
             String content = Files.readString(paths.getFirst());
             assertTrue(content.contains("revision 42"));
             assertFalse(content.contains("hidden trace"));
-            assertEquals(1, content.split("Cannot read plate.jcad", -1).length - 1);
+            assertEquals(1, content.split("Cannot read plate.vxb", -1).length - 1);
             assertTrue(content.contains("java.io.IOException: file unavailable"));
         }
     }

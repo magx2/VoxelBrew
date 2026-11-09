@@ -16,7 +16,7 @@ own file readers, writers and format-specific pipelines. See [file I/O](file-io.
 
 Updater UI/commands and system appearance detection remain in the frontends.
 The engine's version resource remains as the CAD artifact identity, independently
-checked alongside the utility identity in packaged installations. No `.jcad`
+checked alongside the utility identity in packaged installations. No `.vxb`
 schema or public CAD plugin contracts change.
 
 ## Application version
@@ -59,7 +59,7 @@ UTF-8 catalogs `messages_en.properties` and `messages_pl.properties` are in
 `util/src/main/resources/dev/voxelbrew/util/i18n/`. The GUI's **Settings → Language… / Ustawienia → Język…**
 dialog selects System, English or Polski and saves through `UserConfiguration`.
 Restart the application to apply the choice; an open window keeps its language
-and unsaved edits. This preference never enters a `.jcad` file.
+and unsaved edits. This preference never enters a `.vxb` file.
 
 Dagger supplies an immutable `Translations` instance to each window.
 `Translations.current()` is also available to process-level callers. Both read

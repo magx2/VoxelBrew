@@ -115,7 +115,7 @@ class SketchCurveTypesIntegrationTest {
         session.add(
                 new Feature.Sketch("sketch", "profile", new Feature.Plane("origin-xy", 0), new Feature.Constrained(g)));
         session.add(new Feature.Extrude("extrude", new Feature.ProfileRef("sketch", "profile"), 2));
-        var file = directory.resolve("text and curves.jcad");
+        var file = directory.resolve("text and curves.vxb");
         DocumentWriter.save(session.document(), file, false);
         assertEquals(session.document(), DocumentReader.load(file));
         try (var evaluation = new ModelSession(DocumentReader.load(file)).evaluate()) {

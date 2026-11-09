@@ -233,13 +233,13 @@ resolved for the build platform automatically.
 ```powershell
 .\gradlew.bat :gui:run
 .\gradlew.bat :gui:installDist
-.\gui\build\install\gui\bin\gui.bat --open fixtures\reference-8mm.jcad
+.\gui\build\install\gui\bin\gui.bat --open fixtures\reference-8mm.vxb
 ```
 
 ```bash
 ./gradlew :gui:run
 ./gradlew :gui:installDist
-gui/build/install/gui/bin/gui --open fixtures/reference-8mm.jcad
+gui/build/install/gui/bin/gui --open fixtures/reference-8mm.vxb
 ```
 
 Ubuntu needs GTK 3 and a 3D-capable display (WSLg locally). Linux CI runs the
@@ -280,7 +280,7 @@ to relocate all user data, including the `plugins` subdirectory. Plugins must
 register their providers through the corresponding `META-INF/services` entries.
 
 After `:cli:installDist`, run `cli exporters` and
-`cli export fixtures/reference-8mm.jcad --format 3mf --output plate.3mf`
+`cli export fixtures/reference-8mm.vxb --format 3mf --output plate.3mf`
 using the installed launcher above. See [the export API and commands](docs/export-workflow.md)
 and [M2 acceptance evidence](docs/acceptance/M2.md). Exporters require a complete,
 successfully rebuilt document; the output is published only after success.

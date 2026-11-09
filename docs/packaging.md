@@ -35,10 +35,10 @@ checksums; it publishes only the CLI on macOS.
 Examples after extracting the appropriate archive:
 
 ```text
-VoxelBrewCLI inspect reference.jcad --point 10,10,4
-VoxelBrewCLI edit reference.jcad --feature thickness --field distance --value 8
-VoxelBrewCLI export reference.jcad --format 3mf --output reference.3mf
-VoxelBrew --open reference.jcad --plugin-dir "trusted plugins"
+VoxelBrewCLI inspect reference.vxb --point 10,10,4
+VoxelBrewCLI edit reference.vxb --feature thickness --field distance --value 8
+VoxelBrewCLI export reference.vxb --format 3mf --output reference.3mf
+VoxelBrew --open reference.vxb --plugin-dir "trusted plugins"
 ```
 
 Both frontends default to `~/.voxelbrew/plugins`; `--plugin-dir` overrides it.

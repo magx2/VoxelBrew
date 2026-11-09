@@ -5,7 +5,7 @@ not declare a new milestone complete.
 
 Importer API version 2 mirrors the export interaction model: provider construction,
 typed settings dialogs, a frontend host and asynchronous completion. Built-ins read
-VXB (including legacy JCAD), strict ProtoJSON and G-code. File > Import selects a
+VXB, strict ProtoJSON and G-code. File > Import selects a
 document provider, then its source/settings. Successful document imports are unsaved;
 cancellation and errors preserve the current design and source file. Obsolete stream
 SPI classes and service registrations were removed; independent providers were migrated.

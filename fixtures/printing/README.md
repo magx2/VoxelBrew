@@ -4,10 +4,10 @@ These small schema-2 documents are generated from built-in rectangle sketches an
 extrusions by `SlicerAcceptanceTest`; geometry is in millimeters. All build items
 have translation (20,30,0). They are redistributable under the repository license.
 
-- `shelf.jcad`: leg (0,0,0)–(10,40,10), roof (0,0,10)–(30,40,12), 20 mm projection.
-- `recessed-ledge.jcad`: lower shelf (0,0,0)–(30,40,2), leg begins at Z=2,
+- `shelf.vxb`: leg (0,0,0)–(10,40,10), roof (0,0,10)–(30,40,12), 20 mm projection.
+- `recessed-ledge.vxb`: lower shelf (0,0,0)–(30,40,2), leg begins at Z=2,
   otherwise the same roof. Compare support starts above the lower shelf.
-- `cube.jcad`: (0,0,0)–(30,30,10), two walls and zero infill initially.
+- `cube.vxb`: (0,0,0)–(30,30,10), two walls and zero infill initially.
 
 Equal underside regions in **design coordinates**:
 

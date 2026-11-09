@@ -573,6 +573,7 @@ public final class Workbench extends BorderPane implements AutoCloseable {
         UiHelp.menu(solidCommands, translations);
         for (var command : List.of(extrude, cut, fillet, chamfer, shell, splitBody)) {
             var item = menuItem(command.getText(), command.getId(), true, command::fire);
+            item.setGraphic(OperationIcons.icon(command.getId()));
             item.disableProperty().bind(disabledProperty().or(command.disabledProperty()));
             solidCommands.getItems().add(item);
         }

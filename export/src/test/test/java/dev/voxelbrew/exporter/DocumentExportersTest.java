@@ -24,8 +24,8 @@ class DocumentExportersTest {
 
     @Test
     void cancellationDoesNotScheduleWritesForFileFormats() {
-        for (var provider :
-                java.util.List.of(new JcadExporterProvider(), new JsonExporterProvider(), new StepExporterProvider())) {
+        for (var provider : java.util.List.of(
+                new VoxelBrewExporterProvider(), new JsonExporterProvider(), new StepExporterProvider())) {
             var tasks = new AtomicInteger();
             var format = provider.descriptor().id();
             var exporter = provider.create(task -> tasks.incrementAndGet());
@@ -55,7 +55,7 @@ class DocumentExportersTest {
     void vxbUsesTheSameHeadlessParentAndPreservesExistingFiles() throws Exception {
         var document = CadDocument.empty();
         Path target = directory.resolve("editable.vxb");
-        var exporter = new JcadExporter(Runnable::run);
+        var exporter = new VoxelBrewExporter(Runnable::run);
         assertEquals(
                 target,
                 exporter.export(document, FileExportDialog.destination(target, false))

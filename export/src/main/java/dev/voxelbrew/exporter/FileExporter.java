@@ -20,10 +20,11 @@ abstract class FileExporter implements Exporter<Path> {
 
     @Override
     public final CompletableFuture<Path> export(CadDocument document, ExportWindow parent) {
-        var selected = parent.show(new FileExportDialog(title, extension));
-        if (selected.isEmpty()) return CompletableFuture.failedFuture(new CancellationException());
-        Path target = selected.get().path().toAbsolutePath().normalize();
-        boolean overwrite = selected.get().overwrite();
+        var dialog = new FileExportDialog(title, extension);
+        if (parent.show(dialog).isEmpty()) return CompletableFuture.failedFuture(new CancellationException());
+        var settings = dialog.getSettings();
+        Path target = settings.path().toAbsolutePath().normalize();
+        boolean overwrite = settings.overwrite();
         var result = new CompletableFuture<Path>();
         try {
             worker.execute(() -> {

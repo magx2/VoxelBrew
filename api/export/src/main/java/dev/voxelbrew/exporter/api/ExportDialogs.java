@@ -25,10 +25,12 @@ public final class ExportDialogs implements ExportWindow {
     @SuppressWarnings("unchecked") // register binds each request class to its declared result type.
     public <R> Optional<R> show(ExportDialog<R> dialog) {
         Objects.requireNonNull(dialog, "dialog");
-        var handler = handlers.get(dialog.getClass());
-        if (handler == null)
-            throw new UnsupportedOperationException(
-                    "Unsupported export dialog: " + dialog.getClass().getName());
-        return (Optional<R>) Objects.requireNonNull(handler.apply(dialog), "dialog result");
+        return dialog.collectSettings(() -> {
+            var handler = handlers.get(dialog.getClass());
+            if (handler == null)
+                throw new UnsupportedOperationException(
+                        "Unsupported export dialog: " + dialog.getClass().getName());
+            return (Optional<R>) handler.apply(dialog);
+        });
     }
 }

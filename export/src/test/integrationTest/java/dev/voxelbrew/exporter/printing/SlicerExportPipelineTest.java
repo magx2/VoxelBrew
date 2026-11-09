@@ -79,7 +79,7 @@ class SlicerExportPipelineTest {
         Files.writeString(output, "original");
         for (boolean cancel : List.of(false, true)) {
             ExporterProvider provider = new GeometryExporterProvider(
-                    new ExporterDescriptor("input", "Failing input", ExporterProvider.API_VERSION),
+                    new ExporterDescriptor("input", "Failing input"),
                     (worker, plugins) -> (doc, parent) -> CompletableFuture.failedFuture(
                             cancel ? new CancellationException() : new IOException("Export failed")));
             try (var registry = new ExporterRegistry(directory, List.of(provider))) {

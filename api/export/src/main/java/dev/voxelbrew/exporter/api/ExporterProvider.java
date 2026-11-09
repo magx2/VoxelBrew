@@ -7,8 +7,6 @@ import java.util.concurrent.Executor;
  * Export futures must complete only when all provider work has finished.
  */
 public interface ExporterProvider {
-    int API_VERSION = 2;
-
     ExporterDescriptor descriptor();
 
     Exporter<?> create(Executor worker);

@@ -7,20 +7,20 @@ import java.util.concurrent.Executor;
 import lombok.RequiredArgsConstructor;
 
 @RequiredArgsConstructor(onConstructor_ = @javax.inject.Inject)
-public final class JcadExporterProvider implements ExporterProvider {
+public final class VoxelBrewExporterProvider implements ExporterProvider {
     private final DocumentOutput documents;
 
-    public JcadExporterProvider() {
+    public VoxelBrewExporterProvider() {
         this(DocumentWriter::save);
     }
 
     @Override
     public ExporterDescriptor descriptor() {
-        return new ExporterDescriptor("vxb", "VXB", API_VERSION);
+        return new ExporterDescriptor("vxb", "VXB");
     }
 
     @Override
     public Exporter<?> create(Executor worker) {
-        return new JcadExporter(worker, documents);
+        return new VoxelBrewExporter(worker, documents);
     }
 }

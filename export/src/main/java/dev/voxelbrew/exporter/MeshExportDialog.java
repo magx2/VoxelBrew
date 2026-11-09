@@ -8,7 +8,13 @@ import java.util.Map;
 import java.util.Objects;
 
 /** Options request owned by the built-in geometry exporters, not a plugin SPI. */
-public record MeshExportDialog(MeshFormat format) implements ExportDialog<MeshExportDialog.Settings> {
+@lombok.Getter
+@lombok.experimental.Accessors(fluent = true)
+@lombok.RequiredArgsConstructor
+public final class MeshExportDialog extends ExportDialog<MeshExportDialog.Settings> {
+    @lombok.NonNull
+    private final MeshFormat format;
+
     @Override
     public String title() {
         return format.name();

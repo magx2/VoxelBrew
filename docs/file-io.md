@@ -51,17 +51,22 @@ completes the returned future with `CancellationException`.
 
 `ExportWindow.show(ExportDialog<R>)` hosts typed, exporter-defined interactions. The
 window contract contains no destination, file, credential or cloud-specific fields.
-An exporter defines a request implementing `ExportDialog<R>` with whatever data it
+An exporter defines a dialog extending `ExportDialog<R>` with whatever data it
 needs, and each frontend registers a handler for that request type. `ExportDialogs`
 is the frontend-neutral handler registry; unknown request types fail explicitly.
 Registration is local to the host, so one window cannot replace another's handlers.
+
+`ExportDialog<R>.getSettings()` returns confirmed settings after `show` succeeds.
+It throws before confirmation or after cancellation/failure. Hosts use
+`collectSettings` to clear previous results and record only the accepted value;
+`ExportDialogs` handles this lifecycle automatically.
 
 `FileExportDialog` is the built-in file request, with a typed destination and overwrite
 response. Desktop rendering retains formula-aware file paths and overwrite confirmation.
 CLI uses `FileExportDialog.destination(path, overwrite)` to provide parsed arguments
 without a display. File operations still run on the window-owned file worker.
 
-For example, a cloud provider can define `CloudDialog implements ExportDialog<CloudSettings>`
+For example, a cloud provider can define `CloudDialog extends ExportDialog<CloudSettings>`
 carrying available accounts and projects. Its `Exporter<CloudReceipt>` requests those
 settings through `parent.show(new CloudDialog(...))`. Desktop code registers a renderer
 with `DesktopExportWindow.register(CloudDialog.class, (owner, request) -> ...)`; it can
@@ -71,7 +76,7 @@ arguments or console prompts. The provider can request multiple interactions and
 its own receipt; no local file is required. Custom dialogs need a handler for each
 supported frontend. This is a hosting contract, not an automatic cross-platform UI renderer.
 
-`JcadExporter` saves the editable binary document with existing schema, atomic-write,
+`VoxelBrewExporter` saves the editable binary document with existing schema, atomic-write,
 file-version and newer-file protections. `JsonExporter` writes UTF-8 ProtoJSON for the
 complete document schema, including feature definitions, parameters and print setup.
 JSON is an export only; it does not change the active project path, save counter or dirty
@@ -87,8 +92,7 @@ All geometry formats also implement `Exporter`; the separate `ModelExporter` SPI
 ### Runtime discovery of document exporters
 
 Implement `dev.voxelbrew.exporter.api.ExporterProvider` with a public no-argument
-constructor. Return a `ExporterDescriptor` with a unique ID, display name and
-`ExporterProvider.API_VERSION` (currently 2). Its `create(Executor)` method returns your
+constructor. Return a `ExporterDescriptor` with a unique ID and display name. Its `create(Executor)` method returns your
 `Exporter<?>`; use that supplied worker for asynchronous operations and do not shut it
 down. The returned future must cover the complete operation.
 
@@ -103,7 +107,7 @@ File → Export. It rescans the directory and lists provider metadata from the r
 including newly added JARs. There is no frontend format list to edit. All built-in exporters are
 Dagger multibindings; external providers use ServiceLoader, so plugin builds do not need
 Dagger or application-module dependencies. Duplicate IDs preserve the first provider,
-with built-ins registered first; incompatible versions and broken providers produce
+with built-ins registered first; broken providers produce
 diagnostics without hiding healthy providers. File → Save remains the native VXB path.
 
 The same providers are listed by `cli exporters` and invoked by `cli export --format ID`.
@@ -269,7 +273,7 @@ Prusa selects the `prusa-project` exporter and includes solid supports; its 3MF
 retains placements and support modifiers. Export failure or cancellation prevents
 backend execution, and temporary files are deleted with the job workspace.
 
-The public exporter and slicer SPIs are version 2. External exporters implement
+Exporter descriptors have no API version field or version compatibility check. The slicer SPI remains version 2. External exporters implement
 `ExporterProvider`, not the removed `ModelExporter`; model/manufacturing views and
 mesh option metadata remain implementation helpers outside `export-api`.
 See the [export developer guide](../api/export/README.md) for migration and examples.

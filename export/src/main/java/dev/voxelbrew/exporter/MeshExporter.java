@@ -30,9 +30,9 @@ public abstract class MeshExporter implements Exporter<Path> {
 
     @Override
     public final CompletableFuture<Path> export(CadDocument document, ExportWindow parent) {
-        var selected = parent.show(new MeshExportDialog(format()));
-        if (selected.isEmpty()) return CompletableFuture.failedFuture(new CancellationException());
-        var settings = selected.get();
+        var dialog = new MeshExportDialog(format());
+        if (parent.show(dialog).isEmpty()) return CompletableFuture.failedFuture(new CancellationException());
+        var settings = dialog.getSettings();
         return CompletableFuture.supplyAsync(
                 () -> {
                     try {

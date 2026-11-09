@@ -13,7 +13,7 @@ export to engine, never in the opposite direction.
 
 | Format ID | Output | Implementation |
 | --- | --- | --- |
-| `vxb` | Editable VoxelBrew document, including feature history | `JcadExporter` / `JcadExporterProvider` |
+| `vxb` | Editable VoxelBrew document, including feature history | `VoxelBrewExporter` / `VoxelBrewExporterProvider` |
 | `json` | Complete document schema as UTF-8 ProtoJSON | `JsonExporter` / `JsonExporterProvider` |
 | `step` | Exact design solids as STEP AP242, in millimeters | `StepExporter` / `StepExporterProvider` |
 | `stl` | Binary STL mesh, in millimeters | `BinaryStlExporter` |
@@ -21,8 +21,7 @@ export to engine, never in the opposite direction.
 | `obj` | Wavefront OBJ mesh, with instance transforms applied | `ObjExporter` |
 | `prusa-project` | PrusaSlicer project from a complete manufacturing view | `printing.PrusaProjectExporter` |
 
-The native document extension is `.vxb`; the `Jcad` implementation class names are
-retained from the earlier extension. Existing `.jcad` documents remain readable.
+The native document extension is `.vxb`. Existing `.jcad` documents remain readable.
 **File > Save** uses the native document writer; **File > Export** lists discovered
 exporters through one registry. Exporting JSON or STEP does not change the active
 project path or save counter. STEP exports complete design solids, without print-bed

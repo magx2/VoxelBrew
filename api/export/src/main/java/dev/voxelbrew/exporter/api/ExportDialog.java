@@ -1,9 +1,29 @@
 package dev.voxelbrew.exporter.api;
 
-/** Frontend-neutral interaction request with an exporter-defined result type.
- * Providers may define any request data, validation, and response values they need.
- * Each frontend registers a handler for the request type with its window host.
+import java.util.Objects;
+import java.util.Optional;
+import java.util.function.Supplier;
+
+/** Frontend-neutral interaction with exporter-defined settings.
+ * Each frontend registers a handler for the dialog type with its window host.
+ * Use a dialog instance for one interaction at a time.
  */
-public interface ExportDialog<R> {
-    String title();
+public abstract class ExportDialog<R> {
+    private R settings;
+
+    public abstract String title();
+
+    /** Returns confirmed settings; unavailable before confirmation or after cancellation/failure. */
+    public final R getSettings() {
+        if (settings == null) throw new IllegalStateException("Export dialog has no confirmed settings");
+        return settings;
+    }
+
+    /** Host lifecycle hook. Clears previous settings before rendering or collecting CLI arguments. */
+    public final Optional<R> collectSettings(Supplier<Optional<R>> interaction) {
+        settings = null;
+        var result = Objects.requireNonNull(interaction.get(), "dialog result");
+        result.ifPresent(value -> settings = value);
+        return result;
+    }
 }

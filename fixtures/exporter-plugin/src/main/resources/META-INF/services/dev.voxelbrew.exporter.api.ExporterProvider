@@ -1,5 +1,4 @@
 consumer.DocumentProbeProvider
 consumer.DocumentProbeProvider$Duplicate
-consumer.DocumentProbeProvider$Incompatible
 consumer.DocumentProbeProvider$Failing
 consumer.DoesNotExist

@@ -44,21 +44,16 @@ public final class ExporterRegistry implements AutoCloseable {
         this(
                 directory,
                 List.of(
-                        new JcadExporterProvider(),
+                        new VoxelBrewExporterProvider(),
                         new JsonExporterProvider(),
                         new StepExporterProvider(),
                         new GeometryExporterProvider(
-                                new ExporterDescriptor("stl", "Binary STL", ExporterProvider.API_VERSION),
-                                BinaryStlExporter::new),
+                                new ExporterDescriptor("stl", "Binary STL"), BinaryStlExporter::new),
                         new GeometryExporterProvider(
-                                new ExporterDescriptor("3mf", "Portable 3MF Core", ExporterProvider.API_VERSION),
-                                ThreeMfExporter::new),
+                                new ExporterDescriptor("3mf", "Portable 3MF Core"), ThreeMfExporter::new),
+                        new GeometryExporterProvider(new ExporterDescriptor("obj", "Wavefront OBJ"), ObjExporter::new),
                         new GeometryExporterProvider(
-                                new ExporterDescriptor("obj", "Wavefront OBJ", ExporterProvider.API_VERSION),
-                                ObjExporter::new),
-                        new GeometryExporterProvider(
-                                new ExporterDescriptor(
-                                        "prusa-project", "PrusaSlicer project (3MF)", ExporterProvider.API_VERSION),
+                                new ExporterDescriptor("prusa-project", "PrusaSlicer project (3MF)"),
                                 dev.voxelbrew.exporter.printing.PrusaProjectExporter::new)));
     }
 
@@ -124,10 +119,6 @@ public final class ExporterRegistry implements AutoCloseable {
 
     private void register(ExporterProvider provider) {
         var descriptor = Objects.requireNonNull(provider.descriptor(), "descriptor");
-        if (descriptor.apiVersion() != ExporterProvider.API_VERSION) {
-            diagnostics.add("Incompatible exporter " + descriptor.id() + ": API " + descriptor.apiVersion());
-            return;
-        }
         if (entries.putIfAbsent(descriptor.id(), new Entry(descriptor, provider)) != null)
             diagnostics.add("Duplicate exporter ID: " + descriptor.id());
     }

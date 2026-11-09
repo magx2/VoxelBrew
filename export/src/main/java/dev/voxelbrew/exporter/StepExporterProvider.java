@@ -10,7 +10,7 @@ public final class StepExporterProvider implements ExporterProvider {
 
     @Override
     public ExporterDescriptor descriptor() {
-        return new ExporterDescriptor("step", "STEP AP242 (exact solids)", API_VERSION);
+        return new ExporterDescriptor("step", "STEP AP242 (exact solids)");
     }
 
     @Override

@@ -56,7 +56,7 @@ public final class FileIoModule {
 
     @Provides
     @IntoSet
-    static ExporterProvider vxb(JcadExporterProvider provider) {
+    static ExporterProvider vxb(VoxelBrewExporterProvider provider) {
         return provider;
     }
 
@@ -76,33 +76,28 @@ public final class FileIoModule {
     @IntoSet
     static ExporterProvider stl() {
         return new GeometryExporterProvider(
-                new dev.voxelbrew.exporter.api.ExporterDescriptor("stl", "Binary STL", ExporterProvider.API_VERSION),
-                BinaryStlExporter::new);
+                new dev.voxelbrew.exporter.api.ExporterDescriptor("stl", "Binary STL"), BinaryStlExporter::new);
     }
 
     @Provides
     @IntoSet
     static ExporterProvider threeMf() {
         return new GeometryExporterProvider(
-                new dev.voxelbrew.exporter.api.ExporterDescriptor(
-                        "3mf", "Portable 3MF Core", ExporterProvider.API_VERSION),
-                ThreeMfExporter::new);
+                new dev.voxelbrew.exporter.api.ExporterDescriptor("3mf", "Portable 3MF Core"), ThreeMfExporter::new);
     }
 
     @Provides
     @IntoSet
     static ExporterProvider obj() {
         return new GeometryExporterProvider(
-                new dev.voxelbrew.exporter.api.ExporterDescriptor("obj", "Wavefront OBJ", ExporterProvider.API_VERSION),
-                ObjExporter::new);
+                new dev.voxelbrew.exporter.api.ExporterDescriptor("obj", "Wavefront OBJ"), ObjExporter::new);
     }
 
     @Provides
     @IntoSet
     static ExporterProvider prusaProject() {
         return new GeometryExporterProvider(
-                new dev.voxelbrew.exporter.api.ExporterDescriptor(
-                        "prusa-project", "PrusaSlicer project (3MF)", ExporterProvider.API_VERSION),
+                new dev.voxelbrew.exporter.api.ExporterDescriptor("prusa-project", "PrusaSlicer project (3MF)"),
                 dev.voxelbrew.exporter.printing.PrusaProjectExporter::new);
     }
 

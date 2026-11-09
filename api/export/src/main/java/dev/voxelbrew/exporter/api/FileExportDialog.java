@@ -5,11 +5,17 @@ import java.util.Objects;
 import java.util.Optional;
 
 /** File-specific save interaction, including explicit overwrite consent. */
-public record FileExportDialog(String title, String extension) implements ExportDialog<FileExportDialog.Destination> {
-    public FileExportDialog {
-        Objects.requireNonNull(title, "title");
+@lombok.Getter
+@lombok.experimental.Accessors(fluent = true)
+public final class FileExportDialog extends ExportDialog<FileExportDialog.Destination> {
+    private final String title;
+    private final String extension;
+
+    public FileExportDialog(String title, String extension) {
+        this.title = Objects.requireNonNull(title, "title");
         if (extension == null || !extension.matches("[a-zA-Z0-9]+"))
             throw new IllegalArgumentException("Invalid extension");
+        this.extension = extension;
     }
 
     public record Destination(Path path, boolean overwrite) {

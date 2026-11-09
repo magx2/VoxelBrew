@@ -15,7 +15,7 @@ Every format implements `Exporter<R>.export(CadDocument, ExportWindow)` and is
 created by an `ExporterProvider`. This includes mesh formats, exact STEP, native
 documents and cloud destinations. The exporter owns its interaction requests and
 publication; frontends discover providers without a separate geometry-export route.
-Use a unique, stable ID and `ExporterProvider.API_VERSION` (currently 2).
+Use a unique, stable ID and a display name. Exporter descriptors have no API version field.
 
 ## Build an external plugin
 
@@ -86,17 +86,17 @@ public final class DocumentReportProvider implements ExporterProvider {
 
     @Override
     public ExporterDescriptor descriptor() {
-        return new ExporterDescriptor("document-report", "Document report", API_VERSION);
+        return new ExporterDescriptor("document-report", "Document report");
     }
 
     @Override
     public Exporter<Path> create(Executor worker) {
         return (document, parent) -> {
-            var selected = parent.show(new FileExportDialog("Document report", "txt"));
-            if (selected.isEmpty())
+            var dialog = new FileExportDialog("Document report", "txt");
+            if (parent.show(dialog).isEmpty())
                 return CompletableFuture.failedFuture(new CancellationException());
 
-            var destination = selected.get();
+            var destination = dialog.getSettings();
             String report = "document=" + document.id() + "\n";
             return CompletableFuture.supplyAsync(() -> {
                 try {
@@ -159,9 +159,23 @@ Its content is the provider class name, not the returned exporter class:
 example.DocumentReportProvider
 ```
 
+### Reading confirmed settings
+
+`ExportDialog<R>` is a base class with `R getSettings()`. Call it after
+`parent.show(dialog)` confirms the interaction. It throws `IllegalStateException`
+before confirmation and after cancellation or failure. Showing the same dialog
+again clears the previous result before the handler runs, so stale settings cannot
+be reused accidentally. Use each dialog instance for one interaction at a time.
+
+`ExportDialogs` manages this automatically. Custom `ExportWindow` implementations
+must wrap their interaction in `dialog.collectSettings(() -> ...)`, returning an
+`Optional<R>` with accepted settings or an empty result on cancellation. Built-in
+desktop and CLI hosts already follow this contract;
+custom dialog types now extend the base class instead of implementing an interface.
+
 ### Custom or cloud dialogs
 
-`ExportWindow` is not tied to a file destination. Define a request implementing
+`ExportWindow` is not tied to a file destination. Define a dialog extending
 `ExportDialog<YourSettings>`, including its `title()`, and call `parent.show(request)`.
 An empty `Optional` means cancellation. You can request account/project selection
 and return an upload receipt without writing a local file.
@@ -196,7 +210,7 @@ to replace an existing output intentionally. The stock CLI requires `--output` f
 file-dialog and model exporters, but not for a provider that never requests a file.
 
 Duplicate IDs keep the first registered provider; built-ins are registered first.
-Incompatible API versions and broken providers produce diagnostics without hiding
+Broken providers produce diagnostics without hiding
 healthy entries. Class loaders remain open while exports may be in flight. Close
 relevant application windows before replacing/removing loaded JARs, especially on
 Windows. Plugins are trusted code running with the application's permissions.

@@ -42,7 +42,7 @@ class DocumentProviderDiscoveryTest {
         Path jar = directory.resolve("broken.jar");
         try (var out = new JarOutputStream(Files.newOutputStream(jar))) {
             out.putNextEntry(new JarEntry("META-INF/services/dev.voxelbrew.exporter.api.ExporterProvider"));
-            out.write(("missing.Provider\ndev.voxelbrew.exporter.JcadExporterProvider\n")
+            out.write(("missing.Provider\ndev.voxelbrew.exporter.VoxelBrewExporterProvider\n")
                     .getBytes(java.nio.charset.StandardCharsets.UTF_8));
             out.closeEntry();
         }
@@ -52,24 +52,6 @@ class DocumentProviderDiscoveryTest {
             assertTrue(registry.diagnostics().stream().anyMatch(message -> message.contains("missing.Provider")));
             assertTrue(registry.diagnostics().stream()
                     .anyMatch(message -> message.contains("Duplicate exporter ID: vxb")));
-        }
-    }
-
-    @Test
-    void incompatibleProviderIsDiagnosedBeforeItsFactoryCanRun() throws Exception {
-        var future = new dev.voxelbrew.exporter.api.ExporterProvider() {
-            public dev.voxelbrew.exporter.api.ExporterDescriptor descriptor() {
-                return new dev.voxelbrew.exporter.api.ExporterDescriptor("future", "Future", 999);
-            }
-
-            public dev.voxelbrew.exporter.api.Exporter<?> create(java.util.concurrent.Executor worker) {
-                throw new AssertionError("Incompatible provider must not be invoked");
-            }
-        };
-        try (var registry = new ExporterRegistry(directory, java.util.List.of(new JcadExporterProvider(), future))) {
-            assertTrue(registry.contains("vxb"));
-            assertFalse(registry.contains("future"));
-            assertTrue(registry.diagnostics().stream().anyMatch(message -> message.contains("future: API 999")));
         }
     }
 }

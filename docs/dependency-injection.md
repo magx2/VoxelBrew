@@ -25,9 +25,9 @@ Dagger validates bindings at compile time. Business classes receive their actual
 dependencies through constructors, rather than receiving a component/container and
 looking up dependencies. Runtime values (window, plugin path, configuration and
 update factory) enter at composition roots. Dynamic plugin providers still use the
-existing versioned ServiceLoader SPI; they do not need Dagger or new constructors.
+existing ServiceLoader SPI; they do not need Dagger or new constructors.
 
-All exporters use `ExporterProvider` (SPI version 2). `FileIoModule` contributes
+All exporters use `ExporterProvider`. `FileIoModule` contributes
 VXB, JSON, STEP, STL, 3MF, OBJ and Prusa project providers through Dagger `@IntoSet` bindings, then supplies the runtime
 `ExporterRegistry.Factory` with that set. The window receives the registry through
 `GuiModule`/`WindowResources`; the CLI receives the same factory. External providers

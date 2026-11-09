@@ -471,7 +471,7 @@ public final class DocumentController implements AutoCloseable {
 
     /** Exporters select destinations on the UI thread and write on this window's file worker. */
     public CompletableFuture<Void> saveAs(dev.voxelbrew.exporter.api.ExportWindow parent) {
-        return exportDocument(new dev.voxelbrew.exporter.JcadExporter(io, documentWriter), true, parent);
+        return exportDocument(new dev.voxelbrew.exporter.VoxelBrewExporter(io, documentWriter), true, parent);
     }
 
     public CompletableFuture<Void> exportDocument(

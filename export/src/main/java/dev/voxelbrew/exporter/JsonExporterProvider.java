@@ -11,7 +11,7 @@ public final class JsonExporterProvider implements ExporterProvider {
 
     @Override
     public ExporterDescriptor descriptor() {
-        return new ExporterDescriptor("json", "JSON", API_VERSION);
+        return new ExporterDescriptor("json", "JSON");
     }
 
     @Override

@@ -10,15 +10,15 @@ public class DocumentProbeProvider implements ExporterProvider {
 
     @Override
     public ExporterDescriptor descriptor() {
-        return new ExporterDescriptor("document-probe", "Document probe", API_VERSION);
+        return new ExporterDescriptor("document-probe", "Document probe");
     }
 
     @Override
     public Exporter<?> create(Executor worker) {
         return (document, parent) -> {
-            var selected = parent.show(new FileExportDialog("Document probe", "txt"));
-            if (selected.isEmpty()) return CompletableFuture.failedFuture(new CancellationException());
-            var destination = selected.get();
+            var dialog = new FileExportDialog("Document probe", "txt");
+            if (parent.show(dialog).isEmpty()) return CompletableFuture.failedFuture(new CancellationException());
+            var destination = dialog.getSettings();
             return CompletableFuture.supplyAsync(
                     () -> {
                         try {
@@ -40,17 +40,10 @@ public class DocumentProbeProvider implements ExporterProvider {
 
     public static final class Duplicate extends DocumentProbeProvider {}
 
-    public static final class Incompatible extends DocumentProbeProvider {
-        @Override
-        public ExporterDescriptor descriptor() {
-            return new ExporterDescriptor("future", "Future", 999);
-        }
-    }
-
     public static final class Failing extends DocumentProbeProvider {
         @Override
         public ExporterDescriptor descriptor() {
-            return new ExporterDescriptor("failing", "Failure", API_VERSION);
+            return new ExporterDescriptor("failing", "Failure");
         }
 
         @Override

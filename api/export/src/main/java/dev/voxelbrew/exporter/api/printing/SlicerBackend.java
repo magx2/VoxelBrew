@@ -10,7 +10,7 @@ import java.util.function.Consumer;
 
 /** Versioned plugin SPI. Providers write only the private output supplied by the host. */
 public interface SlicerBackend {
-    int API_VERSION = 1;
+    int API_VERSION = 2;
 
     enum Capability {
         AUTOMATIC_SUPPORTS,
@@ -46,6 +46,7 @@ public interface SlicerBackend {
 
     record Request(
             ManufacturingModel model,
+            Path input,
             Path executable,
             Path workingDirectory,
             Path output,
@@ -59,6 +60,26 @@ public interface SlicerBackend {
     }
 
     Descriptor descriptor();
+
+    /** Format exported by the host before this backend is invoked. */
+    record InputFormat(String exporterId, String extension, Map<String, String> options) {
+        public InputFormat(String exporterId, String extension) {
+            this(exporterId, extension, Map.of());
+        }
+
+        public InputFormat {
+            options = Map.copyOf(options);
+            if (exporterId == null
+                    || !exporterId.matches("[a-z0-9][a-z0-9.-]*")
+                    || extension == null
+                    || !extension.matches("[a-zA-Z0-9]+"))
+                throw new IllegalArgumentException("Invalid slicer input format");
+        }
+    }
+
+    default InputFormat inputFormat() {
+        return new InputFormat("stl", "stl");
+    }
 
     Probe probe(Path executable, Cancellation cancellation) throws IOException;
 

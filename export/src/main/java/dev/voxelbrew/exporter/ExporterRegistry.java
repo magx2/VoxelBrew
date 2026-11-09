@@ -1,21 +1,15 @@
 package dev.voxelbrew.exporter;
 
-import dev.voxelbrew.exporter.api.ExporterDescriptor;
-import dev.voxelbrew.exporter.api.ModelExporter;
+import dev.voxelbrew.exporter.api.*;
 import java.io.IOException;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.ServiceConfigurationError;
-import java.util.ServiceLoader;
+import java.util.*;
+import java.util.function.Consumer;
 
-/** Loads trusted JARs only. Provider errors are isolated and exposed as diagnostics. */
+/** Runtime providers from trusted JARs, with Dagger-supplied built-ins and isolated diagnostics. */
 @lombok.extern.slf4j.Slf4j
 public final class ExporterRegistry implements AutoCloseable {
     @FunctionalInterface
@@ -23,34 +17,100 @@ public final class ExporterRegistry implements AutoCloseable {
         ExporterRegistry open(Path directory) throws IOException;
     }
 
-    public record Entry(ExporterDescriptor descriptor, ModelExporter provider) {}
+    public record Entry(ExporterDescriptor descriptor, ExporterProvider provider) {}
 
+    private record Jar(Path path, long size, java.nio.file.attribute.FileTime modified) {}
+
+    private final Path directory;
+    private final List<ExporterProvider> builtins;
     private final Map<String, Entry> entries = new LinkedHashMap<>();
+
     private final List<String> diagnostics = new ArrayList<>();
-    private final URLClassLoader loader;
+    // Retain earlier generations until window shutdown; in-flight exports may still use them.
+    private final List<URLClassLoader> loaders = new ArrayList<>();
+    private List<Jar> loadedJars;
+    private boolean closed;
 
     public static Path defaultDirectory() {
         return dev.voxelbrew.util.config.ApplicationPaths.plugins();
     }
 
+    public Path directory() {
+        return directory;
+    }
+
+    /** Standalone composition; application graphs supply built-ins using Dagger multibindings. */
     public ExporterRegistry(Path directory) throws IOException {
-        var urls = new ArrayList<URL>();
+        this(
+                directory,
+                List.of(
+                        new JcadExporterProvider(),
+                        new JsonExporterProvider(),
+                        new StepExporterProvider(),
+                        new GeometryExporterProvider(
+                                new ExporterDescriptor("stl", "Binary STL", ExporterProvider.API_VERSION),
+                                BinaryStlExporter::new),
+                        new GeometryExporterProvider(
+                                new ExporterDescriptor("3mf", "Portable 3MF Core", ExporterProvider.API_VERSION),
+                                ThreeMfExporter::new),
+                        new GeometryExporterProvider(
+                                new ExporterDescriptor("obj", "Wavefront OBJ", ExporterProvider.API_VERSION),
+                                ObjExporter::new),
+                        new GeometryExporterProvider(
+                                new ExporterDescriptor(
+                                        "prusa-project", "PrusaSlicer project (3MF)", ExporterProvider.API_VERSION),
+                                dev.voxelbrew.exporter.printing.PrusaProjectExporter::new)));
+    }
+
+    public ExporterRegistry(Path directory, Collection<ExporterProvider> builtins) throws IOException {
+        this.directory = Objects.requireNonNull(directory, "directory");
+        this.builtins = List.copyOf(builtins);
+        refresh();
+    }
+
+    /** Discovers new JARs when File > Export opens. No application rebuild is needed. */
+    public synchronized void refresh() throws IOException {
+        if (closed) throw new IllegalStateException("Exporter registry is closed");
+        var jars = new ArrayList<Jar>();
         if (Files.exists(directory)) {
             if (!Files.isDirectory(directory)) throw new IOException("Plugin path is not a directory: " + directory);
             try (var paths = Files.list(directory)) {
                 for (var jar : paths.filter(
                                 p -> Files.isRegularFile(p) && p.toString().endsWith(".jar"))
                         .sorted()
-                        .toList()) urls.add(jar.toUri().toURL());
+                        .toList()) {
+                    jars.add(new Jar(jar, Files.size(jar), Files.getLastModifiedTime(jar)));
+                }
             }
         }
-        loader = new URLClassLoader(urls.toArray(URL[]::new), ModelExporter.class.getClassLoader());
-        var iterator = ServiceLoader.load(ModelExporter.class, loader).iterator();
+        if (jars.equals(loadedJars)) return;
+        var urls = new ArrayList<URL>();
+        for (var jar : jars) urls.add(jar.path().toUri().toURL());
+        var loader = new URLClassLoader(urls.toArray(URL[]::new), ExporterProvider.class.getClassLoader());
+        loaders.add(loader);
+        entries.clear();
+
+        diagnostics.clear();
+        for (var provider : builtins) {
+            try {
+                register(provider);
+            } catch (RuntimeException | LinkageError | AssertionError failure) {
+                diagnostics.add("Built-in exporter failed: " + failure);
+            }
+        }
+        discover(ExporterProvider.class, loader, this::register);
+
+        loadedJars = List.copyOf(jars);
+        diagnostics.forEach(message -> log.warn("Exporter discovery: {}", message));
+    }
+
+    private <P> void discover(Class<P> type, ClassLoader loader, Consumer<P> register) {
+        var iterator = ServiceLoader.load(type, loader).iterator();
         int failures = 0;
         while (true) {
             try {
                 if (!iterator.hasNext()) break;
-                register(iterator.next());
+                register.accept(iterator.next());
                 failures = 0;
             } catch (ServiceConfigurationError | LinkageError | RuntimeException | AssertionError failure) {
                 diagnostics.add("Provider load failed: " + failure);
@@ -60,13 +120,11 @@ public final class ExporterRegistry implements AutoCloseable {
                 }
             }
         }
-        log.debug("Loaded {} exporters from {}", entries.size(), directory);
-        diagnostics.forEach(message -> log.warn("Exporter discovery: {}", message));
     }
 
-    private void register(ModelExporter provider) {
-        var descriptor = provider.descriptor();
-        if (descriptor.apiVersion() != ModelExporter.API_VERSION) {
+    private void register(ExporterProvider provider) {
+        var descriptor = Objects.requireNonNull(provider.descriptor(), "descriptor");
+        if (descriptor.apiVersion() != ExporterProvider.API_VERSION) {
             diagnostics.add("Incompatible exporter " + descriptor.id() + ": API " + descriptor.apiVersion());
             return;
         }
@@ -74,18 +132,22 @@ public final class ExporterRegistry implements AutoCloseable {
             diagnostics.add("Duplicate exporter ID: " + descriptor.id());
     }
 
-    public List<ExporterDescriptor> descriptors() {
+    public synchronized List<ExporterDescriptor> descriptors() {
         return entries.values().stream()
                 .map(Entry::descriptor)
                 .sorted(Comparator.comparing(ExporterDescriptor::id))
                 .toList();
     }
 
-    public List<String> diagnostics() {
+    public synchronized boolean contains(String id) {
+        return entries.containsKey(id);
+    }
+
+    public synchronized List<String> diagnostics() {
         return List.copyOf(diagnostics);
     }
 
-    public Entry require(String id) {
+    public synchronized Entry require(String id) {
         var entry = entries.get(id);
         if (entry == null)
             throw new IllegalArgumentException("Unknown exporter '" + id + "'. Available: " + entries.keySet());
@@ -93,7 +155,18 @@ public final class ExporterRegistry implements AutoCloseable {
     }
 
     @Override
-    public void close() throws IOException {
-        loader.close();
+    public synchronized void close() throws IOException {
+        if (closed) return;
+        closed = true;
+        IOException failure = null;
+        for (var loader : loaders) {
+            try {
+                loader.close();
+            } catch (IOException error) {
+                if (failure == null) failure = error;
+                else failure.addSuppressed(error);
+            }
+        }
+        if (failure != null) throw failure;
     }
 }

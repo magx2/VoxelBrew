@@ -1,5 +1,12 @@
 plugins { application }
 
+tasks.named<Test>("test") {
+    dependsOn(":engine:buildExporterFixture")
+    val fixture = rootProject.file("fixtures/exporter-plugin/build/libs/fixture-exporter-1.0.jar")
+    inputs.file(fixture)
+    systemProperty("voxelbrew.test.plugin", fixture.absolutePath)
+}
+
 apply(from = rootProject.file("gradle/di.gradle.kts"))
 
 apply(from = rootProject.file("gradle/packaging.gradle.kts"))

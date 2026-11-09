@@ -3,11 +3,11 @@ package dev.voxelbrew.exporter.printing;
 import dev.voxelbrew.engine.mesh.*;
 import dev.voxelbrew.engine.model.BodyInstance;
 import dev.voxelbrew.engine.printing.*;
-import dev.voxelbrew.exporter.api.ExportOption;
-import dev.voxelbrew.exporter.api.ExporterDescriptor;
-import dev.voxelbrew.exporter.api.ManufacturingView;
-import dev.voxelbrew.exporter.api.ModelExporter;
-import dev.voxelbrew.exporter.api.ModelView;
+import dev.voxelbrew.exporter.ManufacturingView;
+import dev.voxelbrew.exporter.MeshExportOption;
+import dev.voxelbrew.exporter.MeshExporter;
+import dev.voxelbrew.exporter.MeshFormat;
+import dev.voxelbrew.exporter.ModelView;
 import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
@@ -15,21 +15,28 @@ import java.util.zip.*;
 import javax.xml.stream.*;
 
 /** PrusaSlicer 2.7.2 project dialect, deliberately distinct from portable 3MF Core. */
-public final class PrusaProjectExporter implements ModelExporter {
+public final class PrusaProjectExporter extends MeshExporter {
+    public PrusaProjectExporter() {
+        super();
+    }
+
+    public PrusaProjectExporter(java.util.concurrent.Executor worker, java.nio.file.Path plugins) {
+        super(worker, plugins);
+    }
+
     public record Volume(String name, String type, MeshData mesh) {}
 
     @Override
-    public ExporterDescriptor descriptor() {
-        return new ExporterDescriptor(
+    public MeshFormat format() {
+        return new MeshFormat(
                 "prusa-project",
                 "PrusaSlicer 2.7.2 project",
-                API_VERSION,
                 List.of("3mf"),
                 true,
-                List.of(new ExportOption(
+                List.of(new MeshExportOption(
                         "include-support-solids",
                         "Include explicit support solids",
-                        ExportOption.Type.BOOLEAN,
+                        MeshExportOption.Type.BOOLEAN,
                         "false",
                         List.of())));
     }

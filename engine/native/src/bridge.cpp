@@ -1,4 +1,9 @@
 #include <jni.h>
+#include <STEPControl_Writer.hxx>
+#include <STEPControl_Reader.hxx>
+#include <DESTEP_Parameters.hxx>
+#include <sstream>
+#include <limits>
 #include <BRepAlgoAPI_Cut.hxx>
 #include <BRepAlgoAPI_Splitter.hxx>
 #include <BRepFilletAPI_MakeFillet.hxx>
@@ -62,6 +67,7 @@
 
 namespace {
 std::mutex registryMutex;
+std::mutex stepMutex;
 std::unordered_map<jlong, std::shared_ptr<const TopoDS_Shape>> registry;
 jlong nextId = 1;
 
@@ -292,6 +298,55 @@ JNIEXPORT jstring JNICALL Java_dev_voxelbrew_engine_geometry_NativeKernel_versio
     return env->NewStringUTF(OCC_VERSION_COMPLETE);
 }
 
+JNIEXPORT jbyteArray JNICALL
+Java_dev_voxelbrew_engine_geometry_NativeKernel_step(JNIEnv* env, jclass, jlongArray handles) {
+    return guarded<jbyteArray>(env, "STEP export", nullptr, [&]() -> jbyteArray {
+        if (!handles || env->GetArrayLength(handles) == 0)
+            throw std::invalid_argument("STEP requires at least one solid");
+        std::vector<jlong> ids(env->GetArrayLength(handles));
+        env->GetLongArrayRegion(handles, 0, static_cast<jsize>(ids.size()), ids.data());
+        if (env->ExceptionCheck()) return nullptr;
+        std::vector<std::shared_ptr<const TopoDS_Shape>> shapes;
+        for (const auto id : ids) shapes.push_back(lookup(id));
+        // OCCT exchange sessions use some shared initialization state.
+        std::lock_guard<std::mutex> lock(stepMutex);
+        STEPControl_Writer writer;
+        DESTEP_Parameters params;
+        params.WriteSchema = DESTEP_Parameters::WriteMode_StepSchema_AP242DIS;
+        params.WriteUnit = UnitsMethods_LengthUnit_Millimeter;
+        params.WriteTessellated = DESTEP_Parameters::RWMode_Tessellated_Off;
+        for (size_t i = 0; i < shapes.size(); ++i) {
+            auto copy = BRepBuilderAPI_Copy(*shapes[i], true, false).Shape();
+            const std::string name = "body-" + std::to_string(i + 1);
+            params.WriteProductName = name.c_str();
+            if (writer.Transfer(copy, STEPControl_AsIs, params) != IFSelect_RetDone)
+                throw std::runtime_error("could not transfer exact solid to STEP");
+        }
+        std::ostringstream stream;
+        if (writer.WriteStream(stream) != IFSelect_RetDone)
+            throw std::runtime_error("could not serialize STEP model");
+        const auto encoded = stream.str();
+        if (encoded.size() > static_cast<size_t>(std::numeric_limits<jsize>::max()))
+            throw std::runtime_error("STEP model exceeds Java array limit");
+        // Validate the produced interchange model with the STEP reader before publication.
+        STEPControl_Reader reader;
+        std::istringstream input(encoded);
+        if (reader.ReadStream("export.step", input) != IFSelect_RetDone ||
+            reader.TransferRoots() == 0)
+            throw std::runtime_error("STEP verification failed");
+        const auto decoded = reader.OneShape();
+        if (decoded.IsNull() || !BRepCheck_Analyzer(decoded).IsValid())
+            throw std::runtime_error("STEP contains invalid geometry");
+        size_t solids = 0;
+        for (TopExp_Explorer it(decoded, TopAbs_SOLID); it.More(); it.Next()) ++solids;
+        if (solids != shapes.size()) throw std::runtime_error("STEP lost one or more solids");
+        auto result = env->NewByteArray(static_cast<jsize>(encoded.size()));
+        if (result)
+            env->SetByteArrayRegion(result, 0, static_cast<jsize>(encoded.size()),
+                                    reinterpret_cast<const jbyte*>(encoded.data()));
+        return result;
+    });
+}
 JNIEXPORT jlong JNICALL Java_dev_voxelbrew_engine_geometry_NativeKernel_rectanglePrism(
     JNIEnv* env, jclass, jdouble x, jdouble y, jdouble z, jdouble w, jdouble h, jdouble d) {
     return guarded<jlong>(env, "rectangle extrusion", 0, [&] {

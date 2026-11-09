@@ -4,7 +4,7 @@ import static dev.voxelbrew.engine.sketch.SketchGeometry.*;
 
 import dev.voxelbrew.engine.model.*;
 import dev.voxelbrew.engine.sketch.*;
-import dev.voxelbrew.exporter.api.DocumentSink;
+import dev.voxelbrew.exporter.DocumentOutput;
 import dev.voxelbrew.importer.api.DocumentSource;
 import java.util.*;
 import picocli.CommandLine;
@@ -53,7 +53,7 @@ final class SketchCommands implements Runnable {
     static final class Draw extends EditSketch {
 
         @javax.inject.Inject
-        Draw(DocumentSource documents, DocumentSink documentWriter) {
+        Draw(DocumentSource documents, DocumentOutput documentWriter) {
             super(documents, documentWriter);
         }
 
@@ -141,7 +141,7 @@ final class SketchCommands implements Runnable {
     static final class EditText extends EditSketch {
 
         @javax.inject.Inject
-        EditText(DocumentSource documents, DocumentSink documentWriter) {
+        EditText(DocumentSource documents, DocumentOutput documentWriter) {
             super(documents, documentWriter);
         }
 
@@ -181,7 +181,7 @@ final class SketchCommands implements Runnable {
 
     abstract static class EditSketch extends VoxelBrew.FileCommand {
 
-        EditSketch(DocumentSource documents, DocumentSink documentWriter) {
+        EditSketch(DocumentSource documents, DocumentOutput documentWriter) {
             super(documents, documentWriter);
         }
 
@@ -231,7 +231,7 @@ final class SketchCommands implements Runnable {
     static final class Create extends VoxelBrew.AddSketch {
 
         @javax.inject.Inject
-        Create(DocumentSource documents, DocumentSink documentWriter) {
+        Create(DocumentSource documents, DocumentOutput documentWriter) {
             super(documents, documentWriter);
         }
 
@@ -247,7 +247,7 @@ final class SketchCommands implements Runnable {
     static final class Convert extends EditSketch {
 
         @javax.inject.Inject
-        Convert(DocumentSource documents, DocumentSink documentWriter) {
+        Convert(DocumentSource documents, DocumentOutput documentWriter) {
             super(documents, documentWriter);
         }
 
@@ -265,7 +265,7 @@ final class SketchCommands implements Runnable {
     static final class PutEntity extends EditSketch {
 
         @javax.inject.Inject
-        PutEntity(DocumentSource documents, DocumentSink documentWriter) {
+        PutEntity(DocumentSource documents, DocumentOutput documentWriter) {
             super(documents, documentWriter);
         }
 
@@ -332,7 +332,7 @@ final class SketchCommands implements Runnable {
     static final class Constrain extends EditSketch {
 
         @javax.inject.Inject
-        Constrain(DocumentSource documents, DocumentSink documentWriter) {
+        Constrain(DocumentSource documents, DocumentOutput documentWriter) {
             super(documents, documentWriter);
         }
 
@@ -381,7 +381,7 @@ final class SketchCommands implements Runnable {
     static final class RemoveConstraint extends EditSketch {
 
         @javax.inject.Inject
-        RemoveConstraint(DocumentSource documents, DocumentSink documentWriter) {
+        RemoveConstraint(DocumentSource documents, DocumentOutput documentWriter) {
             super(documents, documentWriter);
         }
 
@@ -408,7 +408,7 @@ final class SketchCommands implements Runnable {
     static final class RemoveEntity extends EditSketch {
 
         @javax.inject.Inject
-        RemoveEntity(DocumentSource documents, DocumentSink documentWriter) {
+        RemoveEntity(DocumentSource documents, DocumentOutput documentWriter) {
             super(documents, documentWriter);
         }
 
@@ -428,7 +428,7 @@ final class SketchCommands implements Runnable {
     static final class Profile extends EditSketch {
 
         @javax.inject.Inject
-        Profile(DocumentSource documents, DocumentSink documentWriter) {
+        Profile(DocumentSource documents, DocumentOutput documentWriter) {
             super(documents, documentWriter);
         }
 
@@ -450,7 +450,7 @@ final class SketchCommands implements Runnable {
     static final class Solve extends EditSketch {
 
         @javax.inject.Inject
-        Solve(DocumentSource documents, DocumentSink documentWriter) {
+        Solve(DocumentSource documents, DocumentOutput documentWriter) {
             super(documents, documentWriter);
         }
 
@@ -467,7 +467,7 @@ final class SketchCommands implements Runnable {
     static final class Listing extends EditSketch {
 
         @javax.inject.Inject
-        Listing(DocumentSource documents, DocumentSink documentWriter) {
+        Listing(DocumentSource documents, DocumentOutput documentWriter) {
             super(documents, documentWriter);
         }
 
@@ -501,7 +501,7 @@ final class SketchCommands implements Runnable {
     static final class Move extends EditSketch {
 
         @javax.inject.Inject
-        Move(DocumentSource documents, DocumentSink documentWriter) {
+        Move(DocumentSource documents, DocumentOutput documentWriter) {
             super(documents, documentWriter);
         }
 
@@ -530,7 +530,7 @@ final class SketchCommands implements Runnable {
     static final class Polygon extends EditSketch {
 
         @javax.inject.Inject
-        Polygon(DocumentSource documents, DocumentSink documentWriter) {
+        Polygon(DocumentSource documents, DocumentOutput documentWriter) {
             super(documents, documentWriter);
         }
 

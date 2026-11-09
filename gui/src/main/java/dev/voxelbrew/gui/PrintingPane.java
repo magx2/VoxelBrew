@@ -69,7 +69,8 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
             ExporterRegistry exporters,
             javafx.stage.Stage owner,
             @javax.inject.Named("validation") ExecutorService validator,
-            dev.voxelbrew.util.i18n.Translations translations) {
+            dev.voxelbrew.util.i18n.Translations translations,
+            dev.voxelbrew.util.config.UserConfiguration configuration) {
         this.translations = translations;
         autoSupports.setText(translations.text("gui.automatic_supports"));
         bedOnly.setText(translations.text("gui.build_plate_only"));
@@ -228,7 +229,25 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
                 button(
                         translations.text("gui.export_geometry_project"),
                         "print-export",
-                        () -> ExportDialog.show(owner, document, exporters, translations)),
+                        () -> ExportDialog.choose(
+                                owner,
+                                document,
+                                exporters,
+                                translations,
+                                id -> document.exportDocument(
+                                        exporters.require(id).provider(),
+                                        new DesktopExportWindow(
+                                                        owner,
+                                                        null,
+                                                        document.snapshot()
+                                                                .document()
+                                                                .parameters(),
+                                                        translations,
+                                                        configuration)
+                                                .register(
+                                                        dev.voxelbrew.exporter.MeshExportDialog.class,
+                                                        (parent, request) -> ExportDialog.options(
+                                                                parent, document, translations, request.format()))))),
                 summary,
                 diagnostics);
         diagnostics.setEditable(false);

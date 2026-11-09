@@ -7,10 +7,10 @@ import dev.voxelbrew.engine.model.BodyInstance;
 import dev.voxelbrew.engine.model.Transform;
 import dev.voxelbrew.engine.printing.*;
 import dev.voxelbrew.exporter.ExportSelection;
-import dev.voxelbrew.exporter.ExportService;
 import dev.voxelbrew.exporter.ExporterRegistry;
+import dev.voxelbrew.exporter.FormatTestSupport;
+import dev.voxelbrew.exporter.ModelView;
 import dev.voxelbrew.exporter.ModelViews;
-import dev.voxelbrew.exporter.api.ModelView;
 import java.nio.*;
 import java.nio.file.*;
 import java.util.*;
@@ -41,7 +41,7 @@ class ManufacturingTest {
         try (var registry = new ExporterRegistry(directory)) {
             for (boolean includeSolids : List.of(false, true)) {
                 var output = directory.resolve("project-" + includeSolids + ".3mf");
-                ExportService.export(
+                FormatTestSupport.write(
                         registry,
                         "prusa-project",
                         view,
@@ -89,7 +89,7 @@ class ManufacturingTest {
                     ModelViews.from(model, ExportSelection.Contents.ALL))) {
                 var failure = assertThrows(
                         java.io.IOException.class,
-                        () -> ExportService.export(
+                        () -> FormatTestSupport.write(
                                 registry, "prusa-project", filtered, MeshOptions.DEFAULT, Map.of(), output, true));
                 assertTrue(failure.getMessage().contains("complete build-plate setup"));
                 assertEquals("original project", Files.readString(output));
@@ -169,7 +169,7 @@ class ManufacturingTest {
             Files.writeString(file, "original");
             assertThrows(
                     java.io.IOException.class,
-                    () -> ExportService.export(
+                    () -> FormatTestSupport.write(
                             registry,
                             "stl",
                             ModelViews.selectInstance(ModelViews.from(model), "open"),
@@ -220,7 +220,7 @@ class ManufacturingTest {
                         .size());
         try (var registry = new ExporterRegistry(directory)) {
             Path file = directory.resolve("supports.stl");
-            ExportService.export(
+            FormatTestSupport.write(
                     registry,
                     "stl",
                     ModelViews.from(model, ExportSelection.Contents.SUPPORTS),
@@ -246,7 +246,7 @@ class ManufacturingTest {
             assertEquals(35, minX, .001);
             assertEquals(39, maxX, .001);
             Path packageFile = directory.resolve("assembly.3mf");
-            ExportService.export(
+            FormatTestSupport.write(
                     registry,
                     "3mf",
                     ModelViews.from(model, ExportSelection.Contents.ALL),

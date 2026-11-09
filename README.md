@@ -5,7 +5,7 @@ Desktop parametric CAD for mechanical parts and FDM preparation. Project domain:
 
 **M0 through M3** provide a real Java → JNI → Open CASCADE Technology (OCCT) kernel
 and an editable headless CAD workflow. `engine` owns modeling, history and
-the versioned Protobuf `.jcad` schema; `cli` exposes the same engine operations;
+the versioned Protobuf `.vxb` schema; `cli` exposes the same engine operations;
 `gui` provides the JavaFX CAD workbench. M2 adds tessellation, binary STL,
 portable 3MF and external exporter plugins; M3 adds interactive sketching,
 extrusion, picking, editable history and export. The compact
@@ -15,7 +15,7 @@ marker and step/playback controls. The shared subproject
 generic CPU workers. It has no CAD or frontend dependencies; engine and both
 frontends depend on it. See [shared utilities and configuration](docs/shared-utilities.md).
 The `import` and `export` projects own document/G-code reading, document writing,
-STL/3MF exporters and the slicer file pipeline. The `:api:import` and `:api:export`
+STL/3MF/OBJ mesh exporters, exact STEP export and the slicer file pipeline. The `:api:import` and `:api:export`
 projects publish provider contracts so external JARs can add formats without depending
 on implementation projects. Both file-I/O APIs depend only on the MIT `api/model` module; engine also depends
 on that model API. There are nine first-party projects. See
@@ -156,14 +156,14 @@ path each time; the script deliberately refuses to overwrite an existing file):
 
 ```powershell
 .\gradlew.bat :cli:installDist
-powershell -NoProfile -ExecutionPolicy Bypass -File scripts\reference-part.ps1 -Destination build\demo\my-part.jcad
-.\cli\build\install\cli\bin\cli.bat inspect build\demo\my-part.jcad --point 10,10,4
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts\reference-part.ps1 -Destination build\demo\my-part.vxb
+.\cli\build\install\cli\bin\cli.bat inspect build\demo\my-part.vxb --point 10,10,4
 ```
 
 ```bash
 ./gradlew :cli:installDist
-bash scripts/reference-part.sh build/demo/my-part.jcad
-cli/build/install/cli/bin/cli inspect build/demo/my-part.jcad --point 10,10,4
+bash scripts/reference-part.sh build/demo/my-part.vxb
+cli/build/install/cli/bin/cli inspect build/demo/my-part.vxb --point 10,10,4
 ```
 
 This development distribution includes the matching native libraries and requires
@@ -225,7 +225,7 @@ qualification is tracked in [M6 evidence](docs/acceptance/M6.md). Packaged platf
 
 The **Construct / Konstrukcja** menu creates editable reference planes, axes,
 points and local coordinate systems. See [construction geometry](docs/construction.md).
-The current `.jcad` schema is 10; older documents are rejected without migration.
+The current `.vxb` schema is 10; older documents are rejected without migration.
 
 Use Java 21 and the matching native bootstrap above. JavaFX **21.0.13** is
 resolved for the build platform automatically.

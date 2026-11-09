@@ -27,7 +27,7 @@ public final class WorkbenchApplication extends Application {
             else if (args.get(i).equals("--smoke-output") && i + 1 < args.size()) smokeOutput = Path.of(args.get(++i));
             else if (!args.get(i).equals("--smoke-test"))
                 throw new IllegalArgumentException(
-                        "Usage: gui [--open design.jcad] [--plugin-dir directory] [--smoke-test] [--smoke-output screenshot.png]");
+                        "Usage: gui [--open design.vxb] [--plugin-dir directory] [--smoke-test] [--smoke-output screenshot.png]");
         }
         if (open != null && args.contains("--smoke-test"))
             throw new IllegalArgumentException("--smoke-test creates an unsaved fixture; omit --open");

@@ -15,6 +15,7 @@ dependencies {
     implementation("tech.units:indriya:2.2.4")
     compileOnly("org.apiguardian:apiguardian-api:1.1.2")
     implementation("com.google.protobuf:protobuf-java:4.30.2")
+    implementation("com.google.protobuf:protobuf-java-util:4.30.2")
     implementation("org.apache.commons:commons-math3:3.6.1")
 }
 
@@ -116,9 +117,10 @@ val configureOcct by
                     "-DBUILD_MODULE_DataExchange=OFF",
                     "-DBUILD_MODULE_Draw=OFF",
                     "-DBUILD_MODULE_DETools=OFF",
-                    "-DBUILD_ADDITIONAL_TOOLKITS=TKBool;TKPrim;TKMesh;TKFillet;TKOffset",
+                    "-DBUILD_ADDITIONAL_TOOLKITS=TKBool;TKPrim;TKMesh;TKFillet;TKOffset;TKDESTEP",
                     "-DBUILD_DOC_Overview=OFF",
                     "-DUSE_TBB=OFF",
+                    "-DUSE_XLIB=OFF",
                     "-DUSE_FREETYPE=OFF",
                     "-DUSE_FREEIMAGE=OFF",
                 )
@@ -179,6 +181,7 @@ val buildNative by
         inputs.dir("native")
         inputs.file(nativeRoot.resolve("bridge/CMakeCache.txt"))
         outputs.dir(runtime)
+        outputs.dir(nativeRoot.resolve("validation"))
         commandLine(
             cmake,
             "--build",

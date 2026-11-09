@@ -4,16 +4,16 @@ The `import` and `export` Gradle projects separate file I/O from the CAD engine.
 The Java packages are `dev.voxelbrew.importer` and `dev.voxelbrew.exporter`;
 `import` is a Java keyword, so it cannot be a package segment.
 
-| Project    | Owns                                                                                    | Production dependencies          |
-| ---------- | --------------------------------------------------------------------------------------- | -------------------------------- |
-| util       | Configuration, translations, logging, updates, generic workers                          | No other project                 |
-| engine     | Native geometry, evaluation, tessellation, document codec, feature execution            | api:model, util                  |
-| api:model  | Shared document, sketch, parameter, mesh and manufacturing values                       | No application modules           |
-| api:import | FileImporter SPI, descriptors, typed options/results, DocumentSource/GcodeSource ports  | api:model                        |
-| api:export | ModelExporter and SlicerBackend SPIs, descriptors/options, DocumentSink port            | api:model                        |
-| import     | Bounded .jcad/G-code reading, importer discovery and invocation                         | engine, api:import, util         |
-| export     | Atomic .jcad writing, STL/3MF writers, exporter discovery, slicer execution/publication | engine, api:export, import, util |
-| cli / gui  | Commands and desktop interactions                                                       | engine, import, export, util     |
+| Project    | Owns                                                                                   | Production dependencies          |
+| ---------- | -------------------------------------------------------------------------------------- | -------------------------------- |
+| util       | Configuration, translations, logging, updates, generic workers                         | No other project                 |
+| engine     | Native geometry, evaluation, tessellation, document codec, feature execution           | api:model, util                  |
+| api:model  | Shared document, sketch, parameter, mesh and manufacturing values                      | No application modules           |
+| api:import | FileImporter SPI, descriptors, typed options/results, DocumentSource/GcodeSource ports | api:model                        |
+| api:export | ExporterProvider and SlicerBackend SPIs, Exporter/ExportWindow contracts               | api:model                        |
+| import     | Bounded .vxb/G-code reading, importer discovery and invocation                         | engine, api:import, util         |
+| export     | Atomic .vxb writing, STL/3MF writers, exporter discovery, slicer execution/publication | engine, api:export, import, util |
+| cli / gui  | Commands and desktop interactions                                                      | engine, import, export, util     |
 
 The API projects live in `api/model`, `api/import` and `api/export`. Their binary and source JARs
 retain the `-api` suffix and bundle `META-INF/LICENSE` under MIT. See the
@@ -22,7 +22,7 @@ retain the `-api` suffix and bundle `META-INF/LICENSE` under MIT. See the
 The APIs contain only public contracts and their value types. Concrete format classes,
 registries, services and ServiceLoader registrations stay in `import` / `export`.
 Engine depends on api/model, but not on the file-I/O APIs or implementations. Export inputs
-`ModelView` and `ManufacturingView` live in `dev.voxelbrew.exporter.api`; the concrete
+`ModelView` and `ManufacturingView` are internal helpers in `dev.voxelbrew.exporter`; the concrete
 `ModelViews` adapters and `ExportSelection` live in `dev.voxelbrew.exporter`. Shared CAD
 placements (`BodyInstance` and `Transform`) stay in `dev.voxelbrew.engine.model`.
 `ManufacturingModel` is a detached CAD/manufacturing snapshot, independent of the export API.
@@ -38,14 +38,126 @@ model-api/import-api/export-api; native feature providers compile separately aga
 All services are headless.
 STL mesh-to-editable-CAD and STEP import remain outside the implemented workflow.
 
+## Document exporters
+
+The native document extension and format ID are `vxb`. Existing `.jcad` files
+remain readable through the same codec; the binary envelope and schema are unchanged.
+Save As defaults to `.vxb`, while saving an already-open project keeps its current path.
+
+`DocumentSink.save` is replaced by `Exporter<R>.export(CadDocument, ExportWindow)`.
+The exporter defines its result type: file exporters return `Path`, while a cloud
+exporter can return its own upload receipt or remote resource identifier. Cancellation
+completes the returned future with `CancellationException`.
+
+`ExportWindow.show(ExportDialog<R>)` hosts typed, exporter-defined interactions. The
+window contract contains no destination, file, credential or cloud-specific fields.
+An exporter defines a request implementing `ExportDialog<R>` with whatever data it
+needs, and each frontend registers a handler for that request type. `ExportDialogs`
+is the frontend-neutral handler registry; unknown request types fail explicitly.
+Registration is local to the host, so one window cannot replace another's handlers.
+
+`FileExportDialog` is the built-in file request, with a typed destination and overwrite
+response. Desktop rendering retains formula-aware file paths and overwrite confirmation.
+CLI uses `FileExportDialog.destination(path, overwrite)` to provide parsed arguments
+without a display. File operations still run on the window-owned file worker.
+
+For example, a cloud provider can define `CloudDialog implements ExportDialog<CloudSettings>`
+carrying available accounts and projects. Its `Exporter<CloudReceipt>` requests those
+settings through `parent.show(new CloudDialog(...))`. Desktop code registers a renderer
+with `DesktopExportWindow.register(CloudDialog.class, (owner, request) -> ...)`; it can
+construct any JavaFX dialog and use the real owner window. CLI code registers a handler
+with `ExportDialogs.register(CloudDialog.class, request -> ...)` to obtain settings from
+arguments or console prompts. The provider can request multiple interactions and return
+its own receipt; no local file is required. Custom dialogs need a handler for each
+supported frontend. This is a hosting contract, not an automatic cross-platform UI renderer.
+
+`JcadExporter` saves the editable binary document with existing schema, atomic-write,
+file-version and newer-file protections. `JsonExporter` writes UTF-8 ProtoJSON for the
+complete document schema, including feature definitions, parameters and print setup.
+JSON is an export only; it does not change the active project path, save counter or dirty
+state, and JSON import is not yet provided. Opaque binary payloads use ProtoJSON base64.
+File → Export lists all registered exporters,
+then opens the selected exporter's options. Save and Save As always use VXB; they do not
+reuse the last export format. VXB and JSON remain available without exportable geometry.
+CLI exposes `export --format vxb|json|step --output PATH`.
+GUI Save As uses the same VXB exporter. `DocumentOutput` is an implementation-module
+writer port for direct saves and injected tests, not a public plugin contract.
+All geometry formats also implement `Exporter`; the separate `ModelExporter` SPI and service registration have been removed.
+
+### Runtime discovery of document exporters
+
+Implement `dev.voxelbrew.exporter.api.ExporterProvider` with a public no-argument
+constructor. Return a `ExporterDescriptor` with a unique ID, display name and
+`ExporterProvider.API_VERSION` (currently 2). Its `create(Executor)` method returns your
+`Exporter<?>`; use that supplied worker for asynchronous operations and do not shut it
+down. The returned future must cover the complete operation.
+
+List the provider's fully qualified class name in the JAR resource:
+
+```text
+META-INF/services/dev.voxelbrew.exporter.api.ExporterProvider
+```
+
+Copy the JAR into `~/.voxelbrew/plugins` (or the configured plugin directory), then open
+File → Export. It rescans the directory and lists provider metadata from the registry,
+including newly added JARs. There is no frontend format list to edit. All built-in exporters are
+Dagger multibindings; external providers use ServiceLoader, so plugin builds do not need
+Dagger or application-module dependencies. Duplicate IDs preserve the first provider,
+with built-ins registered first; incompatible versions and broken providers produce
+diagnostics without hiding healthy providers. File → Save remains the native VXB path.
+
+The same providers are listed by `cli exporters` and invoked by `cli export --format ID`.
+`--output` is required only for providers that request a file destination (and mesh exports).
+Providers using custom dialog requests still need frontend handlers as described above;
+discovery alone does not render an unknown dialog type.
+
+Loaders stay open while a window may be using their classes. Newly added JARs are picked
+up immediately on the next Export action; close relevant windows before replacing or
+removing loaded JARs, particularly on Windows where JAR files may be locked.
+
+The independent `consumer.DocumentProbeProvider` fixture compiles against the published
+API artifacts only. Unit tests install its JAR after opening a registry, rescan, execute
+it, and verify that the Dagger-created CLI graph lists and invokes it without loading OCCT.
+
 ## Public file operations
+
+### Geometry formats
+
+File Export and `cli export --format ID --output PATH` offer these geometry formats:
+
+| ID     | Output        | Geometry                                                       |
+| ------ | ------------- | -------------------------------------------------------------- |
+| `stl`  | Binary STL    | Triangles in millimeters                                       |
+| `3mf`  | Portable 3MF  | Triangles with units and instance placements                   |
+| `obj`  | Wavefront OBJ | Triangles in millimeters, one object per instance              |
+| `step` | STEP AP242    | Exact solid boundaries, including analytic curves and surfaces |
+
+STL, 3MF and OBJ use the mesh export options and geometry selection. OBJ applies each
+instance transform once and uses global, one-based face indices across objects; its
+units are documented in a comment because OBJ has no standard units field. Materials
+and textures are not exported.
+
+STEP exports all bodies of the complete, successfully evaluated design in design
+coordinates. Print-bed placements, supports and feature history are not included.
+It does not tessellate solids or change the active project path or save counter.
+The provider receives the configured feature-plugin directory through the optional
+`ExporterProvider.create(Executor, Path)` overload; API-only providers can keep
+implementing `create(Executor)`. Geometry encoding belongs to the engine; the exporter
+owns the destination dialog and atomic publication. Failed or rolled-back evaluations
+are rejected before replacing a destination.
+
+`AdditionalFormatsTest` parses OBJ vertices/faces independently and checks placement,
+closed topology and volume. A separate OCCT STEP reader executable checks exact STEP
+solid counts, bounds, volume and the reference through-hole. This reader uses the same
+OCCT kernel, but runs separately from the writer/JNI process. Existing STL/3MF reader
+tests continue to cover those formats.
 
 ```java
 import dev.voxelbrew.importer.DocumentReader;
 import dev.voxelbrew.importer.GcodeReader;
 import dev.voxelbrew.exporter.DocumentWriter;
 import dev.voxelbrew.exporter.ExporterRegistry;
-import dev.voxelbrew.exporter.ExportService;
+
 
 var document = DocumentReader.load(source);
 DocumentWriter.save(document, destination, false);
@@ -55,7 +167,7 @@ var preview = GcodeReader.read(gcodeFile);
 Replace `DocumentStore.load/save` with `DocumentReader.load/DocumentWriter.save`.
 Schema version and stable revision fingerprints are exposed by
 `dev.voxelbrew.engine.persistence.DocumentCodec`; it also provides in-memory
-`encode/decode` and never accesses files. `.jcad` schema 7 retains the optional
+`encode/decode` and never accesses files. `.vxb` schema 7 retains the optional
 `application_version` string at field 18, populated from `Version.version()` on
 every save. Existing field numbers, checksums, opaque provider payloads and CAD
 fingerprints retain their meanings. Writer metadata is excluded from fingerprints.
@@ -80,7 +192,7 @@ release follows its `-SNAPSHOT`. IDE/class-directory runs use `0.0.0` for both
 saving and comparison, as returned by `Version.version()`; they do not bypass the
 newer-file guard. Use a built distribution to open files from a released version.
 
-`BinaryStlExporter`, `ThreeMfExporter`, `ExporterRegistry` and `ExportService` now
+`BinaryStlExporter`, `ThreeMfExporter`, `ExporterRegistry` and `AtomicExport` now
 live in `dev.voxelbrew.exporter`. Prusa project/configuration writers, the backend,
 slicer registry and `SliceService` live in `dev.voxelbrew.exporter.printing`.
 `GcodeJob` stays an immutable engine preview model; use `GcodeReader.read` to load it.
@@ -101,33 +213,32 @@ Do not bundle host API classes into a plugin JAR. No dependency on import/export
 picocli, Protobuf classes or Dagger is needed. This source migration intentionally has no
 old-package shims: recompile existing providers and rename their service resources.
 
-| Extension    | Public interface                                    | JAR service resource                                                  |
-| ------------ | --------------------------------------------------- | --------------------------------------------------------------------- |
-| Import       | `dev.voxelbrew.importer.api.FileImporter`           | `META-INF/services/dev.voxelbrew.importer.api.FileImporter`           |
-| Model export | `dev.voxelbrew.exporter.api.ModelExporter`          | `META-INF/services/dev.voxelbrew.exporter.api.ModelExporter`          |
-| Slicing      | `dev.voxelbrew.exporter.api.printing.SlicerBackend` | `META-INF/services/dev.voxelbrew.exporter.api.printing.SlicerBackend` |
+| Extension | Public interface                                    | JAR service resource                                                  |
+| --------- | --------------------------------------------------- | --------------------------------------------------------------------- |
+| Import    | `dev.voxelbrew.importer.api.FileImporter`           | `META-INF/services/dev.voxelbrew.importer.api.FileImporter`           |
+| Export    | `dev.voxelbrew.exporter.api.ExporterProvider`       | `META-INF/services/dev.voxelbrew.exporter.api.ExporterProvider`       |
+| Slicing   | `dev.voxelbrew.exporter.api.printing.SlicerBackend` | `META-INF/services/dev.voxelbrew.exporter.api.printing.SlicerBackend` |
 
 Each service file lists public, no-argument provider classes, one per line. Implement the
-interface and return a descriptor with a unique ID, supported API version, extensions,
+import interface and return a descriptor with a unique ID, supported API version, extensions,
 capabilities/result kind and STRING/BOOLEAN/INTEGER/DECIMAL/CHOICE options. Declare defaults
 in the descriptor; the host validates options before invoking a provider. Importers return
 `ImportResult.Document(CadDocument)` or `ImportResult.Gcode(GcodeJob)`; declare the matching
 result kind. A document importer must create actual editable definitions, not disguise
 triangles as feature history. Providers must not retain borrowed streams/model views.
-Imports use host-owned bounded input (256 MiB maximum, with .jcad's smaller codec limit).
-Exports use host-owned output and atomic publication only after success.
+Imports use host-owned bounded input (256 MiB maximum, with .vxb's smaller codec limit).
+Exporters own their destination requests and publication. Built-in file serializers use atomic publication only after success.
 
-`ImporterRegistry`/`ImportService` and `ExporterRegistry`/`ExportService` are host services in
+`ImporterRegistry`/`ImportService` and `ExporterRegistry` are host services in
 the implementation projects. Trusted JARs are discovered using dedicated, closeable
 ServiceLoader class loaders in `~/.voxelbrew/plugins` or `--plugin-dir`. Plugins execute with
 the application's permissions. Duplicate IDs retain the first provider; incompatible APIs
 and broken providers are diagnosed without disabling unrelated providers. Invocation errors
-name the provider. Import never writes its source. Built-in `.jcad` and G-code importers and
-STL/3MF exporters use the same discovery mechanism.
+name the provider. Import never writes its source. Built-in `.vxb` and G-code importers use ServiceLoader. Built-in exporters use Dagger multibindings with the same provider contract as external JARs.
 
 `fixtures/exporter-plugin` is an independent Gradle build with published API dependencies
 only. It includes `consumer.ProbeImporter` (CSV `width,height,thickness` in a `.vbplate` file,
-with a `scale` option) and `consumer.ProbeExporter` (a mesh report with a `label` option).
+with a `scale` option) and `consumer.DocumentProbeProvider` (a document report using the unified exporter API).
 `./gradlew :engine:buildExporterFixture` publishes engine/util and all three APIs to
 `engine/build/repository`, then compiles that consumer. For Maven-local development run
 `./gradlew :util:publishToMavenLocal :engine:publishToMavenLocal :api:model:publishToMavenLocal :api:import:publishToMavenLocal :api:export:publishToMavenLocal`.
@@ -135,10 +246,10 @@ The API artifacts also publish source JARs. Copy the consumer JAR into a trusted
 
 ```text
 cli importers --plugin-dir "path with spaces/plugins"
-cli import plate.vbplate --format plate --option scale=2 --plugin-dir "path with spaces/plugins" --output plate.jcad
+cli import plate.vbplate --format plate --option scale=2 --plugin-dir "path with spaces/plugins" --output plate.vxb
 cli import part.gcode --format gcode
 cli exporters --plugin-dir "path with spaces/plugins"
-cli export plate.jcad --format probe --option label=custom --plugin-dir "path with spaces/plugins" --output report.txt
+cli export plate.vxb --format document-probe --plugin-dir "path with spaces/plugins" --output report.txt
 ```
 
 Document imports require a separate `--output`; existing destinations require `--overwrite`.
@@ -147,6 +258,21 @@ GUI **File → Import…** (`Ctrl+I`) lists document providers and generates opt
 their descriptors. Reads run on the file worker; success opens an unsaved design, and failure
 keeps the current document. Save/Discard/Cancel protects unsaved work before importing. Toolpath
 importers are available through the host API and CLI; the GUI import dialog is for documents.
+
+## Slicer input export
+
+Slicing resolves `SlicerBackend.inputFormat()` through the same exporter registry.
+`SliceService` supplies headless `FileExportDialog` and built-in `MeshExportDialog`
+handlers, waits for export completion, then passes the completed file as
+`SlicerBackend.Request.input()`. The backend no longer serializes geometry.
+Prusa selects the `prusa-project` exporter and includes solid supports; its 3MF
+retains placements and support modifiers. Export failure or cancellation prevents
+backend execution, and temporary files are deleted with the job workspace.
+
+The public exporter and slicer SPIs are version 2. External exporters implement
+`ExporterProvider`, not the removed `ModelExporter`; model/manufacturing views and
+mesh option metadata remain implementation helpers outside `export-api`.
+See the [export developer guide](../export/README.md) for migration and examples.
 
 ## Distribution and verification
 

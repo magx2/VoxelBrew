@@ -5,7 +5,7 @@ material=${2:-PLA}
 mkdir "$target"
 root=$(cd "$(dirname "$0")/.." && pwd)
 cli="$root/cli/build/install/cli/bin/cli"
-file="$target/print-reference.jcad"
+file="$target/print-reference.vxb"
 "$cli" new "$file"
 "$cli" rectangle "$file" --id plate --width 60 --height 40
 "$cli" extrude "$file" --id thickness --sketch plate --distance 8

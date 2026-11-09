@@ -8,7 +8,7 @@ import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.*;
 
-/** Atomic publication of editable .jcad documents, preserving unsupported existing files. */
+/** Atomic publication of editable .vxb documents, preserving unsupported existing files. */
 @lombok.extern.slf4j.Slf4j
 public final class DocumentWriter {
     private DocumentWriter() {}

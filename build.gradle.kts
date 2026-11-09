@@ -79,7 +79,11 @@ spotless {
         endWithNewline()
     }
     cpp {
-        target("engine/native/src/**/*.cpp", "engine/native/src/**/*.h")
+        target(
+            "engine/native/src/**/*.cpp",
+            "engine/native/src/**/*.h",
+            "engine/native/tests/**/*.cpp",
+        )
         clangFormat(clangFormatVersion)
             .pathToExe(clangFormatExecutable.asFile.absolutePath)
             .style(clangStyle)

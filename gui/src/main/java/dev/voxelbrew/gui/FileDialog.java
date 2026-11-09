@@ -20,15 +20,28 @@ final class FileDialog {
             ParameterSet parameters,
             dev.voxelbrew.util.i18n.Translations translations,
             dev.voxelbrew.util.config.UserConfiguration configuration) {
+        return choose(owner, save, current, parameters, translations, configuration, "vxb", null);
+    }
+
+    static Optional<Path> choose(
+            Window owner,
+            boolean save,
+            Path current,
+            ParameterSet parameters,
+            dev.voxelbrew.util.i18n.Translations translations,
+            dev.voxelbrew.util.config.UserConfiguration configuration,
+            String extension,
+            String title) {
         var dialog = new Dialog<Path>();
         dialog.setTitle(
                 save ? translations.text("gui.save_editable_design") : translations.text("gui.open_editable_design"));
+        if (title != null && !extension.equals("vxb")) dialog.setTitle(title);
         Path initial = current;
         if (initial == null) {
             try {
                 initial = save
-                        ? configuration.defaultSaveFolder().resolve("Untitled.jcad")
-                        : Path.of(System.getProperty("user.home"), "Untitled.jcad");
+                        ? configuration.defaultSaveFolder().resolve("Untitled." + extension)
+                        : Path.of(System.getProperty("user.home"), "Untitled.vxb");
             } catch (java.io.IOException | IllegalArgumentException failure) {
                 Dialogs.show(
                         new Alert(Alert.AlertType.ERROR, failure.getMessage(), ButtonType.OK), owner, translations);
@@ -45,7 +58,10 @@ final class FileDialog {
             var chooser = new FileChooser();
             chooser.setTitle(dialog.getTitle());
             chooser.getExtensionFilters()
-                    .add(new FileChooser.ExtensionFilter(translations.text("gui.voxelbrew_design_jcad"), "*.jcad"));
+                    .add(new FileChooser.ExtensionFilter("VoxelBrew (*." + extension + ")", "*." + extension));
+            if (!save && extension.equals("vxb"))
+                chooser.getExtensionFilters()
+                        .add(new FileChooser.ExtensionFilter("Legacy VoxelBrew (*.jcad)", "*.jcad"));
             try {
                 Path selected = Path.of(path.evaluatedText()).toAbsolutePath();
                 Path parent = selected.getParent();

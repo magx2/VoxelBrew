@@ -1,6 +1,10 @@
 package dev.voxelbrew.exporter.printing;
 
+import dev.voxelbrew.engine.mesh.MeshOptions;
+import dev.voxelbrew.engine.model.CadDocument;
 import dev.voxelbrew.engine.printing.*;
+import dev.voxelbrew.exporter.*;
+import dev.voxelbrew.exporter.api.*;
 import dev.voxelbrew.exporter.api.printing.SlicerBackend;
 import dev.voxelbrew.importer.GcodeReader;
 import java.io.*;
@@ -40,9 +44,38 @@ public final class SliceService {
 
     private SliceService() {}
 
+    /** Standalone composition for scripts/tests; application roots supply their registry. */
     public static Result slice(
             SlicerBackend backend,
+            CadDocument document,
             ManufacturingModel model,
+            Path executable,
+            Path destination,
+            boolean overwrite,
+            Cancellation cancellation,
+            Consumer<String> diagnostics,
+            PublicationGuard guard)
+            throws IOException {
+        try (var exporters = new ExporterRegistry(ExporterRegistry.defaultDirectory())) {
+            return slice(
+                    backend,
+                    document,
+                    model,
+                    exporters,
+                    executable,
+                    destination,
+                    overwrite,
+                    cancellation,
+                    diagnostics,
+                    guard);
+        }
+    }
+
+    public static Result slice(
+            SlicerBackend backend,
+            CadDocument document,
+            ManufacturingModel model,
+            ExporterRegistry exporters,
             Path executable,
             Path destination,
             boolean overwrite,
@@ -89,7 +122,39 @@ public final class SliceService {
         Path work = Files.createTempDirectory(target.getParent(), ".voxelbrew-slice-");
         try {
             Path raw = work.resolve("sliced.gcode"), complete = work.resolve("complete.gcode");
-            var run = backend.slice(new SlicerBackend.Request(model, command, work, raw, cancellation, diagnostics));
+            var format = backend.inputFormat();
+            Path input = work.resolve("input." + format.extension());
+            var parent = new ExportDialogs()
+                    .register(
+                            FileExportDialog.class,
+                            request -> Optional.of(new FileExportDialog.Destination(input, false)))
+                    .register(
+                            MeshExportDialog.class,
+                            request -> Optional.of(new MeshExportDialog.Settings(
+                                    new ExportSelection(
+                                            ExportSelection.Space.BUILD_PLATE,
+                                            ExportSelection.Contents.MODEL,
+                                            null,
+                                            null),
+                                    MeshOptions.DEFAULT,
+                                    format.options(),
+                                    new FileExportDialog.Destination(input, false),
+                                    model)));
+            try {
+                exporters
+                        .require(format.exporterId())
+                        .provider()
+                        .create(Runnable::run, exporters.directory())
+                        .export(document, parent)
+                        .join();
+            } catch (java.util.concurrent.CompletionException failure) {
+                if (failure.getCause() instanceof java.util.concurrent.CancellationException cancelled) throw cancelled;
+                throw new IOException("Slicer input export failed: " + format.exporterId(), failure.getCause());
+            }
+            cancellation.check();
+            if (!Files.isRegularFile(input)) throw new IOException("Exporter did not create slicer input: " + input);
+            var run = backend.slice(
+                    new SlicerBackend.Request(model, input, command, work, raw, cancellation, diagnostics));
             cancellation.check();
             var inspected = GcodeReader.read(raw);
             if (inspected.modelLayers().isEmpty())
@@ -116,8 +181,8 @@ public final class SliceService {
                             + " = "
                             + entry.getValue().replace("\r", "\\r").replace("\n", "\\n")
                             + "\n");
-                try (var input = Files.newBufferedReader(raw, StandardCharsets.UTF_8)) {
-                    input.transferTo(output);
+                try (var rawInput = Files.newBufferedReader(raw, StandardCharsets.UTF_8)) {
+                    rawInput.transferTo(output);
                 }
                 output.write("\n; VOXELBREW complete = true\n");
             }

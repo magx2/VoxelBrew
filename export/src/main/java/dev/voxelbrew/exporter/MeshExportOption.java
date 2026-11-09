@@ -1,11 +1,11 @@
-package dev.voxelbrew.exporter.api;
+package dev.voxelbrew.exporter;
 
 import java.util.List;
 import lombok.NonNull;
 
 /** Typed, frontend-neutral provider option; values cross the SPI as canonical strings. */
 @lombok.extern.slf4j.Slf4j
-public record ExportOption(
+public record MeshExportOption(
         String key,
         @NonNull String label,
         @NonNull Type type,
@@ -19,7 +19,7 @@ public record ExportOption(
         CHOICE
     }
 
-    public ExportOption {
+    public MeshExportOption {
         if (key == null || !key.matches("[a-z][a-z0-9.-]*")) throw new IllegalArgumentException("Invalid option key");
 
         choices = List.copyOf(choices);

@@ -9,7 +9,7 @@ import sys
 import tempfile
 
 LOG = logging.getLogger("voxelbrew.tests.cleanup")
-EVIDENCE_SUFFIXES = {".json", ".jsonl", ".log", ".txt", ".properties", ".png", ".jcad", ".stl", ".3mf"}
+EVIDENCE_SUFFIXES = {".json", ".jsonl", ".log", ".txt", ".properties", ".png", ".vxb", ".jcad", ".stl", ".3mf"}
 
 
 def cleanup(path):

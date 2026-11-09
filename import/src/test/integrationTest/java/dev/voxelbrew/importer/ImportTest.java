@@ -29,7 +29,7 @@ class ImportTest {
         Files.writeString(source, "60,40,4");
         try (var registry = new ImporterRegistry(plugins)) {
             assertEquals(
-                    List.of("failing", "gcode", "jcad", "plate", "wrong-kind"),
+                    List.of("failing", "gcode", "plate", "vxb", "wrong-kind"),
                     registry.descriptors().stream().map(ImporterDescriptor::id).toList());
             String diagnostics = String.join("\n", registry.diagnostics());
             assertTrue(diagnostics.contains("Duplicate importer ID: plate"), diagnostics);
@@ -64,13 +64,13 @@ class ImportTest {
 
     @Test
     void builtinsUseTheSameRegistryAndRejectOversizedInputs() throws Exception {
-        Path source = directory.resolve("document.jcad");
+        Path source = directory.resolve("document.vxb");
         var document = CadDocument.empty();
         Files.write(source, DocumentCodec.encode(document));
         try (var registry = new ImporterRegistry(directory.resolve("no plugins"))) {
             assertEquals(
                     document,
-                    ((ImportResult.Document) ImportService.read(registry, "jcad", source, Map.of())).document());
+                    ((ImportResult.Document) ImportService.read(registry, "vxb", source, Map.of())).document());
             Path gcode = directory.resolve("part.gcode");
             Files.writeString(gcode, "G21\nG90\nM82\nG1 Z0.2\nG1 X10 Y10 E1 F1200\n");
             assertEquals(
@@ -79,7 +79,7 @@ class ImportTest {
             try (var oversized = new RandomAccessFile(source.toFile(), "rw")) {
                 oversized.setLength(ImportService.MAX_INPUT_BYTES + 1);
             }
-            assertTrue(assertThrows(IOException.class, () -> ImportService.read(registry, "jcad", source, Map.of()))
+            assertTrue(assertThrows(IOException.class, () -> ImportService.read(registry, "vxb", source, Map.of()))
                     .getMessage()
                     .contains("256 MiB"));
         }

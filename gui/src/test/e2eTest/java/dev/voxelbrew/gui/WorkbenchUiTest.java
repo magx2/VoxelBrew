@@ -2187,6 +2187,19 @@ class WorkbenchUiTest {
                         .get(index));
     }
 
+    private void chooseExporter(String id) throws Exception {
+        int index = fx(() -> {
+            var choices = ((ComboBox<?>) node("#export-format")).getItems();
+            for (int i = 0; i < choices.size(); i++) {
+                if (choices.get(i) instanceof dev.voxelbrew.exporter.api.ExporterDescriptor choice
+                        && choice.id().equals(id)) return i;
+            }
+            throw new AssertionError("Missing exporter " + id);
+        });
+        choice("export-format", index);
+        click("export-confirm");
+    }
+
     private void choice(String id, int index) throws Exception {
         if (id.equals("appearance")) {
             click("menu-view");
@@ -2394,7 +2407,7 @@ class WorkbenchUiTest {
         ready();
         choice("appearance", 1);
         shortcut(KeyCode.I, false);
-        choice("import-format", 2); // failing, jcad, plate; toolpaths are excluded.
+        choice("import-format", 1); // failing, plate, vxb; toolpaths are excluded.
         text("import-path", source.toString());
         text("import-option-scale", "2");
         assertButtonDescriptions();
@@ -3960,18 +3973,18 @@ class WorkbenchUiTest {
                 document().features().stream().map(Feature::id).toList());
         Path exported = directory.resolve("GUI reference.3mf");
         click("export");
+        chooseExporter("3mf");
         text("export-path", exported.toString());
         click("export-confirm");
         ready();
         assertTrue(Files.size(exported) > 500);
         Path external = directory.resolve("external report.txt");
         click("export");
-        choice("export-format", 2);
-        text("export-option-label", "GUI external option");
-        text("export-path", external.toString());
-        click("export-confirm");
+        chooseExporter("document-probe");
+        text("file-path", external.toString());
+        click("file-confirm");
         ready();
-        assertTrue(Files.readString(external).startsWith("GUI external option"));
+        assertTrue(Files.readString(external).startsWith("document="));
         cli(
                 "edit",
                 cliFile.toString(),
@@ -4392,7 +4405,7 @@ class WorkbenchUiTest {
         assertEquals(part, document());
         click("parameters-cancel");
         shortcut(KeyCode.E, false);
-        assertNotNull(fx(() -> node("#export-path")));
+        assertNotNull(fx(() -> node("#export-format")));
         key(KeyCode.ESCAPE);
         click("menu-fit");
         key(KeyCode.K);

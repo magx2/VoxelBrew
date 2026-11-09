@@ -35,6 +35,11 @@ public final class PrusaSlicerBackend implements SlicerBackend {
     }
 
     @Override
+    public InputFormat inputFormat() {
+        return new InputFormat("prusa-project", "3mf", Map.of("include-support-solids", "true"));
+    }
+
+    @Override
     public RunResult slice(Request request) throws IOException {
         var profile = request.model().profile();
         if (!Set.of("PLA", "PETG").contains(profile.material().id()))
@@ -45,11 +50,7 @@ public final class PrusaSlicerBackend implements SlicerBackend {
                 || Math.abs(profile.printer().nozzleMm() - 0.4) > 1e-9)
             throw new IOException(
                     "Unsupported printer/nozzle/output pairing; this backend is qualified for generic Marlin 2 / 0.4 mm / text G-code");
-        Path project = request.workingDirectory().resolve("input.3mf"),
-                config = request.workingDirectory().resolve("process.ini");
-        try (var output = Files.newOutputStream(project)) {
-            PrusaProjectExporter.writeProject(request.model(), output);
-        }
+        Path project = request.input(), config = request.workingDirectory().resolve("process.ini");
         Files.writeString(config, PrusaConfiguration.ini(request.model()), StandardCharsets.UTF_8);
         ProcessRunner.run(
                 List.of(

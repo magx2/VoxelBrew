@@ -1,7 +1,7 @@
 param([string]$Destination = '')
 $ErrorActionPreference = 'Stop'
 $repoRoot = Split-Path -Parent $PSScriptRoot
-if (!$Destination) { $Destination = Join-Path $repoRoot 'build/demo/reference.jcad' }
+if (!$Destination) { $Destination = Join-Path $repoRoot 'build/demo/reference.vxb' }
 $Destination = [System.IO.Path]::GetFullPath($Destination)
 New-Item -ItemType Directory -Force -Path (Split-Path -Parent $Destination) | Out-Null
 $cli = Join-Path $repoRoot 'cli/build/install/cli/bin/cli.bat'

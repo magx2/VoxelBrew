@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-destination="${1:-$repo_root/build/demo/reference.jcad}"
+destination="${1:-$repo_root/build/demo/reference.vxb}"
 mkdir -p "$(dirname "$destination")"
 cli="$repo_root/cli/build/install/cli/bin/cli"
 if [[ ! -x "$cli" ]]; then echo 'Run ./gradlew :cli:installDist first' >&2; exit 1; fi

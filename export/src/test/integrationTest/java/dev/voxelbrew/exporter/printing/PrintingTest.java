@@ -38,6 +38,7 @@ class PrintingTest {
         var output = directory.resolve("real reference job.gcode");
         var result = SliceService.slice(
                 new PrusaSlicerBackend(),
+                session.document(),
                 model,
                 PrusaSlicerBackend.defaultExecutable(),
                 output,

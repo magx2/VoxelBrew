@@ -29,7 +29,18 @@ final class NativeKernel {
                         "TKBool",
                         "TKMesh",
                         "TKFillet",
-                        "TKOffset"
+                        "TKOffset",
+                        "TKService",
+                        "TKHLR",
+                        "TKCDF",
+                        "TKLCAF",
+                        "TKCAF",
+                        "TKV3d",
+                        "TKVCAF",
+                        "TKXCAF",
+                        "TKXSBase",
+                        "TKDE",
+                        "TKDESTEP"
                     }) {
                         System.load(runtime.resolve(library + ".dll").toString());
                     }
@@ -56,6 +67,8 @@ final class NativeKernel {
     private NativeKernel() {}
 
     static native String version();
+
+    static native byte[] step(long[] bodies);
 
     static native long rectanglePrism(double x, double y, double z, double width, double height, double distance);
 

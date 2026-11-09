@@ -1,7 +1,7 @@
 package dev.voxelbrew.cli;
 
 import dev.voxelbrew.engine.model.BodyStyle;
-import dev.voxelbrew.exporter.api.DocumentSink;
+import dev.voxelbrew.exporter.DocumentOutput;
 import dev.voxelbrew.importer.api.DocumentSource;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
@@ -12,7 +12,7 @@ import picocli.CommandLine.Option;
         description = "List or assign CAD body material and color; independent of slicer settings.")
 final class BodyStyleCommand extends VoxelBrew.FileCommand {
     @javax.inject.Inject
-    BodyStyleCommand(DocumentSource documents, DocumentSink documentWriter) {
+    BodyStyleCommand(DocumentSource documents, DocumentOutput documentWriter) {
         super(documents, documentWriter);
     }
 

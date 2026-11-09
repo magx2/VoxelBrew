@@ -3,9 +3,6 @@ package dev.voxelbrew.exporter;
 import dev.voxelbrew.engine.mesh.MeshOptions;
 import dev.voxelbrew.engine.mesh.MeshValidation;
 import dev.voxelbrew.engine.model.Transform;
-import dev.voxelbrew.exporter.api.ExporterDescriptor;
-import dev.voxelbrew.exporter.api.ModelExporter;
-import dev.voxelbrew.exporter.api.ModelView;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
@@ -18,10 +15,18 @@ import java.util.zip.ZipOutputStream;
 import javax.xml.stream.XMLOutputFactory;
 import javax.xml.stream.XMLStreamException;
 
-public final class ThreeMfExporter implements ModelExporter {
+public final class ThreeMfExporter extends MeshExporter {
+    public ThreeMfExporter() {
+        super();
+    }
+
+    public ThreeMfExporter(java.util.concurrent.Executor worker, java.nio.file.Path plugins) {
+        super(worker, plugins);
+    }
+
     @Override
-    public ExporterDescriptor descriptor() {
-        return new ExporterDescriptor("3mf", "Portable 3MF Core", API_VERSION, List.of("3mf"), true, List.of());
+    public MeshFormat format() {
+        return new MeshFormat("3mf", "Portable 3MF Core", List.of("3mf"), true, List.of());
     }
 
     @Override

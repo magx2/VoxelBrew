@@ -19,6 +19,35 @@ class InjectedDocumentIoTest {
     private final Queue<Runnable> callbacks = new ConcurrentLinkedQueue<>();
 
     @Test
+    void exportersKeepCancellationAndJsonSeparateFromSavingTheEditableDocument() throws Exception {
+        var controller =
+                new DocumentController(callbacks::add, doc -> new DocumentController.Build(List.of(), List.of(), true));
+        try {
+            var cancelled = controller.saveAs(new dev.voxelbrew.exporter.api.ExportDialogs()
+                    .register(dev.voxelbrew.exporter.api.FileExportDialog.class, request -> Optional.empty()));
+            await(cancelled::isDone);
+            assertTrue(cancelled.isCancelled());
+            assertFalse(controller.ioBusy());
+            assertNull(controller.path());
+            var json = controller.exportDocument(
+                    new dev.voxelbrew.exporter.JsonExporterProvider(),
+                    dev.voxelbrew.exporter.api.FileExportDialog.destination(directory.resolve("copy.json"), false));
+            await(json::isDone);
+            json.join();
+            assertNull(controller.path());
+            assertTrue(Files.exists(directory.resolve("copy.json")));
+            Path saved = directory.resolve("saved.jcad");
+            var jcad = controller.saveAs(dev.voxelbrew.exporter.api.FileExportDialog.destination(saved, false));
+            await(jcad::isDone);
+            jcad.join();
+            assertEquals(saved, controller.path());
+            assertFalse(controller.ioBusy());
+        } finally {
+            controller.close();
+        }
+    }
+
+    @Test
     void injectedFileFailuresPreserveTheDocumentAndShutdownDrainsCapturedWrites() throws Exception {
         var rebuild = WindowResources.worker("test-rebuild");
         var files = WindowResources.worker("test-files");

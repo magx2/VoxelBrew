@@ -10,11 +10,14 @@ No third-party Java binding is bundled. The official upstream OCCT source and
 build documentation are at
 https://github.com/Open-Cascade-SAS/OCCT/tree/V7_9_0.
 
-The only compiled OCCT toolkit roots are `TKBool` and `TKPrim`; OCCT resolves
-their modeling/foundation dependencies. Visualization, document frameworks,
-exchange, Draw and DE tools are disabled. The Java adapter supports a rectangular
-XY face/prism, a through-Z circular subtraction, exact measurements and point
-classification. Additional geometry operations require an explicit later change.
+Compiled OCCT toolkit roots include `TKBool`, `TKPrim`, `TKMesh`, `TKFillet`,
+`TKOffset` and `TKDESTEP`; OCCT resolves their dependencies. STEP exchange adds
+document and presentation support libraries through OCCT's dependency graph,
+but headless exports do not create a viewer or require a display/GPU. Draw and
+standalone DE tools remain disabled. The adapter supports modeling, tessellation,
+exact measurements and STEP AP242 encoding of complete solids in millimeters.
+STEP serialization uses deep copies and validates the encoded topology by reading
+it back before returning bytes to the file-export layer.
 
 Build steps are Gradle tasks, inspectable individually:
 

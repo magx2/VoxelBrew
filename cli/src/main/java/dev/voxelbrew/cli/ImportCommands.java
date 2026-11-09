@@ -1,6 +1,6 @@
 package dev.voxelbrew.cli;
 
-import dev.voxelbrew.exporter.api.DocumentSink;
+import dev.voxelbrew.exporter.DocumentOutput;
 import dev.voxelbrew.importer.*;
 import dev.voxelbrew.importer.api.ImportResult;
 import java.nio.file.Path;
@@ -58,11 +58,11 @@ final class ImportCommands {
     @Command(
             name = "import",
             mixinStandardHelpOptions = true,
-            description = "Import a document to .jcad or inspect an imported toolpath")
+            description = "Import a document to .vxb or inspect an imported toolpath")
     @RequiredArgsConstructor(access = AccessLevel.PACKAGE, onConstructor_ = @javax.inject.Inject)
     static final class ImportFile implements Callable<Integer> {
         private final ImporterRegistry.Factory importers;
-        private final DocumentSink documents;
+        private final DocumentOutput documents;
 
         @Parameters(index = "0")
         Path source;
@@ -70,7 +70,7 @@ final class ImportCommands {
         @Option(names = "--format", required = true)
         String format;
 
-        @Option(names = "--output", description = "Destination .jcad for document importers")
+        @Option(names = "--output", description = "Destination .vxb for document importers")
         Path output;
 
         @Option(names = "--option", split = ",")
@@ -94,7 +94,7 @@ final class ImportCommands {
                     throw new IllegalArgumentException("Document import requires --output");
                 if (kind == ImportResult.Kind.GCODE && output != null)
                     throw new IllegalArgumentException(
-                            "Toolpath import produces a preview, not an editable .jcad document; omit --output");
+                            "Toolpath import produces a preview, not an editable .vxb document; omit --output");
                 if (output != null
                         && (source.toAbsolutePath()
                                         .normalize()

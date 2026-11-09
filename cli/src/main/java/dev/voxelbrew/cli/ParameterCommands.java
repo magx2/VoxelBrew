@@ -1,7 +1,7 @@
 package dev.voxelbrew.cli;
 
 import dev.voxelbrew.engine.parameters.*;
-import dev.voxelbrew.exporter.api.DocumentSink;
+import dev.voxelbrew.exporter.DocumentOutput;
 import dev.voxelbrew.importer.api.DocumentSource;
 import picocli.CommandLine;
 import picocli.CommandLine.*;
@@ -67,7 +67,7 @@ final class ParameterCommands {
     static class ListParameters extends VoxelBrew.FileCommand {
 
         @javax.inject.Inject
-        ListParameters(DocumentSource documents, DocumentSink documentWriter) {
+        ListParameters(DocumentSource documents, DocumentOutput documentWriter) {
             super(documents, documentWriter);
         }
 
@@ -107,7 +107,7 @@ final class ParameterCommands {
     static class SetParameter extends VoxelBrew.FileCommand {
 
         @javax.inject.Inject
-        SetParameter(DocumentSource documents, DocumentSink documentWriter) {
+        SetParameter(DocumentSource documents, DocumentOutput documentWriter) {
             super(documents, documentWriter);
         }
 
@@ -134,7 +134,7 @@ final class ParameterCommands {
     static class RenameParameter extends VoxelBrew.FileCommand {
 
         @javax.inject.Inject
-        RenameParameter(DocumentSource documents, DocumentSink documentWriter) {
+        RenameParameter(DocumentSource documents, DocumentOutput documentWriter) {
             super(documents, documentWriter);
         }
 
@@ -158,7 +158,7 @@ final class ParameterCommands {
     static class RemoveParameter extends VoxelBrew.FileCommand {
 
         @javax.inject.Inject
-        RemoveParameter(DocumentSource documents, DocumentSink documentWriter) {
+        RemoveParameter(DocumentSource documents, DocumentOutput documentWriter) {
             super(documents, documentWriter);
         }
 
@@ -180,7 +180,7 @@ final class ParameterCommands {
     static class Bind extends VoxelBrew.FileCommand {
 
         @javax.inject.Inject
-        Bind(DocumentSource documents, DocumentSink documentWriter) {
+        Bind(DocumentSource documents, DocumentOutput documentWriter) {
             super(documents, documentWriter);
         }
 
@@ -204,7 +204,7 @@ final class ParameterCommands {
     static class ListConfigurations extends VoxelBrew.FileCommand {
 
         @javax.inject.Inject
-        ListConfigurations(DocumentSource documents, DocumentSink documentWriter) {
+        ListConfigurations(DocumentSource documents, DocumentOutput documentWriter) {
             super(documents, documentWriter);
         }
 
@@ -229,7 +229,7 @@ final class ParameterCommands {
     static class AddConfiguration extends VoxelBrew.FileCommand {
 
         @javax.inject.Inject
-        AddConfiguration(DocumentSource documents, DocumentSink documentWriter) {
+        AddConfiguration(DocumentSource documents, DocumentOutput documentWriter) {
             super(documents, documentWriter);
         }
 
@@ -253,7 +253,7 @@ final class ParameterCommands {
     static class Override extends VoxelBrew.FileCommand {
 
         @javax.inject.Inject
-        Override(DocumentSource documents, DocumentSink documentWriter) {
+        Override(DocumentSource documents, DocumentOutput documentWriter) {
             super(documents, documentWriter);
         }
 
@@ -277,7 +277,7 @@ final class ParameterCommands {
     static class Activate extends VoxelBrew.FileCommand {
 
         @javax.inject.Inject
-        Activate(DocumentSource documents, DocumentSink documentWriter) {
+        Activate(DocumentSource documents, DocumentOutput documentWriter) {
             super(documents, documentWriter);
         }
 
@@ -295,7 +295,7 @@ final class ParameterCommands {
     static class RenameConfiguration extends VoxelBrew.FileCommand {
 
         @javax.inject.Inject
-        RenameConfiguration(DocumentSource documents, DocumentSink documentWriter) {
+        RenameConfiguration(DocumentSource documents, DocumentOutput documentWriter) {
             super(documents, documentWriter);
         }
 
@@ -316,7 +316,7 @@ final class ParameterCommands {
     static class RemoveConfiguration extends VoxelBrew.FileCommand {
 
         @javax.inject.Inject
-        RemoveConfiguration(DocumentSource documents, DocumentSink documentWriter) {
+        RemoveConfiguration(DocumentSource documents, DocumentOutput documentWriter) {
             super(documents, documentWriter);
         }
 

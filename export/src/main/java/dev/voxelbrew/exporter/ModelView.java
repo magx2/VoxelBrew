@@ -1,4 +1,4 @@
-package dev.voxelbrew.exporter.api;
+package dev.voxelbrew.exporter;
 
 import dev.voxelbrew.engine.mesh.MeshData;
 import dev.voxelbrew.engine.mesh.MeshOptions;

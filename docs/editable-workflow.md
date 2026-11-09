@@ -10,18 +10,18 @@ double precision. No export command exists before M2.
 ## Public commands
 
 ```bash
-cli new plate.jcad
-cli rectangle plate.jcad --id plate --width 60 --height 40
-cli extrude plate.jcad --id thickness --sketch plate --distance 5
-cli circle plate.jcad --id hole --center-x 10 --center-y 10 --diameter 4
-cli cut plate.jcad --id cut --sketch hole --body-feature thickness
-cli inspect plate.jcad --point 10,10,2.5
-cli edit plate.jcad --feature thickness --field distance --value 8
-cli inspect plate.jcad --point 10,10,4
-cli cursor plate.jcad --position 3
-cli inspect plate.jcad
-cli cursor plate.jcad --position 4
-cli history plate.jcad
+cli new plate.vxb
+cli rectangle plate.vxb --id plate --width 60 --height 40
+cli extrude plate.vxb --id thickness --sketch plate --distance 5
+cli circle plate.vxb --id hole --center-x 10 --center-y 10 --diameter 4
+cli cut plate.vxb --id cut --sketch hole --body-feature thickness
+cli inspect plate.vxb --point 10,10,2.5
+cli edit plate.vxb --feature thickness --field distance --value 8
+cli inspect plate.vxb --point 10,10,4
+cli cursor plate.vxb --position 3
+cli inspect plate.vxb
+cli cursor plate.vxb --position 4
+cli history plate.vxb
 ```
 
 The scripts in `scripts/reference-part.ps1` and `scripts/reference-part.sh` run
@@ -59,7 +59,7 @@ target body identity and publishes its own named output. An edit never recreates
 feature IDs. Body results and meshes are disposable, not serialized.
 
 Body display names are separate metadata keyed by stable body ID and saved in
-`.jcad`. In the GUI, right-click a body and choose **Rename**, or double-click its
+`.vxb`. In the GUI, right-click a body and choose **Rename**, or double-click its
 label to edit it inline. Enter applies one undoable change; Escape or clicking
 elsewhere discards the draft. Empty names and control characters are rejected;
 names may contain up to 128 characters. Rename is enabled for a current body at
@@ -86,13 +86,13 @@ their native results; borrowed body solids are valid only for that evaluation.
 Repair a broken reference without duplicating features:
 
 ```bash
-cli history broken.jcad
-cli repair broken.jcad --feature thickness --sketch plate
-cli repair broken.jcad --feature cut --body-feature thickness
-cli inspect broken.jcad
+cli history broken.vxb
+cli repair broken.vxb --feature thickness --sketch plate
+cli repair broken.vxb --feature cut --body-feature thickness
+cli inspect broken.vxb
 ```
 
-## .jcad schema and safe writes
+## .vxb schema and safe writes
 
 `engine/src/main/proto/document.proto` is schema version 10. Earlier schemas are
 rejected. Each document owns a `util` `UuidGenerator`, starting at 1; generated
@@ -108,7 +108,7 @@ See [file version compatibility](file-io.md) for snapshot and IDE behavior.
 Named parameters,
 dimension expressions, configuration overrides and the active configuration are
 stored with the feature definitions. See [parameters](parameters.md). The binary envelope
-contains eight magic bytes (`JCAD`, 13, 37, 13, 37), a big-endian 32-bit payload
+contains eight magic bytes (`VXB`, 13, 37, 13, 37), a big-endian 32-bit payload
 length, a SHA-256 digest and the Protobuf message. The 16 MiB payload limit, exact
 length check and digest distinguish truncated/corrupt documents from an empty
 valid model. Field numbers are reserved for compatibility; removed tags must

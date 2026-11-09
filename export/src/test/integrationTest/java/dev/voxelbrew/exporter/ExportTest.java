@@ -74,7 +74,7 @@ class ExportTest {
                     evaluation,
                     List.of(new BodyInstance("translated", "thickness.body", Transform.translation(25, -7, 3))));
             var destination = directory.resolve("reference.stl");
-            ExportService.export(registry, "stl", view, MeshOptions.DEFAULT, Map.of(), destination, false);
+            FormatTestSupport.write(registry, "stl", view, MeshOptions.DEFAULT, Map.of(), destination, false);
             byte[] bytes = Files.readAllBytes(destination);
             var buffer = ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN);
             buffer.position(80);
@@ -107,7 +107,7 @@ class ExportTest {
                                     "thickness.body",
                                     new Transform(0, -1, 0, 100, 1, 0, 0, 20, 0, 0, 1, 3))));
             Path destination = directory.resolve("reference.3mf");
-            ExportService.export(registry, "3mf", view, MeshOptions.DEFAULT, Map.of(), destination, false);
+            FormatTestSupport.write(registry, "3mf", view, MeshOptions.DEFAULT, Map.of(), destination, false);
             try (var zip = new ZipFile(destination.toFile())) {
                 assertNotNull(zip.getEntry("[Content_Types].xml"));
                 assertNotNull(zip.getEntry("_rels/.rels"));
@@ -174,36 +174,38 @@ class ExportTest {
     void independentConsumerLoadsAndFailuresPreserveDestination() throws Exception {
         Path plugins = Files.createDirectory(directory.resolve("plugins with spaces"));
         Files.copy(Path.of(System.getProperty("voxelbrew.test.plugin")), plugins.resolve("external provider.jar"));
-        try (var registry = new ExporterRegistry(plugins);
-                var evaluation = Evaluator.evaluate(reference())) {
+        try (var registry = new ExporterRegistry(plugins)) {
             assertEquals(
-                    List.of("3mf", "failing", "probe", "prusa-project", "stl"),
+                    List.of("3mf", "document-probe", "failing", "json", "obj", "prusa-project", "step", "stl", "vxb"),
                     registry.descriptors().stream().map(ExporterDescriptor::id).toList());
             assertTrue(registry.diagnostics().stream().anyMatch(s -> s.contains("Duplicate")));
             assertTrue(registry.diagnostics().stream().anyMatch(s -> s.contains("Incompatible")));
             assertTrue(registry.diagnostics().stream().anyMatch(s -> s.contains("DoesNotExist")));
-            var view = ModelViews.from(evaluation);
-            Path destination = directory.resolve("report.txt");
-            ExportService.export(
-                    registry, "probe", view, MeshOptions.DEFAULT, Map.of("label", "custom value"), destination, false);
-            assertTrue(Files.readString(destination).startsWith("custom value bodies=1 triangles="));
-            byte[] expected = Files.readAllBytes(destination);
+            var doc = reference();
+            Path target = directory.resolve("report.txt");
+            registry.require("document-probe")
+                    .provider()
+                    .create(Runnable::run)
+                    .export(doc, dev.voxelbrew.exporter.api.FileExportDialog.destination(target, false))
+                    .get();
+            assertEquals("document=" + doc.id(), Files.readString(target));
+            byte[] expected = Files.readAllBytes(target);
             assertThrows(
-                    java.io.IOException.class,
-                    () -> ExportService.export(
-                            registry, "failing", view, MeshOptions.DEFAULT, Map.of(), destination, true));
-            assertArrayEquals(expected, Files.readAllBytes(destination));
+                    java.util.concurrent.ExecutionException.class,
+                    () -> registry.require("failing")
+                            .provider()
+                            .create(Runnable::run)
+                            .export(doc, dev.voxelbrew.exporter.api.FileExportDialog.destination(target, true))
+                            .get());
+            assertArrayEquals(expected, Files.readAllBytes(target));
             assertThrows(
-                    java.io.IOException.class,
-                    () -> ExportService.export(
-                            registry, "probe", view, MeshOptions.DEFAULT, Map.of(), destination, false));
-            assertThrows(
-                    IllegalArgumentException.class,
-                    () -> ExportService.export(
-                            registry, "probe", view, MeshOptions.DEFAULT, Map.of("unknown", "x"), destination, true));
-            try (var paths = Files.list(directory)) {
-                assertTrue(paths.noneMatch(p -> p.getFileName().toString().startsWith(".voxelbrew-export-")));
-            }
+                    java.util.concurrent.ExecutionException.class,
+                    () -> registry.require("document-probe")
+                            .provider()
+                            .create(Runnable::run)
+                            .export(doc, dev.voxelbrew.exporter.api.FileExportDialog.destination(target, false))
+                            .get());
+            assertArrayEquals(expected, Files.readAllBytes(target));
         }
     }
 

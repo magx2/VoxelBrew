@@ -6,7 +6,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
-/** Bounded .jcad loading; unknown schemas and corrupt data remain protected from writes. */
+/** Bounded .vxb loading; unknown schemas and corrupt data remain protected from writes. */
 @lombok.extern.slf4j.Slf4j
 public final class DocumentReader {
     private DocumentReader() {}

@@ -2,9 +2,6 @@ package dev.voxelbrew.exporter;
 
 import dev.voxelbrew.engine.mesh.MeshOptions;
 import dev.voxelbrew.engine.mesh.MeshValidation;
-import dev.voxelbrew.exporter.api.ExporterDescriptor;
-import dev.voxelbrew.exporter.api.ModelExporter;
-import dev.voxelbrew.exporter.api.ModelView;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
@@ -13,10 +10,18 @@ import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
 
-public final class BinaryStlExporter implements ModelExporter {
+public final class BinaryStlExporter extends MeshExporter {
+    public BinaryStlExporter() {
+        super();
+    }
+
+    public BinaryStlExporter(java.util.concurrent.Executor worker, java.nio.file.Path plugins) {
+        super(worker, plugins);
+    }
+
     @Override
-    public ExporterDescriptor descriptor() {
-        return new ExporterDescriptor("stl", "Binary STL (millimeters)", API_VERSION, List.of("stl"), false, List.of());
+    public MeshFormat format() {
+        return new MeshFormat("stl", "Binary STL (millimeters)", List.of("stl"), false, List.of());
     }
 
     @Override

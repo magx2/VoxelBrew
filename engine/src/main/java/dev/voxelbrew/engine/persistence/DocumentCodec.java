@@ -34,29 +34,29 @@ public final class DocumentCodec {
         int size = bytes.length;
         if (size < HEADER || size > MAX_PAYLOAD + HEADER) {
             throw new DocumentFormatException(
-                    "Invalid or truncated .jcad file: expected a complete header and <=16 MiB payload");
+                    "Invalid or truncated .vxb file: expected a complete header and <=16 MiB payload");
         }
         bytes = bytes.clone();
         if (!Arrays.equals(MAGIC, Arrays.copyOf(bytes, MAGIC.length))) {
-            throw new DocumentFormatException("Not a VoxelBrew .jcad file (magic mismatch)");
+            throw new DocumentFormatException("Not a VoxelBrew .vxb file (magic mismatch)");
         }
         ByteBuffer buffer = ByteBuffer.wrap(bytes);
         buffer.position(8);
         int length = buffer.getInt();
         if (length < 1 || length > MAX_PAYLOAD || length != bytes.length - HEADER) {
-            throw new DocumentFormatException("Truncated or damaged .jcad payload: length does not match the header");
+            throw new DocumentFormatException("Truncated or damaged .vxb payload: length does not match the header");
         }
         byte[] expectedHash = new byte[32];
         buffer.get(expectedHash);
         byte[] payload = new byte[length];
         buffer.get(payload);
         if (!MessageDigest.isEqual(expectedHash, sha256(payload))) {
-            throw new DocumentFormatException("Damaged .jcad file: payload checksum mismatch");
+            throw new DocumentFormatException("Damaged .vxb file: payload checksum mismatch");
         }
         try {
             DocumentProto.Document message = DocumentProto.Document.parseFrom(payload);
             if (message.getSchemaVersion() != SCHEMA_VERSION) {
-                throw new DocumentFormatException("Unsupported .jcad schema "
+                throw new DocumentFormatException("Unsupported .vxb schema "
                         + message.getSchemaVersion()
                         + "; supported version is "
                         + SCHEMA_VERSION
@@ -97,13 +97,23 @@ public final class DocumentCodec {
         } catch (DocumentFormatException failure) {
             throw failure;
         } catch (IOException | IllegalArgumentException failure) {
-            throw new DocumentFormatException("Invalid .jcad feature definitions: " + failure.getMessage(), failure);
+            throw new DocumentFormatException("Invalid .vxb feature definitions: " + failure.getMessage(), failure);
         }
     }
 
     /** Encodes the shared document schema without accessing the filesystem. */
     public static byte[] encode(CadDocument document) throws IOException {
         return encode(document, document.parameters().builtins().fileVersion());
+    }
+
+    /** Complete, readable ProtoJSON representation of the persisted document schema. */
+    public static String encodeJson(CadDocument document) throws IOException {
+        decode(encode(document));
+        return com.google.protobuf.util.JsonFormat.printer()
+                .print(toProto(document).toBuilder()
+                        .setFileVersion(document.parameters().builtins().fileVersion())
+                        .setApplicationVersion(Version.version())
+                        .build());
     }
 
     public static byte[] encode(CadDocument document, long fileVersion) throws IOException {
@@ -132,7 +142,7 @@ public final class DocumentCodec {
             if (!saved.toString().equals(savedVersion)) throw new IllegalArgumentException();
         } catch (IllegalArgumentException invalid) {
             throw new DocumentFormatException(
-                    "Invalid .jcad application version; expected A.B.C or A.B.C-SNAPSHOT", invalid);
+                    "Invalid .vxb application version; expected A.B.C or A.B.C-SNAPSHOT", invalid);
         }
         String supportedVersion = Version.version();
         if (saved.compareTo(ReleaseVersion.parse(supportedVersion)) > 0) {

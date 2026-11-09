@@ -285,8 +285,6 @@ public final class Workbench extends BorderPane implements AutoCloseable {
     private final FeatureTimeline timeline;
     private final Button undo, redo;
     private final MenuItem export;
-    private final javafx.beans.property.BooleanProperty exportUnavailable =
-            new javafx.beans.property.SimpleBooleanProperty(true);
     private final javafx.beans.property.BooleanProperty fileBusy = new javafx.beans.property.SimpleBooleanProperty();
     private final Label documentTitle = new Label();
     private final Button customFeature;
@@ -427,7 +425,7 @@ public final class Workbench extends BorderPane implements AutoCloseable {
                 translations.text("action.export"),
                 "export",
                 true,
-                () -> ExportDialog.show(stage(), controller(), registry(), translations));
+                () -> ExportDialog.choose(stage(), controller(), registry(), translations, this::exportDocument));
         this.customFeature = button(translations.text("action.features"), "custom-feature", this::customFeature);
         this.parameters = button(translations.text("action.parameters"), "parameters", this::parameters);
         this.constrainedSketch =
@@ -455,7 +453,7 @@ public final class Workbench extends BorderPane implements AutoCloseable {
         var saveAsItem = menuItem(translations.text("action.saveAs"), "save-as", true, () -> save(true));
         for (var item : List.of(newItem, openItem, importItem, saveItem, saveAsItem))
             item.disableProperty().bind(disabledProperty().or(fileBusy));
-        export.disableProperty().bind(disabledProperty().or(exportUnavailable));
+        export.disableProperty().bind(disabledProperty().or(fileBusy));
         fileMenu.getItems()
                 .addAll(
                         newItem,
@@ -951,7 +949,6 @@ public final class Workbench extends BorderPane implements AutoCloseable {
                 configuration.getItems().setAll(names);
             configuration.setValue(document.parameters().activeName());
             configuration.setDisable(controller.ioBusy() || tool != Tool.NONE);
-            exportUnavailable.set(!controller.canExport());
             fileBusy.set(controller.ioBusy());
             splitBody.setDisable(tool != Tool.NONE
                     || !controller.canExport()
@@ -1964,24 +1961,25 @@ public final class Workbench extends BorderPane implements AutoCloseable {
         if (controller.ioBusy())
             return CompletableFuture.failedFuture(
                     new IllegalStateException(translations.text("gui.file_operation_in_progress")));
-        Optional<Path> chosen = !saveAs && controller.path() != null
-                ? Optional.of(controller.path())
-                : FileDialog.choose(
-                        stage, true, controller.path(), formulaParameters(), translations, configurationStore);
-        if (chosen.isEmpty()) return CompletableFuture.failedFuture(new java.util.concurrent.CancellationException());
-        Path path = chosen.get();
-        boolean existing = Files.exists(path);
-        if (existing
-                && (saveAs || controller.path() == null || !path.equals(controller.path()))
-                && !confirmOverwrite(path))
-            return CompletableFuture.failedFuture(new java.util.concurrent.CancellationException());
-        return controller.save(path, existing);
+        if (!saveAs && controller.path() != null)
+            return controller.save(controller.path(), Files.exists(controller.path()));
+        return controller.saveAs(exportWindow("vxb"));
     }
 
-    private boolean confirmOverwrite(Path path) {
-        var alert = new Alert(
-                Alert.AlertType.CONFIRMATION, translations.text("file.replace", path), ButtonType.YES, ButtonType.NO);
-        return Dialogs.show(alert, stage, translations).orElse(ButtonType.NO) == ButtonType.YES;
+    private CompletableFuture<Void> exportDocument(String format) {
+        return controller.exportDocument(registry.require(format).provider(), exportWindow(format));
+    }
+
+    private DesktopExportWindow exportWindow(String format) {
+        return new DesktopExportWindow(
+                        stage,
+                        format.equals("vxb") ? controller.path() : null,
+                        formulaParameters(),
+                        translations,
+                        configurationStore)
+                .register(
+                        dev.voxelbrew.exporter.MeshExportDialog.class,
+                        (owner, request) -> ExportDialog.options(owner, controller, translations, request.format()));
     }
 
     private void saveFolder() {

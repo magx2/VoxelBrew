@@ -25,6 +25,23 @@ public final class Solid implements AutoCloseable {
         return NativeKernel.version();
     }
 
+    /** Encodes exact solids as a STEP AP242 model in millimeters, without filesystem access.
+     * Callers must keep the borrowed solids open until this call returns.
+     */
+    public static byte[] encodeStep(java.util.List<Solid> solids) {
+        var snapshot = java.util.List.copyOf(solids);
+        if (snapshot.isEmpty()) throw new IllegalArgumentException("Nothing to export");
+        long[] handles = new long[snapshot.size()];
+        for (int i = 0; i < handles.length; i++) {
+            var solid = snapshot.get(i);
+            synchronized (solid) {
+                solid.requireOpen();
+                handles[i] = solid.token;
+            }
+        }
+        return NativeKernel.step(handles);
+    }
+
     public static Solid profilePrism(PlanarProfile profile, Quantity<Length> z, Quantity<Length> distance) {
         return profilePrism(profile, value(z, MILLIMETRE), value(distance, MILLIMETRE));
     }

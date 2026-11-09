@@ -157,8 +157,8 @@ if kind == "gui":
     assert screenshot.is_file() and screenshot.stat().st_size > 10000
     assert screenshot.with_suffix(".txt").read_text().startswith("GUI_SMOKE_PASS")
 else:
-    assert run("--version").strip() == f"VoxelBrew {version} / jcad schema 10"
-    document = workspace / "reference.jcad"
+    assert run("--version").strip() == f"VoxelBrew {version} / vxb schema 10"
+    document = workspace / "reference.vxb"
     shutil.copy2(root / "fixtures/reference-8mm.jcad", document)
     history = run("history", document)
     run("body-style", document, "--body", "thickness.body", "--material", "PETG", "--color", "#FF0000")
@@ -188,7 +188,7 @@ else:
         "--option", "label=packaged", "--output", report)
     assert report.read_text().startswith("packaged bodies=1 triangles=")
     assert "example.spacer/spacer" in run("feature-types", "--plugin-dir", plugins)
-    spacer = workspace / "custom spacer.jcad"
+    spacer = workspace / "custom spacer.vxb"
     run("new", spacer)
     run("custom", spacer, "--id", "spacer", "--provider", "example.spacer", "--type", "spacer",
         "--parameter", "height=5", "--plugin-dir", plugins)

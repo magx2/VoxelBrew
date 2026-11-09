@@ -7,8 +7,8 @@ import dev.voxelbrew.engine.model.*;
 import dev.voxelbrew.engine.printing.*;
 import dev.voxelbrew.exporter.DocumentWriter;
 import dev.voxelbrew.exporter.ExportSelection;
-import dev.voxelbrew.exporter.ExportService;
 import dev.voxelbrew.exporter.ExporterRegistry;
+import dev.voxelbrew.exporter.FormatTestSupport;
 import dev.voxelbrew.exporter.ModelViews;
 import dev.voxelbrew.importer.DocumentReader;
 import dev.voxelbrew.importer.GcodeReader;
@@ -78,6 +78,7 @@ class SlicerAcceptanceTest {
         var messages = new ArrayList<String>();
         var result = SliceService.slice(
                 new PrusaSlicerBackend(),
+                s.document(),
                 dev.voxelbrew.engine.printing.ManufacturingModels.evaluate(s.document(), MeshOptions.DEFAULT),
                 PrusaSlicerBackend.defaultExecutable(),
                 artifacts.resolve(name + ".gcode"),
@@ -255,7 +256,7 @@ class SlicerAcceptanceTest {
                 leg = artifacts.resolve("handoff-leg.stl"),
                 pillar = artifacts.resolve("handoff-supports.stl");
         try (var registry = new ExporterRegistry(artifacts.resolve("no-plugins"))) {
-            ExportService.export(
+            FormatTestSupport.write(
                     registry,
                     "stl",
                     ModelViews.selectInstance(ModelViews.from(model), "roof"),
@@ -263,7 +264,7 @@ class SlicerAcceptanceTest {
                     Map.of(),
                     roof,
                     true);
-            ExportService.export(
+            FormatTestSupport.write(
                     registry,
                     "stl",
                     ModelViews.selectInstance(ModelViews.from(model), "leg"),
@@ -271,7 +272,7 @@ class SlicerAcceptanceTest {
                     Map.of(),
                     leg,
                     true);
-            ExportService.export(
+            FormatTestSupport.write(
                     registry,
                     "stl",
                     ModelViews.from(model, ExportSelection.Contents.SUPPORTS),
@@ -279,7 +280,7 @@ class SlicerAcceptanceTest {
                     Map.of(),
                     pillar,
                     true);
-            ExportService.export(
+            FormatTestSupport.write(
                     registry,
                     "3mf",
                     ModelViews.from(model, ExportSelection.Contents.ALL),
@@ -362,7 +363,7 @@ class SlicerAcceptanceTest {
         var model = dev.voxelbrew.engine.printing.ManufacturingModels.evaluate(session.document(), MeshOptions.DEFAULT);
         Path core = artifacts.resolve("portable-two-instances.3mf");
         try (var registry = new ExporterRegistry(artifacts.resolve("no-plugins"))) {
-            ExportService.export(registry, "3mf", ModelViews.from(model), MeshOptions.DEFAULT, Map.of(), core, true);
+            FormatTestSupport.write(registry, "3mf", ModelViews.from(model), MeshOptions.DEFAULT, Map.of(), core, true);
         }
         Path config = artifacts.resolve("portable.ini");
         Files.writeString(config, PrusaConfiguration.ini(model));

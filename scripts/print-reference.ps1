@@ -4,7 +4,7 @@ if (Test-Path -LiteralPath $TargetDirectory) { throw 'Choose a new output direct
 New-Item -ItemType Directory -Path $TargetDirectory | Out-Null
 $repoRoot = Split-Path $PSScriptRoot -Parent
 $cli = Join-Path $repoRoot 'cli\build\install\cli\bin\cli.bat'
-$file = Join-Path $TargetDirectory 'print-reference.jcad'
+$file = Join-Path $TargetDirectory 'print-reference.vxb'
 function Invoke-Cad {
     & $cli @args
     if ($LASTEXITCODE -ne 0) { throw "CAD command failed: $args" }

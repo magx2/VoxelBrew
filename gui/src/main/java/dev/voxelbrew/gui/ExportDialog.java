@@ -4,7 +4,9 @@ import dev.voxelbrew.engine.mesh.MeshOptions;
 import dev.voxelbrew.engine.parameters.*;
 import dev.voxelbrew.exporter.ExportSelection;
 import dev.voxelbrew.exporter.ExporterRegistry;
-import dev.voxelbrew.exporter.api.ExportOption;
+import dev.voxelbrew.exporter.MeshExportDialog;
+import dev.voxelbrew.exporter.MeshExportOption;
+import dev.voxelbrew.exporter.MeshFormat;
 import dev.voxelbrew.exporter.api.ExporterDescriptor;
 import java.nio.file.Path;
 import java.util.*;
@@ -19,25 +21,63 @@ import javafx.util.StringConverter;
 final class ExportDialog {
     private ExportDialog() {}
 
-    static void show(
+    static void choose(
             Window owner,
             DocumentController controller,
             ExporterRegistry registry,
-            dev.voxelbrew.util.i18n.Translations translations) {
-        java.util.function.Supplier<ParameterSet> parameters =
-                () -> controller.snapshot().document().parameters();
-        var dialog = new Dialog<Void>();
-        dialog.setTitle(translations.text("gui.export_model"));
-        dialog.setResizable(true);
+            dev.voxelbrew.util.i18n.Translations translations,
+            java.util.function.Consumer<String> documentExporter) {
+        try {
+            registry.refresh();
+        } catch (java.io.IOException failure) {
+            throw new java.io.UncheckedIOException(failure);
+        }
+        var dialog = new Dialog<ExporterDescriptor>();
+        dialog.setTitle(translations.text("action.export"));
         var format = new ComboBox<ExporterDescriptor>();
         format.setId("export-format");
         format.getItems().setAll(registry.descriptors());
+        format.getSelectionModel().selectFirst();
+        format.setMaxWidth(Double.MAX_VALUE);
+        dialog.getDialogPane().setContent(new VBox(8, new Label(translations.text("gui.format")), format));
+        var confirm = new ButtonType(translations.text("gui.export"), ButtonBar.ButtonData.OK_DONE);
+        dialog.getDialogPane().getButtonTypes().addAll(confirm, ButtonType.CANCEL);
+        var button = dialog.getDialogPane().lookupButton(confirm);
+        button.setId("export-confirm");
         format.setConverter(new StringConverter<>() {
-            public String toString(ExporterDescriptor d) {
+            public String toString(ExporterDescriptor value) {
+                return value == null ? "" : value.name();
+            }
+
+            public ExporterDescriptor fromString(String value) {
+                throw new UnsupportedOperationException();
+            }
+        });
+        button.disableProperty().bind(format.valueProperty().isNull());
+        dialog.setResultConverter(selected -> selected == confirm ? format.getValue() : null);
+        Dialogs.show(dialog, owner, translations).ifPresent(choice -> documentExporter.accept(choice.id()));
+    }
+
+    static Optional<MeshExportDialog.Settings> options(
+            Window owner,
+            DocumentController controller,
+            dev.voxelbrew.util.i18n.Translations translations,
+            MeshFormat selectedFormat) {
+        java.util.function.Supplier<ParameterSet> parameters =
+                () -> controller.snapshot().document().parameters();
+        var dialog = new Dialog<MeshExportDialog.Settings>();
+        dialog.setTitle(translations.text("gui.export_model"));
+        dialog.setResizable(true);
+        var format = new ComboBox<MeshFormat>();
+        format.setId("export-format");
+        format.getItems().setAll(selectedFormat);
+        format.setDisable(true);
+        format.setConverter(new StringConverter<>() {
+            public String toString(MeshFormat d) {
                 return d == null ? "" : d.name();
             }
 
-            public ExporterDescriptor fromString(String s) {
+            public MeshFormat fromString(String s) {
                 throw new UnsupportedOperationException();
             }
         });
@@ -117,17 +157,17 @@ final class ExportDialog {
                         .toString());
             for (var option : d.options()) {
                 Node editor;
-                if (option.type() == ExportOption.Type.BOOLEAN) {
+                if (option.type() == MeshExportOption.Type.BOOLEAN) {
                     var check = new CheckBox();
                     check.setSelected(Boolean.parseBoolean(option.defaultValue()));
                     editor = check;
-                } else if (option.type() == ExportOption.Type.CHOICE) {
+                } else if (option.type() == MeshExportOption.Type.CHOICE) {
                     var choices = new ComboBox<String>();
                     choices.getItems().setAll(option.choices());
                     choices.setValue(option.defaultValue());
                     editor = choices;
                 } else
-                    editor = option.type() == ExportOption.Type.STRING
+                    editor = option.type() == MeshExportOption.Type.STRING
                             ? FormulaField.text(option.defaultValue(), parameters)
                             : FormulaField.number(option.defaultValue(), parameters, ParameterUnit.NUMBER);
                 if (editor instanceof FormulaField field) field.localized(translations);
@@ -173,6 +213,7 @@ final class ExportDialog {
         dialog.getDialogPane().getButtonTypes().addAll(export, ButtonType.CANCEL);
         var button = dialog.getDialogPane().lookupButton(export);
         button.setId("export-confirm");
+        var selectedSettings = new java.util.concurrent.atomic.AtomicReference<MeshExportDialog.Settings>();
         button.addEventFilter(ActionEvent.ACTION, e -> {
             try {
                 var descriptor = Objects.requireNonNull(format.getValue(), translations.text("gui.choose_an_exporter"));
@@ -194,31 +235,28 @@ final class ExportDialog {
                         && body.getValue().equals("All bodies")
                         && controller.build().bodies().size() > 1)
                     throw new IllegalArgumentException(translations.text("gui.choose_one_body_for_this_exporter"));
-                controller
-                        .export(
-                                registry,
-                                descriptor.id(),
-                                new ExportSelection(
-                                        space.getValue(),
-                                        contents.getValue(),
-                                        space.getValue() == ExportSelection.Space.DESIGN
-                                                        && !body.getValue().equals("All bodies")
-                                                ? body.getValue()
-                                                : null,
-                                        space.getValue() == ExportSelection.Space.BUILD_PLATE
-                                                        && !instance.getValue().equals("All instances")
-                                                ? instance.getValue()
-                                                : null),
-                                new MeshOptions(chord.value(), angle.value()),
-                                values,
-                                Path.of(path.evaluatedText()),
-                                overwrite.isSelected())
-                        .exceptionally(failure -> null);
+                selectedSettings.set(new MeshExportDialog.Settings(
+                        new ExportSelection(
+                                space.getValue(),
+                                contents.getValue(),
+                                space.getValue() == ExportSelection.Space.DESIGN
+                                                && !body.getValue().equals("All bodies")
+                                        ? body.getValue()
+                                        : null,
+                                space.getValue() == ExportSelection.Space.BUILD_PLATE
+                                                && !instance.getValue().equals("All instances")
+                                        ? instance.getValue()
+                                        : null),
+                        new MeshOptions(chord.value(), angle.value()),
+                        values,
+                        new dev.voxelbrew.exporter.api.FileExportDialog.Destination(
+                                Path.of(path.evaluatedText()), overwrite.isSelected())));
             } catch (RuntimeException failure) {
                 error.setText(Objects.toString(failure.getMessage(), failure.toString()));
                 e.consume();
             }
         });
-        Dialogs.show(dialog, owner, translations);
+        dialog.setResultConverter(selected -> selected == export ? selectedSettings.get() : null);
+        return Dialogs.show(dialog, owner, translations);
     }
 }

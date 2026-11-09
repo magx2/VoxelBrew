@@ -24,21 +24,18 @@ export to engine, never in the opposite direction.
 The native document extension is `.vxb`; the `Jcad` implementation class names are
 retained from the earlier extension. Existing `.jcad` documents remain readable.
 **File > Save** uses the native document writer; **File > Export** lists discovered
-document and model exporters. Exporting JSON or STEP does not change the active
+exporters through one registry. Exporting JSON or STEP does not change the active
 project path or save counter. STEP exports complete design solids, without print-bed
 placements, supports or editable history. See [file I/O](../docs/file-io.md) and the
 [printing workflow](../docs/printing-workflow.md) for more detail.
 
-## Choose an extension point
+## One export contract
 
-| Contract | Use it when | Host responsibilities | Provider responsibilities |
-| --- | --- | --- | --- |
-| `ExporterProvider` creates an `Exporter<R>` | You need a `CadDocument`, custom interactions, or a non-file destination | Discovery, parent-window abstraction, supplied executor | Dialog requests, export work, publication, result/failure future |
-| `ModelExporter` | You serialize evaluated geometry to a file | Geometry selection, mesh/options UI, borrowed output stream, atomic publication | Descriptor, format serialization, instance/units handling |
-
-Both appear in the runtime Export catalog. Use a unique, stable ID across both
-contracts: the CLI selects by ID and checks document providers first. Use the
-contract's `API_VERSION` constant rather than inventing a version number.
+Every format implements `Exporter<R>.export(CadDocument, ExportWindow)` and is
+created by an `ExporterProvider`. This includes mesh formats, exact STEP, native
+documents and cloud destinations. The exporter owns its interaction requests and
+publication; frontends discover providers without a separate geometry-export route.
+Use a unique, stable ID and `ExporterProvider.API_VERSION` (currently 2).
 
 ## Build an external plugin
 
@@ -108,8 +105,8 @@ public final class DocumentReportProvider implements ExporterProvider {
     public DocumentReportProvider() {}
 
     @Override
-    public DocumentExporterDescriptor descriptor() {
-        return new DocumentExporterDescriptor("document-report", "Document report", API_VERSION);
+    public ExporterDescriptor descriptor() {
+        return new ExporterDescriptor("document-report", "Document report", API_VERSION);
     }
 
     @Override
@@ -158,7 +155,7 @@ public final class DocumentReportProvider implements ExporterProvider {
 
 The destination parent must exist. Filesystems without atomic replacement or hard
 links fail explicitly; do not fall back to truncating an existing destination.
-Document exporters own publication themselves: `ExportService` does not wrap them.
+Exporters own publication themselves; the host does not supply an output stream.
 
 Request desktop interactions on the caller's UI thread, then schedule expensive work
 on the supplied executor. Do not shut down that executor. Complete the future only
@@ -202,44 +199,46 @@ discovery does not automatically install custom dialog renderers**; shipping a c
 provider alone does not teach the stock CLI or desktop how to collect its settings.
 Keep JavaFX types out of the provider's public interaction contract.
 
-## Implement a model exporter
+## Built-in geometry and slicing
 
-Implement `ModelExporter` with a public no-argument constructor. Its
-`descriptor()` returns an `ExporterDescriptor` containing the ID, label, API version,
-file extensions, multiple-instance capability and format options. Its writer is:
+Built-in STL, 3MF, OBJ and Prusa project exporters share `MeshExporter`, an
+implementation helper in this module. They request a `MeshExportDialog` containing
+format-specific options. Desktop and CLI handlers return a destination, tolerance,
+body/instance selection and coordinate space. Evaluation and serialization happen
+on the provider's worker; `AtomicExport` publishes the completed file atomically.
 
-```java
-void write(ModelView model, MeshOptions meshOptions,
-           Map<String, String> options, OutputStream output) throws IOException;
-```
+`ModelView`, `ManufacturingView`, `MeshFormat` and `MeshExportOption` are implementation
+helpers, not plugin contracts in `export-api`. The public `ModelExporter` SPI and its
+service resource have been removed. External exporters use `ExporterProvider` and
+can define their own typed dialog requests. Existing plugins must be recompiled and
+migrated to the unified contract; there is no legacy discovery adapter.
 
-The host validates supplied option names/values and fills descriptor defaults.
-Options support string, boolean, integer, decimal and choice values. The GUI builds
-the corresponding editors; the CLI accepts `--option key=value`.
-
-Iterate `model.instances()` when writing placed geometry. Tessellate each instance's
-body using `model.tessellate(instance.bodyId(), meshOptions)`, then apply its transform
-exactly once or serialize that transform in the target format. Preserve millimeter
-units, winding, body/instance identity and finite coordinates. Use
-`MeshValidation.requireClosed` when the format requires closed solids. Respect the
-provided mesh tolerance instead of substituting a fixed tessellation.
-
-Write to the borrowed stream synchronously. Do not close or retain the stream or
-model view, and do not launch background writes after `write` returns. `ExportService`
-owns the temporary destination, durability flush and atomic publication; exceptions
-discard partial output. A format needing a complete print setup can require
-`ManufacturingView`, as the Prusa project exporter does.
-
-Register the implementation class in:
+Slicing uses the same registry and exporters:
 
 ```text
-src/main/resources/META-INF/services/dev.voxelbrew.exporter.api.ModelExporter
+CadDocument + captured manufacturing state
+    -> Exporter.export(document, headless window)
+    -> private input file
+    -> SlicerBackend.slice(request)
+    -> inspected G-code, atomically published
 ```
 
-See [`ObjExporter`](src/main/java/dev/voxelbrew/exporter/ObjExporter.java) for a
-geometry writer and the independent
-[`ProbeExporter`](../fixtures/exporter-plugin/src/main/java/consumer/ProbeExporter.java)
-for descriptor options and an API-only consumer.
+`SlicerBackend.inputFormat()` declares an exporter ID, extension and export options.
+The host provides headless file/geometry dialog handlers and waits for successful
+export before invoking the backend. `SlicerBackend.Request.input()` is the completed
+input file; the backend consumes it rather than implementing another model writer.
+The slicer SPI is version 2 because its request now includes this input path.
+
+Prusa uses `prusa-project` (3MF) with solid supports included, preserving placements,
+profiles and support modifiers. Other backends may select STL, STEP or portable 3MF
+when those formats preserve the semantics they need. STEP currently exports design
+coordinates, so it is not a substitute for a placed build plate. Failed or cancelled
+exports prevent backend execution; temporary input is cleaned up with the slice job.
+
+The geometry dialog can carry a detached manufacturing snapshot for slicing. Its
+document ID and revision must match the exported document. Providers must not
+export stale geometry, and the existing publication guard still rejects G-code if
+the document changes while slicing.
 
 ## Install and discover providers
 
@@ -265,13 +264,13 @@ Windows. Plugins are trusted code running with the application's permissions.
 
 ### Adding a first-party exporter
 
-Put implementations under `dev.voxelbrew.exporter`. Register document providers as
-`@IntoSet` bindings in [`FileIoModule`](src/main/java/dev/voxelbrew/exporter/di/FileIoModule.java)
-and include them in the standalone `ExporterRegistry(Path)` composition. Application
-CLI/window composition roots inject the registry factory through Dagger. Model
-exporters use this module's `META-INF/services/...ModelExporter` resource. Neither
-route requires a hardcoded GUI format entry. Follow the repository's
-[DI guidance](../docs/dependency-injection.md); do not add DI annotations to API contracts.
+Put implementations under `dev.voxelbrew.exporter`. Register every provider as an
+`@IntoSet` binding in [`FileIoModule`](src/main/java/dev/voxelbrew/exporter/di/FileIoModule.java)
+and include it in the standalone `ExporterRegistry(Path)` composition. Application
+CLI/window composition roots inject the registry factory through Dagger, including
+for slicing. No hardcoded GUI format entry or second service resource is needed.
+Follow the repository's [DI guidance](../docs/dependency-injection.md); keep DI
+annotations out of API contracts.
 
 ## Validate an exporter
 
@@ -285,7 +284,7 @@ Run these focused commands from the repository root (use `.\gradlew.bat` on Wind
 
 ```text
 ./gradlew :engine:buildExporterFixture :api:export:test :export:test
-./gradlew :export:integrationTest --tests dev.voxelbrew.exporter.ExportTest --tests dev.voxelbrew.exporter.AdditionalFormatsTest
+./gradlew :export:integrationTest --tests dev.voxelbrew.exporter.ExportTest --tests dev.voxelbrew.exporter.AdditionalFormatsTest --tests dev.voxelbrew.exporter.UnifiedExportTest --tests dev.voxelbrew.exporter.printing.SlicerExportPipelineTest
 ./gradlew spotlessApply
 ```
 

@@ -4,9 +4,8 @@ import dev.voxelbrew.engine.mesh.*;
 import dev.voxelbrew.engine.model.*;
 import dev.voxelbrew.exporter.DocumentWriter;
 import dev.voxelbrew.exporter.ExportSelection;
-import dev.voxelbrew.exporter.ExportService;
 import dev.voxelbrew.exporter.ExporterRegistry;
-import dev.voxelbrew.exporter.api.ModelView;
+import dev.voxelbrew.exporter.MeshExportDialog;
 import dev.voxelbrew.importer.DocumentReader;
 import java.nio.file.Path;
 import java.util.*;
@@ -127,7 +126,7 @@ public final class DocumentController implements AutoCloseable {
     private final dev.voxelbrew.importer.api.DocumentSource documents;
 
     @NonNull
-    private final dev.voxelbrew.exporter.api.DocumentSink documentWriter;
+    private final dev.voxelbrew.exporter.DocumentOutput documentWriter;
 
     private final Object queueLock = new Object();
     private Request pending;
@@ -201,7 +200,7 @@ public final class DocumentController implements AutoCloseable {
             @javax.inject.Named("rebuild") ExecutorService worker,
             @javax.inject.Named("files") ExecutorService io,
             dev.voxelbrew.importer.api.DocumentSource documents,
-            dev.voxelbrew.exporter.api.DocumentSink documentWriter) {
+            dev.voxelbrew.exporter.DocumentOutput documentWriter) {
         this(
                 dispatch,
                 document -> evaluate(document, pluginDirectory),
@@ -470,6 +469,64 @@ public final class DocumentController implements AutoCloseable {
         return result;
     }
 
+    /** Exporters select destinations on the UI thread and write on this window's file worker. */
+    public CompletableFuture<Void> saveAs(dev.voxelbrew.exporter.api.ExportWindow parent) {
+        return exportDocument(new dev.voxelbrew.exporter.JcadExporter(io, documentWriter), true, parent);
+    }
+
+    public CompletableFuture<Void> exportDocument(
+            dev.voxelbrew.exporter.api.ExporterProvider provider, dev.voxelbrew.exporter.api.ExportWindow parent) {
+        return exportDocument(
+                provider.create(io, pluginDirectory), provider.descriptor().id().equals("vxb"), parent);
+    }
+
+    private CompletableFuture<Void> exportDocument(
+            dev.voxelbrew.exporter.api.Exporter<?> exporter,
+            boolean savesDocument,
+            dev.voxelbrew.exporter.api.ExportWindow parent) {
+        requireIdleIo();
+
+        var captured = session.document();
+        long generation = documentGeneration;
+        ioBusy = true;
+        onChanged.run();
+        var result = new CompletableFuture<Void>();
+        try {
+            exporter.export(captured, parent).whenComplete((destination, failure) -> {
+                if (failure != null) {
+                    if (failure instanceof CancellationException) {
+                        dispatch.accept(() -> {
+                            ioBusy = false;
+                            onChanged.run();
+                            result.cancel(false);
+                        });
+                    } else
+                        finishIo(
+                                result,
+                                failure instanceof Exception exception ? exception : new RuntimeException(failure));
+                    return;
+                }
+                dispatch.accept(() -> {
+                    if (closed) {
+                        result.cancel(false);
+                        return;
+                    }
+                    ioBusy = false;
+                    if (savesDocument && destination instanceof Path savedPath && documentGeneration == generation) {
+                        saved = captured;
+                        unsavedImport = false;
+                        path = savedPath;
+                    }
+                    onChanged.run();
+                    result.complete(null);
+                });
+            });
+        } catch (RuntimeException failure) {
+            finishIo(result, failure);
+        }
+        return result;
+    }
+
     /** Reads a provider on the file worker; the imported document needs its own Save As. */
     public CompletableFuture<Void> importFile(
             dev.voxelbrew.importer.ImporterRegistry.Factory importers,
@@ -531,20 +588,17 @@ public final class DocumentController implements AutoCloseable {
             boolean overwrite) {
         if (!canExport())
             throw new IllegalStateException("Export requires the current complete, successfully rebuilt document");
-        var captured = session.document();
-        ioBusy = true;
-        onChanged.run();
-        var result = new CompletableFuture<Void>();
-        io.execute(() -> {
-            try (var evaluation = Evaluator.evaluate(captured, pluginDirectory)) {
-                ModelView view = selection.view(captured, evaluation, options);
-                ExportService.export(registry, format, view, options, values, destination, overwrite);
-                finishIo(result, null);
-            } catch (Exception failure) {
-                finishIo(result, failure);
-            }
-        });
-        return result;
+        return exportDocument(
+                registry.require(format).provider(),
+                new dev.voxelbrew.exporter.api.ExportDialogs()
+                        .register(
+                                MeshExportDialog.class,
+                                request -> Optional.of(new MeshExportDialog.Settings(
+                                        selection,
+                                        options,
+                                        values,
+                                        new dev.voxelbrew.exporter.api.FileExportDialog.Destination(
+                                                destination, overwrite)))));
     }
 
     private void finishIo(CompletableFuture<Void> future, Exception failure) {

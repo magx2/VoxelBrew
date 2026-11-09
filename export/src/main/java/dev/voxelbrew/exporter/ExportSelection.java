@@ -3,7 +3,6 @@ package dev.voxelbrew.exporter;
 import dev.voxelbrew.engine.mesh.MeshOptions;
 import dev.voxelbrew.engine.model.*;
 import dev.voxelbrew.engine.printing.*;
-import dev.voxelbrew.exporter.api.ModelView;
 
 public record ExportSelection(Space space, Contents contents, String body, String instance) {
     public enum Contents {

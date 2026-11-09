@@ -10,7 +10,12 @@ public final class JcadImporter implements FileImporter {
     @Override
     public ImporterDescriptor descriptor() {
         return new ImporterDescriptor(
-                "jcad", "VoxelBrew document", API_VERSION, List.of("jcad"), ImportResult.Kind.DOCUMENT, List.of());
+                "vxb",
+                "VoxelBrew document",
+                API_VERSION,
+                List.of("vxb", "jcad"),
+                ImportResult.Kind.DOCUMENT,
+                List.of());
     }
 
     @Override

@@ -33,6 +33,7 @@ public final class PrintController implements AutoCloseable {
     private final Consumer<Runnable> dispatch;
     private final Supplier<CadDocument> current;
     private final Path pluginDirectory;
+    private final dev.voxelbrew.exporter.ExporterRegistry.Factory exporters;
 
     @Getter
     @Accessors(fluent = true)
@@ -67,7 +68,12 @@ public final class PrintController implements AutoCloseable {
     }
 
     public PrintController(Consumer<Runnable> dispatch, Supplier<CadDocument> current, Path pluginDirectory) {
-        this(dispatch, current, pluginDirectory, WindowResources.worker("slicer"));
+        this(
+                dispatch,
+                current,
+                pluginDirectory,
+                WindowResources.worker("slicer"),
+                dev.voxelbrew.exporter.ExporterRegistry::new);
     }
 
     @javax.inject.Inject
@@ -75,11 +81,13 @@ public final class PrintController implements AutoCloseable {
             @NonNull @javax.inject.Named("ui") Consumer<Runnable> dispatch,
             @NonNull Supplier<CadDocument> current,
             @NonNull @javax.inject.Named("plugins") Path pluginDirectory,
-            @NonNull @javax.inject.Named("slicing") ExecutorService worker) {
+            @NonNull @javax.inject.Named("slicing") ExecutorService worker,
+            dev.voxelbrew.exporter.ExporterRegistry.Factory exporters) {
         this.dispatch = dispatch;
         this.current = current;
         this.pluginDirectory = pluginDirectory;
         this.worker = worker;
+        this.exporters = exporters;
     }
 
     public List<String> diagnostics() {
@@ -120,13 +128,15 @@ public final class PrintController implements AutoCloseable {
         var future = new CompletableFuture<SliceService.Result>();
         onChanged.run();
         worker.execute(() -> {
-            try {
+            try (var exportRegistry = exporters.open(pluginDirectory)) {
                 var model = dev.voxelbrew.engine.printing.ManufacturingModels.evaluate(
                         document, MeshOptions.DEFAULT, pluginDirectory);
                 token.check();
                 var completed = SliceService.slice(
                         backend,
+                        document,
                         model,
+                        exportRegistry,
                         executable,
                         destination,
                         overwrite,

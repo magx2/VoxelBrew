@@ -18,8 +18,8 @@ class SliceLifecycleTest {
 
     @Test
     void cancellationKillsRealSlicerAndPreservesDestination() throws Exception {
-        var model = dev.voxelbrew.engine.printing.ManufacturingModels.evaluate(
-                PrintingTest.reference().document(), MeshOptions.DEFAULT);
+        var session = PrintingTest.reference();
+        var model = dev.voxelbrew.engine.printing.ManufacturingModels.evaluate(session.document(), MeshOptions.DEFAULT);
         Path output = directory.resolve("preserved job.gcode");
         Files.writeString(output, "original");
         var cancellation = new Cancellation();
@@ -28,6 +28,7 @@ class SliceLifecycleTest {
                 CancellationException.class,
                 () -> SliceService.slice(
                         new PrusaSlicerBackend(),
+                        session.document(),
                         model,
                         PrusaSlicerBackend.defaultExecutable(),
                         output,
@@ -71,6 +72,7 @@ class SliceLifecycleTest {
                 IOException.class,
                 () -> SliceService.slice(
                         backend,
+                        session.document(),
                         model,
                         Path.of("unused"),
                         output,
@@ -97,6 +99,7 @@ class SliceLifecycleTest {
                 IOException.class,
                 () -> SliceService.slice(
                         backend,
+                        session.document(),
                         new ManufacturingModel(
                                 model.documentId(), model.revision(), model.setup(), wrong, model.meshes()),
                         Path.of("unused"),

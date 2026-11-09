@@ -118,3 +118,11 @@ qualifies `5ef84b6`, not the concurrent changes. Log of the interrupted run:
 
 The source commits and package artifacts are retained locally. Unrelated working
 tree edits are not part of this qualification or the construction commit.
+
+## Completed full clean-check follow-up
+
+Both Windows and Ubuntu full `clean check` gates passed on 2026-11-09 against
+`0704539`, including the integrated construction implementation and subsequent
+JCAD/header and sketch changes: 326 tests per platform, zero failures or skips.
+This supersedes the pending final Windows rerun above. Exact commands and artifact
+paths are in [the full qualification record](full-clean-check.md).

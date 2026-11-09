@@ -44,6 +44,16 @@
 - Always run Spotless formatting from the repository root before every commit:
   `.\gradlew.bat spotlessApply` on Windows or `./gradlew spotlessApply` on Ubuntu.
   Review the resulting changes before staging and committing.
+- Do not run the full end-to-end (E2E) test suite unless the user explicitly
+  requests it. When E2E validation is relevant, run only the tests covering the
+  implemented change; skip E2E tests for changes that do not benefit from them.
+- Run E2E tests only for the user's native operating system: on Windows, run
+  Windows E2E tests only, without Linux/WSL or macOS E2E runs. Apply the same
+  native-platform rule on Linux and macOS unless the user explicitly requests
+  cross-platform E2E validation.
+- These E2E scope and platform rules take precedence over the cross-platform
+  validation and full-check requirements below. Use targeted tasks or E2E
+  exclusions as needed, and report omitted coverage when recording gate evidence.
 - Validate implementation changes on both Windows and Ubuntu WSL. Use a separate
   Ubuntu filesystem checkout with the same source revision. Never share native
   build output or run concurrent Gradle builds in the same checkout.

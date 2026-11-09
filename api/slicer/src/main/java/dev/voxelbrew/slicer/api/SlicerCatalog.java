@@ -1,6 +1,5 @@
-package dev.voxelbrew.exporter.api;
+package dev.voxelbrew.slicer.api;
 
-import dev.voxelbrew.exporter.printing.SlicerBackend;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.List;

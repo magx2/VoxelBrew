@@ -5,7 +5,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import dev.voxelbrew.engine.model.*;
 import dev.voxelbrew.engine.printing.*;
 import dev.voxelbrew.exporter.printing.PrusaSlicerBackend;
-import dev.voxelbrew.exporter.printing.SlicerBackend;
+import dev.voxelbrew.slicer.api.SlicerBackend;
 import java.io.IOException;
 import java.nio.file.*;
 import java.util.*;

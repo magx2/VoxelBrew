@@ -4,7 +4,7 @@ VoxelBrew uses **Google Dagger 2.60.1** for dependency injection and inversion o
 control. Gradle continues to resolve libraries. The shared Gradle script
 `gradle/di.gradle.kts` supplies the Dagger runtime and a separate annotation-processor
 configuration to util, export, CLI and GUI. Generated sources remain in `build/`.
-Engine, import and both API projects declare no Dagger dependency or DI annotations; their CAD models,
+Engine, import and all API projects declare no Dagger dependency or DI annotations; their CAD models,
 geometry algorithms, document codecs and plugin contracts stay independently usable.
 
 ## Graphs and ownership
@@ -28,7 +28,7 @@ update factory) enter at composition roots. Dynamic plugin providers still use t
 existing ServiceLoader SPI; they do not need Dagger or new constructors.
 
 All exporters use `ExporterProvider`. Each frontend owns a local `FileIoModule`.
-It discovers `ImportRuntime` and `ExportRuntime` through ServiceLoader at composition
+It discovers `ImportRuntime`, `ExportRuntime` and `SlicerRuntime` through ServiceLoader at composition
 time, then binds their individual API services and catalog factories. Concrete
 built-ins are composed inside the runtime implementations, which are absent from
 the frontend compile classpaths. The window receives the registry through

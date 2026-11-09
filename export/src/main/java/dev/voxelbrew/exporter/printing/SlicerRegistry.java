@@ -1,6 +1,7 @@
 package dev.voxelbrew.exporter.printing;
 
 import dev.voxelbrew.engine.printing.*;
+import dev.voxelbrew.slicer.api.SlicerBackend;
 import java.io.*;
 import java.net.*;
 import java.nio.file.*;
@@ -8,7 +9,7 @@ import java.util.*;
 
 /** Trusted provider JARs use a dedicated loader; one bad provider does not disable its peers. */
 @lombok.extern.slf4j.Slf4j
-public final class SlicerRegistry implements dev.voxelbrew.exporter.api.SlicerCatalog {
+public final class SlicerRegistry implements dev.voxelbrew.slicer.api.SlicerCatalog {
     private final URLClassLoader loader;
 
     private record Entry(SlicerBackend provider, SlicerBackend.Descriptor descriptor) {}

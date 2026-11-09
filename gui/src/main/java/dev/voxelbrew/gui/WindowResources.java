@@ -1,7 +1,7 @@
 package dev.voxelbrew.gui;
 
 import dev.voxelbrew.exporter.api.ExporterCatalog;
-import dev.voxelbrew.exporter.api.SlicerCatalog;
+import dev.voxelbrew.slicer.api.SlicerCatalog;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Path;

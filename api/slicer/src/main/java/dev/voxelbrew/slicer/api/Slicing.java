@@ -1,8 +1,8 @@
-package dev.voxelbrew.exporter.api;
+package dev.voxelbrew.slicer.api;
 
 import dev.voxelbrew.engine.model.CadDocument;
 import dev.voxelbrew.engine.printing.*;
-import dev.voxelbrew.exporter.printing.SlicerBackend;
+import dev.voxelbrew.exporter.api.ExporterCatalog;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.function.Consumer;

@@ -14,12 +14,6 @@ public interface ExportRuntime {
 
     ExporterCatalog.Factory exporters();
 
-    SlicerCatalog.Factory slicers();
-
-    Slicing slicing();
-
-    Path defaultSlicerExecutable();
-
     Exporter<Path> documentExporter(Executor worker, DocumentOutput output);
 
     static ExportRuntime load() {

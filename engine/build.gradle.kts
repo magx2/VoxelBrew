@@ -276,6 +276,7 @@ val buildExporterFixture by
             ":util:publishUtilPublicationToFixtureRepository",
             ":api:model:publishApiPublicationToFixtureRepository",
             ":api:export:publishApiPublicationToFixtureRepository",
+            ":api:slicer:publishApiPublicationToFixtureRepository",
             ":api:import:publishApiPublicationToFixtureRepository",
         )
         dir = rootProject.file("fixtures/exporter-plugin")

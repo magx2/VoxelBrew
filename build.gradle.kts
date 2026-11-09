@@ -17,6 +17,7 @@ val sourceProjects =
         "api/model",
         "api/import",
         "api/export",
+        "api/slicer",
         "import",
         "export",
         "cli",
@@ -340,7 +341,7 @@ tasks.wrapper {
     distributionSha256Sum = "a17ddd85a26b6a7f5ddb71ff8b05fc5104c0202c6e64782429790c933686c806"
 }
 
-for (module in listOf(":api:model", ":api:import", ":api:export")) {
+for (module in listOf(":api:model", ":api:import", ":api:export", ":api:slicer")) {
     project(module) {
         tasks.register("verifyApiDependencies") {
             group = "verification"
@@ -369,6 +370,7 @@ tasks.register("verifyApiDependencies") {
         ":api:model:verifyApiDependencies",
         ":api:import:verifyApiDependencies",
         ":api:export:verifyApiDependencies",
+        ":api:slicer:verifyApiDependencies",
     )
 }
 
@@ -395,14 +397,16 @@ for (module in listOf(":cli", ":gui")) {
                         .toSet()
                 val compile = projects("compileClasspath")
                 val runtime = projects("runtimeClasspath")
-                check(compile.containsAll(listOf(":api:import", ":api:export"))) {
+                check(compile.containsAll(listOf(":api:import", ":api:export", ":api:slicer"))) {
                     "$module must compile against file-I/O APIs"
                 }
                 check(compile.intersect(setOf(":import", ":export")).isEmpty()) {
                     "$module compiles against file-I/O implementations"
                 }
                 check(
-                    runtime.containsAll(listOf(":api:import", ":api:export", ":import", ":export"))
+                    runtime.containsAll(
+                        listOf(":api:import", ":api:export", ":api:slicer", ":import", ":export")
+                    )
                 ) {
                     "$module runtime is missing file-I/O JARs"
                 }

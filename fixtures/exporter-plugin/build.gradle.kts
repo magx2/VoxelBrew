@@ -16,6 +16,7 @@ val engineVersion = providers.gradleProperty("engineVersion").orElse("0.1.0-SNAP
 
 dependencies {
     compileOnly("dev.voxelbrew:export-api:${engineVersion.get()}")
+    compileOnly("dev.voxelbrew:slicer-api:${engineVersion.get()}")
     compileOnly("dev.voxelbrew:import-api:${engineVersion.get()}")
 }
 
@@ -49,7 +50,7 @@ tasks.named("jar") {
                 .filter { it.group == "dev.voxelbrew" }
                 .map { it.name }
                 .toSet()
-        check(hostModules == setOf("model-api", "import-api", "export-api")) {
+        check(hostModules == setOf("model-api", "import-api", "export-api", "slicer-api")) {
             "The external consumer must compile with API/domain artifacts only: $hostModules"
         }
     }

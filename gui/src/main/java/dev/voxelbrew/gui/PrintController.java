@@ -4,8 +4,8 @@ import dev.voxelbrew.engine.mesh.MeshOptions;
 import dev.voxelbrew.engine.model.CadDocument;
 import dev.voxelbrew.engine.persistence.DocumentCodec;
 import dev.voxelbrew.engine.printing.*;
-import dev.voxelbrew.exporter.api.Slicing;
-import dev.voxelbrew.exporter.printing.SlicerBackend;
+import dev.voxelbrew.slicer.api.SlicerBackend;
+import dev.voxelbrew.slicer.api.Slicing;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.*;
@@ -75,7 +75,7 @@ public final class PrintController implements AutoCloseable {
                 pluginDirectory,
                 WindowResources.worker("slicer"),
                 dev.voxelbrew.exporter.api.ExportRuntime.load().exporters(),
-                dev.voxelbrew.exporter.api.ExportRuntime.load().slicing());
+                dev.voxelbrew.slicer.api.SlicerRuntime.load().slicing());
     }
 
     @javax.inject.Inject

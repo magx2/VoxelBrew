@@ -14,10 +14,11 @@
 ## Architecture
 
 - Use Java 21, the committed Gradle wrapper, and `dev.voxelbrew` packages.
-- Keep nine first-party subprojects: `util`, `engine`, `:api:model`, `:api:import`, `:api:export`, `import`, `export`, `cli`, and `gui`.
+- Keep ten first-party subprojects: `util`, `engine`, `:api:model`, `:api:import`, `:api:export`, `:api:slicer`, `import`, `export`, `cli`, and `gui`.
   Engine owns native CAD evaluation, persistence codecs and feature execution.
   api/model owns shared domain values and validation helpers under MIT.
   api/import and api/export own only public file-I/O and provider contracts; they depend only on api/model.
+  api/slicer owns public slicing contracts and depends only on api/model and api/export.
   Import/export own format implementations, provider discovery and slicer file pipelines.
   Production dependencies point from file I/O to engine, never from engine to file I/O.
   Util owns CAD-independent application services and depends on none of the other projects.

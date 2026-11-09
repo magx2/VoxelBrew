@@ -14,18 +14,6 @@ public final class DefaultExportRuntime implements ExportRuntime {
         return ExporterRegistry::new;
     }
 
-    public SlicerCatalog.Factory slicers() {
-        return SlicerRegistry::new;
-    }
-
-    public Slicing slicing() {
-        return SliceService::slice;
-    }
-
-    public Path defaultSlicerExecutable() {
-        return PrusaSlicerBackend.defaultExecutable();
-    }
-
     public Exporter<Path> documentExporter(Executor worker, DocumentOutput output) {
         return new VoxelBrewExporter(worker, output);
     }

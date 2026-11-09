@@ -1,7 +1,7 @@
 # File export instructions
 
 - Use `dev.voxelbrew.exporter`; keep format writers, export-view adapters/selection, provider discovery and file publication here.
-- Keep CAD domain values in engine and exporter/slicer plugin contracts in api/export.
+- Keep CAD domain values in engine and exporter plugin contracts in api/export and slicer contracts in api/slicer.
 - Own .vxb writing, STL/3MF writers and the external-slicer output pipeline.
 - Validate before publishing; failed operations must preserve existing destinations.
 - Never export failed or rolled-back geometry. Preserve units, identities and transforms.

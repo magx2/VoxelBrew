@@ -14,6 +14,7 @@ apply(from = rootProject.file("gradle/packaging.gradle.kts"))
 dependencies {
     implementation(project(":api:import"))
     implementation(project(":api:export"))
+    implementation(project(":api:slicer"))
     runtimeOnly(project(":import"))
     runtimeOnly(project(":export"))
     testImplementation(project(":import"))

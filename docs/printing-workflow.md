@@ -111,7 +111,7 @@ fingerprint. Only successful, independently parsed output is atomically publishe
 Cancel kills the process tree; edits invalidate running/completed jobs. An old
 result cannot replace the current preview or publish over an existing job.
 
-`dev.voxelbrew.exporter.api.printing.SlicerBackend` API 1 is headless and discovered through a dedicated class loader
+`dev.voxelbrew.slicer.api.SlicerBackend` API 2 (from `slicer-api`) is headless and discovered through a dedicated class loader
 in the same trusted `~/.voxelbrew/plugins` directory as exporters. Both frontends
 accept `--plugin-dir`. Providers declare versions, formats and capabilities;
 incompatible/duplicate/broken providers are diagnosed independently.

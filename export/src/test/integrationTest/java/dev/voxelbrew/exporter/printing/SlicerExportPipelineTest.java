@@ -6,6 +6,7 @@ import dev.voxelbrew.engine.mesh.MeshOptions;
 import dev.voxelbrew.engine.printing.*;
 import dev.voxelbrew.exporter.*;
 import dev.voxelbrew.exporter.api.*;
+import dev.voxelbrew.slicer.api.SlicerBackend;
 import java.io.IOException;
 import java.nio.file.*;
 import java.util.*;
@@ -58,7 +59,7 @@ class SlicerExportPipelineTest {
                                     true,
                                     new Cancellation(),
                                     line -> {},
-                                    dev.voxelbrew.exporter.api.Slicing.DIRECT));
+                                    dev.voxelbrew.slicer.api.Slicing.DIRECT));
                     assertEquals("Backend reached after export", failure.getMessage());
                     assertEquals(1, runs.get());
                     assertEquals("original", Files.readString(output));
@@ -98,7 +99,7 @@ class SlicerExportPipelineTest {
                                 true,
                                 new Cancellation(),
                                 line -> {},
-                                dev.voxelbrew.exporter.api.Slicing.DIRECT));
+                                dev.voxelbrew.slicer.api.Slicing.DIRECT));
                 if (cancel) assertInstanceOf(CancellationException.class, failure);
                 else assertInstanceOf(IOException.class, failure);
                 assertEquals("original", Files.readString(output));

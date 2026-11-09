@@ -5,6 +5,9 @@ import dagger.Provides;
 import dev.voxelbrew.exporter.DocumentOutput;
 import dev.voxelbrew.exporter.api.*;
 import dev.voxelbrew.importer.api.*;
+import dev.voxelbrew.slicer.api.SlicerCatalog;
+import dev.voxelbrew.slicer.api.SlicerRuntime;
+import dev.voxelbrew.slicer.api.Slicing;
 import javax.inject.Singleton;
 
 @Module
@@ -25,16 +28,19 @@ public final class FileIoModule {
     @lombok.NonNull
     private final ExportRuntime exports;
 
+    @lombok.NonNull
+    private final SlicerRuntime slicerRuntime;
+
     public FileIoModule() {
-        this(ImportRuntime.load(), ExportRuntime.load());
+        this(ImportRuntime.load(), ExportRuntime.load(), SlicerRuntime.load());
     }
 
-    private FileIoModule(ImportRuntime imports, ExportRuntime exports) {
-        this(imports.documents(), exports.documents(), imports.gcode(), imports, exports);
+    private FileIoModule(ImportRuntime imports, ExportRuntime exports, SlicerRuntime slicerRuntime) {
+        this(imports.documents(), exports.documents(), imports.gcode(), imports, exports, slicerRuntime);
     }
 
     public FileIoModule(DocumentSource source, DocumentOutput sink, GcodeSource gcode) {
-        this(source, sink, gcode, ImportRuntime.load(), ExportRuntime.load());
+        this(source, sink, gcode, ImportRuntime.load(), ExportRuntime.load(), SlicerRuntime.load());
     }
 
     @Provides
@@ -67,7 +73,7 @@ public final class FileIoModule {
 
     @Provides
     SlicerCatalog.Factory slicers() {
-        return exports.slicers();
+        return slicerRuntime.slicers();
     }
 
     @Provides
@@ -77,12 +83,12 @@ public final class FileIoModule {
 
     @Provides
     Slicing slicing() {
-        return exports.slicing();
+        return slicerRuntime.slicing();
     }
 
     @Provides
     @javax.inject.Named("slicerExecutable")
     java.nio.file.Path slicerExecutable() {
-        return exports.defaultSlicerExecutable();
+        return slicerRuntime.defaultSlicerExecutable();
     }
 }

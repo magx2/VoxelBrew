@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 import dev.voxelbrew.engine.mesh.MeshOptions;
 import dev.voxelbrew.engine.printing.*;
+import dev.voxelbrew.slicer.api.SlicerBackend;
 import java.io.IOException;
 import java.nio.file.*;
 import java.util.*;
@@ -39,7 +40,7 @@ class SliceLifecycleTest {
                             }
                             if (line.contains("Processing triangulated mesh")) cancellation.cancel();
                         },
-                        dev.voxelbrew.exporter.api.Slicing.DIRECT));
+                        dev.voxelbrew.slicer.api.Slicing.DIRECT));
         assertEquals("original", Files.readString(output));
         assertTrue(cancellation.cancelled());
         try (var paths = Files.list(directory)) {
@@ -78,7 +79,7 @@ class SliceLifecycleTest {
                         true,
                         new Cancellation(),
                         line -> {},
-                        dev.voxelbrew.exporter.api.Slicing.DIRECT));
+                        dev.voxelbrew.slicer.api.Slicing.DIRECT));
         assertTrue(failure.getMessage().contains("forced backend failure"));
         assertEquals("original", Files.readString(output));
         var p = model.profile().printer();
@@ -106,7 +107,7 @@ class SliceLifecycleTest {
                         true,
                         new Cancellation(),
                         line -> {},
-                        dev.voxelbrew.exporter.api.Slicing.DIRECT));
+                        dev.voxelbrew.slicer.api.Slicing.DIRECT));
         session.setPrintSetup(
                 session.document().printSetup().withProfile("prusa-slicer", "missing", "PLA", ProcessSettings.DEFAULT));
         assertTrue(assertThrows(

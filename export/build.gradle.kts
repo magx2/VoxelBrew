@@ -8,6 +8,7 @@ apply(from = rootProject.file("gradle/di.gradle.kts"))
 dependencies {
     implementation(project(":engine"))
     api(project(":api:export"))
+    api(project(":api:slicer"))
     implementation(project(":import"))
     implementation(project(":util"))
     testImplementation("com.google.protobuf:protobuf-java:4.30.2")

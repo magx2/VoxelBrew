@@ -9,7 +9,7 @@ resources for a suite belong alongside its `java` directory under `resources`.
 | `integrationTest` | `src/test/integrationTest/java` | Real OCCT, persistence, exporters, external plugin loading, real slicer and UI-neutral controllers     |
 | `e2eTest`         | `src/test/e2eTest/java`         | CLI workflows across fresh JVMs and JavaFX Robot interactions                                          |
 
-The root tasks aggregate all nine modules, including `:api:model`, `:api:import` and `:api:export`. Suites have separate compilation,
+The root tasks aggregate all ten modules, including `:api:model`, `:api:import`, `:api:export` and `:api:slicer`. Suites have separate compilation,
 runtime classpaths, XML results and HTML reports. They depend on production code,
 not another suite's output. Currently engine owns the unit tests; CLI workflows
 are end-to-end tests and GUI controllers are integration tests. An empty suite

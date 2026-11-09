@@ -4,7 +4,7 @@ import dagger.Module;
 import dagger.Provides;
 import dev.voxelbrew.engine.model.CadDocument;
 import dev.voxelbrew.exporter.api.ExporterCatalog;
-import dev.voxelbrew.exporter.api.SlicerCatalog;
+import dev.voxelbrew.slicer.api.SlicerCatalog;
 import java.util.concurrent.ExecutorService;
 import java.util.function.*;
 import javafx.application.Platform;

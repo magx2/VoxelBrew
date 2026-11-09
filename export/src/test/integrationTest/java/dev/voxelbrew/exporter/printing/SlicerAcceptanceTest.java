@@ -85,7 +85,7 @@ class SlicerAcceptanceTest {
                 true,
                 new Cancellation(),
                 messages::add,
-                dev.voxelbrew.exporter.api.Slicing.DIRECT);
+                dev.voxelbrew.slicer.api.Slicing.DIRECT);
         Files.write(artifacts.resolve(name + ".log"), messages);
         System.out.println(name
                 + ": model layers="

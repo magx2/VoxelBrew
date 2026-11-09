@@ -45,7 +45,7 @@ class PrintingTest {
                 false,
                 new Cancellation(),
                 System.out::println,
-                dev.voxelbrew.exporter.api.Slicing.DIRECT);
+                dev.voxelbrew.slicer.api.Slicing.DIRECT);
         var job = result.job();
         assertEquals(40, job.modelLayers().size());
         assertEquals(0.2, job.modelLayers().getFirst(), 1e-6);

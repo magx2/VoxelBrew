@@ -37,6 +37,42 @@ import org.junit.jupiter.api.io.TempDir;
 @ExtendWith(UiTestShard.class)
 class WorkbenchUiTest {
     @Test
+    void extrusionRegionChoiceKeepsOnlyRectangle() throws Exception {
+        var rectangle = Sketches.rectangle("r", 0, 0, 20, 10, false);
+        var entities = new ArrayList<>(rectangle.entities());
+        entities.add(Sketches.entity("roof-left", SketchGeometry.Kind.LINE, false, 0, 10, 10, 20));
+        entities.add(Sketches.entity("roof-right", SketchGeometry.Kind.LINE, false, 10, 20, 20, 10));
+        var geometry = new SketchGeometry(
+                entities,
+                rectangle.constraints(),
+                entities.stream().map(SketchGeometry.Entity::id).toList());
+        var sketch = new Feature.Sketch(
+                "house", "profile", new Feature.Plane("origin-xy", 0), new Feature.Constrained(geometry));
+        var file = directory.resolve("adjacent-regions.vxb");
+        DocumentWriter.save(new CadDocument("regions", List.of(sketch), 1), file, false);
+        open(file);
+        click("history-0");
+        click("extrude");
+        ready();
+        assertEquals(1500, volume(), .001);
+        choice("extrude-region", 1);
+        ready();
+        assertEquals(1000, volume(), .001);
+        choice("extrude-region", 2);
+        ready();
+        assertEquals(500, volume(), .001);
+        choice("extrude-region", 1);
+        text("extrude-distance", "8");
+        key(KeyCode.ENTER);
+        ready();
+        assertEquals(1600, volume(), .001);
+        assertEquals(sketch, document().features().getFirst());
+        click("undo");
+        ready();
+        assertEquals(List.of(sketch), document().features());
+    }
+
+    @Test
     void constructionMenuCreatesEditablePlaneAndCancelsDraftWithoutHistory() throws Exception {
         ready();
         click("construction-menu");

@@ -394,11 +394,15 @@ public final class DocumentController implements AutoCloseable {
     }
 
     public void previewExtrusion(Feature.Sketch sketch, double distance) {
+        previewExtrusion(sketch, sketch.profileId(), distance);
+    }
+
+    public void previewExtrusion(Feature.Sketch sketch, String profileId, double distance) {
         previewExpression = "";
         String id = preview == null
                 ? "extrude-" + session.document().uuidGenerator().next()
                 : preview.id();
-        var candidate = new Feature.Extrude(id, new Feature.ProfileRef(sketch.id(), sketch.profileId()), distance);
+        var candidate = new Feature.Extrude(id, new Feature.ProfileRef(sketch.id(), profileId), distance);
         var temporary = new ModelSession(session.document());
         temporary.add(candidate);
         preview = candidate;
@@ -406,9 +410,13 @@ public final class DocumentController implements AutoCloseable {
     }
 
     public void previewExtrusion(Feature.Sketch sketch, String expression) {
+        previewExtrusion(sketch, sketch.profileId(), expression);
+    }
+
+    public void previewExtrusion(Feature.Sketch sketch, String profileId, String expression) {
         double value =
                 session.document().parameters().value(expression, dev.voxelbrew.engine.parameters.ParameterUnit.MM);
-        previewExtrusion(sketch, value);
+        previewExtrusion(sketch, profileId, value);
         if (!expression.matches("[+-]?(?:[0-9]+(?:\\.[0-9]*)?|\\.[0-9]+)(?:[eE][+-]?[0-9]+)?"))
             previewExpression = expression;
     }

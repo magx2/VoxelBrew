@@ -36,6 +36,28 @@ public final class SketchProfiles {
     }
 
     public static List<Region> regions(SketchGeometry g) {
+        return regions(g, false);
+    }
+
+    /** Individual bounded faces, including faces separated by a shared sketch edge. */
+    public static List<Region> selectableRegions(SketchGeometry g) {
+        return regions(g, true);
+    }
+
+    public static String regionProfileId(String profileId, Region region) {
+        return profileId + "/region/" + region.id();
+    }
+
+    public static List<Region> referencedRegions(dev.voxelbrew.engine.model.Feature.Sketch sketch, String profileId) {
+        var geometry = ((dev.voxelbrew.engine.model.Feature.Constrained) sketch.profile()).geometry();
+        if (sketch.profileId().equals(profileId)) return regions(geometry);
+        return List.of(selectableRegions(geometry).stream()
+                .filter(region -> regionProfileId(sketch.profileId(), region).equals(profileId))
+                .findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("Selected sketch region no longer exists")));
+    }
+
+    private static List<Region> regions(SketchGeometry g, boolean individual) {
         SketchConstraints.requireSatisfied(g);
         if (g.boundary().isEmpty())
             throw new IllegalArgumentException("Select closed profile geometry in Edit sketch before extruding");
@@ -44,7 +66,7 @@ public final class SketchProfiles {
                 .flatMap(e -> g.curves(e).stream())
                 .toList());
         if (remaining.isEmpty()) throw new IllegalArgumentException("Profile has no curves");
-        var loops = boundaryLoops(remaining);
+        var loops = boundaryLoops(remaining, individual);
         var polygons = loops.stream().map(SketchProfiles::samples).toList();
         var areas = polygons.stream().mapToDouble(SketchProfiles::area).toArray();
         int[] parent = new int[loops.size()];
@@ -69,13 +91,16 @@ public final class SketchProfiles {
             var wires = new ArrayList<List<PlanarProfile.Segment>>();
             wires.add(segments(loops.get(i), areas[i] < 0));
             for (int j = 0; j < loops.size(); j++) if (parent[j] == i) wires.add(segments(loops.get(j), areas[j] > 0));
-            result.add(new Region(loops.get(i).getFirst().entity().id(), new PlanarProfile(wires)));
+            String id = individual
+                    ? regionId(loops.get(i))
+                    : loops.get(i).getFirst().entity().id();
+            result.add(new Region(id, new PlanarProfile(wires)));
         }
         return List.copyOf(result);
     }
 
     /** Walk faces on the left; clockwise walks bound the exterior of connected regions. */
-    private static List<List<Edge>> boundaryLoops(List<Entity> entities) {
+    private static List<List<Edge>> boundaryLoops(List<Entity> entities, boolean individual) {
         var loops = new ArrayList<List<Edge>>();
         var directed = new ArrayList<Edge>();
         for (var entity : entities) {
@@ -111,7 +136,9 @@ public final class SketchProfiles {
             } while (!edge.equals(start));
             double signedArea = area(samples(path));
             if (Math.abs(signedArea) < 1e-12) throw new IllegalArgumentException("Profile has zero or invalid area");
-            if (signedArea < 0) {
+            if (signedArea < 0 && path.stream().map(Edge::entity).distinct().count() != path.size())
+                throw new IllegalArgumentException("Profile contains an open connecting edge");
+            if (individual ? signedArea > 0 : signedArea < 0) {
                 if (path.stream().map(Edge::entity).distinct().count() != path.size())
                     throw new IllegalArgumentException("Profile contains an open connecting edge");
                 loops.add(path);
@@ -120,6 +147,18 @@ public final class SketchProfiles {
         loops.sort(
                 Comparator.comparingInt(loop -> entities.indexOf(loop.getFirst().entity())));
         return loops;
+    }
+
+    private static String regionId(List<Edge> loop) {
+        // Length-prefix IDs so shared edges, entity ordering and direction cannot alias faces.
+        String key = loop.stream()
+                .map(e -> e.entity().id())
+                .sorted()
+                .map(id -> id.length() + ":" + id)
+                .collect(java.util.stream.Collectors.joining());
+        return Base64.getUrlEncoder()
+                .withoutPadding()
+                .encodeToString(key.getBytes(java.nio.charset.StandardCharsets.UTF_8));
     }
 
     private static double angle(Edge edge) {

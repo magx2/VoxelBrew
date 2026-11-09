@@ -20,6 +20,53 @@ class DocumentControllerTest {
     private final ConcurrentLinkedQueue<Runnable> callbacks = new ConcurrentLinkedQueue<>();
 
     @Test
+    void selectedRegionPreviewCommitsAndReopensWithoutChangingSketch() throws Exception {
+        var g = dev.voxelbrew.engine.sketch.Sketches.rectangle("r", 0, 0, 20, 10, false);
+        var entities = new java.util.ArrayList<>(g.entities());
+        entities.add(dev.voxelbrew.engine.sketch.Sketches.entity(
+                "roof-left", dev.voxelbrew.engine.sketch.SketchGeometry.Kind.LINE, false, 0, 10, 10, 20));
+        entities.add(dev.voxelbrew.engine.sketch.Sketches.entity(
+                "roof-right", dev.voxelbrew.engine.sketch.SketchGeometry.Kind.LINE, false, 10, 20, 20, 10));
+        g = new dev.voxelbrew.engine.sketch.SketchGeometry(
+                entities,
+                g.constraints(),
+                entities.stream()
+                        .map(dev.voxelbrew.engine.sketch.SketchGeometry.Entity::id)
+                        .toList());
+        var sketch =
+                new Feature.Sketch("sketch", "profile", new Feature.Plane("origin-xy", 0), new Feature.Constrained(g));
+        var region =
+                dev.voxelbrew.engine.sketch.SketchProfiles.selectableRegions(g).getFirst();
+        String profileId = dev.voxelbrew.engine.sketch.SketchProfiles.regionProfileId("profile", region);
+        try (var controller = new DocumentController(callbacks::add)) {
+            controller.add(sketch);
+            await(() -> !controller.rebuilding());
+            controller.previewExtrusion(sketch, profileId, "5");
+            await(() -> !controller.rebuilding());
+            assertEquals(1000, controller.build().bodies().getFirst().volume(), .001);
+            controller.cancelPreview();
+            await(() -> !controller.rebuilding());
+            assertEquals(List.of(sketch), controller.snapshot().document().features());
+            controller.previewExtrusion(sketch, profileId, "8");
+            await(() -> !controller.rebuilding());
+            controller.commitPreview();
+            await(() -> !controller.rebuilding());
+            assertEquals(1600, controller.build().bodies().getFirst().volume(), .001);
+            var saving = controller.save(directory.resolve("region.vxb"), false);
+            await(saving::isDone);
+            saving.join();
+            controller.undo();
+            await(() -> !controller.rebuilding());
+            assertEquals(List.of(sketch), controller.snapshot().document().features());
+            var opening = controller.open(directory.resolve("region.vxb"));
+            await(() -> opening.isDone() && !controller.rebuilding());
+            opening.join();
+            assertEquals(1600, controller.build().bodies().getFirst().volume(), .001);
+            assertEquals(sketch, controller.snapshot().document().features().getFirst());
+        }
+    }
+
+    @Test
     void olderFilesUpgradeAndFutureFilesPreserveCleanAndDirtyDocuments() throws Exception {
         var original = new CadDocument("versioned-design", List.of(sketch("plate", 0)), 1);
         Path file = directory.resolve("older version design.vxb");

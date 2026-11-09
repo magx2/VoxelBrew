@@ -172,7 +172,8 @@ public final class Evaluator {
                                             e.distance()),
                                     sketch.plane().frame());
                         } else if (sketch.profile() instanceof Feature.Constrained c) {
-                            var regions = dev.voxelbrew.engine.sketch.SketchProfiles.regions(c.geometry());
+                            var regions = dev.voxelbrew.engine.sketch.SketchProfiles.referencedRegions(
+                                    sketch, e.profile().profileId());
                             solid = place(
                                     Solid.profilePrism(
                                             regions.getFirst().profile(),
@@ -272,10 +273,9 @@ public final class Evaluator {
                         if (sketch.profile() instanceof Feature.Circle circle) {
                             solid = local.cutThroughCircle(circle.centerX(), circle.centerY(), circle.diameter());
                         } else {
-                            var constrained = (Feature.Constrained) sketch.profile();
                             solid = local;
-                            for (var region :
-                                    dev.voxelbrew.engine.sketch.SketchProfiles.regions(constrained.geometry())) {
+                            for (var region : dev.voxelbrew.engine.sketch.SketchProfiles.referencedRegions(
+                                    sketch, cut.profile().profileId())) {
                                 solid = solid.cutThroughProfile(region.profile());
                                 owned.add(solid);
                             }
@@ -319,6 +319,10 @@ public final class Evaluator {
 
     private static Feature.Sketch profile(String owner, Feature.ProfileRef ref, Map<String, Feature.Sketch> sketches) {
         Feature.Sketch sketch = sketches.get(ref.sketchId());
+        if (sketch != null && sketch.profile() instanceof Feature.Constrained) {
+            dev.voxelbrew.engine.sketch.SketchProfiles.referencedRegions(sketch, ref.profileId());
+            return sketch;
+        }
         if (sketch == null || !sketch.profileId().equals(ref.profileId())) {
             throw new ModelException(owner, "missing sketch/profile '" + ref.sketchId() + "/" + ref.profileId() + "'");
         }

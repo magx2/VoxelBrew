@@ -1663,6 +1663,21 @@ public final class Workbench extends BorderPane implements AutoCloseable {
         selectionLabel.setText(translations.text("gui.extrude_profile"));
         form.getChildren().clear();
         fields.clear();
+        var region = new ComboBox<String>();
+        region.setId("extrude-region");
+        var profileIds = new ArrayList<String>();
+        profileIds.add(sketch.profileId());
+        region.getItems().add(translations.text("gui.extrude_all_regions"));
+        if (sketch.profile() instanceof Feature.Constrained constrained) {
+            var regions = dev.voxelbrew.engine.sketch.SketchProfiles.selectableRegions(constrained.geometry());
+            for (int i = 0; i < regions.size(); i++) {
+                profileIds.add(
+                        dev.voxelbrew.engine.sketch.SketchProfiles.regionProfileId(sketch.profileId(), regions.get(i)));
+                region.getItems().add(translations.text("gui.extrude_region") + " " + (i + 1));
+            }
+        }
+        region.getSelectionModel().selectFirst();
+        form.getChildren().addAll(new Label(translations.text("gui.extrude_region")), region);
         var distance = field("extrude-distance", translations.text("gui.signed_distance_mm"), 5);
         finish = button(translations.text("gui.commit"), "commit-extrusion", this::commitExtrusion);
         finish.getStyleClass().add("primary");
@@ -1673,14 +1688,17 @@ public final class Workbench extends BorderPane implements AutoCloseable {
                 translations.text("gui.drag_the_gold_handle_or_type_a_distance_enter_commits_escape_cancels"));
         hint.setWrapText(true);
         form.getChildren().add(hint);
-        distance.textProperty().addListener((o, a, b) -> {
+        Runnable updatePreview = () -> {
             try {
                 double value = controller
                         .snapshot()
                         .document()
                         .parameters()
                         .value(distance.getText(), dev.voxelbrew.engine.parameters.ParameterUnit.MM);
-                controller.previewExtrusion(sketch, distance.getText().strip());
+                controller.previewExtrusion(
+                        sketch,
+                        profileIds.get(region.getSelectionModel().getSelectedIndex()),
+                        distance.getText().strip());
                 viewport.updateExtrusionDistance(value);
                 finish.setDisable(false);
                 error.setText("");
@@ -1688,7 +1706,9 @@ public final class Workbench extends BorderPane implements AutoCloseable {
                 finish.setDisable(true);
                 error.setText(failure.getMessage());
             }
-        });
+        };
+        distance.textProperty().addListener((o, a, b) -> updatePreview.run());
+        region.valueProperty().addListener((o, a, b) -> updatePreview.run());
         distance.setOnAction(e -> {
             if (!finish.isDisabled()) finish.fire();
         });

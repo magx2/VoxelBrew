@@ -200,3 +200,13 @@ UI-neutral controller tests live in `:gui:integrationTest`. See
 
 Manufacturing placement, slicing, supports, installers, macOS qualification and
 persistent generated-face naming remain later milestones.
+
+### Extruding one sketch region
+
+For a sketch with adjacent closed areas (for example, a rectangle with a triangle
+sharing an edge), start **Extrude** and choose **Region 1**, **Region 2**, etc. in
+the **Region** selector. The solid preview shows the chosen area. **Whole sketch**
+keeps the existing combined extrusion behavior. Set the distance and commit;
+the original sketch stays editable and the chosen region survives save/reopen.
+If an edit removes that region boundary, the extrusion reports a broken selection
+instead of silently extruding a different area.

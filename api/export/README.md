@@ -1,6 +1,6 @@
 # Export API
 
-The `:api:export` project defines VoxelBrew's public exporter and slicer contracts
+The `:api:export` project defines VoxelBrew's public exporter contracts
 under `dev.voxelbrew.exporter.api`. It depends only on `:api:model`, so plugins can
 use document and manufacturing values without depending on JavaFX, CLI parsing or
 the native engine implementation.

@@ -1,4 +1,4 @@
-package dev.voxelbrew.exporter.api.printing;
+package dev.voxelbrew.exporter.printing;
 
 import dev.voxelbrew.engine.printing.Cancellation;
 import dev.voxelbrew.engine.printing.ManufacturingModel;

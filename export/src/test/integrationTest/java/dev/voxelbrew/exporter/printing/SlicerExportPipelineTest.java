@@ -6,7 +6,6 @@ import dev.voxelbrew.engine.mesh.MeshOptions;
 import dev.voxelbrew.engine.printing.*;
 import dev.voxelbrew.exporter.*;
 import dev.voxelbrew.exporter.api.*;
-import dev.voxelbrew.exporter.api.printing.SlicerBackend;
 import java.io.IOException;
 import java.nio.file.*;
 import java.util.*;

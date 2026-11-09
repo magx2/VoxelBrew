@@ -1,7 +1,6 @@
 package dev.voxelbrew.exporter.printing;
 
 import dev.voxelbrew.engine.printing.*;
-import dev.voxelbrew.exporter.api.printing.SlicerBackend;
 import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.*;

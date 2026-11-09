@@ -7,7 +7,7 @@ therefore separately licensed under the MIT License:
 
 - `model` (`:api:model`): shared domain values, [MIT license](model/LICENSE).
 - `import` (`:api:import`): importer contracts, [MIT license](import/LICENSE).
-- `export` (`:api:export`): exporter/slicer contracts, [MIT license](export/LICENSE).
+- `export` (`:api:export`): exporter contracts, [MIT license](export/LICENSE).
 
 The import and export APIs depend only on the model API. None of these modules
 has a compile or runtime dependency on the AGPL engine, util, or frontends.

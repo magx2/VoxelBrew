@@ -58,7 +58,9 @@ CadDocument + captured manufacturing state
     -> inspected G-code, atomically published
 ```
 
-`SlicerBackend.inputFormat()` declares an exporter ID, extension and export options.
+[`SlicerBackend`](src/main/java/dev/voxelbrew/exporter/printing/SlicerBackend.java)
+is an implementation-module contract under `dev.voxelbrew.exporter.printing`, not
+part of `export-api`. Its `inputFormat()` declares an exporter ID, extension and export options.
 The host provides headless file/geometry dialog handlers and waits for successful
 export before invoking the backend. `SlicerBackend.Request.input()` is the completed
 input file; the backend consumes it rather than implementing another model writer.

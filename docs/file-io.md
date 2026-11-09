@@ -10,7 +10,7 @@ The Java packages are `dev.voxelbrew.importer` and `dev.voxelbrew.exporter`;
 | engine     | Native geometry, evaluation, tessellation, document codec, feature execution           | api:model, util                  |
 | api:model  | Shared document, sketch, parameter, mesh and manufacturing values                      | No application modules           |
 | api:import | FileImporter SPI, descriptors, typed options/results, DocumentSource/GcodeSource ports | api:model                        |
-| api:export | ExporterProvider and SlicerBackend SPIs, Exporter/ExportWindow contracts               | api:model                        |
+| api:export | ExporterProvider SPI, Exporter/ExportWindow contracts                                  | api:model                        |
 | import     | Bounded .vxb/G-code reading, importer discovery and invocation                         | engine, api:import, util         |
 | export     | Atomic .vxb writing, STL/3MF writers, exporter discovery, slicer execution/publication | engine, api:export, import, util |
 | cli / gui  | Commands and desktop interactions                                                      | engine, import, export, util     |
@@ -217,11 +217,11 @@ Do not bundle host API classes into a plugin JAR. No dependency on import/export
 picocli, Protobuf classes or Dagger is needed. This source migration intentionally has no
 old-package shims: recompile existing providers and rename their service resources.
 
-| Extension | Public interface                                    | JAR service resource                                                  |
-| --------- | --------------------------------------------------- | --------------------------------------------------------------------- |
-| Import    | `dev.voxelbrew.importer.api.FileImporter`           | `META-INF/services/dev.voxelbrew.importer.api.FileImporter`           |
-| Export    | `dev.voxelbrew.exporter.api.ExporterProvider`       | `META-INF/services/dev.voxelbrew.exporter.api.ExporterProvider`       |
-| Slicing   | `dev.voxelbrew.exporter.api.printing.SlicerBackend` | `META-INF/services/dev.voxelbrew.exporter.api.printing.SlicerBackend` |
+| Extension | Public interface                                | JAR service resource                                              |
+| --------- | ----------------------------------------------- | ----------------------------------------------------------------- |
+| Import    | `dev.voxelbrew.importer.api.FileImporter`       | `META-INF/services/dev.voxelbrew.importer.api.FileImporter`       |
+| Export    | `dev.voxelbrew.exporter.api.ExporterProvider`   | `META-INF/services/dev.voxelbrew.exporter.api.ExporterProvider`   |
+| Slicing   | `dev.voxelbrew.exporter.printing.SlicerBackend` | `META-INF/services/dev.voxelbrew.exporter.printing.SlicerBackend` |
 
 Each service file lists public, no-argument provider classes, one per line. Implement the
 import interface and return a descriptor with a unique ID, supported API version, extensions,
@@ -264,6 +264,12 @@ keeps the current document. Save/Discard/Cancel protects unsaved work before imp
 importers are available through the host API and CLI; the GUI import dialog is for documents.
 
 ## Slicer input export
+
+`SlicerBackend` belongs to the `export` implementation module under
+`dev.voxelbrew.exporter.printing`, alongside `SlicerRegistry` and the backend adapters.
+It is not part of the MIT `export-api` artifact. Slicer extensions compile against
+the `dev.voxelbrew:export` implementation artifact and register providers under
+`META-INF/services/dev.voxelbrew.exporter.printing.SlicerBackend`.
 
 Slicing resolves `SlicerBackend.inputFormat()` through the same exporter registry.
 `SliceService` supplies headless `FileExportDialog` and built-in `MeshExportDialog`

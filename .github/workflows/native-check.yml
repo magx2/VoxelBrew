@@ -69,7 +69,6 @@ jobs:
           key: occt-v2-${{ runner.os }}-${{ runner.arch }}-${{ inputs.os }}-${{ hashFiles('scripts/native-versions.properties') }}-${{ hashFiles('engine/build.gradle.kts', 'scripts/bootstrap-native.sh', 'scripts/bootstrap-native.ps1') }}
           restore-keys: |
             occt-v2-${{ runner.os }}-${{ runner.arch }}-${{ inputs.os }}-${{ hashFiles('scripts/native-versions.properties') }}-
-            occt-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('scripts/native-versions.properties') }}
       - name: Reuse exact OCCT installation
         if: steps.occt-cache.outputs.cache-hit == 'true'
         shell: bash

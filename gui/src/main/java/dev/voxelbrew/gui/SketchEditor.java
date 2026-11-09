@@ -564,13 +564,11 @@ final class SketchEditor extends BorderPane implements AutoCloseable {
                     return;
                 }
             }
-            if (e.getButton() == MouseButton.PRIMARY
-                    && tool == Draw.SELECT
-                    && activeConstraint == null
-                    && !dimensionTool) {
+            if (e.getButton() == MouseButton.PRIMARY && activeConstraint == null && !dimensionTool) {
                 var hit = hit(e.getX(), e.getY());
-                boxCandidate = hit == null || boxAdditive;
-                dragPoint = hit != null
+                boxCandidate = hit == null || boxAdditive || tool != Draw.SELECT;
+                dragPoint = tool == Draw.SELECT
+                                && hit != null
                                 && hit.ref().part() != Part.OBJECT
                                 && !hit.ref().equals(ORIGIN)
                                 && !boxAdditive
@@ -598,6 +596,7 @@ final class SketchEditor extends BorderPane implements AutoCloseable {
                     && e.isPrimaryButtonDown()
                     && Math.hypot(e.getX() - pressX, e.getY() - pressY) > 3) {
                 moving = boxSelecting = true;
+                selectToolForGesture();
                 lastX = e.getX();
                 lastY = e.getY();
                 draw();
@@ -639,7 +638,7 @@ final class SketchEditor extends BorderPane implements AutoCloseable {
                 return;
             }
             error.setText("");
-            if (tool != Draw.SELECT) {
+            if (tool != Draw.SELECT && !e.isControlDown()) {
                 drawingClick(e);
                 return;
             }
@@ -649,6 +648,7 @@ final class SketchEditor extends BorderPane implements AutoCloseable {
                 if (e.getClickCount() == 2) editDimensionValue();
                 return;
             }
+            selectToolForGesture();
             var hit = hit(e.getX(), e.getY());
             if (dimensionTool) {
                 // Use the same screen-space snap for hover and selection, including endpoints.
@@ -696,6 +696,13 @@ final class SketchEditor extends BorderPane implements AutoCloseable {
             draw();
             e.consume();
         });
+    }
+
+    private void selectToolForGesture() {
+        tool = Draw.SELECT;
+        drawing.clear();
+        snaps.clear();
+        hoverSnap = null;
     }
 
     private void tool(Draw next) {

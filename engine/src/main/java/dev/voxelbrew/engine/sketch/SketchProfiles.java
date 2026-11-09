@@ -44,35 +44,7 @@ public final class SketchProfiles {
                 .flatMap(e -> g.curves(e).stream())
                 .toList());
         if (remaining.isEmpty()) throw new IllegalArgumentException("Profile has no curves");
-        var loops = new ArrayList<List<Edge>>();
-        while (!remaining.isEmpty()) {
-            var first = remaining.removeFirst();
-            var path = new ArrayList<Edge>();
-            path.add(new Edge(first, false));
-            if (!first.loop())
-                while (path.getLast().end().distance(path.getFirst().start()) > TOLERANCE) {
-                    var endpoint = path.getLast().end();
-                    var candidates = remaining.stream()
-                            .filter(e -> !e.loop()
-                                    && (e.at(0).distance(endpoint) <= TOLERANCE
-                                            || e.at(1).distance(endpoint) <= TOLERANCE))
-                            .toList();
-                    if (candidates.size() != 1)
-                        throw new IllegalArgumentException(
-                                candidates.isEmpty()
-                                        ? "Open profile at "
-                                                + path.getLast().entity().id()
-                                                + "; add Coincident constraints to close it"
-                                        : "Branching profile at "
-                                                + path.getLast().entity().id()
-                                                + "; select a single boundary");
-                    var next = candidates.getFirst();
-                    remaining.remove(next);
-                    path.add(new Edge(
-                            next, next.at(1).distance(endpoint) < next.at(0).distance(endpoint)));
-                }
-            loops.add(path);
-        }
+        var loops = boundaryLoops(remaining);
         var polygons = loops.stream().map(SketchProfiles::samples).toList();
         var areas = polygons.stream().mapToDouble(SketchProfiles::area).toArray();
         int[] parent = new int[loops.size()];
@@ -100,6 +72,61 @@ public final class SketchProfiles {
             result.add(new Region(loops.get(i).getFirst().entity().id(), new PlanarProfile(wires)));
         }
         return List.copyOf(result);
+    }
+
+    /** Walk faces on the left; clockwise walks bound the exterior of connected regions. */
+    private static List<List<Edge>> boundaryLoops(List<Entity> entities) {
+        var loops = new ArrayList<List<Edge>>();
+        var directed = new ArrayList<Edge>();
+        for (var entity : entities) {
+            if (entity.loop()) loops.add(List.of(new Edge(entity, false)));
+            else {
+                directed.add(new Edge(entity, false));
+                directed.add(new Edge(entity, true));
+            }
+        }
+        var next = new HashMap<Edge, Edge>();
+        for (var edge : directed) {
+            var outgoing = directed.stream()
+                    .filter(e -> e.start().distance(edge.end()) <= TOLERANCE)
+                    .sorted(Comparator.comparingDouble(SketchProfiles::angle))
+                    .toList();
+            if (outgoing.size() < 2)
+                throw new IllegalArgumentException(
+                        "Open profile at " + edge.entity().id() + "; add Coincident constraints to close it");
+            int reverse = outgoing.indexOf(edge.reverse());
+            next.put(edge, outgoing.get((reverse + outgoing.size() - 1) % outgoing.size()));
+        }
+        var visited = new HashSet<Edge>();
+        for (var start : directed) {
+            if (visited.contains(start)) continue;
+            var path = new ArrayList<Edge>();
+            var edge = start;
+            do {
+                if (!visited.add(edge))
+                    throw new IllegalArgumentException(
+                            "Ambiguous profile boundary at " + edge.entity().id());
+                path.add(edge);
+                edge = next.get(edge);
+            } while (!edge.equals(start));
+            double signedArea = area(samples(path));
+            if (Math.abs(signedArea) < 1e-12) throw new IllegalArgumentException("Profile has zero or invalid area");
+            if (signedArea < 0) {
+                if (path.stream().map(Edge::entity).distinct().count() != path.size())
+                    throw new IllegalArgumentException("Profile contains an open connecting edge");
+                loops.add(path);
+            }
+        }
+        loops.sort(
+                Comparator.comparingInt(loop -> entities.indexOf(loop.getFirst().entity())));
+        return loops;
+    }
+
+    private static double angle(Edge edge) {
+        // Only ordering uses a near-endpoint sample; output retains the exact curve.
+        var start = edge.start();
+        var nearby = edge.entity().at(edge.reversed() ? 1 - 1e-5 : 1e-5);
+        return Math.atan2(nearby.y() - start.y(), nearby.x() - start.x());
     }
 
     private static List<PlanarProfile.Segment> segments(List<Edge> loop, boolean reverse) {

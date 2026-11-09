@@ -3438,6 +3438,60 @@ class WorkbenchUiTest {
         click("sketch-select-ref");
     }
 
+    @Test
+    void sketchDirectionalSelectionAndControlClicksUseRealGestures() throws Exception {
+        click("constrained-sketch");
+        click("choose-plane-xy");
+        sketchReady();
+        fx(() -> {
+            var editor = (SketchEditor) node("#sketch-editor");
+            editor.controller()
+                    .edit(new SketchGeometry(
+                            List.of(
+                                    Sketches.entity("inside", SketchGeometry.Kind.LINE, false, 20, 15, 30, 25),
+                                    Sketches.entity("crossing", SketchGeometry.Kind.LINE, false, 5, 20, 50, 20)),
+                            List.of(),
+                            List.of("inside", "crossing")));
+            return null;
+        });
+        sketchReady();
+        click("sketch-tool-select");
+        var emptySelection = fx(() -> ((Label) node("#sketch-selection")).getText());
+        sketchDrag(15, 30, 25, 10, false);
+        assertEquals(emptySelection, fx(() -> ((Label) node("#sketch-selection")).getText()));
+        sketchDrag(25, 10, 15, 30, false);
+        assertEquals("inside\ncrossing", fx(() -> ((Label) node("#sketch-selection")).getText()));
+        sketchDrag(15, 30, 40, 10, false);
+        assertEquals("inside", fx(() -> ((Label) node("#sketch-selection")).getText()));
+        sketchDrag(40, 10, 15, 30, false);
+        assertEquals("inside\ncrossing", fx(() -> ((Label) node("#sketch-selection")).getText()));
+        fx(() -> {
+            robot.keyPress(KeyCode.CONTROL);
+            return null;
+        });
+        try {
+            sketchClick(23, 18, false);
+        } finally {
+            fx(() -> {
+                robot.keyRelease(KeyCode.CONTROL);
+                return null;
+            });
+        }
+        assertEquals("crossing", fx(() -> ((Label) node("#sketch-selection")).getText()));
+        click("sketch-tool-line");
+        sketchClick(55, 35, false);
+        sketchDrag(15, 30, 40, 10, false);
+        assertEquals("inside", fx(() -> ((Label) node("#sketch-selection")).getText()));
+        assertEquals(
+                2,
+                fx(() -> ((SketchEditor) node("#sketch-editor"))
+                        .controller()
+                        .definition()
+                        .entities()
+                        .size()));
+        click("constraint-cancel");
+    }
+
     private void sketchDrag(double x, double y, double toX, double toY, boolean cancel) throws Exception {
         var positions = fx(() -> {
             var editor = (SketchEditor) node("#sketch-editor");

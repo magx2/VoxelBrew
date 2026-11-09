@@ -147,7 +147,7 @@ final class KeyboardShortcuts {
         return BINDINGS.stream()
                 .filter(b -> b.id().equals(id))
                 .findFirst()
-                .orElseThrow()
+                .orElseThrow(() -> new IllegalArgumentException("No binding for " + id))
                 .keys()
                 .getFirst();
     }

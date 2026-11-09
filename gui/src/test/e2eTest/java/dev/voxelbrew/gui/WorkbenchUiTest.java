@@ -2294,9 +2294,9 @@ class WorkbenchUiTest {
         updates.slow = true;
         click("about");
         waitForAbout("Checking for updates");
-        long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
-        while (updates.requests.get() == 0 && System.nanoTime() < deadline) Thread.sleep(25);
-        assertTrue(updates.requests.get() > 0, "Cancel a lookup already waiting for a response");
+        // Synchronize with the server: initial HTTP-client startup can exceed five seconds on CI.
+        assertTrue(
+                updates.requestReceived.await(30, TimeUnit.SECONDS), "Cancel a lookup already waiting for a response");
         assertTrue(fx(() -> node("#about-check").isDisabled()));
         click("about-close");
         ready();

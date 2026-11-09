@@ -58,3 +58,34 @@ bash scripts/with-virtual-desktop.sh ./gradlew clean check --offline --no-daemon
 
 Generated logs, binaries and local caches remain outside source control. Hosted
 CI is checked separately against the pushed commit and reported with its run URL.
+
+## Hosted CI cancellation-test follow-up
+
+Hosted run [42543982619](https://github.com/magx2/VoxelBrew/actions/runs/42543982619)
+at `6cc9124506dc41291160be649a1e683903d0b249` exposed a timeout in the Windows
+GUI shard 2 test `aboutCheckFailureRetryAndCancellation`: the local metadata
+server had not received the first HTTP request within its five-second polling
+deadline. Other platform jobs, including macOS headless checks, passed.
+
+The fixture now signals receipt with a latch, and the test waits up to 30 seconds
+before cancelling the in-flight lookup. It still requires a real request and
+checks cancellation, retry and update states; production code is unchanged.
+The isolated Windows scenario passed, followed by full root checks on both
+platforms with the same two test-file changes applied to the independent Ubuntu
+checkout. No source changed during these gates.
+
+```powershell
+.\gradlew.bat :gui:e2eTest --tests '*aboutCheckFailureRetryAndCancellation' --offline --no-daemon --no-parallel --max-workers=1
+.\gradlew.bat check --offline --no-daemon --no-parallel --max-workers=1
+```
+
+```sh
+bash scripts/with-virtual-desktop.sh ./gradlew check --offline --no-daemon --no-parallel --max-workers=1 -PnativeJobs=6
+```
+
+Windows passed in 22m 11s; Ubuntu passed in 20m 8s. Each report contains 326 tests,
+zero failures/errors and zero skips, including 47 Robot scenarios. These follow-up
+checks reused the native outputs from the successful clean builds above.
+Logs: `.tools/ci-fix-targeted-windows.log`,
+`.tools/ci-fix-full-check-windows.log`, and
+`/tmp/voxelbrew-ci-fix-full-check.log`.

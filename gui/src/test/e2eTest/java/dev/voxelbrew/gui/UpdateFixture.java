@@ -24,6 +24,7 @@ final class UpdateFixture implements AutoCloseable {
     volatile boolean current, development;
     volatile int failureStatus;
     final AtomicInteger requests = new AtomicInteger();
+    final CountDownLatch requestReceived = new CountDownLatch(1);
     volatile ReleaseVersion requested;
 
     UpdateFixture(Path directory) throws Exception {
@@ -77,6 +78,7 @@ final class UpdateFixture implements AutoCloseable {
                 requested = path.endsWith("/latest")
                         ? null
                         : ReleaseVersion.release(path.substring(path.lastIndexOf('/') + 1));
+                requestReceived.countDown();
                 while (slow) {
                     try {
                         Thread.sleep(25);

@@ -3,13 +3,16 @@ package dev.voxelbrew.engine.printing;
 import static dev.voxelbrew.engine.units.Measurements.*;
 
 import java.util.List;
-import java.util.Objects;
 import javax.measure.Quantity;
 import javax.measure.quantity.Length;
 import javax.measure.quantity.Temperature;
+import lombok.NonNull;
 
 /** Fully resolved, frontend-neutral printer/nozzle/material/process contract. */
-public record PrintProfile(Printer printer, Material material, ProcessSettings process) {
+public record PrintProfile(
+        @NonNull Printer printer,
+        @NonNull Material material,
+        @NonNull ProcessSettings process) {
     public record Point(double x, double y) {
         public Point {
             if (!Double.isFinite(x) || !Double.isFinite(y)) throw new IllegalArgumentException("nonfinite bed point");
@@ -17,14 +20,14 @@ public record PrintProfile(Printer printer, Material material, ProcessSettings p
     }
 
     public record Printer(
-            String id,
-            String name,
+            @NonNull String id,
+            @NonNull String name,
             double nozzleMm,
             List<Point> bed,
             List<List<Point>> excludedZones,
             double usableHeight,
-            String firmware,
-            String outputFormat) {
+            @NonNull String firmware,
+            @NonNull String outputFormat) {
         public Quantity<Length> nozzleDiameterQuantity() {
             return quantity(nozzleMm, MILLIMETRE);
         }
@@ -34,10 +37,7 @@ public record PrintProfile(Printer printer, Material material, ProcessSettings p
         }
 
         public Printer {
-            Objects.requireNonNull(id);
-            Objects.requireNonNull(name);
-            Objects.requireNonNull(firmware);
-            Objects.requireNonNull(outputFormat);
+
             bed = List.copyOf(bed);
             excludedZones = excludedZones.stream().map(List::copyOf).toList();
             if (bed.size() < 3 || excludedZones.stream().anyMatch(p -> p.size() < 3))
@@ -47,7 +47,8 @@ public record PrintProfile(Printer printer, Material material, ProcessSettings p
         }
     }
 
-    public record Material(String id, double filamentDiameter, double nozzleTemperature, double bedTemperature) {
+    public record Material(
+            @NonNull String id, double filamentDiameter, double nozzleTemperature, double bedTemperature) {
         public Material(String id, Quantity<Length> diameter, Quantity<Temperature> nozzle, Quantity<Temperature> bed) {
             this(id, value(diameter, MILLIMETRE), value(nozzle, CELSIUS), value(bed, CELSIUS));
         }
@@ -65,7 +66,7 @@ public record PrintProfile(Printer printer, Material material, ProcessSettings p
         }
 
         public Material {
-            Objects.requireNonNull(id);
+
             if (id.isBlank()
                     || !Double.isFinite(filamentDiameter)
                     || filamentDiameter <= 0
@@ -76,11 +77,7 @@ public record PrintProfile(Printer printer, Material material, ProcessSettings p
         }
     }
 
-    public PrintProfile {
-        Objects.requireNonNull(printer);
-        Objects.requireNonNull(material);
-        Objects.requireNonNull(process);
-    }
+    public PrintProfile {}
 
     public static PrintProfile resolve(PrintSetup setup) {
         if (!setup.printerId().equals("generic-marlin-200-0.4"))

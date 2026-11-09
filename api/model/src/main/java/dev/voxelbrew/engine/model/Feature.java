@@ -4,6 +4,7 @@ import static dev.voxelbrew.engine.units.Measurements.*;
 
 import javax.measure.Quantity;
 import javax.measure.quantity.Length;
+import lombok.NonNull;
 
 /** Persistent definitions only: no UI objects, protobuf messages or native handles. */
 public sealed interface Feature
@@ -18,10 +19,14 @@ public sealed interface Feature
     String id();
 
     /** Local sketch XY frame, with an additional signed offset along its normal in mm. */
-    record Plane(String id, double offsetZ, Transform frame, FaceSupport support, String constructionSupport) {
+    record Plane(
+            String id,
+            double offsetZ,
+            @NonNull Transform frame,
+            FaceSupport support,
+            @NonNull String constructionSupport) {
         public Plane {
-            java.util.Objects.requireNonNull(frame);
-            java.util.Objects.requireNonNull(constructionSupport);
+
             if (!constructionSupport.isEmpty()) {
                 CadDocument.identifier(constructionSupport, "construction plane support");
                 if (support != null)
@@ -81,10 +86,8 @@ public sealed interface Feature
         }
     }
 
-    record Constrained(dev.voxelbrew.engine.sketch.SketchGeometry geometry) implements Profile {
-        public Constrained {
-            java.util.Objects.requireNonNull(geometry);
-        }
+    record Constrained(@NonNull dev.voxelbrew.engine.sketch.SketchGeometry geometry) implements Profile {
+        public Constrained {}
     }
 
     record Sketch(String id, String profileId, Plane plane, Profile profile) implements Feature {}

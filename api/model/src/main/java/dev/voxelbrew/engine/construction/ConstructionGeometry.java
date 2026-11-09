@@ -1,6 +1,7 @@
 package dev.voxelbrew.engine.construction;
 
 import dev.voxelbrew.engine.model.Transform;
+import lombok.NonNull;
 
 /** Detached construction geometry in design-space millimeters. */
 public final class ConstructionGeometry {
@@ -49,22 +50,20 @@ public final class ConstructionGeometry {
 
     public sealed interface Datum permits Point, Axis, Plane, CoordinateSystem {}
 
-    public record Point(Vector position) implements Datum {
-        public Point {
-            java.util.Objects.requireNonNull(position);
-        }
+    public record Point(@NonNull Vector position) implements Datum {
+        public Point {}
     }
 
-    public record Axis(Vector origin, Vector direction) implements Datum {
+    public record Axis(@NonNull Vector origin, Vector direction) implements Datum {
         public Axis {
-            java.util.Objects.requireNonNull(origin);
+
             direction = direction.unit();
         }
     }
 
-    public record Plane(Vector origin, Vector normal, Vector xDirection) implements Datum {
+    public record Plane(@NonNull Vector origin, Vector normal, Vector xDirection) implements Datum {
         public Plane {
-            java.util.Objects.requireNonNull(origin);
+
             normal = normal.unit();
             xDirection = xDirection.minus(normal.times(xDirection.dot(normal))).unit();
         }
@@ -91,10 +90,8 @@ public final class ConstructionGeometry {
         }
     }
 
-    public record CoordinateSystem(Transform frame) implements Datum {
-        public CoordinateSystem {
-            java.util.Objects.requireNonNull(frame);
-        }
+    public record CoordinateSystem(@NonNull Transform frame) implements Datum {
+        public CoordinateSystem {}
     }
 
     /** Exact curve sampling must use normalized arc length, not the native curve parameter. */

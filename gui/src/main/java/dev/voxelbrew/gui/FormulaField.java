@@ -7,20 +7,18 @@ import java.util.function.Supplier;
 import javafx.css.PseudoClass;
 import javafx.scene.control.*;
 import javafx.scene.control.skin.TextFieldSkin;
+import lombok.NonNull;
+import lombok.RequiredArgsConstructor;
 
 /** A normal editable TextField with explicit formula affordance and non-destructive previews. */
 final class FormulaField extends TextField {
+    @RequiredArgsConstructor
     enum ExpressionType {
         NUMBER("ƒx", "number-expression"),
         STRING("ƒs", "string-expression");
 
         private final String mark;
         private final String styleClass;
-
-        ExpressionType(String mark, String styleClass) {
-            this.mark = mark;
-            this.styleClass = styleClass;
-        }
     }
 
     private final ExpressionType expressionType;
@@ -32,9 +30,9 @@ final class FormulaField extends TextField {
     private dev.voxelbrew.util.i18n.Translations translations =
             new dev.voxelbrew.util.i18n.Translations(java.util.Locale.ENGLISH);
 
-    private FormulaField(String text, Supplier<ParameterSet> parameters, Supplier<ParameterUnit> unit) {
+    private FormulaField(String text, @NonNull Supplier<ParameterSet> parameters, Supplier<ParameterUnit> unit) {
         super(text);
-        this.parameters = Objects.requireNonNull(parameters);
+        this.parameters = parameters;
         this.unit = unit;
         expressionType = unit == null ? ExpressionType.STRING : ExpressionType.NUMBER;
         getStyleClass().addAll("formula-field", expressionType.styleClass);
@@ -53,8 +51,8 @@ final class FormulaField extends TextField {
         return number(text, parameters, () -> unit);
     }
 
-    static FormulaField number(String text, Supplier<ParameterSet> parameters, Supplier<ParameterUnit> unit) {
-        return new FormulaField(text, parameters, Objects.requireNonNull(unit));
+    static FormulaField number(String text, Supplier<ParameterSet> parameters, @NonNull Supplier<ParameterUnit> unit) {
+        return new FormulaField(text, parameters, unit);
     }
 
     static FormulaField text(String text, Supplier<ParameterSet> parameters) {
@@ -65,8 +63,8 @@ final class FormulaField extends TextField {
         return expressionType;
     }
 
-    FormulaField localized(dev.voxelbrew.util.i18n.Translations translations) {
-        this.translations = Objects.requireNonNull(translations);
+    FormulaField localized(@NonNull dev.voxelbrew.util.i18n.Translations translations) {
+        this.translations = translations;
         localizeHelp();
         refreshFormula();
         return this;

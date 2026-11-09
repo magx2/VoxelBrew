@@ -12,6 +12,7 @@ import java.util.*;
 import java.util.concurrent.*;
 import java.util.function.*;
 import lombok.Getter;
+import lombok.NonNull;
 import lombok.Setter;
 import lombok.experimental.Accessors;
 
@@ -71,14 +72,14 @@ public final class PrintController implements AutoCloseable {
 
     @javax.inject.Inject
     PrintController(
-            @javax.inject.Named("ui") Consumer<Runnable> dispatch,
-            Supplier<CadDocument> current,
-            @javax.inject.Named("plugins") Path pluginDirectory,
-            @javax.inject.Named("slicing") ExecutorService worker) {
-        this.dispatch = Objects.requireNonNull(dispatch);
-        this.current = Objects.requireNonNull(current);
-        this.pluginDirectory = Objects.requireNonNull(pluginDirectory);
-        this.worker = Objects.requireNonNull(worker);
+            @NonNull @javax.inject.Named("ui") Consumer<Runnable> dispatch,
+            @NonNull Supplier<CadDocument> current,
+            @NonNull @javax.inject.Named("plugins") Path pluginDirectory,
+            @NonNull @javax.inject.Named("slicing") ExecutorService worker) {
+        this.dispatch = dispatch;
+        this.current = current;
+        this.pluginDirectory = pluginDirectory;
+        this.worker = worker;
     }
 
     public List<String> diagnostics() {

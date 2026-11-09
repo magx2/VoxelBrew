@@ -5,8 +5,10 @@ import static dev.voxelbrew.engine.units.Measurements.*;
 import dev.voxelbrew.engine.units.Measurements;
 import javax.measure.Quantity;
 import javax.measure.Unit;
+import lombok.RequiredArgsConstructor;
 
 /** Stable persisted names and UI labels for standard JSR 385 units. */
+@RequiredArgsConstructor
 public enum ParameterUnit {
     MM("mm", MILLIMETRE),
     CM("cm", CENTIMETRE),
@@ -19,11 +21,6 @@ public enum ParameterUnit {
 
     private final String symbol;
     private final Unit<?> unit;
-
-    ParameterUnit(String symbol, Unit<?> unit) {
-        this.symbol = symbol;
-        this.unit = unit;
-    }
 
     public Unit<?> unit() {
         return unit;

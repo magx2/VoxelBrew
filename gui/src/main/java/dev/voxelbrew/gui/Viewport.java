@@ -23,6 +23,7 @@ import javafx.scene.shape.*;
 import javafx.scene.transform.Affine;
 import javafx.scene.transform.Rotate;
 import javafx.scene.transform.Translate;
+import lombok.NonNull;
 
 /** Z-up CAD coordinates map to FX (x,-z,y); camera orbit never changes model coordinates. */
 public final class Viewport extends StackPane {
@@ -705,8 +706,8 @@ public final class Viewport extends StackPane {
         return rendering;
     }
 
-    void setRendering(Rendering.Style style) {
-        rendering = java.util.Objects.requireNonNull(style);
+    void setRendering(@NonNull Rendering.Style style) {
+        rendering = style;
         boolean technical = style == Rendering.Style.TECHNICAL;
         light.setColor(technical ? Color.WHITE : Color.gray(.45));
         key.setLightOn(!technical);

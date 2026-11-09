@@ -1,6 +1,7 @@
 package dev.voxelbrew.engine.geometry;
 
 import java.util.List;
+import lombok.NonNull;
 
 /** Ordered exact XY curves: counterclockwise exterior followed by clockwise holes. */
 public record PlanarProfile(List<List<Segment>> loops) {
@@ -22,9 +23,9 @@ public record PlanarProfile(List<List<Segment>> loops) {
         BSPLINE
     }
 
-    public record Segment(Kind kind, List<Double> values, boolean reversed) {
+    public record Segment(@NonNull Kind kind, List<Double> values, boolean reversed) {
         public Segment {
-            java.util.Objects.requireNonNull(kind);
+
             values = List.copyOf(values);
             int size = switch (kind) {
                 case LINE -> 4;

@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.nio.file.*;
 import java.util.*;
 import java.util.function.Consumer;
+import lombok.NonNull;
 
 /** Shared explicit update workflow. No network access occurs at application startup. */
 @lombok.extern.slf4j.Slf4j
@@ -25,16 +26,16 @@ public final class UpdateService {
     private final Optional<ApplicationImage> installation;
 
     public UpdateService(
-            ApplicationImage.Component component,
-            ReleaseVersion current,
-            String platform,
-            ReleaseSource source,
-            Optional<ApplicationImage> installation) {
-        this.component = Objects.requireNonNull(component);
-        this.current = Objects.requireNonNull(current);
-        this.platform = Objects.requireNonNull(platform);
-        this.source = Objects.requireNonNull(source);
-        this.installation = Objects.requireNonNull(installation);
+            @NonNull ApplicationImage.Component component,
+            @NonNull ReleaseVersion current,
+            @NonNull String platform,
+            @NonNull ReleaseSource source,
+            @NonNull Optional<ApplicationImage> installation) {
+        this.component = component;
+        this.current = current;
+        this.platform = platform;
+        this.source = source;
+        this.installation = installation;
         installation.ifPresent(image -> {
             if (image.component() != component
                     || !image.platform().equals(platform)

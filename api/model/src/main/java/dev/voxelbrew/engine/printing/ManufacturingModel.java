@@ -4,6 +4,7 @@ import dev.voxelbrew.engine.mesh.*;
 import dev.voxelbrew.engine.model.*;
 import java.util.*;
 import lombok.Getter;
+import lombok.NonNull;
 import lombok.experimental.Accessors;
 
 /** Detached immutable revision shared by validators, exporters, slicers and preview. */
@@ -16,11 +17,15 @@ public final class ManufacturingModel {
     private final Map<String, MeshData> meshes;
 
     public ManufacturingModel(
-            String documentId, String revision, PrintSetup setup, PrintProfile profile, Map<String, MeshData> meshes) {
-        this.documentId = Objects.requireNonNull(documentId);
-        this.revision = Objects.requireNonNull(revision);
-        this.setup = Objects.requireNonNull(setup);
-        this.profile = Objects.requireNonNull(profile);
+            @NonNull String documentId,
+            @NonNull String revision,
+            @NonNull PrintSetup setup,
+            @NonNull PrintProfile profile,
+            Map<String, MeshData> meshes) {
+        this.documentId = documentId;
+        this.revision = revision;
+        this.setup = setup;
+        this.profile = profile;
         this.meshes = Collections.unmodifiableMap(new LinkedHashMap<>(meshes));
     }
 

@@ -4,6 +4,8 @@ import dev.voxelbrew.engine.model.CadDocument;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import lombok.NonNull;
+import lombok.RequiredArgsConstructor;
 
 /** Immutable, millimeter sketch definition. Entity and constraint IDs survive editing and saves. */
 public record SketchGeometry(List<Entity> entities, List<Constraint> constraints, List<String> boundary) {
@@ -76,7 +78,7 @@ public record SketchGeometry(List<Entity> entities, List<Constraint> constraints
     /** Arc angles are radians. Splines are exact cubic Bezier curves, not sampled polylines. */
     public record Entity(
             String id,
-            Kind kind,
+            @NonNull Kind kind,
             List<Double> values,
             boolean construction,
             int degree,
@@ -88,7 +90,7 @@ public record SketchGeometry(List<Entity> entities, List<Constraint> constraints
 
         public Entity {
             CadDocument.identifier(id, "sketch entity ID");
-            java.util.Objects.requireNonNull(kind);
+
             values = List.copyOf(values);
             boolean variable = kind == Kind.FIT_SPLINE || kind == Kind.CONTROL_SPLINE;
             if (variable
@@ -278,14 +280,14 @@ public record SketchGeometry(List<Entity> entities, List<Constraint> constraints
         FIT
     }
 
-    public record Ref(String entityId, Part part, int index) {
+    public record Ref(String entityId, @NonNull Part part, int index) {
         public Ref(String entityId, Part part) {
             this(entityId, part, 0);
         }
 
         public Ref {
             CadDocument.identifier(entityId, "sketch reference ID");
-            java.util.Objects.requireNonNull(part);
+
             if (index < 0 || index > 31 || (part != Part.CONTROL && part != Part.FIT && index != 0))
                 throw new IllegalArgumentException("Invalid reference index");
         }
@@ -322,6 +324,7 @@ public record SketchGeometry(List<Entity> entities, List<Constraint> constraints
         }
     }
 
+    @RequiredArgsConstructor
     public enum Type {
         HORIZONTAL("Horizontal"),
         VERTICAL("Vertical"),
@@ -351,10 +354,6 @@ public record SketchGeometry(List<Entity> entities, List<Constraint> constraints
         TEXT_SPACING("Text spacing (em)");
         private final String label;
 
-        Type(String label) {
-            this.label = label;
-        }
-
         public boolean dimension() {
             return ordinal() >= LENGTH.ordinal();
         }
@@ -366,10 +365,10 @@ public record SketchGeometry(List<Entity> entities, List<Constraint> constraints
     }
 
     /** Values store driving dimensions, a fixed pose, or a chosen tangency/polygon branch. */
-    public record Constraint(String id, Type type, List<Ref> refs, List<Double> values) {
+    public record Constraint(String id, @NonNull Type type, List<Ref> refs, List<Double> values) {
         public Constraint {
             CadDocument.identifier(id, "constraint ID");
-            java.util.Objects.requireNonNull(type);
+
             refs = List.copyOf(refs);
             values = List.copyOf(values);
             for (double value : values)

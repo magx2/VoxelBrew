@@ -3,12 +3,14 @@ package dev.voxelbrew.engine.sketch;
 import static dev.voxelbrew.engine.sketch.SketchGeometry.*;
 
 import java.util.*;
+import lombok.RequiredArgsConstructor;
 import org.apache.commons.math3.linear.*;
 
 /** Frontend-neutral construction methods for the 2D sketch Create tool families. */
 public final class SketchTools {
     private SketchTools() {}
 
+    @RequiredArgsConstructor
     public enum Tool {
         RECTANGLE_TWO_POINT("2-point rectangle", 2),
         RECTANGLE_THREE_POINT("3-point rectangle", 3),
@@ -37,11 +39,6 @@ public final class SketchTools {
         TEXT_ON_PATH("Text on path", 1);
         private final String label;
         private final int clicks;
-
-        Tool(String label, int clicks) {
-            this.label = label;
-            this.clicks = clicks;
-        }
 
         public int clicks() {
             return clicks;

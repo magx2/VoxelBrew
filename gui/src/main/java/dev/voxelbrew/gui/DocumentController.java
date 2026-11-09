@@ -13,13 +13,17 @@ import java.util.*;
 import java.util.concurrent.*;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import lombok.AccessLevel;
 import lombok.Getter;
+import lombok.NonNull;
+import lombok.RequiredArgsConstructor;
 import lombok.Setter;
 import lombok.experimental.Accessors;
 
 /** UI-neutral document controller. UI dispatch confines all state changes to its owner thread. */
 @javax.inject.Singleton
 @lombok.extern.slf4j.Slf4j
+@RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 public final class DocumentController implements AutoCloseable {
     public record Body(
             String id,
@@ -104,13 +108,27 @@ public final class DocumentController implements AutoCloseable {
 
     private record Request(long sequence, long generation, long revision, CadDocument document, boolean preview) {}
 
-    private final ExecutorService worker;
-    private final ExecutorService io;
-    private final dev.voxelbrew.importer.api.DocumentSource documents;
-    private final dev.voxelbrew.exporter.api.DocumentSink documentWriter;
+    @NonNull
     private final Consumer<Runnable> dispatch;
+
+    @NonNull
     private final Function<CadDocument, Build> evaluator;
+
+    @NonNull
     private final Path pluginDirectory;
+
+    @NonNull
+    private final ExecutorService worker;
+
+    @NonNull
+    private final ExecutorService io;
+
+    @NonNull
+    private final dev.voxelbrew.importer.api.DocumentSource documents;
+
+    @NonNull
+    private final dev.voxelbrew.exporter.api.DocumentSink documentWriter;
+
     private final Object queueLock = new Object();
     private Request pending;
     private boolean running;
@@ -192,23 +210,6 @@ public final class DocumentController implements AutoCloseable {
                 io,
                 documents,
                 documentWriter);
-    }
-
-    DocumentController(
-            Consumer<Runnable> dispatch,
-            Function<CadDocument, Build> evaluator,
-            Path pluginDirectory,
-            ExecutorService worker,
-            ExecutorService io,
-            dev.voxelbrew.importer.api.DocumentSource documents,
-            dev.voxelbrew.exporter.api.DocumentSink documentWriter) {
-        this.dispatch = Objects.requireNonNull(dispatch);
-        this.evaluator = Objects.requireNonNull(evaluator);
-        this.pluginDirectory = Objects.requireNonNull(pluginDirectory);
-        this.worker = Objects.requireNonNull(worker);
-        this.io = Objects.requireNonNull(io);
-        this.documents = Objects.requireNonNull(documents);
-        this.documentWriter = Objects.requireNonNull(documentWriter);
     }
 
     public ModelSession.Snapshot snapshot() {

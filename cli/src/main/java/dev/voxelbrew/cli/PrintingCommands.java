@@ -12,6 +12,8 @@ import dev.voxelbrew.importer.api.DocumentSource;
 import java.nio.file.Path;
 import java.util.*;
 import java.util.concurrent.*;
+import lombok.AccessLevel;
+import lombok.RequiredArgsConstructor;
 import picocli.CommandLine;
 import picocli.CommandLine.*;
 
@@ -441,13 +443,9 @@ final class PrintingCommands {
             name = "slicers",
             mixinStandardHelpOptions = true,
             description = "List versioned backend capabilities; unsupported features are not silently substituted.")
+    @RequiredArgsConstructor(access = AccessLevel.PACKAGE, onConstructor_ = @javax.inject.Inject)
     static final class Slicers implements Callable<Integer> {
         private final SlicerRegistry.Factory slicers;
-
-        @javax.inject.Inject
-        Slicers(SlicerRegistry.Factory slicers) {
-            this.slicers = slicers;
-        }
 
         @Option(names = "--plugin-dir")
         Path plugins = ExporterRegistry.defaultDirectory();
@@ -534,13 +532,9 @@ final class PrintingCommands {
             name = "inspect-job",
             mixinStandardHelpOptions = true,
             description = "Independently inspect actual G-code deposition layers, roles, estimates and job provenance.")
+    @RequiredArgsConstructor(access = AccessLevel.PACKAGE, onConstructor_ = @javax.inject.Inject)
     static final class InspectJob implements Callable<Integer> {
         private final dev.voxelbrew.importer.api.GcodeSource gcode;
-
-        @javax.inject.Inject
-        InspectJob(dev.voxelbrew.importer.api.GcodeSource gcode) {
-            this.gcode = gcode;
-        }
 
         @Parameters(index = "0")
         Path file;

@@ -4,6 +4,7 @@ import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.*;
 import java.util.function.*;
+import lombok.NonNull;
 
 /**
  * Bounded CPU workers for independent operations. Every call joins all its work before returning.
@@ -69,9 +70,9 @@ public final class CpuWork {
                                     .factory());
         }
 
-        void forEach(int size, IntConsumer operation) {
+        void forEach(int size, @NonNull IntConsumer operation) {
             if (size < 0) throw new IllegalArgumentException("Negative work size");
-            Objects.requireNonNull(operation);
+
             checkInterrupted();
             if (size < 2 || executor == null || WORKER.get()) {
                 for (int i = 0; i < size; i++) {

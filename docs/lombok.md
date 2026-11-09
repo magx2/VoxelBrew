@@ -18,7 +18,12 @@ Lombok is not a runtime dependency or a requirement for plugin consumers.
   use `@Accessors(fluent = true, chain = false)` to retain `void onChanged(...)`.
   Document mutations still go through validated, undo-aware editing operations.
 - Use `@RequiredArgsConstructor` for constructors that only assign dependencies.
-  `@NonNull` retains null rejection in application and file-I/O modules.
+  Preserve constructor visibility and parameter order (generated arguments follow
+  field declaration order). Keep constructors that initialize mutable nullable
+  fields explicit when they cannot be represented by required arguments.
+  Use `@NonNull` on parameters or record components instead of
+  `Objects.requireNonNull(parameter)`, and on required fields for generated constructors.
+  Keep explicit null checks for returned values and resource lookups.
   `CommandFactory` uses `onConstructor_ = @Inject` to preserve Dagger injection;
   its generated constructor is exercised by the normal CLI tests. Keep
   constructors with qualifiers, assisted parameters or initialization logic explicit.

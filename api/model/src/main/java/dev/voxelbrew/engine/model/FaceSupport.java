@@ -3,14 +3,15 @@ package dev.voxelbrew.engine.model;
 import dev.voxelbrew.engine.geometry.PlanarFace;
 import java.util.ArrayList;
 import java.util.List;
+import lombok.NonNull;
 
 /**
  * A supporting output and an oriented plane group, never a persisted tessellation face ID. Parallel
  * planes are ordered by signed distance. Changed group counts require explicit repair.
  */
-public record FaceSupport(Feature.BodyRef body, double nx, double ny, double nz, int rank, int count) {
+public record FaceSupport(@NonNull Feature.BodyRef body, double nx, double ny, double nz, int rank, int count) {
     public FaceSupport {
-        java.util.Objects.requireNonNull(body);
+
         CadDocument.identifier(body.featureId(), "support feature ID");
         CadDocument.identifier(body.outputName(), "support output");
         if (!Double.isFinite(nx)

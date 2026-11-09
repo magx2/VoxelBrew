@@ -6,6 +6,8 @@ import dev.voxelbrew.importer.api.ImportResult;
 import java.nio.file.Path;
 import java.util.*;
 import java.util.concurrent.Callable;
+import lombok.AccessLevel;
+import lombok.RequiredArgsConstructor;
 import picocli.CommandLine;
 import picocli.CommandLine.*;
 
@@ -18,13 +20,9 @@ final class ImportCommands {
     }
 
     @Command(name = "importers", mixinStandardHelpOptions = true, description = "List built-in and external importers")
+    @RequiredArgsConstructor(access = AccessLevel.PACKAGE, onConstructor_ = @javax.inject.Inject)
     static final class Importers implements Callable<Integer> {
         private final ImporterRegistry.Factory importers;
-
-        @javax.inject.Inject
-        Importers(ImporterRegistry.Factory importers) {
-            this.importers = importers;
-        }
 
         @Option(names = "--plugin-dir")
         Path plugins = ImporterRegistry.defaultDirectory();
@@ -61,15 +59,10 @@ final class ImportCommands {
             name = "import",
             mixinStandardHelpOptions = true,
             description = "Import a document to .jcad or inspect an imported toolpath")
+    @RequiredArgsConstructor(access = AccessLevel.PACKAGE, onConstructor_ = @javax.inject.Inject)
     static final class ImportFile implements Callable<Integer> {
         private final ImporterRegistry.Factory importers;
         private final DocumentSink documents;
-
-        @javax.inject.Inject
-        ImportFile(ImporterRegistry.Factory importers, DocumentSink documents) {
-            this.importers = importers;
-            this.documents = documents;
-        }
 
         @Parameters(index = "0")
         Path source;

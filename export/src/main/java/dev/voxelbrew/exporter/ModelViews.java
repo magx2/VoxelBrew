@@ -6,6 +6,7 @@ import dev.voxelbrew.engine.model.*;
 import dev.voxelbrew.engine.printing.*;
 import dev.voxelbrew.exporter.api.*;
 import java.util.*;
+import lombok.NonNull;
 
 public final class ModelViews {
     private ModelViews() {}
@@ -111,8 +112,8 @@ public final class ModelViews {
     }
 
     /** Adapt an already detached snapshot without reevaluating or retessellating it. */
-    public static ManufacturingView from(ManufacturingModel model) {
-        Objects.requireNonNull(model);
+    public static ManufacturingView from(@NonNull ManufacturingModel model) {
+
         return new ManufacturingView() {
             @Override
             public ManufacturingModel manufacturingModel() {
@@ -140,9 +141,8 @@ public final class ModelViews {
         };
     }
 
-    public static ModelView from(ManufacturingModel model, ExportSelection.Contents selection) {
-        Objects.requireNonNull(model);
-        Objects.requireNonNull(selection);
+    public static ModelView from(@NonNull ManufacturingModel model, @NonNull ExportSelection.Contents selection) {
+
         if (selection == ExportSelection.Contents.MODEL) return from(model);
         var selectedMeshes = new LinkedHashMap<String, MeshData>();
         var bodies = new ArrayList<ModelView.Body>();

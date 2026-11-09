@@ -6,6 +6,8 @@ import dev.voxelbrew.importer.api.DocumentSource;
 import java.nio.file.Path;
 import java.util.*;
 import java.util.concurrent.Callable;
+import lombok.AccessLevel;
+import lombok.RequiredArgsConstructor;
 import picocli.CommandLine;
 import picocli.CommandLine.*;
 
@@ -21,13 +23,9 @@ final class FeatureCommands {
             name = "feature-types",
             mixinStandardHelpOptions = true,
             description = "List trusted persistent feature types and numeric parameters")
+    @RequiredArgsConstructor(access = AccessLevel.PACKAGE, onConstructor_ = @javax.inject.Inject)
     static final class Types implements Callable<Integer> {
         private final FeatureRegistry.Factory features;
-
-        @javax.inject.Inject
-        Types(FeatureRegistry.Factory features) {
-            this.features = features;
-        }
 
         @Option(names = "--plugin-dir")
         Path plugins = FeatureRegistry.defaultDirectory();

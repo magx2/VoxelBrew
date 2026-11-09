@@ -1,11 +1,16 @@
 package dev.voxelbrew.importer.api;
 
 import java.util.List;
-import java.util.Objects;
+import lombok.NonNull;
 
 /** Typed, frontend-neutral provider option; values cross the SPI as canonical strings. */
 @lombok.extern.slf4j.Slf4j
-public record ImportOption(String key, String label, Type type, String defaultValue, List<String> choices) {
+public record ImportOption(
+        String key,
+        @NonNull String label,
+        @NonNull Type type,
+        @NonNull String defaultValue,
+        List<String> choices) {
     public enum Type {
         STRING,
         BOOLEAN,
@@ -16,9 +21,7 @@ public record ImportOption(String key, String label, Type type, String defaultVa
 
     public ImportOption {
         if (key == null || !key.matches("[a-z][a-z0-9.-]*")) throw new IllegalArgumentException("Invalid option key");
-        Objects.requireNonNull(label);
-        Objects.requireNonNull(type);
-        Objects.requireNonNull(defaultValue);
+
         choices = List.copyOf(choices);
         validate(type, defaultValue, choices);
     }
@@ -32,8 +35,8 @@ public record ImportOption(String key, String label, Type type, String defaultVa
         }
     }
 
-    private static void validate(Type type, String value, List<String> choices) {
-        Objects.requireNonNull(value);
+    private static void validate(Type type, @NonNull String value, List<String> choices) {
+
         switch (type) {
             case BOOLEAN -> {
                 if (!value.equals("true") && !value.equals("false"))

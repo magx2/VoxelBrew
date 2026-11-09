@@ -3,14 +3,15 @@ package dev.voxelbrew.engine.parameters;
 import dev.voxelbrew.engine.model.CadDocument;
 import java.util.*;
 import javax.measure.Quantity;
+import lombok.NonNull;
 
 /** Persistent named dimensions, formula bindings and independently editable variant overrides. */
 public record ParameterSet(
         List<Parameter> parameters,
         List<Configuration> configurations,
-        String active,
+        @NonNull String active,
         List<Binding> bindings,
-        dev.voxelbrew.engine.model.UuidGenerator uuidGenerator,
+        @NonNull dev.voxelbrew.engine.model.UuidGenerator uuidGenerator,
         BuiltinParameters builtins) {
     public ParameterSet(
             List<Parameter> parameters,
@@ -27,11 +28,11 @@ public record ParameterSet(
         return List.copyOf(all);
     }
 
-    public record Parameter(String id, String name, ParameterUnit unit, String expression, String comment) {
+    public record Parameter(String id, String name, @NonNull ParameterUnit unit, String expression, String comment) {
         public Parameter {
             CadDocument.identifier(id, "parameter ID");
             if (!name.startsWith("vb.")) requireName(name);
-            Objects.requireNonNull(unit);
+
             requireExpression(expression);
             if (comment == null || comment.length() > 1024)
                 throw new IllegalArgumentException("Comment is limited to 1024 characters");
@@ -72,9 +73,9 @@ public record ParameterSet(
         }
     }
 
-    public record Binding(Target target, String expression) {
+    public record Binding(@NonNull Target target, String expression) {
         public Binding {
-            Objects.requireNonNull(target);
+
             requireExpression(expression);
         }
     }
@@ -103,12 +104,12 @@ public record ParameterSet(
     }
 
     public ParameterSet {
-        Objects.requireNonNull(uuidGenerator);
+
         parameters.forEach(p -> requireName(p.name()));
         parameters = List.copyOf(parameters);
         configurations = List.copyOf(configurations);
         bindings = List.copyOf(bindings);
-        Objects.requireNonNull(active);
+
         if (parameters.size() > 128 || configurations.size() > 32 || bindings.size() > 2048)
             throw new IllegalArgumentException("Limit: 128 parameters, 32 configurations and 2048 bound dimensions");
         Set<String> ids = new HashSet<>(), names = new HashSet<>();

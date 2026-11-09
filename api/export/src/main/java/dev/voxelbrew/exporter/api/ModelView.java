@@ -4,7 +4,7 @@ import dev.voxelbrew.engine.mesh.MeshData;
 import dev.voxelbrew.engine.mesh.MeshOptions;
 import dev.voxelbrew.engine.model.BodyInstance;
 import java.util.List;
-import java.util.Objects;
+import lombok.NonNull;
 
 /**
  * Read-only exporter input. Valid for the synchronous export call; returned meshes are detached.
@@ -15,16 +15,15 @@ public interface ModelView {
         SOLID_SUPPORT
     }
 
-    record Body(String id, String name, Role role) {
+    record Body(
+            @NonNull String id,
+            @NonNull String name,
+            @NonNull Role role) {
         public Body(String id, String name) {
             this(id, name, Role.MODEL);
         }
 
-        public Body {
-            Objects.requireNonNull(id);
-            Objects.requireNonNull(name);
-            Objects.requireNonNull(role);
-        }
+        public Body {}
     }
 
     List<Body> bodies();

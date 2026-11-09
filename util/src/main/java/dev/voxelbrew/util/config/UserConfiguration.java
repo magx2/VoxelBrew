@@ -7,6 +7,7 @@ import java.nio.channels.FileChannel;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
 import java.util.*;
+import lombok.NonNull;
 
 /** UTF-8 properties with cross-process read/merge/write locking and atomic publication. */
 @lombok.extern.slf4j.Slf4j
@@ -19,8 +20,8 @@ public final class UserConfiguration {
 
     private final Path file;
 
-    public UserConfiguration(Path file) {
-        this.file = Objects.requireNonNull(file).toAbsolutePath().normalize();
+    public UserConfiguration(@NonNull Path file) {
+        this.file = file.toAbsolutePath().normalize();
         if (this.file.getParent() == null) throw new IllegalArgumentException("Expected a file path");
     }
 
@@ -75,9 +76,9 @@ public final class UserConfiguration {
     }
 
     /** Used by migrations so an already configured value always wins. */
-    public void setIfAbsent(String key, String value) throws IOException {
+    public void setIfAbsent(String key, @NonNull String value) throws IOException {
         checkKey(key);
-        Objects.requireNonNull(value);
+
         change(properties -> properties.putIfAbsent(key, value));
     }
 

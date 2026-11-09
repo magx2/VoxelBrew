@@ -2,6 +2,8 @@ package dev.voxelbrew.cli;
 
 import dev.voxelbrew.util.update.*;
 import java.util.concurrent.Callable;
+import lombok.AccessLevel;
+import lombok.RequiredArgsConstructor;
 import picocli.CommandLine;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Model.CommandSpec;
@@ -16,12 +18,9 @@ final class UpdateCommands {
         root.addSubcommand("update", Update.class);
     }
 
+    @RequiredArgsConstructor(access = AccessLevel.PACKAGE)
     abstract static class Options implements Callable<Integer> {
         final UpdateServiceFactory updates;
-
-        Options(UpdateServiceFactory updates) {
-            this.updates = updates;
-        }
 
         @Option(
                 names = {"-h", "--help"},

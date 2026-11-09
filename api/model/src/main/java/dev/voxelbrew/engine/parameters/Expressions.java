@@ -8,6 +8,7 @@ import java.util.function.Function;
 import java.util.regex.Pattern;
 import javax.measure.Quantity;
 import javax.measure.Unit;
+import lombok.NonNull;
 
 /** Bounded arithmetic parser. No scripting engine, reflection or external evaluation. */
 public final class Expressions {
@@ -44,8 +45,8 @@ public final class Expressions {
     }
 
     /** Text is literal unless it starts with '='. Use doubled quotes inside string literals. */
-    public static String evaluateText(String text, Function<String, ?> names) {
-        Objects.requireNonNull(text);
+    public static String evaluateText(@NonNull String text, Function<String, ?> names) {
+
         return isFormula(text) ? format(evaluateAny(text, names)) : text;
     }
 

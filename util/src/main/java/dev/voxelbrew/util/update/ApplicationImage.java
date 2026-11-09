@@ -7,21 +7,19 @@ import java.nio.channels.OverlappingFileLockException;
 import java.nio.file.*;
 import java.util.*;
 import java.util.jar.JarFile;
+import lombok.AccessLevel;
+import lombok.RequiredArgsConstructor;
 
 /** A complete jpackage installation. Development classpaths are deliberately not update targets. */
 public record ApplicationImage(
         Path root, Component component, String platform, ReleaseVersion version, String engineJar, String mainJar) {
     public static final String MARKER = "voxelbrew-install.properties";
 
+    @RequiredArgsConstructor
     public enum Component {
         CLI("VoxelBrewCLI", "dev/voxelbrew/cli/VoxelBrew.class"),
         GUI("VoxelBrew", "dev/voxelbrew/gui/Launcher.class");
         private final String applicationName, entry;
-
-        Component(String applicationName, String entry) {
-            this.applicationName = applicationName;
-            this.entry = entry;
-        }
 
         public String applicationName() {
             return applicationName;
@@ -211,14 +209,10 @@ public record ApplicationImage(
         }
     }
 
+    @RequiredArgsConstructor(access = AccessLevel.PACKAGE)
     public static final class Lease implements AutoCloseable {
         private final FileChannel channel;
         private final FileLock lock;
-
-        Lease(FileChannel channel, FileLock lock) {
-            this.channel = channel;
-            this.lock = lock;
-        }
 
         @Override
         public void close() throws IOException {

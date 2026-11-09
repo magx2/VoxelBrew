@@ -2,19 +2,20 @@ package dev.voxelbrew.engine.feature;
 
 import dev.voxelbrew.engine.model.CadDocument;
 import java.util.*;
+import lombok.NonNull;
 
 /** One persistent operation type. Payload version is independent of SPI compatibility. */
 public record FeatureDescriptor(
         String providerId,
         String type,
-        String name,
+        @NonNull String name,
         int apiVersion,
         int payloadVersion,
         List<FeatureParameter> parameters) {
     public FeatureDescriptor {
         CadDocument.identifier(providerId, "provider ID");
         CadDocument.identifier(type, "feature type");
-        Objects.requireNonNull(name);
+
         if (payloadVersion < 1) throw new IllegalArgumentException("Payload version must be positive");
         parameters = List.copyOf(parameters);
         var keys = new HashSet<String>();

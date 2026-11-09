@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.text.MessageFormat;
 import java.util.*;
 import lombok.Getter;
+import lombok.NonNull;
 import lombok.experimental.Accessors;
 import lombok.extern.slf4j.Slf4j;
 
@@ -17,8 +18,8 @@ public final class Translations {
 
     private final ResourceBundle messages;
 
-    public Translations(Locale locale) {
-        Objects.requireNonNull(locale);
+    public Translations(@NonNull Locale locale) {
+
         this.locale = locale.getLanguage().equals("pl") ? Locale.forLanguageTag("pl") : Locale.ENGLISH;
         var control = ResourceBundle.Control.getNoFallbackControl(ResourceBundle.Control.FORMAT_PROPERTIES);
         var english = ResourceBundle.getBundle("dev.voxelbrew.util.i18n.messages", Locale.ENGLISH, control);

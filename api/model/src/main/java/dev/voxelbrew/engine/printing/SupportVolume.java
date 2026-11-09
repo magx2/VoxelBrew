@@ -1,12 +1,13 @@
 package dev.voxelbrew.engine.printing;
 
 import dev.voxelbrew.engine.model.CadDocument;
+import lombok.NonNull;
 
 /** Body-coordinate boxes attached to a stable build instance, never to generated face IDs. */
 public record SupportVolume(
         String id,
         String instanceId,
-        Role role,
+        @NonNull Role role,
         double x,
         double y,
         double z,
@@ -22,7 +23,7 @@ public record SupportVolume(
     public SupportVolume {
         CadDocument.identifier(id, "support ID");
         CadDocument.identifier(instanceId, "support instance ID");
-        java.util.Objects.requireNonNull(role);
+
         for (double value : new double[] {x, y, z, width, depth, height, x + width, y + depth, z + height})
             if (!Double.isFinite(value)) throw new IllegalArgumentException("support dimensions must be finite");
         if (width < 1e-6 || depth < 1e-6 || height < 1e-6)

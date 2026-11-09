@@ -1,12 +1,9 @@
 package dev.voxelbrew.engine.model;
 
-import java.util.Objects;
+import lombok.NonNull;
 
 /** A named placement of a CAD body, independent of any exchange format. */
-public record BodyInstance(String id, String bodyId, Transform transform) {
-    public BodyInstance {
-        Objects.requireNonNull(id);
-        Objects.requireNonNull(bodyId);
-        Objects.requireNonNull(transform);
-    }
+public record BodyInstance(
+        @NonNull String id, @NonNull String bodyId, @NonNull Transform transform) {
+    public BodyInstance {}
 }

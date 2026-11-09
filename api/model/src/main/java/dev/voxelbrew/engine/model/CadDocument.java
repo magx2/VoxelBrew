@@ -3,14 +3,15 @@ package dev.voxelbrew.engine.model;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import lombok.NonNull;
 
 /** Immutable millimeter document. The cursor counts evaluated features. */
 public record CadDocument(
         String id,
         List<Feature> features,
         int cursor,
-        dev.voxelbrew.engine.printing.PrintSetup printSetup,
-        dev.voxelbrew.engine.parameters.ParameterSet parameters,
+        @NonNull dev.voxelbrew.engine.printing.PrintSetup printSetup,
+        @NonNull dev.voxelbrew.engine.parameters.ParameterSet parameters,
         Map<String, BodyStyle> bodyStyles,
         Map<String, String> bodyNames,
         Map<String, String> featureNames) {
@@ -54,8 +55,7 @@ public record CadDocument(
     }
 
     public CadDocument {
-        java.util.Objects.requireNonNull(printSetup);
-        java.util.Objects.requireNonNull(parameters);
+
         bodyStyles = Map.copyOf(bodyStyles);
         bodyStyles.keySet().forEach(BodyStyle::requireBodyId);
         bodyNames = Map.copyOf(bodyNames);

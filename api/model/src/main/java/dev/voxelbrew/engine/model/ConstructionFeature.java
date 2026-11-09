@@ -4,10 +4,11 @@ import static dev.voxelbrew.engine.construction.ConstructionGeometry.*;
 
 import dev.voxelbrew.engine.construction.ConstructionTools;
 import java.util.List;
+import lombok.NonNull;
 
 /** Editable operation and references; evaluated geometry is never serialized. */
 public record ConstructionFeature(
-        String id, ConstructionTools.Tool tool, List<Input> inputs, double value, boolean alternate)
+        String id, @NonNull ConstructionTools.Tool tool, List<Input> inputs, double value, boolean alternate)
         implements Feature {
     public enum Selection {
         ORIGIN_PLANE,
@@ -20,12 +21,14 @@ public record ConstructionFeature(
         POSITION
     }
 
-    public record Input(Selection selection, String source, String output, int index, Vector position) {
+    public record Input(
+            @NonNull Selection selection,
+            @NonNull String source,
+            @NonNull String output,
+            int index,
+            @NonNull Vector position) {
         public Input {
-            java.util.Objects.requireNonNull(selection);
-            java.util.Objects.requireNonNull(source);
-            java.util.Objects.requireNonNull(output);
-            java.util.Objects.requireNonNull(position);
+
             if (index < 0) throw new IllegalArgumentException("Negative construction reference index");
             if ((selection == Selection.ORIGIN_PLANE || selection == Selection.ORIGIN_AXIS) && index > 2)
                 throw new IllegalArgumentException("Unknown origin direction");
@@ -44,7 +47,7 @@ public record ConstructionFeature(
 
     public ConstructionFeature {
         CadDocument.identifier(id, "feature ID");
-        java.util.Objects.requireNonNull(tool);
+
         inputs = List.copyOf(inputs);
         if (!Double.isFinite(value)) throw new IllegalArgumentException("Construction value must be finite");
         int expected = tool.inputs().size();

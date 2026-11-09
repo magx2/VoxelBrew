@@ -4,7 +4,7 @@ import dev.voxelbrew.engine.model.BodyInstance;
 import dev.voxelbrew.engine.model.CadDocument;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Objects;
+import lombok.NonNull;
 
 /** Persistent manufacturing definitions; toolpaths remain disposable derived output. */
 public record PrintSetup(
@@ -13,7 +13,7 @@ public record PrintSetup(
         String backendId,
         String printerId,
         String materialId,
-        ProcessSettings process,
+        @NonNull ProcessSettings process,
         List<BodyInstance> instances,
         List<SupportVolume> supports) {
     public PrintSetup {
@@ -22,7 +22,7 @@ public record PrintSetup(
         CadDocument.identifier(backendId, "slicer backend ID");
         CadDocument.identifier(printerId, "printer profile ID");
         CadDocument.identifier(materialId, "material profile ID");
-        Objects.requireNonNull(process);
+
         instances = List.copyOf(instances);
         supports = List.copyOf(supports);
         var ids = new HashSet<String>();

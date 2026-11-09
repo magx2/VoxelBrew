@@ -2,6 +2,8 @@ package dev.voxelbrew.gui;
 
 import dev.voxelbrew.engine.mesh.MeshData;
 import java.util.*;
+import lombok.AccessLevel;
+import lombok.RequiredArgsConstructor;
 
 /** Detached adjacency built on the rebuild worker, never from native handles on the UI thread. */
 final class TechnicalEdges {
@@ -32,18 +34,12 @@ final class TechnicalEdges {
 
     private record Pair(int a, int b) {}
 
+    @RequiredArgsConstructor(access = AccessLevel.PACKAGE)
     private static final class Adjacent {
         final Point a, b, first;
         final int face;
         Point second;
         boolean boundary;
-
-        Adjacent(Point a, Point b, Point normal, int face) {
-            this.a = a;
-            this.b = b;
-            this.first = normal;
-            this.face = face;
-        }
     }
 
     private final List<Edge> edges;

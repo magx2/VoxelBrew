@@ -13,6 +13,9 @@ import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.function.Supplier;
+import lombok.AccessLevel;
+import lombok.NonNull;
+import lombok.RequiredArgsConstructor;
 
 /** Anonymous HTTPS release transport. No external executable, credentials or startup requests. */
 public final class GitHubReleaseSource implements ReleaseSource {
@@ -31,8 +34,8 @@ public final class GitHubReleaseSource implements ReleaseSource {
     }
 
     /** Loopback-only transport fixture for independent packaged and GUI acceptance tests. */
-    public GitHubReleaseSource(URI fixtureRoot) {
-        this(Objects.requireNonNull(fixtureRoot), Duration.ofSeconds(45), Duration.ofMinutes(10));
+    public GitHubReleaseSource(@NonNull URI fixtureRoot) {
+        this(fixtureRoot, Duration.ofSeconds(45), Duration.ofMinutes(10));
     }
 
     GitHubReleaseSource(URI fixtureRoot, Duration metadataTimeout, Duration downloadTimeout) {
@@ -241,17 +244,13 @@ public final class GitHubReleaseSource implements ReleaseSource {
         public void onComplete() {}
     }
 
+    @RequiredArgsConstructor(access = AccessLevel.PACKAGE)
     private static final class LimitedBody<T> implements HttpResponse.BodySubscriber<T> {
         private final HttpResponse.BodySubscriber<T> delegate;
         private final long limit;
         private Flow.Subscription subscription;
         private long received;
         private boolean failed;
-
-        LimitedBody(HttpResponse.BodySubscriber<T> delegate, long limit) {
-            this.delegate = delegate;
-            this.limit = limit;
-        }
 
         @Override
         public CompletionStage<T> getBody() {

@@ -7,6 +7,7 @@ import java.awt.font.FontRenderContext;
 import java.awt.geom.AffineTransform;
 import java.awt.geom.PathIterator;
 import java.util.*;
+import lombok.NonNull;
 
 /** Headless font outlines, persisted so reopening never depends on installed fonts. */
 public final class SketchText {
@@ -25,11 +26,14 @@ public final class SketchText {
         }
     }
 
-    public record Data(String content, String font, int style, String pathId, List<Glyph> glyphs) {
+    public record Data(
+            @NonNull String content,
+            @NonNull String font,
+            int style,
+            @NonNull String pathId,
+            List<Glyph> glyphs) {
         public Data {
-            Objects.requireNonNull(content);
-            Objects.requireNonNull(font);
-            Objects.requireNonNull(pathId);
+
             glyphs = List.copyOf(glyphs);
             if (content.isBlank()
                     || content.codePointCount(0, content.length()) > 32

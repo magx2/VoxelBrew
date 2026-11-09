@@ -2,7 +2,7 @@ package dev.voxelbrew.importer.api;
 
 import dev.voxelbrew.engine.model.CadDocument;
 import dev.voxelbrew.engine.printing.GcodeJob;
-import java.util.Objects;
+import lombok.NonNull;
 
 /** Detached, frontend-neutral import results. Meshes are not misrepresented as editable history. */
 public sealed interface ImportResult {
@@ -13,10 +13,8 @@ public sealed interface ImportResult {
 
     Kind kind();
 
-    record Document(CadDocument document) implements ImportResult {
-        public Document {
-            Objects.requireNonNull(document);
-        }
+    record Document(@NonNull CadDocument document) implements ImportResult {
+        public Document {}
 
         @Override
         public Kind kind() {
@@ -24,10 +22,8 @@ public sealed interface ImportResult {
         }
     }
 
-    record Gcode(GcodeJob job) implements ImportResult {
-        public Gcode {
-            Objects.requireNonNull(job);
-        }
+    record Gcode(@NonNull GcodeJob job) implements ImportResult {
+        public Gcode {}
 
         @Override
         public Kind kind() {

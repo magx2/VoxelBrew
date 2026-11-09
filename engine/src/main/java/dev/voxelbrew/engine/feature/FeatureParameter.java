@@ -1,15 +1,14 @@
 package dev.voxelbrew.engine.feature;
 
 import dev.voxelbrew.engine.model.CadDocument;
-import java.util.Objects;
+import lombok.NonNull;
 
 /** Numeric parameter metadata shared by CLI and GUI. Bounds are inclusive. */
 public record FeatureParameter(
-        String key, String label, String unit, double defaultValue, double minimum, double maximum) {
+        String key, @NonNull String label, @NonNull String unit, double defaultValue, double minimum, double maximum) {
     public FeatureParameter {
         CadDocument.identifier(key, "parameter key");
-        Objects.requireNonNull(label);
-        Objects.requireNonNull(unit);
+
         if (!Double.isFinite(minimum) || !Double.isFinite(maximum) || minimum > maximum)
             throw new IllegalArgumentException("Invalid parameter bounds: " + key);
         check(key, defaultValue, minimum, maximum);

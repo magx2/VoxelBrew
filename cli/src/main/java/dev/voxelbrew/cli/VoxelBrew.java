@@ -14,6 +14,8 @@ import java.nio.file.Path;
 import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.Callable;
+import lombok.AccessLevel;
+import lombok.RequiredArgsConstructor;
 import picocli.CommandLine;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Model.CommandSpec;
@@ -110,13 +112,9 @@ public final class VoxelBrew implements Runnable {
     }
 
     @Command(name = "exporters", mixinStandardHelpOptions = true, description = "List built-in and external exporters")
+    @RequiredArgsConstructor(access = AccessLevel.PACKAGE, onConstructor_ = @javax.inject.Inject)
     static final class Exporters implements Callable<Integer> {
         private final dev.voxelbrew.exporter.ExporterRegistry.Factory exporters;
-
-        @javax.inject.Inject
-        Exporters(dev.voxelbrew.exporter.ExporterRegistry.Factory exporters) {
-            this.exporters = exporters;
-        }
 
         @Option(names = "--plugin-dir")
         Path pluginDirectory = ExporterRegistry.defaultDirectory();
@@ -148,15 +146,10 @@ public final class VoxelBrew implements Runnable {
             name = "export",
             mixinStandardHelpOptions = true,
             description = "Export a complete document using a registered provider")
+    @RequiredArgsConstructor(access = AccessLevel.PACKAGE, onConstructor_ = @javax.inject.Inject)
     static final class Export implements Callable<Integer> {
         private final DocumentSource documents;
         private final dev.voxelbrew.exporter.ExporterRegistry.Factory exporters;
-
-        @javax.inject.Inject
-        Export(DocumentSource documents, dev.voxelbrew.exporter.ExporterRegistry.Factory exporters) {
-            this.documents = documents;
-            this.exporters = exporters;
-        }
 
         @Parameters(index = "0")
         Path file;
@@ -239,14 +232,10 @@ public final class VoxelBrew implements Runnable {
         }
     }
 
+    @RequiredArgsConstructor(access = AccessLevel.PACKAGE)
     abstract static class FileCommand implements Callable<Integer> {
         final DocumentSource documents;
         final DocumentSink documentWriter;
-
-        FileCommand(DocumentSource documents, DocumentSink documentWriter) {
-            this.documents = documents;
-            this.documentWriter = documentWriter;
-        }
 
         @Parameters(index = "0", description = "Editable .jcad file")
         Path file;

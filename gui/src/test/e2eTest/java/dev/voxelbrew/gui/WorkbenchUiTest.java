@@ -1549,14 +1549,15 @@ class WorkbenchUiTest {
         click("constrained-sketch");
         click("choose-plane-xy");
         sketchReady();
-        text("constraint-plane", "=$");
+        sketchType(SketchTools.Tool.RECTANGLE_TWO_POINT);
+        text("sketch-point-x", "=$");
         assertEquals(List.of(), completionNames());
         assertEquals(
                 "Brak pasujących parametrów",
                 fx(() -> ((Label) ((ListView<?>) node("#formula-suggestions")).getPlaceholder()).getText()));
         key(KeyCode.ESCAPE);
         assertNoCompletion();
-        assertNotNull(fx(() -> node("#constraint-plane")), "Escape closes suggestions before the tool");
+        assertNotNull(fx(() -> node("#sketch-point-x")), "Escape closes suggestions before the tool");
         click("constraint-cancel");
         assertEquals("Zapisz", fx(() -> command(workbench, "save").getText()));
         assertButtonDescriptions();
@@ -2480,9 +2481,14 @@ class WorkbenchUiTest {
     }
 
     private void rectangle(double offset) throws Exception {
-        rectangleDraft(60, 40, offset);
+        rectangleDraft(60, 40, 0);
         click("constraint-finish");
         ready();
+        if (offset != 0) {
+            text("dimension-offsetZ", Double.toString(offset));
+            key(KeyCode.ENTER);
+            ready();
+        }
         standardView(1);
         click("menu-fit");
     }
@@ -2491,7 +2497,8 @@ class WorkbenchUiTest {
         click("constrained-sketch");
         click("choose-plane-xy");
         sketchReady();
-        text("constraint-plane", Double.toString(offset));
+        assertEquals(0, offset);
+        assertNull(fx(() -> stage.getScene().lookup("#constraint-plane")));
         sketchType(SketchTools.Tool.RECTANGLE_TWO_POINT);
         sketchNumericPoint(0, 0);
         sketchNumericPoint(width, height);
@@ -2642,30 +2649,30 @@ class WorkbenchUiTest {
         click("choose-plane-xy");
         sketchReady();
         sketchType(SketchTools.Tool.RECTANGLE_TWO_POINT);
-        text("constraint-plane", "=$");
+        text("sketch-point-x", "=$");
         assertEquals(List.of("bar", "fooHeight", "fooWidth"), completionNames());
         key(KeyCode.F);
         key(KeyCode.O);
         key(KeyCode.O);
-        assertEquals("=$foo", fx(() -> ((TextField) node("#constraint-plane")).getText()));
+        assertEquals("=$foo", fx(() -> ((TextField) node("#sketch-point-x")).getText()));
         assertEquals(List.of("fooHeight", "fooWidth"), completionNames());
         completionScreenshot("parameter-completion-light.png");
         key(KeyCode.DOWN);
         key(KeyCode.ENTER);
         assertNoCompletion();
-        assertEquals("=$fooWidth", fx(() -> ((TextField) node("#constraint-plane")).getText()));
+        assertEquals("=$fooWidth", fx(() -> ((TextField) node("#sketch-point-x")).getText()));
         assertEquals(original, document(), "Accepting a suggestion creates no feature or history entry");
         shortcut(KeyCode.Z, false);
-        assertEquals("=$foo", fx(() -> ((TextField) node("#constraint-plane")).getText()));
+        assertEquals("=$foo", fx(() -> ((TextField) node("#sketch-point-x")).getText()));
         assertNoCompletion(); // Text undo selects the replaced reference; resume at its end.
         key(KeyCode.RIGHT);
         assertEquals(List.of("fooHeight", "fooWidth"), completionNames());
         shortcut(KeyCode.Y, false);
-        assertEquals("=$fooWidth", fx(() -> ((TextField) node("#constraint-plane")).getText()));
+        assertEquals("=$fooWidth", fx(() -> ((TextField) node("#sketch-point-x")).getText()));
         completionNames();
         key(KeyCode.ESCAPE);
         assertNoCompletion();
-        assertNotNull(fx(() -> node("#constraint-plane")));
+        assertNotNull(fx(() -> node("#sketch-point-x")));
         text("sketch-point-x", "=$fooH");
         assertEquals(List.of("fooHeight"), completionNames());
         key(KeyCode.TAB);
@@ -2719,12 +2726,14 @@ class WorkbenchUiTest {
         click("constrained-sketch");
         click("choose-plane-xy");
         sketchReady();
-        text("constraint-plane", "=$foo");
+        sketchType(SketchTools.Tool.RECTANGLE_TWO_POINT);
+        text("sketch-point-x", "=$foo");
         assertEquals(List.of("fooHeight", "fooWidth"), completionNames());
         key(KeyCode.ESCAPE);
         assertNoCompletion();
-        assertEquals("=$foo", fx(() -> ((TextField) node("#constraint-plane")).getText()));
-        text("constraint-plane", "=$fooW");
+        assertEquals("=$foo", fx(() -> ((TextField) node("#sketch-point-x")).getText()));
+        sketchType(SketchTools.Tool.RECTANGLE_TWO_POINT);
+        text("sketch-point-x", "=$fooW");
         completionNames();
         click("constraint-cancel");
         assertNoCompletion();
@@ -4411,10 +4420,7 @@ class WorkbenchUiTest {
         key(KeyCode.K);
         click("choose-plane-xy");
         sketchReady();
-        assertEquals(
-                "0",
-                fx(() -> ((TextField) node("#constraint-plane")).getText()),
-                "The shortcut must not type into the newly opened editor");
+        assertNull(fx(() -> stage.getScene().lookup("#constraint-plane")));
         key(KeyCode.R);
         sketchClick(0, 0, false);
         sketchClick(20, 10, false);

@@ -83,7 +83,6 @@ final class SketchEditor extends BorderPane implements AutoCloseable {
     private final ComboBox<String> textStyle = new ComboBox<>();
     private final CheckBox closedCurve = new CheckBox("");
     private final FormulaField dimensionValue = FormulaField.number("10", this::formulaParameters, this::dimensionUnit),
-            plane = numeric("0", ParameterUnit.MM),
             sides = numeric("6", ParameterUnit.NUMBER);
     private final CheckBox construction = new CheckBox(""), auto = new CheckBox(""), showBadges = new CheckBox("");
     private final Label selected = new Label(""), status = new Label(""), error = new Label(), hint = new Label();
@@ -225,16 +224,11 @@ final class SketchEditor extends BorderPane implements AutoCloseable {
                 pointX,
                 pointY,
                 dimensionValue,
-                plane,
                 sides)) field.localized(translations);
         UiText.enums(createType, translations, "tool.");
         UiText.enums(dimension, translations, "constraint.");
         setId("sketch-editor");
         getStyleClass().add("sketch-editor");
-        plane.setId("constraint-plane");
-        plane.setPrefColumnCount(5);
-        plane.setText(this.selectedPlane.offsetZ() == 0 ? "0" : number(this.selectedPlane.offsetZ()));
-        plane.setDisable(sketch != null); // Shared planes remain edited through the document inspector.
         var title = new Label(
                 sketch == null
                         ? translations.text("gui.create_constrained_sketch")
@@ -246,8 +240,6 @@ final class SketchEditor extends BorderPane implements AutoCloseable {
         var header = new HBox(
                 10,
                 title,
-                new Label(translations.text("plane.offset")),
-                plane,
                 button(translations.text("action.parameters"), "sketch-parameters", this::parameters),
                 space,
                 finish,
@@ -1415,24 +1407,12 @@ final class SketchEditor extends BorderPane implements AutoCloseable {
     private void finish() {
         if (!controller.canFinish()) return;
         try {
-            double offset = value(plane, translations.text("gui.plane_z"));
             var result = new Feature.Sketch(
                     featureId,
                     original == null ? "profile-" + uuidGenerator.next() : original.profileId(),
-                    original == null
-                            ? new Feature.Plane(
-                                    offset == 0 && Expressions.isNumber(plane.getText())
-                                            ? selectedPlane.id()
-                                            : "plane-" + uuidGenerator.next(),
-                                    offset,
-                                    selectedPlane.frame(),
-                                    selectedPlane.support())
-                            : original.plane(),
+                    selectedPlane,
                     new Feature.Constrained(controller.definition()));
-            var parameters = controller.parameters();
-            if (original == null && !Expressions.isNumber(plane.getText()))
-                parameters = parameters.bind(new ParameterSet.Target(featureId, "offsetZ"), plane.getText());
-            accept.accept(result, parameters);
+            accept.accept(result, controller.parameters());
             dismiss.run();
         } catch (RuntimeException failure) {
             error.setText(failure.getMessage());

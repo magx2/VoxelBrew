@@ -756,6 +756,16 @@ public final class Workbench extends BorderPane implements AutoCloseable {
             String viewAction = action;
             switch (action) {
                 case "constrained-sketch" -> constrainedSketch.fire();
+                case "operations-menu" -> {
+                    constructionMenu.hide();
+                    solidCommands.requestFocus();
+                    solidCommands.show();
+                }
+                case "construction-menu" -> {
+                    solidCommands.hide();
+                    constructionMenu.requestFocus();
+                    constructionMenu.show();
+                }
                 case "extrude" -> extrude.fire();
                 case "cut" -> cut.fire();
                 case "split-body" -> splitBody.fire();

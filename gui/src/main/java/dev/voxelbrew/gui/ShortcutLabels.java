@@ -3,6 +3,7 @@ package dev.voxelbrew.gui;
 import javafx.geometry.Pos;
 import javafx.scene.control.ButtonBase;
 import javafx.scene.control.ContentDisplay;
+import javafx.scene.control.MenuButton;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Region;
 import javafx.scene.text.Text;
@@ -15,9 +16,9 @@ final class ShortcutLabels {
 
     static void install(ButtonBase button) {
         var key = KeyboardShortcuts.letter(button.getId());
-        // Icon controls retain their own graphics and existing shortcut tooltip.
+        // Menu buttons combine their icon with an underlined caption.
         if (key.isEmpty()
-                || button.getGraphic() != null
+                || (button.getGraphic() != null && !(button instanceof MenuButton))
                 || button.getProperties().putIfAbsent(ShortcutLabels.class, true) != null) return;
         var caption = new HBox();
         caption.getStyleClass().add("shortcut-caption");
@@ -26,7 +27,17 @@ final class ShortcutLabels {
         caption.setMinWidth(Region.USE_PREF_SIZE);
         button.setMnemonicParsing(false);
         button.setContentDisplay(ContentDisplay.GRAPHIC_ONLY);
-        button.setGraphic(caption);
+        var icon = button.getGraphic();
+        if (icon == null) {
+            button.setGraphic(caption);
+        } else {
+            button.setGraphic(null);
+            var content = new HBox(icon, caption);
+            content.setAlignment(Pos.CENTER_LEFT);
+            content.setMouseTransparent(true);
+            content.spacingProperty().bind(button.graphicTextGapProperty());
+            button.setGraphic(content);
+        }
         button.setMinWidth(Region.USE_PREF_SIZE);
         update(button, caption, key.get());
         button.textProperty().addListener((observable, before, after) -> update(button, caption, key.get()));

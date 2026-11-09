@@ -46,7 +46,9 @@ class KeyboardShortcutsTest {
     void modelingKeysRequireExactModifiersAndDoNotHijackCopyOrAltGr() {
         assertEquals("constrained-sketch", match(KeyCode.K, false, false, false));
         assertNull(match(KeyCode.R, false, false, false));
-        assertNull(match(KeyCode.C, false, false, false));
+        assertEquals("construction-menu", match(KeyCode.C, false, false, false));
+        assertEquals("operations-menu", match(KeyCode.O, false, false, false));
+        assertNull(match(KeyCode.O, false, true, false));
         assertNull(match(KeyCode.C, false, true, false));
         assertNull(match(KeyCode.C, false, true, true));
         assertNull(match(KeyCode.C, true, false, false));

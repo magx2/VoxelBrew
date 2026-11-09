@@ -116,16 +116,16 @@ public final class GcodeReader {
 
     private static Role role(String value) {
         return switch (value) {
-            case "Perimeter" -> Role.PERIMETER;
-            case "External perimeter" -> Role.EXTERNAL_PERIMETER;
-            case "Internal infill" -> Role.INFILL;
-            case "Solid infill", "Top solid infill" -> Role.SOLID_INFILL;
+            case "Perimeter", "WALL-INNER" -> Role.PERIMETER;
+            case "External perimeter", "WALL-OUTER" -> Role.EXTERNAL_PERIMETER;
+            case "Internal infill", "FILL" -> Role.INFILL;
+            case "Solid infill", "Top solid infill", "SKIN" -> Role.SOLID_INFILL;
             case "Bridge infill", "Overhang perimeter" -> Role.BRIDGE;
             case "Gap fill" -> Role.GAP_FILL;
-            case "Support material" -> Role.SUPPORT;
-            case "Support material interface" -> Role.INTERFACE;
-            case "Skirt/Brim" -> Role.SKIRT_BRIM;
-            case "Ironing" -> Role.IRONING;
+            case "Support material", "SUPPORT" -> Role.SUPPORT;
+            case "Support material interface", "SUPPORT-INTERFACE" -> Role.INTERFACE;
+            case "Skirt/Brim", "SKIRT" -> Role.SKIRT_BRIM;
+            case "Ironing", "IRONING" -> Role.IRONING;
             default -> Role.UNKNOWN;
         };
     }

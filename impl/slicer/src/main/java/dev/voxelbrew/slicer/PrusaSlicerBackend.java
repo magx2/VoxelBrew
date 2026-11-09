@@ -1,6 +1,7 @@
-package dev.voxelbrew.exporter.printing;
+package dev.voxelbrew.slicer;
 
 import dev.voxelbrew.engine.printing.*;
+import dev.voxelbrew.exporter.printing.PrusaConfiguration;
 import dev.voxelbrew.slicer.api.SlicerBackend;
 import java.io.*;
 import java.nio.charset.StandardCharsets;
@@ -8,6 +9,36 @@ import java.nio.file.*;
 import java.util.*;
 
 public final class PrusaSlicerBackend implements SlicerBackend {
+    private final Map<String, String> configuration;
+
+    public PrusaSlicerBackend() {
+        this(Map.of());
+    }
+
+    private PrusaSlicerBackend(Map<String, String> configuration) {
+        this.configuration = Map.copyOf(configuration);
+    }
+
+    @Override
+    public Map<String, String> configurationOptions() {
+        return Map.of("executable", "", "profile", "");
+    }
+
+    @Override
+    public SlicerBackend configure(Map<String, String> options) {
+        if (!configurationOptions().keySet().containsAll(options.keySet()))
+            throw new IllegalArgumentException("Unknown PrusaSlicer option");
+        var merged = new TreeMap<>(configuration);
+        merged.putAll(options);
+        return new PrusaSlicerBackend(merged);
+    }
+
+    @Override
+    public Path executable() {
+        String value = configuration.getOrDefault("executable", "");
+        return value.isBlank() ? defaultExecutable() : Path.of(value);
+    }
+
     public static final String VERSION = "2.7.2";
     private static final Set<Capability> CAPABILITIES = Set.of(
             Capability.AUTOMATIC_SUPPORTS,
@@ -52,23 +83,25 @@ public final class PrusaSlicerBackend implements SlicerBackend {
                     "Unsupported printer/nozzle/output pairing; this backend is qualified for generic Marlin 2 / 0.4 mm / text G-code");
         Path project = request.input(), config = request.workingDirectory().resolve("process.ini");
         Files.writeString(config, PrusaConfiguration.ini(request.model()), StandardCharsets.UTF_8);
-        ProcessRunner.run(
-                List.of(
-                        request.executable().toString(),
-                        "--datadir",
-                        request.workingDirectory().resolve("configuration").toString(),
-                        "--load",
-                        config.toString(),
-                        "--dont-arrange",
-                        "--no-ensure-on-bed",
-                        "--merge",
-                        "--export-gcode",
-                        "--output",
-                        request.output().toString(),
-                        project.toString()),
-                request.workingDirectory(),
-                request.cancellation(),
-                request.diagnostics());
+        var arguments = new ArrayList<String>();
+        arguments.add(request.executable().toString());
+        String baseProfile = configuration.getOrDefault("profile", "");
+        if (!baseProfile.isBlank())
+            arguments.addAll(
+                    List.of("--load", Path.of(baseProfile).toAbsolutePath().toString()));
+        arguments.addAll(List.of(
+                "--datadir",
+                request.workingDirectory().resolve("configuration").toString(),
+                "--load",
+                config.toString(),
+                "--dont-arrange",
+                "--no-ensure-on-bed",
+                "--merge",
+                "--export-gcode",
+                "--output",
+                request.output().toString(),
+                project.toString()));
+        ProcessRunner.run(arguments, request.workingDirectory(), request.cancellation(), request.diagnostics());
         return new RunResult(PrusaConfiguration.settings(request.model()));
     }
 

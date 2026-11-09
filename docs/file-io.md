@@ -197,8 +197,9 @@ saving and comparison, as returned by `Version.version()`; they do not bypass th
 newer-file guard. Use a built distribution to open files from a released version.
 
 `BinaryStlExporter`, `ThreeMfExporter`, `ExporterRegistry` and `AtomicExport` now
-live in `dev.voxelbrew.exporter`. Prusa project/configuration writers, the backend,
-slicer registry and `SliceService` live in `dev.voxelbrew.exporter.printing`.
+live in `dev.voxelbrew.exporter`. Slicer backends, the registry and `SliceService`
+live in `dev.voxelbrew.slicer` (impl/slicer). Prusa project/configuration writers
+remain in `dev.voxelbrew.exporter.printing`.
 `GcodeJob` stays an immutable engine preview model; use `GcodeReader.read` to load it.
 
 Use `ModelViews.from(evaluation)` for design geometry, keeping the owning evaluation open
@@ -285,7 +286,7 @@ importers are available through the host API and CLI; the GUI import dialog is f
 `SlicerBackend` belongs to the MIT `:api:slicer` project under
 `dev.voxelbrew.slicer.api`. Extensions compile against `dev.voxelbrew:slicer-api`
 and register `META-INF/services/dev.voxelbrew.slicer.api.SlicerBackend`.
-Concrete `SlicerRegistry`, `SliceService` and backend adapters remain in `export`.
+Concrete `SlicerRegistry`, `SliceService` and backend adapters live in `impl/slicer`.
 See the [slicer API guide](../api/slicer/README.md) for migration and packaging.
 
 Slicing resolves `SlicerBackend.inputFormat()` through the same exporter registry.
@@ -370,3 +371,48 @@ Packaged images retain the `importJar` and `exportJar` metadata keys, now pointi
 to `importer-impl-<version>.jar` and `exporter-impl-<version>.jar`. Internal
 `voxelbrew-import-version.properties` and `voxelbrew-export-version.properties`
 identities remain stable so existing update validation continues to check versions.
+
+## Independent slicer configuration
+
+`impl/slicer` (`:impl:slicer`, artifact `slicer-impl`) owns backend execution,
+ServiceLoader discovery and atomic job publication. CLI and GUI include it at
+runtime. Prusa project and INI serialization stay in `impl/exporter`.
+
+Configure providers separately in `~/.voxelbrew/config.properties`, using forward
+slashes for Windows paths (properties files otherwise require escaped backslashes):
+
+```properties
+slicer.prusa-slicer.executable=C:/Tools/PrusaSlicer/prusa-slicer-console.exe
+slicer.prusa-slicer.profile=C:/Profiles/prusa.ini
+slicer.cura.executable=C:/Tools/Cura/CuraEngine.exe
+slicer.cura.definition=C:/Profiles/resolved-machine.def.json
+slicer.cura.settings=C:/Profiles/cura.properties
+```
+
+Restart the application to reload saved configuration. A blank GUI executable field
+or omitted CLI `--slicer` uses the selected provider's executable. An explicit path
+overrides it for that invocation. CLI `slice --slicer-option definition=PATH
+--slicer-option settings=PATH` overrides only that backend's saved options.
+Select the backend ID `prusa-slicer` or `cura` in the document's print setup.
+The legacy `VOXELBREW_SLICER`/`voxelbrew.slicer` override remains Prusa-only.
+
+Prusa uses pinned 2.7.2 and an optional base INI; document process settings take
+precedence. Cura uses CuraEngine 5.x (not the desktop GUI executable), a matching
+machine definition JSON, and optional UTF-8 properties containing resolved Cura
+setting names/values. Its command-line engine does not evaluate Cura GUI profile
+expressions; supply a fully resolved single-extruder definition and settings.
+Inherited definitions must be discoverable through `CURA_ENGINE_SEARCH_PATH`.
+Document layer height, walls, infill, temperatures and nozzle override that file.
+The initial Cura adapter supports Marlin text G-code without support modifiers,
+automatic supports, brim or raft; unsupported requests fail before publication.
+Cura real-engine, viewer and physical-print qualification remain pending.
+
+Plugins can advertise `configurationOptions()`, return a fresh immutable backend
+from `configure(Map<String,String>)`, and supply `executable()`. The registry passes
+only `slicer.<provider-id>.*` properties, with that prefix removed. Unknown options
+must fail with a diagnostic, without disabling healthy providers. These default
+SPI methods preserve existing version-2 providers; those providers still need an
+explicit executable unless they implement `executable()`.
+
+Cura command syntax follows the upstream
+[command-line implementation](https://github.com/Ultimaker/CuraEngine/blob/5.0/src/Application.cpp).

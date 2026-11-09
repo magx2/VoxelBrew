@@ -3,7 +3,7 @@ package dev.voxelbrew.gui;
 import static org.junit.jupiter.api.Assertions.*;
 
 import dev.voxelbrew.exporter.ExporterRegistry;
-import dev.voxelbrew.exporter.printing.SlicerRegistry;
+import dev.voxelbrew.slicer.SlicerRegistry;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.List;

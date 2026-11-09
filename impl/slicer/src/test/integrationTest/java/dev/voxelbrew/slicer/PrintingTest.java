@@ -1,4 +1,4 @@
-package dev.voxelbrew.exporter.printing;
+package dev.voxelbrew.slicer;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -7,6 +7,7 @@ import dev.voxelbrew.engine.model.*;
 import dev.voxelbrew.engine.persistence.DocumentCodec;
 import dev.voxelbrew.engine.printing.*;
 import dev.voxelbrew.exporter.DocumentWriter;
+import dev.voxelbrew.exporter.printing.*;
 import dev.voxelbrew.importer.DocumentReader;
 import java.nio.file.*;
 import java.util.*;

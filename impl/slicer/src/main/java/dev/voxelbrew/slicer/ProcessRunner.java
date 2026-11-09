@@ -1,4 +1,4 @@
-package dev.voxelbrew.exporter.printing;
+package dev.voxelbrew.slicer;
 
 import dev.voxelbrew.engine.printing.*;
 import java.io.*;

@@ -554,7 +554,7 @@ class WorkflowTest {
                         "--output",
                         job,
                         "--slicer",
-                        dev.voxelbrew.exporter.printing.PrusaSlicerBackend.defaultExecutable()
+                        dev.voxelbrew.slicer.PrusaSlicerBackend.defaultExecutable()
                                 .toString(),
                         "--plugin-dir",
                         plugin)
@@ -689,8 +689,8 @@ class WorkflowTest {
         assertTrue(run(0, "print-setup", file).contains("PETG"));
         assertTrue(run(0, "validate", file).contains("VALID"));
         String output = directory.resolve("CLI real job.gcode").toString();
-        String slicer = dev.voxelbrew.exporter.printing.PrusaSlicerBackend.defaultExecutable()
-                .toString();
+        String slicer =
+                dev.voxelbrew.slicer.PrusaSlicerBackend.defaultExecutable().toString();
         assertTrue(run(0, "slice", file, "--output", output, "--slicer", slicer).contains("model_layers=40"));
         assertTrue(run(0, "inspect-job", output).contains("material=PETG"));
         byte[] original = Files.readAllBytes(Path.of(output));

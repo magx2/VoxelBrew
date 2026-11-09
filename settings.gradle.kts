@@ -9,6 +9,7 @@ include(
     "api:slicer",
     "impl:importer",
     "impl:exporter",
+    "impl:slicer",
     "gui",
     "cli",
 )

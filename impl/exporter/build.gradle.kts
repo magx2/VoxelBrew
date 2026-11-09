@@ -10,7 +10,6 @@ base { archivesName.set("exporter-impl") }
 dependencies {
     implementation(project(":engine"))
     api(project(":api:export"))
-    api(project(":api:slicer"))
     implementation(project(":impl:importer"))
     implementation(project(":util"))
     testImplementation("com.google.protobuf:protobuf-java:4.30.2")

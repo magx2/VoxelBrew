@@ -1,4 +1,4 @@
-package dev.voxelbrew.exporter.printing;
+package dev.voxelbrew.slicer;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -6,6 +6,7 @@ import dev.voxelbrew.engine.mesh.MeshOptions;
 import dev.voxelbrew.engine.printing.*;
 import dev.voxelbrew.exporter.*;
 import dev.voxelbrew.exporter.api.*;
+import dev.voxelbrew.exporter.printing.*;
 import dev.voxelbrew.slicer.api.SlicerBackend;
 import java.io.IOException;
 import java.nio.file.*;

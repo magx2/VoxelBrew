@@ -13,6 +13,25 @@ class GcodeReaderTest {
     Path directory;
 
     @Test
+    void curaRolesSeparateModelFromSupportAndTravel() throws Exception {
+        Path file = directory.resolve("cura.gcode");
+        Files.writeString(
+                file,
+                "G21\nG90\nM82\nG1 Z0.2\n;TYPE:WALL-OUTER\nG1 X10 E1\n;TYPE:WALL-INNER\nG1 X20 E2\n;TYPE:FILL\nG1 X30 E3\nG1 Z0.4\n;TYPE:SUPPORT\nG1 X40 E4\n;TYPE:SUPPORT-INTERFACE\nG1 X50 E5\nG1 X60\n");
+        var job = GcodeReader.read(file);
+        assertEquals(List.of(.2), job.modelLayers());
+        assertEquals(
+                List.of(
+                        GcodeJob.Role.EXTERNAL_PERIMETER,
+                        GcodeJob.Role.PERIMETER,
+                        GcodeJob.Role.INFILL,
+                        GcodeJob.Role.SUPPORT,
+                        GcodeJob.Role.INTERFACE,
+                        GcodeJob.Role.TRAVEL),
+                job.segments().stream().map(GcodeJob.Segment::role).toList());
+    }
+
+    @Test
     void parserCountsDepositedMotionRatherThanLayerCommentsAndRejectsUnsupportedDialects() throws Exception {
         Path file = directory.resolve("motion.gcode");
         Files.writeString(

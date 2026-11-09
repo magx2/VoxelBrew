@@ -1,8 +1,9 @@
-package dev.voxelbrew.exporter.printing;
+package dev.voxelbrew.slicer;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 import dev.voxelbrew.engine.printing.Cancellation;
+import dev.voxelbrew.exporter.printing.*;
 import dev.voxelbrew.slicer.api.SlicerRuntime;
 import java.nio.file.Files;
 import java.nio.file.Path;

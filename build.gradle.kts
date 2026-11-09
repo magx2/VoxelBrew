@@ -20,6 +20,7 @@ val sourceProjects =
         "api/slicer",
         "impl/importer",
         "impl/exporter",
+        "impl/slicer",
         "cli",
         "gui",
         "fixtures/exporter-plugin",
@@ -401,7 +402,11 @@ for (module in listOf(":cli", ":gui")) {
                 check(compile.containsAll(listOf(":api:import", ":api:export", ":api:slicer"))) {
                     "$module must compile against file-I/O APIs"
                 }
-                check(compile.intersect(setOf(":impl:importer", ":impl:exporter")).isEmpty()) {
+                check(
+                    compile
+                        .intersect(setOf(":impl:importer", ":impl:exporter", ":impl:slicer"))
+                        .isEmpty()
+                ) {
                     "$module compiles against file-I/O implementations"
                 }
                 check(
@@ -412,6 +417,7 @@ for (module in listOf(":cli", ":gui")) {
                             ":api:slicer",
                             ":impl:importer",
                             ":impl:exporter",
+                            ":impl:slicer",
                         )
                     )
                 ) {

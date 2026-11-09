@@ -15,10 +15,10 @@ marker and step/playback controls. The shared subproject
 generic CPU workers. It has no CAD or frontend dependencies; engine and both
 frontends depend on it. See [shared utilities and configuration](docs/shared-utilities.md).
 The `impl/importer` and `impl/exporter` projects own document/G-code reading, document writing,
-STL/3MF/OBJ mesh exporters, exact STEP export and the slicer file pipeline. The `:api:import` and `:api:export`
+STL/3MF/OBJ mesh exporters and exact STEP export; `impl/slicer` owns slicer execution and the job pipeline. The `:api:import` and `:api:export`
 projects publish provider contracts so external JARs can add formats without depending
 on implementation projects. Both file-I/O APIs depend only on the MIT `api/model` module; engine also depends
-on that model API. The `:api:slicer` project publishes slicing contracts and depends only on the model and export APIs. There are ten first-party projects. See
+on that model API. The `:api:slicer` project publishes slicing contracts and depends only on the model and export APIs. There are eleven first-party projects. See
 [file import/export boundaries and API migration](docs/file-io.md).
 CLI commands and each desktop window are assembled by Dagger with constructor
 injection, scoped services and explicit resource ownership. See

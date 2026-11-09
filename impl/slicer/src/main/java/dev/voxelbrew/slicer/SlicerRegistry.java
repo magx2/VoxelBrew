@@ -1,4 +1,4 @@
-package dev.voxelbrew.exporter.printing;
+package dev.voxelbrew.slicer;
 
 import dev.voxelbrew.engine.printing.*;
 import dev.voxelbrew.slicer.api.SlicerBackend;
@@ -18,6 +18,10 @@ public final class SlicerRegistry implements dev.voxelbrew.slicer.api.SlicerCata
     private final List<String> diagnostics = new ArrayList<>();
 
     public SlicerRegistry(Path directory) throws IOException {
+        this(directory, dev.voxelbrew.util.config.UserConfiguration.user().read());
+    }
+
+    public SlicerRegistry(Path directory, Map<String, String> configuration) throws IOException {
         var urls = new ArrayList<URL>();
         if (Files.isDirectory(directory))
             try (var files = Files.list(directory)) {
@@ -33,6 +37,12 @@ public final class SlicerRegistry implements dev.voxelbrew.slicer.api.SlicerCata
                 if (!services.hasNext()) break;
                 var backend = services.next();
                 var descriptor = backend.descriptor();
+                var options = new TreeMap<String, String>();
+                String prefix = "slicer." + descriptor.id() + ".";
+                configuration.forEach((key, value) -> {
+                    if (key.startsWith(prefix)) options.put(key.substring(prefix.length()), value);
+                });
+                backend = backend.configure(options);
                 if (descriptor.apiVersion() != SlicerBackend.API_VERSION) {
                     diagnostics.add("Incompatible slicer " + descriptor.id() + ": API " + descriptor.apiVersion());
                     continue;

@@ -12,7 +12,7 @@ source JAR and `META-INF/LICENSE`. It owns the headless contracts in
 The module depends on `api:model` for CAD/manufacturing values and `api:export`
 for the exporter catalog used to prepare slicer input. It has no dependency on
 engine, concrete file I/O, JavaFX, picocli or Dagger. Process execution, built-in
-backends, discovery and atomic job publication remain in the `impl/exporter` runtime.
+backends, discovery and atomic job publication remain in the `impl/slicer` runtime.
 
 ## External backends
 
@@ -41,9 +41,11 @@ recompile providers. The SPI version remains 2 because its methods and semantics
 are unchanged. `ExportRuntime` no longer provides slicing services; use
 `SlicerRuntime` at the composition root and inject the individual services.
 CLI/GUI include `slicer-api` at compile time and in their distributions while
-keeping the concrete `:impl:exporter` project as a runtime dependency.
+keeping the concrete `:impl:slicer` project as a runtime dependency.
 
 ```bash
 ./gradlew :api:slicer:publishToMavenLocal
-./gradlew :engine:buildExporterFixture :impl:exporter:test --tests '*SlicerRuntimeTest' verifyApiDependencies verifyFrontendIoDependencies
+./gradlew :engine:buildExporterFixture :impl:slicer:test --tests '*SlicerRuntimeTest' verifyApiDependencies verifyFrontendIoDependencies
 ```
+
+See [independent slicer configuration](../../docs/file-io.md#independent-slicer-configuration) for built-in options, persisted namespaces and plugin configuration hooks.

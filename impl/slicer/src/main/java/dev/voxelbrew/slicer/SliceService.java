@@ -1,4 +1,4 @@
-package dev.voxelbrew.exporter.printing;
+package dev.voxelbrew.slicer;
 
 import dev.voxelbrew.engine.mesh.MeshOptions;
 import dev.voxelbrew.engine.model.CadDocument;
@@ -73,6 +73,7 @@ public final class SliceService {
         Path target = destination.toAbsolutePath().normalize();
         if (Files.exists(target) && !overwrite)
             throw new IOException("Destination exists; explicit overwrite required: " + target);
+        if (executable == null) executable = backend.executable();
         Path command =
                 executable.getParent() != null || Files.exists(executable) ? executable.toAbsolutePath() : executable;
         var probe = backend.probe(command, cancellation);

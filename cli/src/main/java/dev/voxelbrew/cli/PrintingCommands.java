@@ -482,7 +482,6 @@ final class PrintingCommands {
             this.slicers = slicers;
             this.exporters = exporters;
             this.slicing = slicing;
-            this.executable = defaultExecutable;
         }
 
         @Option(names = "--output", required = true)
@@ -490,6 +489,9 @@ final class PrintingCommands {
 
         @Option(names = "--slicer", description = "Path to the pinned slicer executable")
         Path executable;
+
+        @Option(names = "--slicer-option", description = "Backend configuration key=value (repeatable)")
+        Map<String, String> slicerOptions = new java.util.LinkedHashMap<>();
 
         private final Slicing slicing;
 
@@ -518,7 +520,7 @@ final class PrintingCommands {
                         document, MeshOptions.DEFAULT, pluginDirectory);
                 registry.diagnostics().forEach(spec.commandLine().getErr()::println);
                 var result = slicing.slice(
-                        registry.require(model.setup().backendId()),
+                        registry.require(model.setup().backendId()).configure(slicerOptions),
                         document,
                         model,
                         exportRegistry,

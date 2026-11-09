@@ -216,7 +216,7 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
         cancel = button(translations.text("gui.cancel_slicing"), "print-cancel", jobs::cancel);
         var job = new VBox(
                 7,
-                row("print-executable", translations.text("gui.slicer_executable"), defaultExecutable.toString()),
+                row("print-executable", translations.text("gui.slicer_executable"), ""),
                 row(
                         "print-output",
                         translations.text("gui.g_code_destination"),
@@ -550,7 +550,9 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
         jobs.start(
                         document.snapshot().document(),
                         slicers.require(setup().backendId()),
-                        Path.of(fields.get("print-executable").evaluatedText()),
+                        fields.get("print-executable").evaluatedText().isBlank()
+                                ? null
+                                : Path.of(fields.get("print-executable").evaluatedText()),
                         Path.of(fields.get("print-output").evaluatedText()),
                         overwrite.isSelected())
                 .exceptionally(failure -> null);

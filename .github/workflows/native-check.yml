@@ -113,8 +113,10 @@ jobs:
         shell: pwsh
         run: ./gradlew.bat $env:GRADLE_SUITE '-PvsGenerator=Visual Studio 17 2022'
       - name: Headless platform checks (macOS; GUI qualification deferred)
-        if: inputs.suite == 'headlessPlatformCheck' && runner.os == 'macOS'
-        run: ./gradlew headlessPlatformCheck
+        if: (inputs.suite == 'headlessPlatformCheck' || inputs.suite == 'headlessWorkflowCheck' || inputs.suite == 'headlessPackageCheck') && runner.os == 'macOS'
+        env:
+          GRADLE_SUITE: ${{ inputs.suite }}
+        run: ./gradlew "$GRADLE_SUITE"
       - name: Archive app images
         if: inputs.archive
         shell: bash

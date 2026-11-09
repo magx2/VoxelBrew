@@ -109,8 +109,12 @@ GitHub Actions splits the complete gate into independent jobs:
   without native bootstrapping. See the [code quality policy](code-quality.md).
 - Integration tests run once on Ubuntu, headlessly with real OCCT/PrusaSlicer.
 - Full platform checks run on Windows and Ubuntu, including packaged apps.
-- macOS runs `headlessPlatformCheck` (CLI workflows and packaged CLI) and builds
-  both app images. It does not run GUI interactions or claim GUI qualification.
+- Routine macOS CI uses two isolated runners: `headlessWorkflowCheck` runs all
+  CLI end-to-end workflows; `headlessPackageCheck` runs CLI launcher, updater and
+  release-archive checks. The package runner also builds and uploads both app
+  images. Both jobs must pass. Releases and local full headless qualification
+  retain `headlessPlatformCheck`, which covers the same checks together.
+  macOS does not run GUI interactions or claim GUI qualification.
 - The final **Full check** requires all jobs and every platform to succeed;
   failures, cancellations and skipped prerequisites cannot produce a green gate.
 

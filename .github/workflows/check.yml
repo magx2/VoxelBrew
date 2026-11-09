@@ -51,15 +51,18 @@ jobs:
         ui-shard: [1, 2, 3, 4, 5]
         include:
           - os: macos-15-intel
-            suite: headlessPlatformCheck
+            suite: headlessPackageCheck
             ui-shard: 1
+          - os: macos-15-intel
+            suite: headlessWorkflowCheck
+            ui-shard: 2
     uses: ./.github/workflows/native-check.yml
     with:
       os: ${{ matrix.os }}
       suite: ${{ matrix.suite || (matrix.ui-shard == 1 && 'platformCheck' || ':gui:e2eTest') }}
       artifact-name: platform-${{ matrix.os }}-${{ matrix.ui-shard }}
       archive: ${{ matrix.ui-shard == 1 }}
-      ui-shard: ${{ matrix.ui-shard }}
+      ui-shard: ${{ matrix.os == 'macos-15-intel' && 1 || matrix.ui-shard }}
       ui-shard-count: ${{ matrix.os == 'macos-15-intel' && 1 || 5 }}
   full-check:
     name: Full check

@@ -322,6 +322,18 @@ tasks.register("headlessPlatformCheck") {
     dependsOn(":cli:platformCheck")
 }
 
+tasks.register("headlessWorkflowCheck") {
+    group = "verification"
+    description = "Run CLI end-to-end workflows on an isolated headless CI runner."
+    dependsOn(":cli:e2eTest")
+}
+
+tasks.register("headlessPackageCheck") {
+    group = "verification"
+    description = "Verify CLI app images, updates and release archives on a headless CI runner."
+    dependsOn(":cli:packageCheck", ":cli:updatePackageCheck", ":cli:releaseArchiveCheck")
+}
+
 tasks.wrapper {
     gradleVersion = "9.1.0"
     distributionType = Wrapper.DistributionType.BIN

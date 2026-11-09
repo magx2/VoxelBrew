@@ -7,7 +7,7 @@ printer is generic Marlin 2, one **0.4 mm** nozzle, **1.75 mm** filament, a rect
 software reference profiles, **not a physically qualified printer setup**.
 
 The complete base process is committed in
-`export/src/main/resources/dev/voxelbrew/exporter/printing/prusa-2.7.2.ini`.
+`impl/exporter/src/main/resources/dev/voxelbrew/exporter/printing/prusa-2.7.2.ini`.
 Document-owned settings override it explicitly. Default first/subsequent layer
 height is 0.20 mm, two walls, 20% infill, no automatic supports/brim/raft, no
 ironing, variable layers, Z-hop, arc moves, binary G-code or multiple tools.

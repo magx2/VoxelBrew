@@ -5,11 +5,13 @@ plugins {
 
 apply(from = rootProject.file("gradle/di.gradle.kts"))
 
+base { archivesName.set("exporter-impl") }
+
 dependencies {
     implementation(project(":engine"))
     api(project(":api:export"))
     api(project(":api:slicer"))
-    implementation(project(":import"))
+    implementation(project(":impl:importer"))
     implementation(project(":util"))
     testImplementation("com.google.protobuf:protobuf-java:4.30.2")
     testImplementation("com.google.protobuf:protobuf-java-util:4.30.2")
@@ -57,7 +59,12 @@ tasks.named<Test>("integrationTest") {
 }
 
 publishing {
-    publications { create<MavenPublication>("export") { from(components["java"]) } }
+    publications {
+        create<MavenPublication>("export") {
+            from(components["java"])
+            artifactId = "exporter-impl"
+        }
+    }
     repositories {
         maven {
             name = "fixture"

@@ -8,8 +8,8 @@ plugins {
 
 dependencies {
     api(project(":api:model"))
-    add("integrationTestImplementation", project(":import"))
-    add("integrationTestImplementation", project(":export"))
+    add("integrationTestImplementation", project(":impl:importer"))
+    add("integrationTestImplementation", project(":impl:exporter"))
     implementation(project(":util"))
     api("javax.measure:unit-api:2.2")
     implementation("tech.units:indriya:2.2.4")

@@ -217,9 +217,8 @@ Windows. Plugins are trusted code running with the application's permissions.
 
 ### Adding a first-party exporter
 
-Put implementations under `dev.voxelbrew.exporter`. Register every provider as an
-`@IntoSet` binding in [`FileIoModule`](../../export/src/main/java/dev/voxelbrew/exporter/di/FileIoModule.java)
-and include it in the standalone `ExporterRegistry(Path)` composition. Application
+Put implementations in `impl/exporter` under `dev.voxelbrew.exporter`. Include each
+provider in the [`ExporterRegistry(Path)`](../../impl/exporter/src/main/java/dev/voxelbrew/exporter/ExporterRegistry.java) composition. Application
 CLI/window composition roots inject the registry factory through Dagger, including
 for slicing. No hardcoded GUI format entry or second service resource is needed.
 Follow the repository's [DI guidance](../../docs/dependency-injection.md); keep DI
@@ -236,8 +235,8 @@ acceptance requires the real kernel; test doubles only cover failure handling.
 Run these focused commands from the repository root (use `.\gradlew.bat` on Windows):
 
 ```text
-./gradlew :engine:buildExporterFixture :api:export:test :export:test
-./gradlew :export:integrationTest --tests dev.voxelbrew.exporter.ExportTest --tests dev.voxelbrew.exporter.AdditionalFormatsTest --tests dev.voxelbrew.exporter.UnifiedExportTest --tests dev.voxelbrew.exporter.printing.SlicerExportPipelineTest
+./gradlew :engine:buildExporterFixture :api:export:test :impl:exporter:test
+./gradlew :impl:exporter:integrationTest --tests dev.voxelbrew.exporter.ExportTest --tests dev.voxelbrew.exporter.AdditionalFormatsTest --tests dev.voxelbrew.exporter.UnifiedExportTest --tests dev.voxelbrew.exporter.printing.SlicerExportPipelineTest
 ./gradlew spotlessApply
 ```
 

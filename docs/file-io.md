@@ -4,24 +4,24 @@ The `import` and `export` Gradle projects separate file I/O from the CAD engine.
 The Java packages are `dev.voxelbrew.importer` and `dev.voxelbrew.exporter`;
 `import` is a Java keyword, so it cannot be a package segment.
 
-| Project    | Owns                                                                                   | Production dependencies                                                    |
-| ---------- | -------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
-| util       | Configuration, translations, logging, updates, generic workers                         | No other project                                                           |
-| engine     | Native geometry, evaluation, tessellation, document codec, feature execution           | api:model, util                                                            |
-| api:model  | Shared document, sketch, parameter, mesh and manufacturing values                      | No application modules                                                     |
-| api:import | ImporterProvider SPI, typed dialogs/results, DocumentSource/GcodeSource ports          | api:model                                                                  |
-| api:export | ExporterProvider SPI, Exporter/ExportWindow contracts                                  | api:model                                                                  |
-| api:slicer | Slicer backend, catalog, execution and runtime-provider contracts                      | api:model, api:export                                                      |
-| import     | Bounded .vxb/JSON/G-code reading, importer discovery and invocation                    | engine, api:import, util                                                   |
-| export     | Atomic .vxb writing, STL/3MF writers, exporter discovery, slicer execution/publication | engine, api:export, api:slicer, import, util                               |
-| cli / gui  | Commands and desktop interactions                                                      | engine, api:import, api:export, api:slicer, util; import/export at runtime |
+| Project       | Owns                                                                                   | Production dependencies                                                                  |
+| ------------- | -------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| util          | Configuration, translations, logging, updates, generic workers                         | No other project                                                                         |
+| engine        | Native geometry, evaluation, tessellation, document codec, feature execution           | api:model, util                                                                          |
+| api:model     | Shared document, sketch, parameter, mesh and manufacturing values                      | No application modules                                                                   |
+| api:import    | ImporterProvider SPI, typed dialogs/results, DocumentSource/GcodeSource ports          | api:model                                                                                |
+| api:export    | ExporterProvider SPI, Exporter/ExportWindow contracts                                  | api:model                                                                                |
+| api:slicer    | Slicer backend, catalog, execution and runtime-provider contracts                      | api:model, api:export                                                                    |
+| impl:importer | Bounded .vxb/JSON/G-code reading, importer discovery and invocation                    | engine, api:import, util                                                                 |
+| impl:exporter | Atomic .vxb writing, STL/3MF writers, exporter discovery, slicer execution/publication | engine, api:export, api:slicer, impl:importer, util                                      |
+| cli / gui     | Commands and desktop interactions                                                      | engine, api:import, api:export, api:slicer, util; impl:importer/impl:exporter at runtime |
 
 The API projects live in `api/model`, `api/import`, `api/export` and `api/slicer`. Their binary and source JARs
 retain the `-api` suffix and bundle `META-INF/LICENSE` under MIT. See the
 [licensing rationale](../api/READEME.md).
 
 The APIs contain only public contracts and their value types. Concrete format classes,
-registries, services and ServiceLoader registrations stay in `import` / `export`.
+registries, services and ServiceLoader registrations stay in `impl/importer` / `impl/exporter`.
 Engine depends on api/model, but not on the file-I/O APIs or implementations. Export inputs
 `ModelView` and `ManufacturingView` are internal helpers in `dev.voxelbrew.exporter`; the concrete
 `ModelViews` and `ExportSelections` adapters live in the export implementation. `ExportSelection` is an API-owned value in `dev.voxelbrew.exporter`. Shared CAD
@@ -311,10 +311,10 @@ Older format-1 installation metadata remains readable for recovery/downgrades.
 Focused checks:
 
 ```text
-./gradlew :api:import:test :api:export:test :import:test :import:integrationTest :export:test :export:integrationTest
+./gradlew :api:import:test :api:export:test :impl:importer:test :impl:importer:integrationTest :impl:exporter:test :impl:exporter:integrationTest
 ```
 
-The compatibility fixture in `export/src/test/test/resources/fixtures/` was
+The compatibility fixture in `impl/exporter/src/test/test/resources/fixtures/` was
 generated by the previously installed `efe2535` build. Its complete file SHA-256 is
 `0481466803177edae0ca10582497b7e60b698fe2d15f347f78c0ba679aa80570` and document
 fingerprint is `df3bc6b5f8389380bf29db8af9e3618043d57dda4176b669883c560d643f3476`.
@@ -333,8 +333,8 @@ CI artifacts retain the existing three-day limit. macOS GUI qualification remain
 
 ## Frontend runtime boundary
 
-CLI and GUI compile against `:api:import`, `:api:export` and `:api:slicer`. Their `:import` and
-`:export` dependencies are `runtimeOnly`; all five JARs ship in each application
+CLI and GUI compile against `:api:import`, `:api:export` and `:api:slicer`. Their `:impl:importer` and
+`:impl:exporter` dependencies are `runtimeOnly`; all five JARs ship in each application
 distribution's `lib` directory. The application JARs remain thin JARs.
 `verifyFrontendIoDependencies` enforces both compile and runtime classpaths.
 
@@ -357,3 +357,16 @@ Standalone callers must replace `SliceService.Result/Commit/PublicationGuard/
 OutdatedException/DIRECT` references with the corresponding `Slicing` members.
 `ImportInvocation` validates provider results without reading files itself.
 External format providers retain their existing SPI and service registrations.
+
+## Implementation project layout
+
+Concrete file I/O lives in `impl/importer` (`:impl:importer`) and `impl/exporter`
+(`:impl:exporter`). Their JARs and Maven artifact IDs are `importer-impl` and
+`exporter-impl`, under `dev.voxelbrew`; the public `*-api` artifacts are unchanged.
+Java packages remain `dev.voxelbrew.importer` and `dev.voxelbrew.exporter`.
+Frontends compile against the APIs and include the implementations at runtime.
+
+Packaged images retain the `importJar` and `exportJar` metadata keys, now pointing
+to `importer-impl-<version>.jar` and `exporter-impl-<version>.jar`. Internal
+`voxelbrew-import-version.properties` and `voxelbrew-export-version.properties`
+identities remain stable so existing update validation continues to check versions.

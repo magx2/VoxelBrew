@@ -3,8 +3,8 @@
 VoxelBrew uses **Google Dagger 2.60.1** for dependency injection and inversion of
 control. Gradle continues to resolve libraries. The shared Gradle script
 `gradle/di.gradle.kts` supplies the Dagger runtime and a separate annotation-processor
-configuration to util, export, CLI and GUI. Generated sources remain in `build/`.
-Engine, import and all API projects declare no Dagger dependency or DI annotations; their CAD models,
+configuration to util, impl/exporter, CLI and GUI. Generated sources remain in `build/`.
+Engine, impl/importer and all API projects declare no Dagger dependency or DI annotations; their CAD models,
 geometry algorithms, document codecs and plugin contracts stay independently usable.
 
 ## Graphs and ownership

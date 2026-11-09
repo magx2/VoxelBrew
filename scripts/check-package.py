@@ -65,12 +65,12 @@ assert installation["version"] == version and installation["platform"] == expect
 assert installation["engineJar"] == f"engine-{version}.jar", installation
 assert installation["mainJar"] == f"{kind}-{version}.jar", installation
 assert installation["utilJar"] == f"util-{version}.jar", installation
-assert installation["importJar"] == f"import-{version}.jar", installation
-assert installation["exportJar"] == f"export-{version}.jar", installation
+assert installation["importJar"] == f"importer-impl-{version}.jar", installation
+assert installation["exportJar"] == f"exporter-impl-{version}.jar", installation
 for module in ("import-api", "export-api", "slicer-api", "model-api"):
     assert installation[module + "Jar"] == f"{module}-{version}.jar", installation
     assert (app / installation[module + "Jar"]).is_file()
-for jar in (f"engine-{version}.jar", f"util-{version}.jar", f"import-{version}.jar", f"export-{version}.jar", f"{kind}-{version}.jar"):
+for jar in (f"engine-{version}.jar", f"util-{version}.jar", f"importer-impl-{version}.jar", f"exporter-impl-{version}.jar", f"{kind}-{version}.jar"):
     assert (app / jar).is_file(), "Missing application dependency: " + jar
 
 assert list(app.glob("dagger-2.*.jar")), "Dagger runtime is missing"

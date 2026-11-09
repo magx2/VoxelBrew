@@ -3,7 +3,7 @@ plugins {
     `maven-publish`
 }
 
-// Unique project coordinates avoid collisions with :export.
+// Public API publications use separate coordinates from implementation artifacts.
 group = "dev.voxelbrew.api"
 
 dependencies { api(project(":api:model")) }

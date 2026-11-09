@@ -242,10 +242,9 @@ Keep frontend classes out of your public dialog contract.
 
 ## First-party providers and migration
 
-First-party implementations belong in `import`, under `dev.voxelbrew.importer`.
-Add a Dagger `@IntoSet` provider binding in
-[`FileIoModule`](../../export/src/main/java/dev/voxelbrew/exporter/di/FileIoModule.java)
-and include the provider in the standalone `ImporterRegistry(Path)` constructor.
+First-party implementations belong in `impl/importer`, under `dev.voxelbrew.importer`.
+Include the provider in the [`ImporterRegistry(Path)`](../../impl/importer/src/main/java/dev/voxelbrew/importer/ImporterRegistry.java) constructor.
+The runtime supplies this registry to the frontend Dagger composition roots.
 The GUI discovers formats through that registry; no separate GUI format list is needed.
 Keep DI annotations out of public API contracts.
 
@@ -266,8 +265,8 @@ Use real engine evaluation when verifying geometry rather than only checking fea
 From the repository root, the existing API-only consumer fixture and importer tests run with:
 
 ```text
-./gradlew :engine:buildExporterFixture :api:import:test :import:test
-./gradlew :import:integrationTest
+./gradlew :engine:buildExporterFixture :api:import:test :impl:importer:test
+./gradlew :impl:importer:integrationTest
 ```
 
 The integration suite requires the native prerequisites in the [root README](../../README.md).

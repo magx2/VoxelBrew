@@ -14,7 +14,7 @@ marker and step/playback controls. The shared subproject
 `util`, owns translations, user configuration, logging, application updates and
 generic CPU workers. It has no CAD or frontend dependencies; engine and both
 frontends depend on it. See [shared utilities and configuration](docs/shared-utilities.md).
-The `import` and `export` projects own document/G-code reading, document writing,
+The `impl/importer` and `impl/exporter` projects own document/G-code reading, document writing,
 STL/3MF/OBJ mesh exporters, exact STEP export and the slicer file pipeline. The `:api:import` and `:api:export`
 projects publish provider contracts so external JARs can add formats without depending
 on implementation projects. Both file-I/O APIs depend only on the MIT `api/model` module; engine also depends

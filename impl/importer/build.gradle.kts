@@ -3,6 +3,8 @@ plugins {
     `maven-publish`
 }
 
+base { archivesName.set("importer-impl") }
+
 dependencies {
     implementation(project(":engine"))
     api(project(":api:import"))
@@ -31,7 +33,12 @@ tasks.processResources {
 }
 
 publishing {
-    publications { create<MavenPublication>("import") { from(components["java"]) } }
+    publications {
+        create<MavenPublication>("import") {
+            from(components["java"])
+            artifactId = "importer-impl"
+        }
+    }
     repositories {
         maven {
             name = "fixture"

@@ -49,7 +49,7 @@ real-kernel subset from the integration source set.
 
 Reports are under each module's `build/test-results/{test,integrationTest,e2eTest}`
 and `build/reports/tests/{test,integrationTest,e2eTest}`. Screenshots remain in
-`gui/build/ui-artifacts`, slicer evidence in `export/build/printing-artifacts`,
+`gui/build/ui-artifacts`, slicer evidence in `impl/exporter/build/printing-artifacts`,
 and packaged-app evidence in each frontend's `build/package-artifacts`.
 
 ## Parallel execution

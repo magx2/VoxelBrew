@@ -23,10 +23,15 @@ class UpdateTest {
         for (String module : List.of("import", "export", "import-api", "export-api", "slicer-api", "model-api")) {
             var image = image(directory.resolve(module), current);
             Path marker = image.appDirectory().resolve(ApplicationImage.MARKER);
-            Files.writeString(marker, Files.readString(marker) + module + "Jar=" + module + ".jar\n");
+            String artifactName = switch (module) {
+                case "import" -> "importer-impl.jar";
+                case "export" -> "exporter-impl.jar";
+                default -> module + ".jar";
+            };
+            Files.writeString(marker, Files.readString(marker) + module + "Jar=" + artifactName + "\n");
             assertThrows(
                     IOException.class, () -> ApplicationImage.open(image.root(), image.component(), image.platform()));
-            Path artifact = image.appDirectory().resolve(module + ".jar");
+            Path artifact = image.appDirectory().resolve(artifactName);
             jar(artifact, "voxelbrew-" + module + "-version.properties", "version=9.9.9");
             assertThrows(
                     IOException.class, () -> ApplicationImage.open(image.root(), image.component(), image.platform()));

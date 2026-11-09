@@ -18,8 +18,8 @@ val sourceProjects =
         "api/import",
         "api/export",
         "api/slicer",
-        "import",
-        "export",
+        "impl/importer",
+        "impl/exporter",
         "cli",
         "gui",
         "fixtures/exporter-plugin",
@@ -105,6 +105,7 @@ spotless {
             "*/AGENTS.md",
             "api/*.md",
             "api/*/AGENTS.md",
+            "impl/*/*.md",
             "docs/*.md",
             ".github/**/*.yml",
             ".github/scripts/*.cjs",
@@ -146,8 +147,8 @@ allprojects {
     repositories { mavenCentral() }
 }
 
-// The implicit :api parent groups directories; it is not a Java module.
-val libraryProjects = subprojects.filter { it.path != ":api" }
+// The implicit :api and :impl parents group directories; neither is a Java module.
+val libraryProjects = subprojects.filter { it.path !in setOf(":api", ":impl") }
 
 configure(libraryProjects) {
     // Fixture publications share engine/build; its clean must finish before any publisher writes.
@@ -400,12 +401,18 @@ for (module in listOf(":cli", ":gui")) {
                 check(compile.containsAll(listOf(":api:import", ":api:export", ":api:slicer"))) {
                     "$module must compile against file-I/O APIs"
                 }
-                check(compile.intersect(setOf(":import", ":export")).isEmpty()) {
+                check(compile.intersect(setOf(":impl:importer", ":impl:exporter")).isEmpty()) {
                     "$module compiles against file-I/O implementations"
                 }
                 check(
                     runtime.containsAll(
-                        listOf(":api:import", ":api:export", ":api:slicer", ":import", ":export")
+                        listOf(
+                            ":api:import",
+                            ":api:export",
+                            ":api:slicer",
+                            ":impl:importer",
+                            ":impl:exporter",
+                        )
                     )
                 ) {
                     "$module runtime is missing file-I/O JARs"

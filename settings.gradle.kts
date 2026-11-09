@@ -7,8 +7,8 @@ include(
     "api:import",
     "api:export",
     "api:slicer",
-    "import",
-    "export",
+    "impl:importer",
+    "impl:exporter",
     "gui",
     "cli",
 )

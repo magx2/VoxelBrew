@@ -1,36 +1,36 @@
 # Export module
 
-The `:export` Gradle project implements VoxelBrew's document and geometry exporters,
+The `:impl:exporter` Gradle project implements VoxelBrew's document and geometry exporters,
 runtime exporter discovery, and external-slicer file pipeline. Its Java package is
 `dev.voxelbrew.exporter`. Both the JavaFX desktop and headless CLI use this module.
 
-Public plugin contracts live in [`:api:export`](../api/export/README.md), not here. The engine
+Public plugin contracts live in [`:api:export`](../../api/export/README.md), not here. The engine
 owns document codecs, evaluation, native geometry and tessellation; this module owns
 format implementations and file publication. Production dependencies point from
 export to engine, never in the opposite direction.
 
 ## Built-in formats
 
-| Format ID | Output | Implementation |
-| --- | --- | --- |
-| `vxb` | Editable VoxelBrew document, including feature history | `VoxelBrewExporter` / `VoxelBrewExporterProvider` |
-| `json` | Complete document schema as UTF-8 ProtoJSON | `JsonExporter` / `JsonExporterProvider` |
-| `step` | Exact design solids as STEP AP242, in millimeters | `StepExporter` / `StepExporterProvider` |
-| `stl` | Binary STL mesh, in millimeters | `BinaryStlExporter` |
-| `3mf` | Portable 3MF with units and instance placements | `ThreeMfExporter` |
-| `obj` | Wavefront OBJ mesh, with instance transforms applied | `ObjExporter` |
-| `prusa-project` | PrusaSlicer project from a complete manufacturing view | `printing.PrusaProjectExporter` |
+| Format ID       | Output                                                 | Implementation                                    |
+| --------------- | ------------------------------------------------------ | ------------------------------------------------- |
+| `vxb`           | Editable VoxelBrew document, including feature history | `VoxelBrewExporter` / `VoxelBrewExporterProvider` |
+| `json`          | Complete document schema as UTF-8 ProtoJSON            | `JsonExporter` / `JsonExporterProvider`           |
+| `step`          | Exact design solids as STEP AP242, in millimeters      | `StepExporter` / `StepExporterProvider`           |
+| `stl`           | Binary STL mesh, in millimeters                        | `BinaryStlExporter`                               |
+| `3mf`           | Portable 3MF with units and instance placements        | `ThreeMfExporter`                                 |
+| `obj`           | Wavefront OBJ mesh, with instance transforms applied   | `ObjExporter`                                     |
+| `prusa-project` | PrusaSlicer project from a complete manufacturing view | `printing.PrusaProjectExporter`                   |
 
 The native document extension is `.vxb`. Existing `.vxb` documents remain readable.
 **File > Save** uses the native document writer; **File > Export** lists discovered
 exporters through one registry. Exporting JSON or STEP does not change the active
 project path or save counter. STEP exports complete design solids, without print-bed
-placements, supports or editable history. See [file I/O](../docs/file-io.md) and the
-[printing workflow](../docs/printing-workflow.md) for more detail.
+placements, supports or editable history. See [file I/O](../../docs/file-io.md) and the
+[printing workflow](../../docs/printing-workflow.md) for more detail.
 
 ## Write your own exporter
 
-See the [export API developer guide](../api/export/README.md) for the public
+See the [export API developer guide](../../api/export/README.md) for the public
 contract, a complete implementation example, custom dialogs, plugin packaging,
 runtime discovery, first-party registration and validation commands.
 
@@ -81,8 +81,8 @@ the document changes while slicing.
 
 Format and slicing tests live under `src/test/integrationTest`; isolated writer,
 discovery and dialog tests live under `src/test/test`. The independent consumer
-fixture is in [`fixtures/exporter-plugin`](../fixtures/exporter-plugin).
+fixture is in [`fixtures/exporter-plugin`](../../fixtures/exporter-plugin).
 
-See [validation commands](../api/export/README.md#validate-an-exporter) in the API
-guide and the [root README](../README.md) for native build prerequisites. Focused
+See [validation commands](../../api/export/README.md#validate-an-exporter) in the API
+guide and the [root README](../../README.md) for native build prerequisites. Focused
 export tests do not replace full GUI, slicer or packaged-application qualification.

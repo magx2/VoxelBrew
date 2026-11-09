@@ -150,7 +150,7 @@ jobs:
             **/build/reports/
             **/build/test-results/
             gui/build/ui-artifacts/
-            export/build/printing-artifacts/
+            impl/exporter/build/printing-artifacts/
             cli/build/package-artifacts/
             gui/build/package-artifacts/
       - uses: actions/upload-artifact@v4

@@ -64,6 +64,15 @@ val generator =
         )
     else listOf("-G", "Unix Makefiles", "-DCMAKE_CXX_COMPILER=g++-13", "-DCMAKE_C_COMPILER=gcc-13")
 val jobs = providers.gradleProperty("nativeJobs").orElse("4")
+// CI enables this only after restoring an exact native recipe cache match.
+val reuseOcctInstall =
+    providers.gradleProperty("reuseOcctInstall").map(String::toBoolean).orElse(false)
+
+if (reuseOcctInstall.get()) {
+    check(occtInstall.resolve("lib/cmake/opencascade/OpenCASCADEConfig.cmake").isFile) {
+        "Cached OCCT installation missing. Run again without -PreuseOcctInstall=true."
+    }
+}
 
 tasks.withType<Exec>().configureEach {
     if (windows) {
@@ -79,6 +88,9 @@ tasks.withType<Exec>().configureEach {
 
 val configureOcct by
     tasks.registering(Exec::class) {
+        onlyIf("OCCT installation was not restored from an exact recipe cache") {
+            !reuseOcctInstall.get()
+        }
         inputs.file("build.gradle.kts")
         inputs.file(rootProject.file("scripts/native-versions.properties"))
         outputs.file(occtBuild.resolve("CMakeCache.txt"))
@@ -129,6 +141,9 @@ val configureOcct by
 val buildOcct by
     tasks.registering(Exec::class) {
         dependsOn(configureOcct)
+        onlyIf("OCCT installation was not restored from an exact recipe cache") {
+            !reuseOcctInstall.get()
+        }
         inputs.file(occtBuild.resolve("CMakeCache.txt"))
         outputs.dir(occtInstall)
         commandLine(

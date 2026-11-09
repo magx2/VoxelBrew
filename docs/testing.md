@@ -61,6 +61,10 @@ as a starting point and saves the expanded build under a new key. The first run
 after such a change can be slower; subsequent runs reuse the completed build.
 Do not key this cache only by the OCCT version: cache entries are immutable, so
 an exact hit would repeatedly rebuild new toolkits without retaining them.
+On an exact match CI sets `reuseOcctInstall=true` to use the installed libraries
+without reconfiguring or relinking OCCT. The JNI bridge and all verification
+tasks still run normally. Local builds compile OCCT by default; only opt into
+this property when supplying an installation from the same native recipe.
 
 The committed Gradle configuration enables parallel project execution with at most four
 workers. Ordinary commands such as `gradlew.bat test` and `./gradlew check` use this

@@ -70,6 +70,10 @@ jobs:
           restore-keys: |
             occt-v2-${{ runner.os }}-${{ runner.arch }}-${{ inputs.os }}-${{ hashFiles('scripts/native-versions.properties') }}-
             occt-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('scripts/native-versions.properties') }}
+      - name: Reuse exact OCCT installation
+        if: steps.occt-cache.outputs.cache-hit == 'true'
+        shell: bash
+        run: echo "ORG_GRADLE_PROJECT_reuseOcctInstall=true" >> "$GITHUB_ENV"
       - name: Bootstrap Ubuntu
         if: runner.os == 'Linux'
         run: bash scripts/bootstrap-native.sh

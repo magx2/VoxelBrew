@@ -118,7 +118,7 @@ evaluated revision; sketches continue to use stable XY-parallel plane references
 
 In the 2D sketch editor, **V/P/L/R/C/A/S/G** select the selection, point,
 line, rectangle, circle, arc, spline and polygon tools. **F** fits the sketch,
-**Delete** removes the selected constraint, and **Ctrl+Enter** finishes the sketch
+**Delete** removes the selected constraint, and **K** or **Ctrl+Enter** finishes the sketch
 as one document operation. Undo/Redo acts on the sketch draft; Cancel discards it.
 The F1 reference and button tooltips show the same bindings in English or Polish.
 

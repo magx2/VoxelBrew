@@ -21,7 +21,9 @@ final class KeyboardShortcuts {
 
     record Binding(Scope scope, String id, boolean inText, List<KeyCombination> keys) {
         boolean matches(KeyEvent event, boolean editingText) {
-            return (!editingText || inText) && keys.stream().anyMatch(key -> key.match(event));
+            boolean typing = !event.isShortcutDown()
+                    && (event.getCode().isLetterKey() || event.getCode().isDigitKey());
+            return (!editingText || (inText && !typing)) && keys.stream().anyMatch(key -> key.match(event));
         }
 
         String display() {
@@ -80,7 +82,7 @@ final class KeyboardShortcuts {
             binding(Scope.SKETCH, "sketch-undo", false, "Shortcut+Z"),
             binding(Scope.SKETCH, "sketch-redo", false, "Shortcut+Shift+Z", "Shortcut+Y"),
             binding(Scope.SKETCH, "sketch-parameters", true, "Shortcut+Shift+P"),
-            binding(Scope.SKETCH, "constraint-finish", true, "Shortcut+Enter"),
+            binding(Scope.SKETCH, "constraint-finish", true, "Shortcut+Enter", "K"),
             binding(Scope.SKETCH, "sketch-remove-constraint", false, "Delete"),
             binding(Scope.SKETCH, "keyboard-shortcuts", true, "F1"));
 

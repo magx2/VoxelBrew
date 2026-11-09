@@ -12,6 +12,23 @@ import org.junit.jupiter.api.Test;
 
 class KeyboardShortcutsTest {
     @Test
+    void finishSketchLetterPreservesTypingAndModifiedEnter() {
+        var binding = KeyboardShortcuts.BINDINGS.stream()
+                .filter(candidate -> candidate.id().equals("constraint-finish"))
+                .findFirst()
+                .orElseThrow();
+        var letter = new KeyEvent(KeyEvent.KEY_PRESSED, "", "", KeyCode.K, false, false, false, false);
+        assertTrue(binding.matches(letter, false));
+        assertFalse(binding.matches(letter, true));
+        assertEquals("K", KeyboardShortcuts.letter("constraint-finish").orElseThrow());
+        boolean mac = System.getProperty("os.name").startsWith("Mac");
+        var enter = new KeyEvent(KeyEvent.KEY_PRESSED, "", "", KeyCode.ENTER, false, !mac, false, mac);
+        assertTrue(binding.matches(enter, true));
+        assertFalse(
+                binding.matches(new KeyEvent(KeyEvent.KEY_PRESSED, "", "", KeyCode.K, false, true, true, false), true));
+    }
+
+    @Test
     void operationsMenuAllowsActionsWithoutKeyboardBindings() {
         for (var id : List.of("fillet", "chamfer", "shell")) {
             assertTrue(KeyboardShortcuts.menuAccelerator(id).isEmpty(), id);

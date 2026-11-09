@@ -315,6 +315,62 @@ class WorkbenchUiTest {
         click("constraint-cancel");
     }
 
+    @Test
+    void deletingClickedDimensionPreservesGeometryAndSupportsUndoRedo() throws Exception {
+        ready();
+        rectangleDraft(60, 40, 0);
+        click("sketch-tool-select");
+        key(KeyCode.D);
+        sketchClick(0, 0, false);
+        sketchClick(0, 40, false);
+        text("sketch-inline-dimension", "40");
+        key(KeyCode.ENTER);
+        sketchReady();
+        key(KeyCode.ESCAPE);
+        var before = sketchGeometry();
+        var dimension = before.constraints().stream()
+                .filter(c -> c.type() == SketchGeometry.Type.DISTANCE_Y)
+                .findFirst()
+                .orElseThrow();
+        // The point-pair dimension label is 20 screen pixels right of the midpoint.
+        fx(() -> {
+            var midpoint = ((SketchEditor) node("#sketch-editor")).modelToScreen(new SketchGeometry.Vec(0, 20));
+            robot.mouseMove(midpoint.add(20, 0));
+            robot.mouseClick(MouseButton.PRIMARY);
+            return null;
+        });
+        Thread.sleep(150);
+        assertEquals(
+                dimension,
+                fx(() -> ((ListView<?>) node("#sketch-constraints"))
+                        .getSelectionModel()
+                        .getSelectedItem()));
+        key(KeyCode.DELETE);
+        sketchReady();
+        var after = sketchGeometry();
+        assertEquals(before.entities(), after.entities(), "Deleting a dimension must preserve its geometry");
+        assertEquals(before.boundary(), after.boundary());
+        assertEquals(
+                before.constraints().stream()
+                        .filter(c -> !c.id().equals(dimension.id()))
+                        .toList(),
+                after.constraints());
+        click("sketch-undo");
+        sketchReady();
+        assertEquals(before, sketchGeometry());
+        click("sketch-redo");
+        sketchReady();
+        assertEquals(after, sketchGeometry());
+        sketchClick(30, 0, false);
+        key(KeyCode.DELETE);
+        sketchReady();
+        assertEquals(
+                before.entities().size() - 1,
+                sketchGeometry().entities().size(),
+                "Selecting geometry afterwards must still allow geometry deletion");
+        click("constraint-cancel");
+    }
+
     private void dimensionSnapClick(double x, double y, double dx, double dy) throws Exception {
         fx(() -> {
             var target = ((SketchEditor) node("#sketch-editor")).modelToScreen(new SketchGeometry.Vec(x, y));

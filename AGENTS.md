@@ -43,7 +43,8 @@
   `gradlew.bat`; Ubuntu uses `./gradlew` and its own Linux native toolchain.
 - Always run Spotless formatting from the repository root before every commit:
   `.\gradlew.bat spotlessApply` on Windows or `./gradlew spotlessApply` on Ubuntu.
-  Review the resulting changes before staging and committing.
+  Wait for the formatter to succeed, then review the resulting changes before
+  staging and committing. This applies to documentation-only commits too.
 - Do not run the full end-to-end (E2E) test suite unless the user explicitly
   requests it. When E2E validation is relevant, run only the tests covering the
   implemented change; skip E2E tests for changes that do not benefit from them.

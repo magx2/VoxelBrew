@@ -79,16 +79,36 @@ public record PrintProfile(
 
     public PrintProfile {}
 
+    /** Stable profile identity preserving a custom rectangular build volume in the document. */
+    public static String rectangularPrinterId(double width, double depth, double height) {
+        for (double value : new double[] {width, depth, height})
+            if (!Double.isFinite(value) || value <= 0 || value > 10000)
+                throw new IllegalArgumentException("Build dimensions must be greater than 0 and at most 10000 mm");
+        return "generic-marlin-rect-" + width + "x" + depth + "x" + height + "-0.4";
+    }
+
     public static PrintProfile resolve(PrintSetup setup) {
-        if (!setup.printerId().equals("generic-marlin-200-0.4"))
+        double width = 200, depth = 200, height = 200;
+        if (setup.printerId().startsWith("generic-marlin-rect-")
+                && setup.printerId().endsWith("-0.4")) {
+            String[] dimensions = setup.printerId()
+                    .substring(
+                            "generic-marlin-rect-".length(), setup.printerId().length() - 4)
+                    .split("x");
+            if (dimensions.length != 3) throw new IllegalArgumentException("Invalid rectangular printer profile");
+            width = Double.parseDouble(dimensions[0]);
+            depth = Double.parseDouble(dimensions[1]);
+            height = Double.parseDouble(dimensions[2]);
+            rectangularPrinterId(width, depth, height);
+        } else if (!setup.printerId().equals("generic-marlin-200-0.4"))
             throw new IllegalArgumentException("Missing printer profile: " + setup.printerId());
         var printer = new Printer(
                 setup.printerId(),
-                "Generic Marlin 200 × 200 × 200 mm / 0.4 mm",
+                "Generic Marlin " + width + " × " + depth + " × " + height + " mm / 0.4 mm",
                 0.4,
-                List.of(new Point(0, 0), new Point(200, 0), new Point(200, 200), new Point(0, 200)),
+                List.of(new Point(0, 0), new Point(width, 0), new Point(width, depth), new Point(0, depth)),
                 List.of(),
-                200,
+                height,
                 "marlin2",
                 "gcode");
         var material = switch (setup.materialId()) {

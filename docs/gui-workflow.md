@@ -30,7 +30,7 @@ or sketch draft first; closing an edited document offers Save, Discard and Cance
   Ctrl+Shift+S; the document name and unsaved-change dot stay visible at the top.
 - **Edit**: Undo, Redo and Parameters. Undo/Redo also remain on the modeling toolbar.
 - **View**: Fit, standard camera directions and **Appearance → System / Light / Dark**.
-- **Settings**: Language, Updates and **Keyboard shortcuts… (F1)**. Restart after changing the language.
+- **Settings**: Language, Updates and **Keyboard shortcuts…**. Restart after changing the language.
 
 Hover over a button or menu action for a description of its purpose, prerequisites
 and relevant shortcuts. Descriptions and menu captions are available in English
@@ -112,7 +112,7 @@ evaluated revision; sketches continue to use stable XY-parallel plane references
 | E / H / X                       | Extrude / through cut / split body                     |
 | F / 0                           | Fit model / isometric view                             |
 | 1 / 2 / 3 / 4 / 5 / 6           | Top / front / right / back / left / bottom view        |
-| F1                              | Open the translated shortcut reference                 |
+| F1                              | Show context help (shortcut reference inside a sketch) |
 | Enter in a dimension            | Apply or commit the entered value                      |
 | Escape                          | Cancel the active drawing or extrusion tool            |
 
@@ -120,7 +120,7 @@ In the 2D sketch editor, **V/P/L/R/C/A/S/G** select the selection, point,
 line, rectangle, circle, arc, spline and polygon tools. **F** fits the sketch,
 **Delete** removes the selected constraint, and **K** or **Ctrl+Enter** finishes the sketch
 as one document operation. Undo/Redo acts on the sketch draft; Cancel discards it.
-The F1 reference and button tooltips show the same bindings in English or Polish.
+The shortcut reference and button tooltips show the same bindings in English or Polish. F1 shows workspace-specific help in Designer and Slicer.
 
 Letter and view-number shortcuts are inactive in text fields and selection lists;
 modified shortcuts use exact modifiers, so Ctrl+C/V and AltGr text entry keep their

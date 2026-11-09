@@ -1630,8 +1630,7 @@ class WorkbenchUiTest {
                 ((Hyperlink) node("#about-license")).getTooltip().getText().contains("licencję")));
         click("about-close");
         ready();
-        key(KeyCode.ALT); // A focused background menu must not swallow modal Escape.
-        openShortcutHelp();
+        click("keyboard-shortcuts");
         assertNotNull(fx(() -> node("#keyboard-shortcuts-list")));
         assertTrue(fx(() -> node("#keyboard-shortcuts-list").lookupAll(".label").stream()
                 .filter(Label.class::isInstance)
@@ -1886,6 +1885,7 @@ class WorkbenchUiTest {
         sketchReady();
         assertButtonDescriptions();
         click("constraint-cancel");
+        save(directory.resolve("help-workspace.vxb"));
         click("workspace-print");
         for (String tab : List.of("placement", "process", "supports", "job")) {
             click("print-tab-" + tab);
@@ -4573,6 +4573,7 @@ class WorkbenchUiTest {
         }
         key(KeyCode.F);
         assertEquals(part, document(), "Navigation must not edit the document");
+        save(directory.resolve("keyboard-workspace.vxb"));
         shortcut(KeyCode.DIGIT2, false);
         assertEquals(
                 "workspace-print",
@@ -4766,7 +4767,22 @@ class WorkbenchUiTest {
     }
 
     @Test
+    @SuppressWarnings("unchecked")
     void printingSplitPlacementPetgAndActualPreviewMatchCli() throws Exception {
+        ready();
+        click("workspace-design");
+        key(KeyCode.F1);
+        Thread.sleep(500);
+        assertTrue(fx(() -> ((Label) node("#context-help-content")).getText().contains("Create a sketch")));
+        key(KeyCode.ESCAPE);
+        click("workspace-print");
+        assertNotNull(fx(() -> node("#file-path")));
+        key(KeyCode.ESCAPE);
+        assertTrue(fx(() -> ((TabPane) node("#workspaces"))
+                .getSelectionModel()
+                .getSelectedItem()
+                .getId()
+                .equals("workspace-design")));
         openPrepared("rectangle-0.vxb");
         click("extrude");
         ready();
@@ -4788,8 +4804,64 @@ class WorkbenchUiTest {
         assertEquals(1, fx(() -> workbench.controller().build().bodies().size()));
         choice("appearance", 2);
         click("workspace-print");
+        ready();
+        assertFalse(fx(() -> workbench.controller().dirty()));
+        assertTrue(fx(() -> node("#print-instance").isDisabled()));
+        assertTrue(fx(() -> node("#print-support-instance").isDisabled()));
+        assertTrue(fx(() -> node("#print-support-id").isDisabled()));
+        assertEquals("Body 1", fx(() -> {
+            var choice = (ComboBox<String>) node("#print-body");
+            return choice.getConverter().toString(choice.getValue());
+        }));
+        key(KeyCode.F1);
+        assertTrue(fx(() -> ((Label) node("#context-help-content")).getText().contains("Add a CAD body")));
+        key(KeyCode.ESCAPE);
+        click("print-view-3d");
+        assertTrue(fx(() -> ((RadioButton) node("#print-view-3d")).isSelected()));
+        var plateCaption = centerOf("print-plate-size");
+        fx(() -> {
+            robot.mouseMove(plateCaption);
+            robot.mouseClick(MouseButton.PRIMARY);
+            return null;
+        });
+        Thread.sleep(80);
+        fx(() -> {
+            robot.mouseClick(MouseButton.PRIMARY);
+            return null;
+        });
+        Thread.sleep(250);
+        text("print-bed-width", "250");
+        text("print-bed-depth", "220");
+        key(KeyCode.ENTER);
+        ready();
+        assertEquals(
+                250,
+                PrintProfile.resolve(document().printSetup())
+                        .printer()
+                        .bed()
+                        .get(2)
+                        .x());
+        assertEquals(
+                220,
+                PrintProfile.resolve(document().printSetup())
+                        .printer()
+                        .bed()
+                        .get(2)
+                        .y());
+        click("print-view-2d");
         click("print-add");
         ready();
+        click("print-view-3d");
+        fx(() -> {
+            assertEquals(
+                    "Body 1",
+                    ((ComboBox<?>) node("#print-body")).getButtonCell().getText());
+            Screenshot.save(
+                    stage.getScene(),
+                    Path.of(System.getProperty("voxelbrew.ui.artifacts"), "printing-3d-placement.png"));
+            return null;
+        });
+        click("print-view-2d");
         text("print-x", "80");
         text("print-y", "30");
         text("print-rotate-z", "90");
@@ -4814,6 +4886,16 @@ class WorkbenchUiTest {
         ready();
         assertEquals(DocumentReader.load(file), document());
         click("print-tab-job");
+        assertEquals(
+                file.resolveSibling("GUI print setup.gcode").toString(),
+                fx(() -> ((FormulaField) node("#print-output")).getText()));
+        assertEquals(
+                250,
+                PrintProfile.resolve(document().printSetup())
+                        .printer()
+                        .bed()
+                        .get(2)
+                        .x());
         Path job = directory.resolve("GUI printer job.gcode");
         text("print-output", job.toString());
         long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(20);

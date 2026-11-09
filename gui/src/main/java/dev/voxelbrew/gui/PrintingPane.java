@@ -31,6 +31,10 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
     private final dev.voxelbrew.util.i18n.Translations translations;
     private Future<?> validationTask;
     private long validationSequence;
+    private final Label plateSize = new Label();
+    private boolean threeDimensional;
+    private Path outputProject;
+    private double plateWidth = 200, plateDepth = 200;
     private final Canvas canvas = new Canvas();
     private final ComboBox<String> bodies = new ComboBox<>(),
             instances = new ComboBox<>(),
@@ -85,6 +89,19 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
         setId("printing-workspace");
         setPadding(new Insets(8));
         bodies.setId("print-body");
+        UiText.choices(bodies, this::bodyName);
+        bodies.setMinWidth(220);
+        UiText.choices(instances, this::instanceName);
+        UiText.choices(supportOwners, this::instanceName);
+        for (var choice : List.of(bodies, instances, supportOwners)) {
+            choice.setCellFactory(list -> namedCell(choice));
+            choice.setButtonCell(namedCell(choice));
+        }
+        for (var choice : List.of(instances, supportOwners, supportIds)) {
+            choice.setMinWidth(220);
+            choice.disableProperty().bind(javafx.beans.binding.Bindings.isEmpty(choice.getItems()));
+            choice.setPromptText(translations.text(choice == supportIds ? "print.noSupports" : "print.noInstances"));
+        }
         instances.setId("print-instance");
         materials.setId("print-material");
         backends.setId("print-backend");
@@ -143,7 +160,7 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
 
         var process = new VBox(
                 7,
-                new Label(translations.text("gui.generic_marlin_200_200_200_mm_0_4_mm_nozzle")),
+                new Label(translations.text("print.printer")),
                 new Label(translations.text("gui.material")),
                 materials,
                 row("print-layer-height", translations.text("gui.layer_height_mm"), "0.2"),
@@ -217,10 +234,7 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
         var job = new VBox(
                 7,
                 row("print-executable", translations.text("gui.slicer_executable"), ""),
-                row(
-                        "print-output",
-                        translations.text("gui.g_code_destination"),
-                        Path.of(System.getProperty("user.home"), "part.gcode").toString()),
+                row("print-output", translations.text("gui.g_code_destination"), ""),
                 overwrite,
                 new HBox(8, slice, cancel),
                 button(
@@ -264,7 +278,34 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
         canvas.heightProperty().bind(center.heightProperty());
         canvas.widthProperty().addListener((o, a, b) -> draw());
         canvas.heightProperty().addListener((o, a, b) -> draw());
-        setCenter(center);
+        var viewMode = new ToggleGroup();
+        var topView = new RadioButton("2D");
+        var solidView = new RadioButton("3D");
+        topView.setId("print-view-2d");
+        solidView.setId("print-view-3d");
+        topView.setToggleGroup(viewMode);
+        solidView.setToggleGroup(viewMode);
+        topView.setSelected(true);
+        viewMode.selectedToggleProperty().addListener((o, a, b) -> {
+            threeDimensional = b == solidView;
+            draw();
+        });
+        plateSize.setId("print-plate-size");
+        plateSize.setTooltip(new Tooltip(translations.text("print.editPlate")));
+        plateSize.setOnMouseClicked(e -> {
+            plateSize.requestFocus();
+            if (e.getClickCount() == 2) editPlate();
+        });
+        plateSize.setFocusTraversable(true);
+        plateSize.setOnKeyPressed(e -> {
+            if (e.getCode() == javafx.scene.input.KeyCode.ENTER) {
+                editPlate();
+                e.consume();
+            }
+        });
+        var preview = new BorderPane(center);
+        preview.setTop(new HBox(12, topView, solidView, plateSize));
+        setCenter(preview);
         layer.setId("print-layer");
         layer.setBlockIncrement(1);
         layer.valueProperty().addListener((o, a, b) -> draw());
@@ -497,7 +538,7 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
                 integer("print-raft"));
         commit(setup().withProfile(
                         backend.id(),
-                        "generic-marlin-200-0.4",
+                        setup().printerId(),
                         Objects.requireNonNull(materials.getValue(), translations.text("gui.choose_a_material")),
                         process));
     }
@@ -561,20 +602,32 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
     void documentChanged() {
         if (closed) return;
         var snapshot = document.snapshot().document();
+        if (!Objects.equals(outputProject, document.path())) {
+            outputProject = document.path();
+            fields.get("print-output")
+                    .setText(
+                            outputProject == null
+                                    ? ""
+                                    : jobDestination(outputProject).toString());
+        }
+        var printer = PrintProfile.resolve(setup()).printer();
+        plateWidth = printer.bed().get(2).x();
+        plateDepth = printer.bed().get(2).y();
+        plateSize.setText(String.format(Locale.ROOT, "%.1f \u00d7 %.1f mm", plateWidth, plateDepth));
         jobs.documentChanged(snapshot);
         if (document.rebuilding()) jobs.invalidateGeometry();
         updating = true;
         try {
             if (lastBuild != document.build()) {
                 String selected = bodies.getValue();
+                bodies.getSelectionModel().clearSelection();
                 bodies.getItems()
                         .setAll(document.build().bodies().stream()
                                 .map(DocumentController.Body::id)
                                 .toList());
-                bodies.setValue(
-                        selected == null
-                                ? bodies.getItems().stream().findFirst().orElse(null)
-                                : selected);
+                if (!bodies.getItems().isEmpty())
+                    bodies.getSelectionModel()
+                            .select(Math.max(0, bodies.getItems().indexOf(selected)));
                 lastBuild = document.build();
             }
             if (!setup().equals(lastSetup)) {
@@ -596,6 +649,9 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
                         .setAll(setup().supports().stream()
                                 .map(SupportVolume::id)
                                 .toList());
+                if (!supportIds.getItems().contains(supportIds.getValue()))
+                    supportIds.setValue(
+                            supportIds.getItems().stream().findFirst().orElse(null));
                 materials.setValue(setup().materialId());
                 backends.setValue(backends.getItems().stream()
                         .filter(b -> b.id().equals(setup().backendId()))
@@ -722,33 +778,43 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
         graphics.setFill(dark ? Color.web("#182028") : Color.web("#edf1f4"));
         graphics.fillRect(0, 0, w, h);
         if (w < 1 || h < 1) return;
-        double scale = Math.max(0.01, Math.min((w - 48) / 200, (h - 48) / 200)),
-                ox = (w - 200 * scale) / 2,
-                oy = (h + 200 * scale) / 2;
+        double extentX = threeDimensional ? plateWidth + plateDepth : plateWidth;
+        double extentY = threeDimensional
+                ? (plateWidth + plateDepth) * 0.5
+                        + PrintProfile.resolve(setup()).printer().usableHeight()
+                : plateDepth;
+        double scale = Math.max(0.001, Math.min((w - 48) / extentX, (h - 48) / extentY));
+        double ox = threeDimensional ? (w - (plateWidth - plateDepth) * scale) / 2 : (w - plateWidth * scale) / 2;
+        double oy = threeDimensional ? h - 30 : (h + plateDepth * scale) / 2;
         graphics.setStroke(dark ? Color.web("#3b4651") : Color.web("#bac4cc"));
         graphics.setLineWidth(1);
-        for (int n = 0; n <= 200; n += 10) {
-            graphics.strokeLine(ox + n * scale, oy, ox + n * scale, oy - 200 * scale);
-            graphics.strokeLine(ox, oy - n * scale, ox + 200 * scale, oy - n * scale);
-        }
+        double grid = Math.max(10, Math.ceil(Math.max(plateWidth, plateDepth) / 100 / 10) * 10);
+        for (double n = 0; n < plateWidth; n += grid) line(ox, oy, scale, n, 0, 0, n, plateDepth, 0);
+        for (double n = 0; n < plateDepth; n += grid) line(ox, oy, scale, 0, n, 0, plateWidth, n, 0);
+        line(ox, oy, scale, plateWidth, 0, 0, plateWidth, plateDepth, 0);
+        line(ox, oy, scale, 0, plateDepth, 0, plateWidth, plateDepth, 0);
         graphics.setFill(dark ? Color.LIGHTGRAY : Color.DARKSLATEGRAY);
         graphics.fillText("0,0", ox, oy + 16);
-        graphics.fillText("200 × 200 mm", ox, oy - 200 * scale - 8);
         if (displayed != null && !previewLayers.isEmpty()) {
             int index = Math.min(previewLayers.size() - 1, (int) Math.round(layer.getValue()));
             double z = previewLayers.get(index);
             layerLabel.setText(translations.text(
                     "print.layer", index + 1, previewLayers.size(), String.format(Locale.ROOT, "%.3f", z)));
             for (var segment : displayed.job().segments())
-                if (Math.abs(segment.z1() - z) < 1e-5
+                if ((threeDimensional ? segment.z1() <= z + 1e-5 : Math.abs(segment.z1() - z) < 1e-5)
                         && roles.get(segment.role()).isSelected()) {
                     graphics.setStroke(color(segment.role()));
                     graphics.setLineWidth(segment.deposits() ? Math.max(1, segment.width() * scale) : 0.5);
-                    graphics.strokeLine(
-                            ox + segment.x0() * scale,
-                            oy - segment.y0() * scale,
-                            ox + segment.x1() * scale,
-                            oy - segment.y1() * scale);
+                    line(
+                            ox,
+                            oy,
+                            scale,
+                            segment.x0(),
+                            segment.y0(),
+                            segment.z0(),
+                            segment.x1(),
+                            segment.y1(),
+                            segment.z1());
                 }
         } else {
             layerLabel.setText(translations.text("gui.build_placement_slice_to_preview_actual_toolpaths"));
@@ -762,8 +828,9 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
                     double[] x = new double[3], y = new double[3];
                     for (int c = 0; c < 3; c++) {
                         int v = mesh.vertexIndex(t, c);
-                        x[c] = ox + mesh.coordinate(v, 0) * scale;
-                        y[c] = oy - mesh.coordinate(v, 1) * scale;
+                        x[c] = ox + projectX(mesh.coordinate(v, 0), mesh.coordinate(v, 1)) * scale;
+                        y[c] = oy
+                                - projectY(mesh.coordinate(v, 0), mesh.coordinate(v, 1), mesh.coordinate(v, 2)) * scale;
                     }
                     graphics.fillPolygon(x, y, 3);
                 }
@@ -783,14 +850,113 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
                 for (int t = 0; t < box.triangleCount(); t++)
                     for (int c = 0; c < 3; c++) {
                         int a = box.vertexIndex(t, c), b = box.vertexIndex(t, (c + 1) % 3);
-                        graphics.strokeLine(
-                                ox + box.coordinate(a, 0) * scale,
-                                oy - box.coordinate(a, 1) * scale,
-                                ox + box.coordinate(b, 0) * scale,
-                                oy - box.coordinate(b, 1) * scale);
+                        line(
+                                ox,
+                                oy,
+                                scale,
+                                box.coordinate(a, 0),
+                                box.coordinate(a, 1),
+                                box.coordinate(a, 2),
+                                box.coordinate(b, 0),
+                                box.coordinate(b, 1),
+                                box.coordinate(b, 2));
                     }
             }
         }
+    }
+
+    static Path jobDestination(Path project) {
+        String name = project.getFileName().toString();
+        int extension = name.lastIndexOf('.');
+        return project.resolveSibling((extension > 0 ? name.substring(0, extension) : name) + ".gcode");
+    }
+
+    private ListCell<String> namedCell(ComboBox<String> choice) {
+        return new ListCell<>() {
+            @Override
+            protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                setText(
+                        empty || item == null
+                                ? choice.getPromptText()
+                                : choice.getConverter().toString(item));
+                setGraphic(null);
+            }
+        };
+    }
+
+    private String bodyName(String id) {
+        int index = 1;
+        for (var body : document.build().bodies()) {
+            if (body.id().equals(id))
+                return document.snapshot().document().bodyName(id, translations.text("feature.body", index));
+            index++;
+        }
+        return id;
+    }
+
+    private String instanceName(String id) {
+        for (int i = 0; i < setup().instances().size(); i++) {
+            var instance = setup().instances().get(i);
+            if (instance.id().equals(id)) return bodyName(instance.bodyId()) + " (" + (i + 1) + ")";
+        }
+        return id;
+    }
+
+    private void editPlate() {
+        var dialog = new Dialog<ButtonType>();
+        dialog.initOwner(getScene().getWindow());
+        dialog.setTitle(translations.text("print.editPlate"));
+        var width = new TextField(Double.toString(plateWidth));
+        var depth = new TextField(Double.toString(plateDepth));
+        var height = new TextField(
+                Double.toString(PrintProfile.resolve(setup()).printer().usableHeight()));
+        width.setId("print-bed-width");
+        depth.setId("print-bed-depth");
+        height.setId("print-bed-height");
+        var error = new Label();
+        dialog.getDialogPane()
+                .setContent(new VBox(
+                        8,
+                        new Label(translations.text("print.width")),
+                        width,
+                        new Label(translations.text("print.depth")),
+                        depth,
+                        new Label(translations.text("print.height")),
+                        height,
+                        error));
+        dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
+        dialog.getDialogPane().lookupButton(ButtonType.OK).addEventFilter(javafx.event.ActionEvent.ACTION, event -> {
+            try {
+                String printer = PrintProfile.rectangularPrinterId(
+                        Double.parseDouble(width.getText()),
+                        Double.parseDouble(depth.getText()),
+                        Double.parseDouble(height.getText()));
+                commit(setup().withProfile(setup().backendId(), printer, setup().materialId(), setup().process()));
+            } catch (IllegalArgumentException failure) {
+                error.setText(translations.text("print.invalidDimensions"));
+                event.consume();
+            }
+        });
+        Dialogs.show(dialog, getScene().getWindow(), translations);
+    }
+
+    private double projectX(double x, double y) {
+        return threeDimensional ? x - y : x;
+    }
+
+    private double projectY(double x, double y, double z) {
+        return threeDimensional ? (x + y) * 0.5 + z : y;
+    }
+
+    private void line(
+            double ox, double oy, double scale, double x0, double y0, double z0, double x1, double y1, double z1) {
+        canvas.getGraphicsContext2D()
+                .strokeLine(
+                        ox + projectX(x0, y0) * scale,
+                        oy - projectY(x0, y0, z0) * scale,
+                        ox + projectX(x1, y1) * scale,
+                        oy - projectY(x1, y1, z1) * scale);
     }
 
     private static Color color(GcodeJob.Role role) {

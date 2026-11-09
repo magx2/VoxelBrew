@@ -46,7 +46,21 @@ axis-aligned plane and signed offset; the two outputs are `negative` and
 CLI: `cli split part.vxb --id halves --body-feature cut --axis X --offset 30`.
 Each half exports separately with `--body halves.negative` or `halves.positive`.
 
-The **Print** workspace has Placement, Process, Supports and Job tabs. Add a CAD
+The **Slicer** workspace has Placement, Process, Supports and Job tabs. Entering
+Slicer saves the project first; cancelling Save As keeps Designer open. F1 shows
+help for the current workspace. The full shortcut reference remains in Settings.
+The Job destination defaults to the project folder and basename with `.gcode`.
+
+Use **2D** for the top view or **3D** for the isometric plate and placed geometry.
+After slicing, 2D shows the selected layer and 3D shows paths up to that layer.
+Double-click the dimensions above the plate (or focus them and press Enter) to
+edit width, depth and usable height in millimeters. Dimensions must be positive
+and at most 10000 mm. The custom rectangular Marlin profile is persisted in the
+printer reference; preview, preflight and slicer export use the same dimensions.
+
+Body choices use the names from Designer. Instance choices show that body name
+and an instance number. Empty instance/support selectors are disabled and explain
+what to add first. Add a CAD
 body as an instance, enter translations (mm) and rotations (degrees), duplicate,
 or lay a current planar face on the bed. Pick the face in Design first, then use
 its revision-local ID. Placements never change CAD coordinates. All these edits

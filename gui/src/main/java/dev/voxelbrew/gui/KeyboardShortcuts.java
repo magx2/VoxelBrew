@@ -53,7 +53,7 @@ final class KeyboardShortcuts {
             binding(Scope.DOCUMENT, "parameters", true, "Shortcut+Shift+P"),
             binding(Scope.DOCUMENT, "workspace-design", true, "Shortcut+1"),
             binding(Scope.DOCUMENT, "workspace-print", true, "Shortcut+2"),
-            binding(Scope.DOCUMENT, "keyboard-shortcuts", true, "F1"),
+            binding(Scope.DOCUMENT, "context-help", true, "F1"),
             binding(Scope.DESIGN, "constrained-sketch", false, "K"),
             binding(Scope.DESIGN, "operations-menu", false, "O"),
             binding(Scope.DESIGN, "construction-menu", false, "C"),

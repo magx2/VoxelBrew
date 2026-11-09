@@ -666,6 +666,18 @@ public final class Workbench extends BorderPane implements AutoCloseable {
         printTab.setTooltip(UiHelp.tooltip(UiHelp.description(translations, "workspace-print")));
         workspaces.setId("workspaces");
         workspaces.getSelectionModel().selectedItemProperty().addListener((o, a, b) -> {
+            if (b == printTab && (controller.path() == null || controller.dirty())) {
+                javafx.application.Platform.runLater(() -> {
+                    workspaces.getSelectionModel().select(designTab);
+                    save(false)
+                            .thenRun(() -> {
+                                if (controller.path() != null && !controller.dirty())
+                                    workspaces.getSelectionModel().select(printTab);
+                            })
+                            .exceptionally(failure -> null);
+                });
+                return;
+            }
             cancelTool();
             printing.documentChanged();
         });
@@ -744,7 +756,23 @@ public final class Workbench extends BorderPane implements AutoCloseable {
                     case "parameters" -> parameters.fire();
                     case "workspace-design" -> workspaces.getSelectionModel().select(designTab);
                     case "workspace-print" -> workspaces.getSelectionModel().select(printTab);
-                    case "keyboard-shortcuts" -> KeyboardShortcuts.show(stage, translations);
+                    case "context-help" -> {
+                        var help = new Alert(Alert.AlertType.INFORMATION);
+                        help.initOwner(stage);
+                        help.setTitle(
+                                translations.text(printTab.isSelected() ? "help.slicer.title" : "help.designer.title"));
+                        help.setHeaderText(null);
+                        help.setContentText(translations.text(
+                                printTab.isSelected() ? "help.slicer.content" : "help.designer.content"));
+                        help.getDialogPane().setPrefWidth(600);
+                        help.getDialogPane().getButtonTypes().setAll(ButtonType.CLOSE);
+                        help.getDialogPane().lookupButton(ButtonType.CLOSE).setId("context-help-close");
+                        var content = new Label(help.getContentText());
+                        content.setId("context-help-content");
+                        content.setWrapText(true);
+                        help.getDialogPane().setContent(content);
+                        Dialogs.show(help, stage, translations);
+                    }
                     default -> throw new IllegalStateException(action);
                 }
                 return;

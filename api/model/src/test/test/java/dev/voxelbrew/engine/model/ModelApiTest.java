@@ -11,6 +11,22 @@ import org.junit.jupiter.api.Test;
 
 class ModelApiTest {
     @Test
+    void customBuildVolumeResolvesAndRejectsInvalidDimensions() {
+        var setup = CadDocument.empty().printSetup();
+        var custom = setup.withProfile(
+                setup.backendId(),
+                PrintProfile.rectangularPrinterId(250, 220, 300),
+                setup.materialId(),
+                setup.process());
+        var printer = PrintProfile.resolve(custom).printer();
+        assertEquals(new PrintProfile.Point(250, 220), printer.bed().get(2));
+        assertEquals(300, printer.usableHeight());
+        assertEquals(200, PrintProfile.resolve(setup).printer().usableHeight());
+        for (double value : new double[] {0, -1, Double.NaN, Double.POSITIVE_INFINITY, 10001})
+            assertThrows(IllegalArgumentException.class, () -> PrintProfile.rectangularPrinterId(value, 200, 200));
+    }
+
+    @Test
     void createsDocumentAndDetachedManufacturingValuesWithoutApplicationModules() {
         var document = CadDocument.empty();
         assertEquals(0, document.cursor());

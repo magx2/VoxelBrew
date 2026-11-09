@@ -16,6 +16,32 @@ class WindowResourcesTest {
     Path directory;
 
     @Test
+    @org.junit.jupiter.api.parallel.ResourceLock(org.junit.jupiter.api.parallel.Resources.SYSTEM_PROPERTIES)
+    void windowLoadsExportersFromDefaultUserPluginDirectory() throws Exception {
+        String home = System.getProperty("user.home");
+        String override = System.getProperty("voxelbrew.home");
+        try {
+            System.setProperty("user.home", directory.toString());
+            System.clearProperty("voxelbrew.home");
+            Path plugins = java.nio.file.Files.createDirectories(directory.resolve(".voxelbrew/plugins"));
+            java.nio.file.Files.copy(
+                    Path.of(System.getProperty("voxelbrew.test.plugin")), plugins.resolve("provider.jar"));
+            var resources = new WindowResources(
+                    ExporterRegistry.defaultDirectory(), ExporterRegistry::new, SlicerRegistry::new);
+            try {
+                assertTrue(resources.exporters.contains("document-probe"));
+            } finally {
+                resources.close();
+                resources.whenClosed().toCompletableFuture().get(10, TimeUnit.SECONDS);
+            }
+        } finally {
+            System.setProperty("user.home", home);
+            if (override == null) System.clearProperty("voxelbrew.home");
+            else System.setProperty("voxelbrew.home", override);
+        }
+    }
+
+    @Test
     void shutdownSignalsCompletionOnlyAfterCapturedWorkHasDrained() throws Exception {
         var resources = new WindowResources(directory, ExporterRegistry::new, SlicerRegistry::new);
         var entered = new CountDownLatch(1);

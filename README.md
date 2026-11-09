@@ -271,6 +271,14 @@ validation. See [agent roles and usage](docs/codex-agents.md) and
 
 ## Export and plugins
 
+Install plugin JARs directly in `~/.voxelbrew/plugins` (`%USERPROFILE%\.voxelbrew\plugins`
+on Windows). GUI and CLI discover providers there automatically; no classpath
+changes or `--plugin-dir` argument are needed. Exporters, importers, feature
+providers and slicers use this directory. An absent or empty directory is fine.
+Use `--plugin-dir` to select a different directory, or `-Dvoxelbrew.home=...`
+to relocate all user data, including the `plugins` subdirectory. Plugins must
+register their providers through the corresponding `META-INF/services` entries.
+
 After `:cli:installDist`, run `cli exporters` and
 `cli export fixtures/reference-8mm.jcad --format 3mf --output plate.3mf`
 using the installed launcher above. See [the export API and commands](docs/export-workflow.md)

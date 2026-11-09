@@ -12,7 +12,7 @@ import dev.voxelbrew.engine.sketch.Sketches;
 import dev.voxelbrew.exporter.DocumentWriter;
 import dev.voxelbrew.importer.DocumentReader;
 import dev.voxelbrew.importer.GcodeReader;
-import dev.voxelbrew.slicer.PrusaSlicerBackend;
+import dev.voxelbrew.slicer.prusa.PrusaSlicerBackend;
 import dev.voxelbrew.util.Version;
 import java.nio.ByteBuffer;
 import java.nio.file.*;

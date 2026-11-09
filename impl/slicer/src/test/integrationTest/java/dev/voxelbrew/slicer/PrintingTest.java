@@ -9,6 +9,7 @@ import dev.voxelbrew.engine.printing.*;
 import dev.voxelbrew.exporter.DocumentWriter;
 import dev.voxelbrew.exporter.printing.*;
 import dev.voxelbrew.importer.DocumentReader;
+import dev.voxelbrew.slicer.prusa.PrusaSlicerBackend;
 import java.nio.file.*;
 import java.util.*;
 import org.junit.jupiter.api.Test;

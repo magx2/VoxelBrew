@@ -3,6 +3,7 @@ package dev.voxelbrew.slicer;
 import dev.voxelbrew.slicer.api.*;
 import dev.voxelbrew.slicer.api.SlicerCatalog;
 import dev.voxelbrew.slicer.api.Slicing;
+import dev.voxelbrew.slicer.prusa.PrusaSlicerBackend;
 import java.nio.file.Path;
 
 /** Runtime implementation; the public API has no dependency on this module. */

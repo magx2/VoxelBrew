@@ -8,6 +8,7 @@ import dev.voxelbrew.exporter.*;
 import dev.voxelbrew.exporter.api.*;
 import dev.voxelbrew.exporter.printing.*;
 import dev.voxelbrew.slicer.api.SlicerBackend;
+import dev.voxelbrew.slicer.prusa.PrusaSlicerBackend;
 import java.io.IOException;
 import java.nio.file.*;
 import java.util.*;

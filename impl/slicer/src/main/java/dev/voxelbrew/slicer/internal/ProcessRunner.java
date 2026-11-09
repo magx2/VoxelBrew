@@ -1,4 +1,4 @@
-package dev.voxelbrew.slicer;
+package dev.voxelbrew.slicer.internal;
 
 import dev.voxelbrew.engine.printing.*;
 import java.io.*;
@@ -10,10 +10,10 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
 @lombok.extern.slf4j.Slf4j
-final class ProcessRunner {
+public final class ProcessRunner {
     private ProcessRunner() {}
 
-    static String run(List<String> arguments, Path directory, Cancellation cancellation, Consumer<String> sink)
+    public static String run(List<String> arguments, Path directory, Cancellation cancellation, Consumer<String> sink)
             throws IOException {
         cancellation.check();
         var builder = new ProcessBuilder(arguments).redirectErrorStream(true);

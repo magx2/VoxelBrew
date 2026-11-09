@@ -12,6 +12,8 @@ import dev.voxelbrew.exporter.ModelViews;
 import dev.voxelbrew.exporter.printing.*;
 import dev.voxelbrew.importer.DocumentReader;
 import dev.voxelbrew.importer.GcodeReader;
+import dev.voxelbrew.slicer.internal.ProcessRunner;
+import dev.voxelbrew.slicer.prusa.PrusaSlicerBackend;
 import java.nio.file.*;
 import java.util.*;
 import org.junit.jupiter.api.Test;

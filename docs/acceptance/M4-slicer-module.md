@@ -54,3 +54,36 @@ Prusa's prior hardware limitations remain unchanged.
 No GUI gesture, packaged-image, macOS or Linux E2E checks were run. Only the
 relevant Windows CLI E2E test ran; the full E2E suite and full root `check` were
 not run for this follow-up increment.
+
+## Backend package split (2026-11-10)
+
+Prusa and Cura implementations now live in `dev.voxelbrew.slicer.prusa` and
+`dev.voxelbrew.slicer.cura`. Shared process execution lives in
+`dev.voxelbrew.slicer.internal`; discovery and job orchestration remain in the
+root slicer package. ServiceLoader registrations and frontend test imports use
+the new names. The Cura settings test moved alongside its backend, preserving
+package-private access. Backend IDs, plugin contracts and slicing behavior are
+unchanged.
+
+Passed on Windows:
+
+```powershell
+$env:GRADLE_USER_HOME = "$PWD/.tools/gradle-home"
+.\gradlew.bat spotlessApply :impl:slicer:test :impl:slicer:integrationTest :gui:compileIntegrationTestJava :gui:compileE2eTestJava :cli:compileE2eTestJava --console=plain
+```
+
+Passed with the same sources in the separate Ubuntu checkout
+`/tmp/voxelbrew-slicer-packages.cEx8mv`:
+
+```bash
+./gradlew :impl:slicer:test :impl:slicer:integrationTest :gui:compileIntegrationTestJava :gui:compileE2eTestJava :cli:compileE2eTestJava -x :engine:buildNative --console=plain
+```
+
+Ubuntu reused the Linux runtime from `/tmp/voxelbrew-slicer.4vProp` after
+`diff -qr` confirmed matching `engine/native` sources. Both platforms passed
+real-Prusa integration tests and provider discovery/configuration tests.
+Cura remains covered by configuration tests, without real-engine qualification.
+Frontend E2E sources were compiled; no E2E tests or full root checks were run
+for this package-only refactor. Logs are `.tools/slicer-packages-windows.log`
+and `.tools/slicer-packages-linux.log`; test reports are under
+`impl/slicer/build/reports/tests` in each checkout.

@@ -1,4 +1,4 @@
-﻿# M14 — Construction geometry qualification
+# M14 — Construction geometry qualification
 
 The twenty commands in [the workflow](../construction.md) are implemented with
 editable history, headless evaluation, persistence, reference selection and
@@ -53,7 +53,7 @@ slicing, package smoke checks and release archive checks.
 ## Artifacts
 
 Windows logs: `.tools/construction-windows/construction-check-serial.log`.
-Ubuntu log: `/tmp/voxelbrew-construction-check.log`.
+Original Ubuntu log: `/tmp/voxelbrew-construction-qualified-check.log`.
 Reports in either checkout: `gui/build/reports/tests/e2eTest/index.html` and
 `engine/build/reports/tests/integrationTest/index.html`.
 Screenshot: `gui/build/ui-artifacts/constructionMenuCreatesEditablePlaneAndCancelsDraftWithoutHistory-last.png`.
@@ -75,3 +75,46 @@ Analytic surface support, straight-edge intersection contracts, single-edge path
 and topology enumeration limits are documented in the workflow. Arbitrary spline
 surface tangency and general persistent topology naming are not claimed.
 macOS, installer interaction and physical printing are unqualified.
+
+## Integration with concurrent commits
+
+The qualified feature commit is `5ef84b6`. The integration combines it with
+`87b0bf2` (including the new prepared GUI documents, workspace labels, built-in
+parameters and interactive sketch dimensions). Conflict resolution preserves
+both sets of features. The additional integration fixes are:
+
+- Expect the new save counter increment in the existing measurement fixture test.
+- Use Save As when a Robot helper requests an explicit destination for a document
+  that may already have a filename.
+- Select point references through the real reference controls when dimension
+  annotations overlap the origin in the existing constrained-sketch test.
+- Install localized help on the newly introduced built-in-parameter checkbox.
+
+The two previously failing GUI cases and the help regression test passed on both
+Windows (2m 3s) and Ubuntu (1m 47s):
+
+```text
+:gui:e2eTest --tests '*constrainedSketchDimensionsConflictsHistoryAndFilesUseRealControls' --tests '*polishWorkbenchDialogsSketchPrintingAndLanguagePreferenceUseRealControls' :gui:test --tests '*UiHelpTest' --offline --no-daemon --no-parallel --max-workers=1
+```
+
+Use the Windows environment above and `gradlew.bat`; on Ubuntu use the virtual
+desktop wrapper and add `-PnativeJobs=6`.
+Logs: `.tools/construction-windows/construction-merge-targeted.log` and
+`/tmp/voxelbrew-construction-merge-targeted.log`.
+
+The final integrated **full Ubuntu check passed** in 23m 59s, with 152 tasks and
+**321 JUnit tests, zero failures and zero skipped tests**. The command is the full
+Ubuntu command above; log: `/tmp/voxelbrew-construction-check.log`.
+
+The final integrated Windows full check was interrupted after consecutive Robot
+mouse-delivery failures. A native foreground-window query found another desktop
+application active, with no stuck modifier keys. Earlier integrated runs exposed
+the test/help issues listed above; the subsequent focused runs passed. The
+construction workflow and real geometry tests passed in the integrated Windows
+runs. **A successful full Windows rerun of the final integrated tree is still
+pending an uninterrupted desktop**; the original 303-test full Windows pass
+qualifies `5ef84b6`, not the concurrent changes. Log of the interrupted run:
+`.tools/construction-windows/construction-merged-check.log`.
+
+The source commits and package artifacts are retained locally. Unrelated working
+tree edits are not part of this qualification or the construction commit.

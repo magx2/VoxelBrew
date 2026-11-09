@@ -18,7 +18,23 @@ class ParameterSuggestionsTest {
                 .put("width", ParameterUnit.MM, "4", "");
         assertEquals(List.of("x.bo", "x.fo"), ParameterSuggestions.matches(p, "x."));
         assertEquals(
-                List.of("width", "x.bo", "x.fo", "y.fo"),
+                List.of(
+                        "width",
+                        "vb.date",
+                        "vb.date_time",
+                        "vb.os.arch",
+                        "vb.os.name",
+                        "vb.os.version",
+                        "vb.project.filename",
+                        "vb.project.folder",
+                        "vb.project.name",
+                        "vb.project.path",
+                        "vb.project.version",
+                        "vb.time",
+                        "vb.version",
+                        "x.bo",
+                        "x.fo",
+                        "y.fo"),
                 ParameterDialog.groupedParameters(p).stream()
                         .map(ParameterSet.Parameter::name)
                         .toList());

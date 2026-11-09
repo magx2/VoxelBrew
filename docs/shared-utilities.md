@@ -40,6 +40,8 @@ logging.file.limit=20971520
 logging.file.count=10
 ```
 
+The `save.folder` configuration parameter selects the initial folder for saving new documents. Missing or blank values use `~/VoxelBrew`. A leading `~/` expands to the user home directory. Existing documents retain their current path. Set this property in `~/.voxelbrew/config.properties`; changes apply immediately.
+
 Appearance accepts `SYSTEM`, `LIGHT`, `DARK`; the GUI writes changes through
 `UserConfiguration` and migrates an existing Java Preferences value only when
 the new key is absent. Unknown keys survive writes. Independent CLI/GUI processes

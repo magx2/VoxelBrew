@@ -44,6 +44,17 @@ final class SketchEditor extends BorderPane implements AutoCloseable {
 
     private record Badge(Constraint constraint, double x, double y) {}
 
+    private record DimensionHit(
+            Constraint constraint,
+            Vec label,
+            double x,
+            double y,
+            double width,
+            double ax,
+            double ay,
+            double bx,
+            double by) {}
+
     private final SketchController controller;
     private final dev.voxelbrew.util.UuidGenerator uuidGenerator;
     private final dev.voxelbrew.util.i18n.Translations translations;
@@ -85,6 +96,13 @@ final class SketchEditor extends BorderPane implements AutoCloseable {
     private Runnable dismiss = () -> {};
     private Draw tool = Draw.SELECT;
     private Type activeConstraint;
+    private boolean dimensionTool;
+    private HBox dimensionEntry;
+    private Vec dimensionEntryPosition;
+    private final Map<String, Vec> dimensionPositions = new HashMap<>();
+    private final List<DimensionHit> dimensionHits = new ArrayList<>();
+    private DimensionHit draggedDimension;
+    private Vec previousDimensionPosition;
     private Ref dragPoint;
     private boolean boxCandidate, boxSelecting, boxAdditive;
     private Vec cursor = new Vec(0, 0);
@@ -129,7 +147,8 @@ final class SketchEditor extends BorderPane implements AutoCloseable {
         javafx.event.EventHandler<KeyEvent> escape = event -> {
             if (event.getCode() == KeyCode.ESCAPE && WindowFrame.content(scene) == host) {
                 event.consume();
-                editor.cancelDrawing();
+                if (editor.dimensionEntry != null) editor.closeDimensionEntry();
+                else editor.cancelDrawing();
             }
         };
         stage.addEventFilter(KeyEvent.KEY_PRESSED, escape);
@@ -267,6 +286,8 @@ final class SketchEditor extends BorderPane implements AutoCloseable {
             selectionChanged();
         });
         tools.getChildren().add(createType);
+        tools.getChildren()
+                .add(button(translations.text("gui.sketch_dimension"), "sketch-dimension", this::startDimension));
         splineDegree.getItems().setAll(3, 5);
         splineDegree.setValue(3);
         splineDegree.setId("sketch-spline-degree");
@@ -356,7 +377,8 @@ final class SketchEditor extends BorderPane implements AutoCloseable {
             var focus = getScene().getFocusOwner();
             if (KeyboardShortcuts.textUndo(e, focus)) return;
             if (e.getCode() == KeyCode.ESCAPE) {
-                cancelDrawing();
+                if (dimensionEntry != null) closeDimensionEntry();
+                else cancelDrawing();
                 e.consume();
             } else if (e.getCode() == KeyCode.ENTER
                     && !e.isShortcutDown()
@@ -382,6 +404,12 @@ final class SketchEditor extends BorderPane implements AutoCloseable {
     }
 
     private void cancelDrawing() {
+        if (draggedDimension != null) {
+            if (previousDimensionPosition == null)
+                dimensionPositions.remove(draggedDimension.constraint().id());
+            else dimensionPositions.put(draggedDimension.constraint().id(), previousDimensionPosition);
+            draggedDimension = null;
+        }
         if (dragPoint != null) controller.cancelDrag();
         dragPoint = null;
         boxCandidate = boxSelecting = false;
@@ -408,6 +436,7 @@ final class SketchEditor extends BorderPane implements AutoCloseable {
             }
         });
         var add = button(translations.text("gui.add_to_selection"), "sketch-select-ref", () -> {
+            if (dimensionTool && (dimensionEntry != null || selection.size() >= 2)) return;
             if (references.getValue() != null) {
                 selection.add(references.getValue());
                 selectionChanged();
@@ -517,6 +546,7 @@ final class SketchEditor extends BorderPane implements AutoCloseable {
 
     private void installGestures() {
         canvas.setOnMousePressed(e -> {
+            if (dimensionEntry != null && e.getButton() == MouseButton.PRIMARY) return;
             canvas.requestFocus();
             lastX = pressX = e.getX();
             lastY = pressY = e.getY();
@@ -525,6 +555,19 @@ final class SketchEditor extends BorderPane implements AutoCloseable {
             boxCandidate = boxSelecting = false;
             boxAdditive = e.isControlDown() || e.isShiftDown();
             if (e.getButton() == MouseButton.PRIMARY && tool == Draw.SELECT && activeConstraint == null) {
+                draggedDimension = hitDimension(e.getX(), e.getY());
+                if (draggedDimension != null) {
+                    previousDimensionPosition =
+                            dimensionPositions.get(draggedDimension.constraint().id());
+                    constraints.getSelectionModel().select(draggedDimension.constraint());
+                    e.consume();
+                    return;
+                }
+            }
+            if (e.getButton() == MouseButton.PRIMARY
+                    && tool == Draw.SELECT
+                    && activeConstraint == null
+                    && !dimensionTool) {
                 var hit = hit(e.getX(), e.getY());
                 boxCandidate = hit == null || boxAdditive;
                 dragPoint = hit != null
@@ -541,6 +584,16 @@ final class SketchEditor extends BorderPane implements AutoCloseable {
                 centerX -= (e.getX() - lastX) / scale;
                 centerY += (e.getY() - lastY) / scale;
                 draw();
+            } else if (draggedDimension != null && e.isPrimaryButtonDown()) {
+                if (Math.hypot(e.getX() - pressX, e.getY() - pressY) > 3) {
+                    moving = true;
+                    dimensionPositions.put(
+                            draggedDimension.constraint().id(),
+                            draggedDimension
+                                    .label()
+                                    .plus(model(e.getX(), e.getY()).minus(model(pressX, pressY))));
+                    draw();
+                }
             } else if (boxCandidate
                     && e.isPrimaryButtonDown()
                     && Math.hypot(e.getX() - pressX, e.getY() - pressY) > 3) {
@@ -559,6 +612,12 @@ final class SketchEditor extends BorderPane implements AutoCloseable {
             e.consume();
         });
         canvas.setOnMouseReleased(e -> {
+            if (draggedDimension != null) {
+                draggedDimension = null;
+                previousDimensionPosition = null;
+                e.consume();
+                return;
+            }
             if (boxSelecting) {
                 if (!boxAdditive) selection.clear();
                 constraints.getSelectionModel().clearSelection();
@@ -575,16 +634,38 @@ final class SketchEditor extends BorderPane implements AutoCloseable {
         });
         canvas.setOnMouseClicked(e -> {
             if (e.getButton() != MouseButton.PRIMARY || !e.isStillSincePress() || moving) return;
+            if (dimensionEntry != null) {
+                dimensionEntry.getChildren().getFirst().requestFocus();
+                return;
+            }
             error.setText("");
             if (tool != Draw.SELECT) {
                 drawingClick(e);
                 return;
             }
+            var annotation = hitDimension(e.getX(), e.getY());
+            if (annotation != null) {
+                constraints.getSelectionModel().select(annotation.constraint());
+                if (e.getClickCount() == 2) editDimensionValue();
+                return;
+            }
             var hit = hit(e.getX(), e.getY());
+            if (dimensionTool) {
+                // Use the same screen-space snap for hover and selection, including endpoints.
+                hoverSnap = SketchSnapping.find(controller.displayed(), model(e.getX(), e.getY()), scale);
+                if (hoverSnap != null) {
+                    constraints.getSelectionModel().clearSelection();
+                    if (selection.contains(hoverSnap.ref())) selection.remove(hoverSnap.ref());
+                    else if (selection.size() < 2) selection.add(hoverSnap.ref());
+                    selectionChanged();
+                } else placeDimension(model(e.getX(), e.getY()));
+                return;
+            }
             if (hit == null) {
                 for (var badge : badges)
                     if (Math.abs(e.getX() - badge.x()) < 11 && Math.abs(e.getY() - badge.y()) < 9) {
                         constraints.getSelectionModel().select(badge.constraint());
+                        if (badge.constraint().type().dimension() && e.getClickCount() == 2) editDimensionValue();
                         return;
                     }
             }
@@ -600,7 +681,11 @@ final class SketchEditor extends BorderPane implements AutoCloseable {
         });
         canvas.setOnMouseMoved(e -> {
             cursor = drawingPosition(e);
-            if (tool != Draw.SELECT) draw();
+            if (tool != Draw.SELECT || dimensionTool) draw();
+        });
+        canvas.setOnMouseExited(e -> {
+            hoverSnap = null;
+            draw();
         });
         canvas.setOnScroll(e -> {
             var anchor = model(e.getX(), e.getY());
@@ -614,6 +699,8 @@ final class SketchEditor extends BorderPane implements AutoCloseable {
     }
 
     private void tool(Draw next) {
+        closeDimensionEntry();
+        dimensionTool = false;
         tool = next;
         hoverSnap = null;
         activeConstraint = null;
@@ -837,7 +924,7 @@ final class SketchEditor extends BorderPane implements AutoCloseable {
 
     private Vec drawingPosition(MouseEvent event) {
         var pointer = model(event.getX(), event.getY());
-        hoverSnap = auto.isSelected() && tool != Draw.SELECT
+        hoverSnap = dimensionTool || auto.isSelected() && tool != Draw.SELECT
                 ? SketchSnapping.find(controller.displayed(), pointer, scale)
                 : null;
         if (hoverSnap != null) return hoverSnap.position();
@@ -975,6 +1062,7 @@ final class SketchEditor extends BorderPane implements AutoCloseable {
     }
 
     private void request(Type type) {
+        dimensionTool = false;
         tool = Draw.SELECT;
         drawing.clear();
         snaps.clear();
@@ -999,6 +1087,11 @@ final class SketchEditor extends BorderPane implements AutoCloseable {
     }
 
     private void selectionChanged() {
+        if (dimensionTool) {
+            var refs = SketchDimensions.references(controller.displayed(), List.copyOf(selection));
+            selection.clear();
+            selection.addAll(refs);
+        }
         selected.setText(
                 selection.isEmpty()
                         ? translations.text("gui.nothing_selected")
@@ -1008,6 +1101,24 @@ final class SketchEditor extends BorderPane implements AutoCloseable {
                                 .orElse(""));
         if (activeConstraint != null && activeConstraint != Type.POLYGON && enough(activeConstraint))
             apply(activeConstraint);
+        if (dimensionTool
+                && dimensionEntry == null
+                && selection.size() == 2
+                && constraints.getSelectionModel().getSelectedItem() == null) {
+            Vec position = cursor.plus(new Vec(0, -20 / scale));
+            if (selection.stream().allMatch(r -> r.part() != Part.OBJECT)) {
+                var refs = List.copyOf(selection);
+                var a = controller.displayed().point(refs.get(0));
+                var b = controller.displayed().point(refs.get(1));
+                var middle = a.plus(b).times(0.5);
+                position = Math.abs(b.x() - a.x()) > 1e-8 && Math.abs(b.y() - a.y()) > 1e-8
+                        ? middle
+                        : Math.abs(b.y() - a.y()) > Math.abs(b.x() - a.x())
+                                ? new Vec(Math.max(a.x(), b.x()) + 20 / scale, middle.y())
+                                : new Vec(middle.x(), Math.min(a.y(), b.y()) - 20 / scale);
+            }
+            placeDimension(position);
+        }
         draw();
     }
 
@@ -1035,7 +1146,98 @@ final class SketchEditor extends BorderPane implements AutoCloseable {
         }
     }
 
-    private void dimension() {
+    private void startDimension() {
+        var refs = selection.stream().limit(2).toList();
+        tool(Draw.SELECT);
+        selection.addAll(refs);
+        constraints.getSelectionModel().clearSelection();
+        dimensionTool = true;
+        hint.setText(translations.text("gui.dimension_hint"));
+        canvas.requestFocus();
+        selectionChanged();
+    }
+
+    private void placeDimension(Vec position) {
+        if (dimensionEntry != null || controller.busy()) return;
+        try {
+            var candidate = SketchDimensions.measure(controller.displayed(), List.copyOf(selection), position);
+            dimension.setValue(candidate.type());
+            dimensionValue.setText(number(candidate.value()));
+            editDimensionValue(position);
+        } catch (RuntimeException failure) {
+            error.setText(translations.text("gui.dimension_hint") + "\n" + failure.getMessage());
+        }
+    }
+
+    private void editDimensionValue() {
+        var chosen = constraints.getSelectionModel().getSelectedItem();
+        editDimensionValue(chosen == null ? cursor : dimensionPositions.getOrDefault(chosen.id(), cursor));
+    }
+
+    private void editDimensionValue(Vec position) {
+        closeDimensionEntry();
+        dimensionEntryPosition = position;
+        var input = FormulaField.number(dimensionValue.getText(), this::formulaParameters, this::dimensionUnit)
+                .localized(translations);
+        input.setId("sketch-inline-dimension");
+        input.setPrefColumnCount(14);
+        input.setMinWidth(200);
+        input.setPrefWidth(200);
+        input.setAccessibleText(translations.text("gui.sketch_dimension"));
+        var apply = new Button("✓");
+        apply.setId("sketch-inline-dimension-apply");
+        apply.setMinWidth(Region.USE_PREF_SIZE);
+        UiHelp.describe(apply, translations.text("gui.apply_dimension"));
+        Runnable commit = () -> {
+            if (controller.busy()) return;
+            dimensionValue.setText(input.getText());
+            int before = controller.definition().constraints().size();
+            if (dimension()) {
+                var added = controller.definition().constraints();
+                var chosen = constraints.getSelectionModel().getSelectedItem();
+                String id = added.size() > before ? added.getLast().id() : chosen == null ? null : chosen.id();
+                if (id != null) dimensionPositions.put(id, position);
+                closeDimensionEntry();
+                if (dimensionTool) selection.clear();
+                draw();
+            } else input.requestFocus();
+        };
+        input.setOnAction(e -> commit.run());
+        apply.setOnAction(e -> commit.run());
+        dimensionEntry = new HBox(3, input, apply);
+        dimensionEntry.setManaged(false);
+        dimensionEntry.setStyle("-fx-background-color: -fx-control-inner-background; -fx-padding: 3;");
+        ((StackPane) canvas.getParent()).getChildren().add(dimensionEntry);
+        dimensionEntry.applyCss();
+        positionDimensionEntry();
+        draw();
+        Platform.runLater(() -> {
+            if (dimensionEntry == null) return;
+            positionDimensionEntry();
+            input.requestFocus();
+            input.selectAll();
+        });
+    }
+
+    private void positionDimensionEntry() {
+        if (dimensionEntry == null) return;
+        double width = dimensionEntry.prefWidth(-1);
+        double height = dimensionEntry.prefHeight(width);
+        dimensionEntry.resizeRelocate(
+                Math.clamp(px(dimensionEntryPosition.x()) - width / 2, 0, Math.max(0, canvas.getWidth() - width)),
+                Math.clamp(py(dimensionEntryPosition.y()) - height / 2, 0, Math.max(0, canvas.getHeight() - height)),
+                width,
+                height);
+    }
+
+    private void closeDimensionEntry() {
+        if (dimensionEntry == null) return;
+        ((StackPane) canvas.getParent()).getChildren().remove(dimensionEntry);
+        dimensionEntry = null;
+        canvas.requestFocus();
+    }
+
+    private boolean dimension() {
         try {
             var g = controller.definition();
             var chosen = constraints.getSelectionModel().getSelectedItem();
@@ -1047,7 +1249,8 @@ final class SketchEditor extends BorderPane implements AutoCloseable {
                     ? g.withConstraints(g.constraints().stream()
                             .map(c -> c.id().equals(id) ? c.withValue(value) : c)
                             .toList())
-                    : g.add(SketchConstraints.create(g, id, type, List.copyOf(selection), value));
+                    : g.add(SketchConstraints.create(
+                            g, id, type, SketchDimensions.references(g, List.copyOf(selection)), value));
             var parameters = controller
                     .parameters()
                     .bind(
@@ -1059,9 +1262,11 @@ final class SketchEditor extends BorderPane implements AutoCloseable {
             error.setText("");
             dimensionValue.getStyleClass().remove("invalid");
             controller.edit(next, parameters);
+            return true;
         } catch (RuntimeException failure) {
             error.setText(failure.getMessage());
             dimensionValue.getStyleClass().add("invalid");
+            return false;
         }
     }
 
@@ -1324,6 +1529,19 @@ final class SketchEditor extends BorderPane implements AutoCloseable {
         return result;
     }
 
+    private DimensionHit hitDimension(double x, double y) {
+        for (var hit : dimensionHits.reversed())
+            if (Math.abs(x - hit.x()) <= hit.width() / 2 + 3 && Math.abs(y - hit.y()) <= 11) return hit;
+        for (var hit : dimensionHits.reversed()) {
+            double dx = hit.bx() - hit.ax(), dy = hit.by() - hit.ay();
+            double length = dx * dx + dy * dy;
+            if (length < 1) continue;
+            double t = Math.clamp(((x - hit.ax()) * dx + (y - hit.ay()) * dy) / length, 0, 1);
+            if (Math.hypot(x - hit.ax() - t * dx, y - hit.ay() - t * dy) <= 6) return hit;
+        }
+        return null;
+    }
+
     private static List<Entity> displayCurves(SketchGeometry geometry, Entity entity) {
         try {
             return geometry.curves(entity);
@@ -1338,9 +1556,11 @@ final class SketchEditor extends BorderPane implements AutoCloseable {
                     ? createType
                     : shortcutActions.get("sketch-tool-" + candidate.name().toLowerCase(Locale.ROOT));
             if (control != null) {
-                control.pseudoClassStateChanged(ACTIVE_TOOL, tool == candidate && activeConstraint == null);
+                control.pseudoClassStateChanged(
+                        ACTIVE_TOOL, tool == candidate && activeConstraint == null && !dimensionTool);
             }
         }
+        shortcutActions.get("sketch-dimension").pseudoClassStateChanged(ACTIVE_TOOL, dimensionTool);
         var graphics = canvas.getGraphicsContext2D();
         double w = canvas.getWidth(), h = canvas.getHeight();
         if (w <= 0 || h <= 0 || !Double.isFinite(scale) || scale <= 0) return;
@@ -1371,12 +1591,21 @@ final class SketchEditor extends BorderPane implements AutoCloseable {
         graphics.fillOval(px(0) - 3, py(0) - 3, 6, 6);
         if (controller == null) return;
         var g = controller.displayed();
+        dimensionHits.clear();
         boolean invalid = controller.result() != null && !controller.result().solved();
+        var fixed = controller.result() != null && controller.result().solved() && !controller.busy()
+                ? controller.result().fullyConstrainedReferences()
+                : Set.<Ref>of();
+        Color constrainedColor = Color.web(dark ? "#e2e8f0" : "#000000");
         for (var entity : g.entities()) {
             boolean chosen = selection.stream().anyMatch(r -> r.entityId().equals(entity.id()));
-            Color color = Color.web(chosen ? "#e6a239" : invalid ? "#db6860" : dark ? "#7fbcdd" : "#286d98");
+            boolean hovered =
+                    dimensionTool && hoverSnap != null && hoverSnap.ref().equals(entity.ref());
+            Color color = Color.web(
+                    hovered ? "#2688ed" : chosen ? "#e6a239" : invalid ? "#db6860" : dark ? "#7fbcdd" : "#286d98");
+            if (!hovered && !chosen && !invalid && fixed.contains(entity.ref())) color = constrainedColor;
             graphics.setStroke(color);
-            graphics.setLineWidth(chosen ? 2.5 : 1.5);
+            graphics.setLineWidth(chosen || hovered ? 2.5 : 1.5);
             graphics.setLineDashes(entity.construction() ? new double[] {7, 5} : new double[] {});
             for (var curve : displayCurves(g, entity)) {
                 var points = curve.sample();
@@ -1417,8 +1646,29 @@ final class SketchEditor extends BorderPane implements AutoCloseable {
             }
             for (var ref : entity.pointRefs()) {
                 var p = entity.point(ref);
-                graphics.setFill(selection.contains(ref) ? Color.web("#e6a239") : color);
-                graphics.fillOval(px(p.x()) - 3.5, py(p.y()) - 3.5, 7, 7);
+                boolean hoveredPoint =
+                        dimensionTool && hoverSnap != null && hoverSnap.ref().equals(ref);
+                graphics.setFill(
+                        hoveredPoint
+                                ? Color.web("#2688ed")
+                                : selection.contains(ref)
+                                        ? Color.web("#e6a239")
+                                        : !chosen && !invalid && fixed.contains(ref) ? constrainedColor : color);
+                double radius = hoveredPoint ? 5 : 3.5;
+                graphics.fillOval(px(p.x()) - radius, py(p.y()) - radius, radius * 2, radius * 2);
+            }
+        }
+        positionDimensionEntry();
+        if (dimensionEntry != null && constraints.getSelectionModel().getSelectedItem() == null) {
+            try {
+                var measurement = SketchDimensions.measure(g, List.copyOf(selection), dimensionEntryPosition);
+                var preview = SketchConstraints.create(
+                        g, "dimension-preview", measurement.type(), List.copyOf(selection), measurement.value());
+                dimensionPositions.put(preview.id(), dimensionEntryPosition);
+                drawDimension(preview, g);
+                dimensionPositions.remove(preview.id());
+            } catch (IllegalArgumentException invalidSelection) {
+                // A selection may be removed while an inline edit is open.
             }
         }
         badges.clear();
@@ -1428,6 +1678,10 @@ final class SketchEditor extends BorderPane implements AutoCloseable {
             for (var c : g.constraints()) {
                 if (c.refs().isEmpty()) continue;
                 try {
+                    if (c.type().dimension()) {
+                        drawDimension(c, g);
+                        continue;
+                    }
                     var ref = c.refs().getFirst();
                     var p = ref.part() == Part.OBJECT ? g.entity(ref.entityId()).at(0.5) : g.point(ref);
                     double x = px(p.x()) + 14 + (index % 3) * 18, y = py(p.y()) + 14 + (index / 3 % 2) * 18;
@@ -1454,11 +1708,16 @@ final class SketchEditor extends BorderPane implements AutoCloseable {
             graphics.strokeRect(x, y, Math.abs(lastX - pressX), Math.abs(lastY - pressY));
             graphics.setLineDashes();
         }
-        if (hoverSnap != null && auto.isSelected() && tool != Draw.SELECT) {
-            graphics.setStroke(Color.web("#e6a239"));
+        if (hoverSnap != null && (dimensionTool || auto.isSelected() && tool != Draw.SELECT)) {
+            graphics.setStroke(Color.web(dimensionTool ? "#2688ed" : "#e6a239"));
             graphics.setLineWidth(2);
             var target = hoverSnap.position();
             graphics.strokeOval(px(target.x()) - 6, py(target.y()) - 6, 12, 12);
+            if (dimensionTool && hoverSnap.ref().part() != Part.OBJECT) {
+                // Coincident endpoints may be drawn by several entities; keep the target on top.
+                graphics.setFill(Color.web("#2688ed"));
+                graphics.fillOval(px(target.x()) - 4, py(target.y()) - 4, 8, 8);
+            }
         }
         if (!drawing.isEmpty()) {
             graphics.setStroke(Color.web("#e6a239"));
@@ -1483,6 +1742,82 @@ final class SketchEditor extends BorderPane implements AutoCloseable {
             }
             graphics.setLineDashes();
         }
+    }
+
+    private void drawDimension(Constraint c, SketchGeometry g) {
+        var graphics = canvas.getGraphicsContext2D();
+        var ref = c.refs().getFirst();
+        var entity = ref.part() == Part.OBJECT ? g.entity(ref.entityId()) : null;
+        Vec a = entity == null ? g.point(ref) : entity.at(0);
+        Vec b = c.refs().size() == 2
+                ? (c.refs().get(1).part() == Part.OBJECT
+                        ? g.entity(c.refs().get(1).entityId()).at(0.5)
+                        : g.point(c.refs().get(1)))
+                : entity == null ? a : entity.at(1);
+        if (c.type() == Type.RADIUS || c.type() == Type.DIAMETER) {
+            a = entity.point(Part.CENTER);
+            b = a.plus(new Vec(entity.value(2), 0));
+            if (c.type() == Type.DIAMETER) a = a.minus(new Vec(entity.value(2), 0));
+        }
+        if (c.type() == Type.DISTANCE && c.refs().stream().allMatch(r -> r.part() == Part.OBJECT)) {
+            var direction = entity.at(1).minus(entity.at(0)).unit();
+            a = entity.at(0).plus(direction.times(b.minus(entity.at(0)).dot(direction)));
+        }
+        var label = dimensionPositions.getOrDefault(c.id(), a.plus(b).times(0.5).plus(new Vec(0, 20 / scale)));
+        double x = px(label.x()), y = py(label.y());
+        String prefix = c.type() == Type.DIAMETER ? "Ø" : c.type() == Type.RADIUS ? "R" : "";
+        String expression = controller.parameters().binding(new ParameterSet.Target(featureId, "constraint:" + c.id()));
+        String text = (expression.isEmpty() ? "" : "fx: ")
+                + prefix
+                + String.format(Locale.ROOT, "%.2f", c.values().getFirst())
+                + (c.type() == Type.ANGLE ? "°" : "");
+        double width = Math.max(40, text.length() * 8);
+        double lineAx = px(a.x()), lineAy = py(a.y()), lineBx = x, lineBy = y;
+        graphics.setStroke(Color.web(dark ? "#bacbdd" : "#263746"));
+        graphics.setLineWidth(1);
+        graphics.setLineDashes();
+        if (c.type() == Type.LENGTH
+                || c.type() == Type.DISTANCE
+                || c.type() == Type.DISTANCE_X
+                || c.type() == Type.DISTANCE_Y
+                || c.type() == Type.RADIUS
+                || c.type() == Type.DIAMETER) {
+            Vec u = b.minus(a);
+            if (c.type() == Type.DISTANCE_X) u = new Vec(1, 0);
+            if (c.type() == Type.DISTANCE_Y) u = new Vec(0, 1);
+            if (u.distance(new Vec(0, 0)) > 1e-10) {
+                u = u.unit();
+                var start = label.plus(u.times(a.minus(label).dot(u)));
+                var end = label.plus(u.times(b.minus(label).dot(u)));
+                lineAx = px(start.x());
+                lineAy = py(start.y());
+                lineBx = px(end.x());
+                lineBy = py(end.y());
+                graphics.strokeLine(px(a.x()), py(a.y()), px(start.x()), py(start.y()));
+                graphics.strokeLine(px(b.x()), py(b.y()), px(end.x()), py(end.y()));
+                graphics.strokeLine(px(start.x()), py(start.y()), px(end.x()), py(end.y()));
+                dimensionArrow(px(start.x()), py(start.y()), px(end.x()), py(end.y()));
+                dimensionArrow(px(end.x()), py(end.y()), px(start.x()), py(start.y()));
+            }
+        } else graphics.strokeLine(px(a.x()), py(a.y()), x, y);
+        graphics.setFill(Color.web(dark ? "#161c23" : "#f8fafc"));
+        graphics.fillRect(x - width / 2, y - 10, width, 20);
+        graphics.setFill(Color.web(
+                c.equals(constraints.getSelectionModel().getSelectedItem())
+                        ? "#2688ed"
+                        : dark ? "#bacbdd" : "#263746"));
+        graphics.setFont(Font.font(13));
+        graphics.fillText(text, x - width / 2 + 3, y + 5);
+        for (double dx = -width / 2 + 8; dx < width / 2; dx += 16) badges.add(new Badge(c, x + dx, y));
+        if (!c.id().equals("dimension-preview"))
+            dimensionHits.add(new DimensionHit(c, label, x, y, width, lineAx, lineAy, lineBx, lineBy));
+    }
+
+    private void dimensionArrow(double x, double y, double towardX, double towardY) {
+        double angle = Math.atan2(towardY - y, towardX - x);
+        var graphics = canvas.getGraphicsContext2D();
+        for (double offset : new double[] {-0.4, 0.4})
+            graphics.strokeLine(x, y, x + 8 * Math.cos(angle + offset), y + 8 * Math.sin(angle + offset));
     }
 
     private static String symbol(Type type) {

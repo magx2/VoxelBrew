@@ -205,3 +205,23 @@ Fusion files and every Fusion expression function are not imported.
 Schema 6 retains schema 1–5 reading. Generated meshes remain disposable;
 parameter definitions and configuration overrides remain editable. See
 [M9 acceptance](acceptance/M9.md) for validation evidence.
+
+## Built-in parameters
+
+Every project exposes read-only `vb.version`, `vb.project.version`, `vb.date`,
+`vb.date_time`, `vb.time`, `vb.os.name`, `vb.os.version`, and `vb.os.arch`.
+Project location strings are `vb.project.name` (filename without extension),
+`vb.project.filename` (including extension), `vb.project.path` (absolute file path),
+and `vb.project.folder` (absolute parent directory). Unsaved projects have the name
+`Untitled` and empty filename/path/folder. Opening a moved project or successfully
+saving with Save As updates these values to the actual location. Paths are runtime
+context and are not embedded into the portable document. All built-ins except
+`vb.project.version` are strings. The save counter remains stored in the Protobuf
+`file_version` field; only its parameter name changed.
+The parameter list includes descriptions. The entire `vb.` namespace is reserved;
+built-ins cannot be created, renamed, removed, or overridden in configurations.
+Use them in formulas, for example `="Created with " + $vb.version`.
+Date/time values are current UTC ISO values evaluated on demand, not creation dates.
+The file version starts at zero for unsaved and older files and increments after
+successful saves, including Save As; failed saves leave it unchanged. It is stored
+in the document metadata separately from the schema version and user parameters.

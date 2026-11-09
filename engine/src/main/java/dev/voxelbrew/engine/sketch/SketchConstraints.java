@@ -59,7 +59,8 @@ public final class SketchConstraints {
             case CURVATURE -> "Select two curve endpoints; at least one must be a spline.";
             case POLYGON -> "Select at least three connected lines in boundary order.";
             case LENGTH -> "Select one line.";
-            case DISTANCE, DISTANCE_X, DISTANCE_Y -> "Select two points (the origin is selectable).";
+            case DISTANCE -> "Select two points or two parallel lines.";
+            case DISTANCE_X, DISTANCE_Y -> "Select two points (the origin is selectable).";
             case RADIUS, DIAMETER -> "Select a circle or arc.";
             case ANGLE -> "Select one line (from X), or two lines. Enter degrees.";
             case MAJOR_RADIUS, MINOR_RADIUS -> "Select an ellipse.";
@@ -272,6 +273,16 @@ public final class SketchConstraints {
             }
             case DISTANCE, DISTANCE_X, DISTANCE_Y -> {
                 count(c, 2);
+                if (c.type() == Type.DISTANCE && refs.stream().allMatch(r -> r.part() == Part.OBJECT)) {
+                    var a = line(g, refs.get(0));
+                    var b = line(g, refs.get(1));
+                    if (values.getFirst() < 0) throw new IllegalArgumentException("Distance cannot be negative");
+                    var u = direction(a).unit();
+                    return new double[] {
+                        10 * u.cross(direction(b).unit()),
+                        Math.abs(u.cross(b.at(0).minus(a.at(0)))) - values.getFirst()
+                    };
+                }
                 var d = g.point(refs.get(1)).minus(g.point(refs.get(0)));
                 if (c.type() == Type.DISTANCE && values.getFirst() < 0)
                     throw new IllegalArgumentException("Distance cannot be negative");

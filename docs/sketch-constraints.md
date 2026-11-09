@@ -69,12 +69,36 @@ choose a constraint and then select its references. Regular polygon uses
 | Curvature                | Two curve endpoints, including at least one spline; joins position, tangent and signed curvature (G2) |
 | Regular polygon          | Connected line edges in boundary order                                                                |
 
+Press **D** (or **Dimension**) to select a line for length, a circle for diameter,
+an arc for radius, two points for a signed X/Y distance, or two parallel lines for their separation (nonparallel lines give an angle).
+Selecting the second point or line immediately opens the compact inline **fx** field.
+This also works when two references are selected before pressing **D**. While the
+field is open, additional geometry clicks cannot add a third reference. Single-curve
+dimensions still use an empty canvas click to place the annotation. The field
+accepts values, formulas and named parameters with autocomplete; press Enter or
+the check mark to apply, or Escape to discard the input. Invalid expressions
+remain open for correction.
+Point pairs can use standalone sketch points, endpoints, centers or the origin.
+Diagonal pairs default to their true point-to-point distance; aligned pairs default
+to X or Y distance. The inspector's dimension selector also offers explicit X/Y distances.
+The tool stays active for more dimensions; Escape returns to selection.
+Drag a dimension label or its dimension line to reposition the annotation without
+changing the geometry or value. Escape cancels an unfinished annotation drag.
+Double-click a dimension label to edit it. Dimension values persist with the
+sketch; annotation positions currently last for the editor session.
+
 The dimension selector supports length, distance, signed X/Y distance, radius,
 diameter and angle (degrees). Select a line for length, circular curve for
 radius/diameter, two points for distances, or two lines for angle. Signed X/Y
 distance measures the second selected point minus the first. Select an existing
 dimension in the constraint list to edit its value. The list displays values
 and stable IDs; badges select their corresponding constraint.
+
+Fully constrained sketch curves and points render black in the light theme, with a
+light neutral color in the dark theme. Geometry that can still move stays blue;
+setting a line's length alone can leave translation or rotation free. Points are
+classified independently, so an anchored endpoint can be black while its line is
+still blue. Selection, snap highlighting and conflict colors take priority.
 
 The status reports remaining degrees of freedom. Conflicts identify constraints
 and disable **Finish sketch**. Keep editing a dimension, remove a constraint,

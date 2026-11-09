@@ -15,6 +15,7 @@ public final class DocumentReader {
         log.debug("Reading document {}", path);
         try (var input = Files.newInputStream(path)) {
             var document = DocumentCodec.decode(input.readNBytes(DocumentCodec.MAX_ENCODED_BYTES + 1));
+            document.parameters().builtins().projectPath(path);
             log.debug(
                     "Read document {} with {} features at cursor {}",
                     document.id(),

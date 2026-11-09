@@ -82,7 +82,8 @@ class MeasurementIntegrationTest {
         var after = DocumentProto.Document.parseFrom(Arrays.copyOfRange(saved, 44, saved.length));
         var migrated = before.toBuilder()
                 .setSchemaVersion(dev.voxelbrew.engine.persistence.DocumentCodec.SCHEMA_VERSION)
-                .setApplicationVersion(Version.version());
+                .setApplicationVersion(Version.version())
+                .setFileVersion(before.getFileVersion() + 1);
         for (var feature : migrated.getFeaturesBuilderList())
             if (feature.hasSketch())
                 feature.getSketchBuilder()

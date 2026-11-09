@@ -14,6 +14,19 @@ import org.junit.jupiter.api.Test;
 
 class DocumentVersionTest {
     @Test
+    void usesTheCurrentMagicAndRejectsThePreviousSignature() throws Exception {
+        var document = CadDocument.empty();
+        byte[] bytes = DocumentCodec.encode(document);
+        assertArrayEquals(new byte[] {'J', 'C', 'A', 'D', 13, 37, 13, 37}, Arrays.copyOf(bytes, 8));
+        assertEquals(document, DocumentCodec.decode(bytes));
+        byte[] previous = {'J', 'C', 'A', 'D', 13, 10, 26, 10};
+        System.arraycopy(previous, 0, bytes, 0, previous.length);
+        assertTrue(assertThrows(DocumentFormatException.class, () -> DocumentCodec.decode(bytes))
+                .getMessage()
+                .contains("magic mismatch"));
+    }
+
+    @Test
     void savesTheRuntimeVersionWithoutAddingItToCadIdentity() throws Exception {
         var document = CadDocument.empty();
         byte[] bytes = DocumentCodec.encode(document);
@@ -98,7 +111,7 @@ class DocumentVersionTest {
     private static byte[] envelope(DocumentProto.Document message) throws Exception {
         byte[] payload = message.toByteArray();
         return ByteBuffer.allocate(44 + payload.length)
-                .put(new byte[] {'J', 'C', 'A', 'D', 13, 10, 26, 10})
+                .put(new byte[] {'J', 'C', 'A', 'D', 13, 37, 13, 37})
                 .putInt(payload.length)
                 .put(MessageDigest.getInstance("SHA-256").digest(payload))
                 .put(payload)

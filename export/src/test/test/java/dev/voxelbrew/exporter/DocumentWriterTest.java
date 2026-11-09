@@ -58,7 +58,7 @@ class DocumentWriterTest {
             baseline = Objects.requireNonNull(input).readAllBytes();
         }
         assertEquals(
-                "68f9575b0539d811619a4197e2235f3f796eea798c3146fa3b2015cb86166939",
+                "c4e5b9b089b98334a8feaad44189ae30102bd48fea47acd410e6c38b31339053",
                 HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(baseline)));
         var document = DocumentCodec.decode(baseline);
         var upgradedDefinitions = message(baseline).toBuilder()
@@ -184,7 +184,7 @@ class DocumentWriterTest {
     private static byte[] envelope(DocumentProto.Document message) throws Exception {
         byte[] payload = message.toByteArray();
         return ByteBuffer.allocate(44 + payload.length)
-                .put(new byte[] {'J', 'C', 'A', 'D', 13, 10, 26, 10})
+                .put(new byte[] {'J', 'C', 'A', 'D', 13, 37, 13, 37})
                 .putInt(payload.length)
                 .put(MessageDigest.getInstance("SHA-256").digest(payload))
                 .put(payload)

@@ -141,7 +141,7 @@ class WorkflowTest {
         byte[] payload =
                 document.toBuilder().setApplicationVersion(version).build().toByteArray();
         return ByteBuffer.allocate(44 + payload.length)
-                .put(new byte[] {'J', 'C', 'A', 'D', 13, 10, 26, 10})
+                .put(new byte[] {'J', 'C', 'A', 'D', 13, 37, 13, 37})
                 .putInt(payload.length)
                 .put(MessageDigest.getInstance("SHA-256").digest(payload))
                 .put(payload)

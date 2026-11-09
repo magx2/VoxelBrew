@@ -77,7 +77,7 @@ class DocumentControllerTest {
         byte[] payload =
                 document.toBuilder().setApplicationVersion(version).build().toByteArray();
         return java.nio.ByteBuffer.allocate(44 + payload.length)
-                .put(new byte[] {'J', 'C', 'A', 'D', 13, 10, 26, 10})
+                .put(new byte[] {'J', 'C', 'A', 'D', 13, 37, 13, 37})
                 .putInt(payload.length)
                 .put(java.security.MessageDigest.getInstance("SHA-256").digest(payload))
                 .put(payload)

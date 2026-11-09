@@ -108,7 +108,7 @@ See [file version compatibility](file-io.md) for snapshot and IDE behavior.
 Named parameters,
 dimension expressions, configuration overrides and the active configuration are
 stored with the feature definitions. See [parameters](parameters.md). The binary envelope
-contains eight magic bytes (`JCAD`, CR, LF, 0x1A, LF), a big-endian 32-bit payload
+contains eight magic bytes (`JCAD`, 13, 37, 13, 37), a big-endian 32-bit payload
 length, a SHA-256 digest and the Protobuf message. The 16 MiB payload limit, exact
 length check and digest distinguish truncated/corrupt documents from an empty
 valid model. Field numbers are reserved for compatibility; removed tags must

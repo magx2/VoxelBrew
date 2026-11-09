@@ -22,7 +22,7 @@ import java.util.List;
  */
 public final class DocumentCodec {
     public static final int SCHEMA_VERSION = 10;
-    private static final byte[] MAGIC = {'J', 'C', 'A', 'D', 13, 10, 26, 10};
+    private static final byte[] MAGIC = {'J', 'C', 'A', 'D', 13, 37, 13, 37};
     private static final int HEADER = 44;
     private static final int MAX_PAYLOAD = 16 * 1024 * 1024;
 

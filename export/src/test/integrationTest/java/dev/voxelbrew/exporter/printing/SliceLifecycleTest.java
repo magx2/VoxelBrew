@@ -18,7 +18,8 @@ class SliceLifecycleTest {
 
     @Test
     void cancellationKillsRealSlicerAndPreservesDestination() throws Exception {
-        var model = ManufacturingModel.evaluate(PrintingTest.reference().document(), MeshOptions.DEFAULT);
+        var model = dev.voxelbrew.engine.printing.ManufacturingModels.evaluate(
+                PrintingTest.reference().document(), MeshOptions.DEFAULT);
         Path output = directory.resolve("preserved job.gcode");
         Files.writeString(output, "original");
         var cancellation = new Cancellation();
@@ -49,7 +50,7 @@ class SliceLifecycleTest {
     @Test
     void backendFailureWrongFormatAndMissingProfilesNeverPublish() throws Exception {
         var session = PrintingTest.reference();
-        var model = ManufacturingModel.evaluate(session.document(), MeshOptions.DEFAULT);
+        var model = dev.voxelbrew.engine.printing.ManufacturingModels.evaluate(session.document(), MeshOptions.DEFAULT);
         Path output = directory.resolve("failed.gcode");
         Files.writeString(output, "original");
         var backend = new SlicerBackend() {
@@ -108,7 +109,8 @@ class SliceLifecycleTest {
                 session.document().printSetup().withProfile("prusa-slicer", "missing", "PLA", ProcessSettings.DEFAULT));
         assertTrue(assertThrows(
                         IllegalArgumentException.class,
-                        () -> ManufacturingModel.evaluate(session.document(), MeshOptions.DEFAULT))
+                        () -> dev.voxelbrew.engine.printing.ManufacturingModels.evaluate(
+                                session.document(), MeshOptions.DEFAULT))
                 .getMessage()
                 .contains("Missing printer profile"));
         assertEquals("original", Files.readString(output));

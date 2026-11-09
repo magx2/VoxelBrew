@@ -99,7 +99,8 @@ public final class ComputeBenchmark {
             var serial = evaluation.requireCompleteDocument().stream()
                     .map(b -> b.solid().tessellate(MeshOptions.DEFAULT))
                     .toList();
-            var detached = ManufacturingModel.from(document, evaluation, MeshOptions.DEFAULT);
+            var detached =
+                    dev.voxelbrew.engine.printing.ManufacturingModels.from(document, evaluation, MeshOptions.DEFAULT);
             for (int i = 0; i < serial.size(); i++) {
                 var mesh = detached.meshes().get(evaluation.bodies().get(i).id());
                 if (!Arrays.equals(serial.get(i).vertices(), mesh.vertices())
@@ -108,7 +109,8 @@ public final class ComputeBenchmark {
             }
             measure(
                     "mesh_12_bodies_144_holes",
-                    () -> ManufacturingModel.from(document, evaluation, MeshOptions.DEFAULT));
+                    () -> dev.voxelbrew.engine.printing.ManufacturingModels.from(
+                            document, evaluation, MeshOptions.DEFAULT));
             PrintValidation.validate(detached).requireValid();
             measure("print_12_instances", () -> PrintValidation.validate(detached));
         }

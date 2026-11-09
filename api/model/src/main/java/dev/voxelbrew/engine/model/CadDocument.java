@@ -78,12 +78,12 @@ public record CadDocument(
         }
     }
 
-    public dev.voxelbrew.util.UuidGenerator uuidGenerator() {
+    public dev.voxelbrew.engine.model.UuidGenerator uuidGenerator() {
         return parameters.uuidGenerator();
     }
 
     public static CadDocument empty() {
-        var ids = new dev.voxelbrew.util.UuidGenerator();
+        var ids = new dev.voxelbrew.engine.model.UuidGenerator();
         return new CadDocument(
                 Long.toString(ids.next()),
                 List.of(),

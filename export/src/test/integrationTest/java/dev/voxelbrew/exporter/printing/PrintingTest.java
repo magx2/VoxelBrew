@@ -34,7 +34,7 @@ class PrintingTest {
     @Test
     void realSlicerProducesFortyLayersAndPreservesPlacementAndHole() throws Exception {
         var session = reference();
-        var model = ManufacturingModel.evaluate(session.document(), MeshOptions.DEFAULT);
+        var model = dev.voxelbrew.engine.printing.ManufacturingModels.evaluate(session.document(), MeshOptions.DEFAULT);
         var output = directory.resolve("real reference job.gcode");
         var result = SliceService.slice(
                 new PrusaSlicerBackend(),
@@ -91,7 +91,8 @@ class PrintingTest {
             assertEquals(0, bounds.minX(), 0.001);
             assertEquals(60, bounds.maxX(), 0.001);
         }
-        var model = ManufacturingModel.evaluate(reopened.document(), MeshOptions.DEFAULT);
+        var model =
+                dev.voxelbrew.engine.printing.ManufacturingModels.evaluate(reopened.document(), MeshOptions.DEFAULT);
         assertTrue(
                 PrintValidation.validate(model).valid(),
                 PrintValidation.validate(model).toString());

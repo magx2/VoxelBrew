@@ -31,7 +31,8 @@ public record ExportSelection(Space space, Contents contents, String body, Strin
                         "Support solids and build instances require BUILD_PLATE coordinate space");
             view = ModelViews.from(evaluation);
         } else {
-            view = ModelViews.from(ManufacturingModel.from(document, evaluation, options), contents);
+            view = ModelViews.from(
+                    dev.voxelbrew.engine.printing.ManufacturingModels.from(document, evaluation, options), contents);
         }
         if (body != null) view = ModelViews.select(view, body);
         if (instance != null) view = ModelViews.selectInstance(view, instance);

@@ -79,9 +79,11 @@ public final class DocumentCodec {
                     message.hasPrintSetup() ? fromProto(message.getPrintSetup()) : PrintSetup.empty(),
                     message.hasParameters()
                             ? ParameterCodec.fromProto(message.getParameters())
-                                    .withUuidGenerator(new dev.voxelbrew.util.UuidGenerator(message.getNextUuid()))
+                                    .withUuidGenerator(
+                                            new dev.voxelbrew.engine.model.UuidGenerator(message.getNextUuid()))
                             : dev.voxelbrew.engine.parameters.ParameterSet.empty()
-                                    .withUuidGenerator(new dev.voxelbrew.util.UuidGenerator(message.getNextUuid())),
+                                    .withUuidGenerator(
+                                            new dev.voxelbrew.engine.model.UuidGenerator(message.getNextUuid())),
                     message.getBodyStylesMap().entrySet().stream()
                             .collect(java.util.stream.Collectors.toMap(
                                     java.util.Map.Entry::getKey,

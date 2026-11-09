@@ -7,6 +7,7 @@ plugins {
 }
 
 dependencies {
+    api(project(":api:model"))
     add("integrationTestImplementation", project(":import"))
     add("integrationTestImplementation", project(":export"))
     implementation(project(":util"))
@@ -255,6 +256,7 @@ val buildExporterFixture by
         dependsOn(
             "publishEnginePublicationToFixtureRepository",
             ":util:publishUtilPublicationToFixtureRepository",
+            ":api:model:publishApiPublicationToFixtureRepository",
             ":api:export:publishApiPublicationToFixtureRepository",
             ":api:import:publishApiPublicationToFixtureRepository",
         )

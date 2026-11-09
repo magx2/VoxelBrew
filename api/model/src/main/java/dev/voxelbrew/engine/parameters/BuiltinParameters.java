@@ -46,6 +46,17 @@ public final class BuiltinParameters {
         fileVersion = value;
     }
 
+    private static String applicationVersion() {
+        try (var input = BuiltinParameters.class.getResourceAsStream("/voxelbrew-model-api-version.properties")) {
+            if (input == null) return "0.0.0";
+            var properties = new java.util.Properties();
+            properties.load(input);
+            return properties.getProperty("version", "0.0.0");
+        } catch (java.io.IOException exception) {
+            throw new IllegalStateException("Cannot read model API build version", exception);
+        }
+    }
+
     public Object value(String name) {
         if (name.equals("vb.project.version")) return ParameterUnit.NUMBER.quantity(fileVersion());
         var now = OffsetDateTime.now(ZoneOffset.UTC);
@@ -54,7 +65,7 @@ public final class BuiltinParameters {
             case "vb.project.path" -> projectLocation("path");
             case "vb.project.folder" -> projectLocation("folder");
             case "vb.project.filename" -> projectLocation("filename");
-            case "vb.version" -> dev.voxelbrew.util.Version.version();
+            case "vb.version" -> applicationVersion();
             case "vb.date" -> now.toLocalDate().toString();
             case "vb.time" -> now.format(DateTimeFormatter.ISO_OFFSET_TIME);
             case "vb.date_time" -> now.format(DateTimeFormatter.ISO_OFFSET_DATE_TIME);

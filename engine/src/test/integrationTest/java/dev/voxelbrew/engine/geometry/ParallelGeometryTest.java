@@ -22,7 +22,8 @@ class ParallelGeometryTest {
                     .map(b -> b.solid().tessellate(MeshOptions.DEFAULT))
                     .toList();
             var volumes = bodies.stream().map(b -> b.solid().volume()).toList();
-            detached = ManufacturingModel.from(document, evaluation, MeshOptions.DEFAULT);
+            detached =
+                    dev.voxelbrew.engine.printing.ManufacturingModels.from(document, evaluation, MeshOptions.DEFAULT);
             assertEquals(
                     bodies.stream().map(Evaluation.Body::id).toList(),
                     new ArrayList<>(detached.meshes().keySet()));

@@ -77,7 +77,8 @@ class ManufacturingTest {
 
     @Test
     void projectExportRejectsFilteredViewsAndPreservesExistingDestination() throws Exception {
-        var model = ManufacturingModel.evaluate(PrintingTest.reference().document(), MeshOptions.DEFAULT);
+        var model = dev.voxelbrew.engine.printing.ManufacturingModels.evaluate(
+                PrintingTest.reference().document(), MeshOptions.DEFAULT);
         var view = ModelViews.from(model);
         var output = directory.resolve("original.3mf");
         Files.writeString(output, "original project");
@@ -102,7 +103,7 @@ class ManufacturingTest {
     @Test
     void preflightReportsRotatedBedBoundsExcludedZonesOverlapHeightAndBrokenAttachments() {
         var s = PrintingTest.reference();
-        var base = ManufacturingModel.evaluate(s.document(), MeshOptions.DEFAULT);
+        var base = dev.voxelbrew.engine.printing.ManufacturingModels.evaluate(s.document(), MeshOptions.DEFAULT);
         var printer = base.profile().printer();
         var profile = new PrintProfile(
                 new PrintProfile.Printer(
@@ -183,7 +184,8 @@ class ManufacturingTest {
     @Test
     void layOnEachPlanarFaceAndSupportExchangeApplyPlacementExactlyOnce() throws Exception {
         var session = PrintingTest.reference();
-        var original = ManufacturingModel.evaluate(session.document(), MeshOptions.DEFAULT);
+        var original =
+                dev.voxelbrew.engine.printing.ManufacturingModels.evaluate(session.document(), MeshOptions.DEFAULT);
         var mesh = original.meshes().get("thickness.body");
         int planar = 0;
         for (int face : Arrays.stream(mesh.faceIndices()).distinct().toArray()) {
@@ -207,7 +209,7 @@ class ManufacturingTest {
                 .printSetup()
                 .withSupports(List.of(
                         new SupportVolume("pillar", "part", SupportVolume.Role.SOLID_SUPPORT, 15, 5, 0, 4, 4, 7.8))));
-        var model = ManufacturingModel.evaluate(session.document(), MeshOptions.DEFAULT);
+        var model = dev.voxelbrew.engine.printing.ManufacturingModels.evaluate(session.document(), MeshOptions.DEFAULT);
         assertEquals(
                 1,
                 ModelViews.from(model, ExportSelection.Contents.MODEL).bodies().size());

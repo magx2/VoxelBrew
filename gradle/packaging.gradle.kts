@@ -64,7 +64,7 @@ val generateInstallationMetadata by
             val destination = installationMetadata.get().file("voxelbrew-install.properties").asFile
             destination.parentFile.mkdirs()
             destination.writeText(
-                "format=1\ncomponent=$component\nversion=$productVersion\nplatform=$packagePlatform-$packageArchitecture\nengineJar=engine-$productVersion.jar\nutilJar=util-$productVersion.jar\nimportJar=import-$productVersion.jar\nexportJar=export-$productVersion.jar\nimport-apiJar=import-api-$productVersion.jar\nexport-apiJar=export-api-$productVersion.jar\nmainJar=$module-$productVersion.jar\n"
+                "format=1\ncomponent=$component\nversion=$productVersion\nplatform=$packagePlatform-$packageArchitecture\nengineJar=engine-$productVersion.jar\nutilJar=util-$productVersion.jar\nimportJar=import-$productVersion.jar\nexportJar=export-$productVersion.jar\nimport-apiJar=import-api-$productVersion.jar\nexport-apiJar=export-api-$productVersion.jar\nmodel-apiJar=model-api-$productVersion.jar\nmainJar=$module-$productVersion.jar\n"
             )
         }
     }

@@ -17,8 +17,8 @@ frontends depend on it. See [shared utilities and configuration](docs/shared-uti
 The `import` and `export` projects own document/G-code reading, document writing,
 STL/3MF exporters and the slicer file pipeline. The `:api:import` and `:api:export`
 projects publish provider contracts so external JARs can add formats without depending
-on implementation projects. Both APIs depend on engine; engine has no production
-dependency on them. There are eight first-party projects. See
+on implementation projects. Both file-I/O APIs depend only on the MIT `api/model` module; engine also depends
+on that model API. There are nine first-party projects. See
 [file import/export boundaries and API migration](docs/file-io.md).
 CLI commands and each desktop window are assembled by Dagger with constructor
 injection, scoped services and explicit resource ownership. See
@@ -279,7 +279,7 @@ successfully rebuilt document; the output is published only after success.
 
 ## Licenses
 
-VoxelBrew retains the repository's **AGPL-3.0** license. The `api/import` and
+VoxelBrew retains the repository's **AGPL-3.0** license. The `api/model`, `api/import` and
 `api/export` modules are licensed separately under MIT; see the
 [API licensing rationale](api/READEME.md). OCCT is dynamically linked
 under LGPL-2.1 with the OCCT exception. See [third-party notices](THIRD_PARTY_NOTICES.md).

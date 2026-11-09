@@ -134,7 +134,7 @@ public record ApplicationImage(
             }
             if (!Files.isDirectory(result.appDirectory().resolve("native")))
                 throw new IOException("App image has no native libraries");
-            for (String module : List.of("util", "import", "export", "import-api", "export-api")) {
+            for (String module : List.of("util", "import", "export", "import-api", "export-api", "model-api")) {
                 if (!p.containsKey(module + "Jar")) continue; // Older format-1 installations.
                 Path utility = result.appDirectory().resolve(fileName(p.getProperty(module + "Jar")));
                 if (!Files.isRegularFile(utility, LinkOption.NOFOLLOW_LINKS)

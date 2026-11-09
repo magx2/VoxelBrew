@@ -2,23 +2,28 @@
 
 The main VoxelBrew project is licensed under [AGPL-3.0](../LICENSE).
 The developers want users to be able to extend the program with private or
-proprietary code whose source is not public. To support that intent, the two
-file-I/O API modules are separately licensed under the MIT License:
+proprietary code whose source is not public. The three shared API modules are
+therefore separately licensed under the MIT License:
 
-- `import` (`:api:import`): [MIT license](import/LICENSE).
-- `export` (`:api:export`): [MIT license](export/LICENSE).
+- `model` (`:api:model`): shared domain values, [MIT license](model/LICENSE).
+- `import` (`:api:import`): importer contracts, [MIT license](import/LICENSE).
+- `export` (`:api:export`): exporter/slicer contracts, [MIT license](export/LICENSE).
+
+The import and export APIs depend only on the model API. None of these modules
+has a compile or runtime dependency on the AGPL engine, util, or frontends.
+The engine depends on the model API; native evaluation and persistence remain
+in the AGPL application. Existing model Java package names are retained, but
+their classes are supplied by `model-api`, not by the engine JAR.
 
 These licenses apply to the code in their respective module directories.
-Both binary and source JARs include the module's license at `META-INF/LICENSE`.
-Published Maven POMs also declare MIT. The JARs and Maven artifact IDs retain
-`import-api` and `export-api` to distinguish them from the implementation modules.
+Both binary and source JARs include `META-INF/LICENSE`; Maven POMs declare MIT.
+Published coordinates are `dev.voxelbrew:model-api`, `dev.voxelbrew:import-api`
+and `dev.voxelbrew:export-api`, with matching `-api` JAR names.
 
 MIT permits proprietary use of these API modules, subject to retaining its
-copyright and permission notice. This does not relicense the AGPL application,
-engine, or other dependencies. The APIs currently expose engine domain types and
-depend on the AGPL engine, so the MIT API licenses alone do not establish a blanket
-exception for proprietary plugins linked to the application. The developers'
-intent above should not be read as such an exception.
+copyright and permission notice. This does not relicense the AGPL application
+or grant an exception for extensions that directly depend on engine internals,
+including the engine's native feature-provider contract.
 
 Use the published APIs as `compileOnly` dependencies and do not bundle host API
 classes into plugin JARs. See [authoring a provider](../docs/file-io.md#authoring-an-external-provider)

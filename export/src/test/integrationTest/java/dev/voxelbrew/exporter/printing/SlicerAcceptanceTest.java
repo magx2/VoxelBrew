@@ -78,7 +78,7 @@ class SlicerAcceptanceTest {
         var messages = new ArrayList<String>();
         var result = SliceService.slice(
                 new PrusaSlicerBackend(),
-                ManufacturingModel.evaluate(s.document(), MeshOptions.DEFAULT),
+                dev.voxelbrew.engine.printing.ManufacturingModels.evaluate(s.document(), MeshOptions.DEFAULT),
                 PrusaSlicerBackend.defaultExecutable(),
                 artifacts.resolve(name + ".gcode"),
                 true,
@@ -137,7 +137,8 @@ class SlicerAcceptanceTest {
         var reopened = new ModelSession(DocumentReader.load(artifacts.resolve("shelf-blocked-B.jcad")));
         var again = slice(reopened, "shelf-reopened");
         assertEquals(support(blocked), support(again));
-        var model = ManufacturingModel.evaluate(reopened.document(), MeshOptions.DEFAULT);
+        var model =
+                dev.voxelbrew.engine.printing.ManufacturingModels.evaluate(reopened.document(), MeshOptions.DEFAULT);
         Path project = artifacts.resolve("shelf-project.3mf");
         try (var output = Files.newOutputStream(project)) {
             PrusaProjectExporter.writeProject(model, output);
@@ -249,7 +250,7 @@ class SlicerAcceptanceTest {
                     .sum();
         }
         assertEquals(6400, volume, .01);
-        var model = ManufacturingModel.evaluate(session.document(), MeshOptions.DEFAULT);
+        var model = dev.voxelbrew.engine.printing.ManufacturingModels.evaluate(session.document(), MeshOptions.DEFAULT);
         Path roof = artifacts.resolve("handoff-model.stl"),
                 leg = artifacts.resolve("handoff-leg.stl"),
                 pillar = artifacts.resolve("handoff-supports.stl");
@@ -358,7 +359,7 @@ class SlicerAcceptanceTest {
                                 "rotated",
                                 first.bodyId(),
                                 Transform.translation(150, 30, 0).compose(Transform.rotation(0, 0, 90))))));
-        var model = ManufacturingModel.evaluate(session.document(), MeshOptions.DEFAULT);
+        var model = dev.voxelbrew.engine.printing.ManufacturingModels.evaluate(session.document(), MeshOptions.DEFAULT);
         Path core = artifacts.resolve("portable-two-instances.3mf");
         try (var registry = new ExporterRegistry(artifacts.resolve("no-plugins"))) {
             ExportService.export(registry, "3mf", ModelViews.from(model), MeshOptions.DEFAULT, Map.of(), core, true);

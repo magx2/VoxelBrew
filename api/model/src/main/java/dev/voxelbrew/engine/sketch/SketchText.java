@@ -98,7 +98,7 @@ public final class SketchText {
                         b = new Vec(coordinates[2], -coordinates[3]);
                         end = new Vec(coordinates[4], -coordinates[5]);
                     }
-                    current.add(Sketches.entity(
+                    current.add(SketchGeometry.entity(
                             "g" + index++,
                             Kind.SPLINE,
                             false,
@@ -129,7 +129,7 @@ public final class SketchText {
     }
 
     private static Entity line(String id, Vec a, Vec b) {
-        return Sketches.entity(id, Kind.LINE, false, a.x(), a.y(), b.x(), b.y());
+        return SketchGeometry.entity(id, Kind.LINE, false, a.x(), a.y(), b.x(), b.y());
     }
 
     public static List<Entity> curves(SketchGeometry geometry, Entity text) {

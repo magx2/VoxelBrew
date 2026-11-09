@@ -23,11 +23,14 @@ public record FaceSupport(Feature.BodyRef body, double nx, double ny, double nz,
     }
 
     public static Feature.Plane attach(Feature.BodyRef body, List<PlanarFace> faces, int faceIndex) {
-        return attach(body, faces, faceIndex, new dev.voxelbrew.util.UuidGenerator());
+        return attach(body, faces, faceIndex, new dev.voxelbrew.engine.model.UuidGenerator());
     }
 
     public static Feature.Plane attach(
-            Feature.BodyRef body, List<PlanarFace> faces, int faceIndex, dev.voxelbrew.util.UuidGenerator generator) {
+            Feature.BodyRef body,
+            List<PlanarFace> faces,
+            int faceIndex,
+            dev.voxelbrew.engine.model.UuidGenerator generator) {
         var face = faces.stream()
                 .filter(f -> f.faceIndex() == faceIndex)
                 .findFirst()

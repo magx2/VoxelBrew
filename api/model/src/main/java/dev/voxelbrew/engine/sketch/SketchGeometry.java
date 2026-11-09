@@ -27,6 +27,10 @@ public record SketchGeometry(List<Entity> entities, List<Constraint> constraints
             throw new IllegalArgumentException("Duplicate profile boundary entity");
     }
 
+    public static Entity entity(String id, Kind kind, boolean construction, double... values) {
+        return new Entity(id, kind, java.util.Arrays.stream(values).boxed().toList(), construction);
+    }
+
     public static SketchGeometry empty() {
         return new SketchGeometry(List.of(), List.of(), List.of());
     }

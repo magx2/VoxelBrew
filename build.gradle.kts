@@ -14,6 +14,7 @@ val sourceProjects =
     listOf(
         "util",
         "engine",
+        "api/model",
         "api/import",
         "api/export",
         "import",
@@ -171,7 +172,7 @@ configure(libraryProjects) {
         "testImplementation"(platform("org.junit:junit-bom:5.12.1"))
         "testImplementation"("org.junit.jupiter:junit-jupiter")
         "testRuntimeOnly"("org.junit.platform:junit-platform-launcher")
-        if (project.name != "util") {
+        if (project.name != "util" && !project.path.startsWith(":api:")) {
             "testImplementation"(testFixtures(project(":util")))
         }
     }
@@ -318,3 +319,37 @@ tasks.wrapper {
     distributionType = Wrapper.DistributionType.BIN
     distributionSha256Sum = "a17ddd85a26b6a7f5ddb71ff8b05fc5104c0202c6e64782429790c933686c806"
 }
+
+for (module in listOf(":api:model", ":api:import", ":api:export")) {
+    project(module) {
+        tasks.register("verifyApiDependencies") {
+            group = "verification"
+            description = "Reject application/AGPL project dependencies in the MIT API."
+            doLast {
+                for (scope in listOf("compileClasspath", "runtimeClasspath")) {
+                    val components =
+                        configurations.getByName(scope).incoming.resolutionResult.allComponents
+                    for (component in components) {
+                        val id = component.id
+                        if (id is org.gradle.api.artifacts.component.ProjectComponentIdentifier) {
+                            check(id.projectPath.startsWith(":api:")) {
+                                "$module $scope depends on non-API project ${id.projectPath}"
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+tasks.register("verifyApiDependencies") {
+    group = "verification"
+    dependsOn(
+        ":api:model:verifyApiDependencies",
+        ":api:import:verifyApiDependencies",
+        ":api:export:verifyApiDependencies",
+    )
+}
+
+tasks.named("check") { dependsOn("verifyApiDependencies") }

@@ -198,7 +198,8 @@ final class PrintingCommands {
             var session = session();
             var setup = session.document().printSetup();
             var selected = instance(setup, id);
-            var model = ManufacturingModel.evaluate(session.document(), MeshOptions.DEFAULT, pluginDirectory);
+            var model = dev.voxelbrew.engine.printing.ManufacturingModels.evaluate(
+                    session.document(), MeshOptions.DEFAULT, pluginDirectory);
             var transform = MeshGeometry.layOnFace(model.mesh(selected.bodyId()), face, selected.transform());
             session.setPrintSetup(setup.withInstances(setup.instances().stream()
                     .map(i -> i.id().equals(id) ? new BodyInstance(i.id(), i.bodyId(), transform) : i)
@@ -427,8 +428,8 @@ final class PrintingCommands {
 
         @Override
         public Integer call() throws Exception {
-            var result = PrintValidation.validate(
-                    ManufacturingModel.evaluate(session().document(), MeshOptions.DEFAULT, pluginDirectory));
+            var result = PrintValidation.validate(dev.voxelbrew.engine.printing.ManufacturingModels.evaluate(
+                    session().document(), MeshOptions.DEFAULT, pluginDirectory));
             result.meshes().forEach((id, report) -> spec.commandLine().getOut().println(id + " " + report));
             result.diagnostics().forEach(spec.commandLine().getErr()::println);
             spec.commandLine().getOut().println(result.valid() ? "VALID" : "INVALID");
@@ -503,7 +504,8 @@ final class PrintingCommands {
                     "voxelbrew-slice-cancel");
             Runtime.getRuntime().addShutdownHook(shutdown);
             try (var registry = slicers.open(pluginDirectory)) {
-                var model = ManufacturingModel.evaluate(session().document(), MeshOptions.DEFAULT, pluginDirectory);
+                var model = dev.voxelbrew.engine.printing.ManufacturingModels.evaluate(
+                        session().document(), MeshOptions.DEFAULT, pluginDirectory);
                 registry.diagnostics().forEach(spec.commandLine().getErr()::println);
                 var result = SliceService.slice(
                         registry.require(model.setup().backendId()),

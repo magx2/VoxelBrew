@@ -6,7 +6,7 @@ plugins {
 // Unique project coordinates avoid collisions with :export.
 group = "dev.voxelbrew.api"
 
-dependencies { api(project(":engine")) }
+dependencies { api(project(":api:model")) }
 
 java { withSourcesJar() }
 

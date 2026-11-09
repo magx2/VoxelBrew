@@ -57,7 +57,7 @@ new_version = ".".join(map(str, numeric))
 marker = payload / app_relative / "voxelbrew-install.properties"
 marker.write_text(marker.read_text().replace("version=" + old_version, "version=" + new_version), encoding="utf-8")
 metadata = dict(line.split("=", 1) for line in marker.read_text().splitlines() if "=" in line)
-for module in ("engine", "util", "import", "export", "import-api", "export-api"):
+for module in ("engine", "util", "import", "export", "import-api", "export-api", "model-api"):
     jar_path = payload / app_relative / metadata[module + "Jar"]
     temporary = jar_path.with_suffix(".new")
     with zipfile.ZipFile(jar_path) as original, zipfile.ZipFile(temporary, "w") as changed:

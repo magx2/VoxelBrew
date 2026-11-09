@@ -9,7 +9,7 @@ import java.util.List;
 @lombok.extern.slf4j.Slf4j
 public final class ModelSession {
     private final String id;
-    private final dev.voxelbrew.util.UuidGenerator uuidGenerator;
+    private final dev.voxelbrew.engine.model.UuidGenerator uuidGenerator;
     private List<Feature> features;
     private dev.voxelbrew.engine.printing.PrintSetup printSetup;
     private dev.voxelbrew.engine.parameters.ParameterSet parameters;

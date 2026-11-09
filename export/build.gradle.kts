@@ -6,6 +6,7 @@ plugins {
 apply(from = rootProject.file("gradle/di.gradle.kts"))
 
 dependencies {
+    implementation(project(":engine"))
     api(project(":api:export"))
     implementation(project(":import"))
     implementation(project(":util"))

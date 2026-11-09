@@ -10,14 +10,14 @@ public record ParameterSet(
         List<Configuration> configurations,
         String active,
         List<Binding> bindings,
-        dev.voxelbrew.util.UuidGenerator uuidGenerator,
+        dev.voxelbrew.engine.model.UuidGenerator uuidGenerator,
         BuiltinParameters builtins) {
     public ParameterSet(
             List<Parameter> parameters,
             List<Configuration> configurations,
             String active,
             List<Binding> bindings,
-            dev.voxelbrew.util.UuidGenerator uuidGenerator) {
+            dev.voxelbrew.engine.model.UuidGenerator uuidGenerator) {
         this(parameters, configurations, active, bindings, uuidGenerator, new BuiltinParameters());
     }
 
@@ -81,10 +81,10 @@ public record ParameterSet(
 
     public ParameterSet(
             List<Parameter> parameters, List<Configuration> configurations, String active, List<Binding> bindings) {
-        this(parameters, configurations, active, bindings, new dev.voxelbrew.util.UuidGenerator());
+        this(parameters, configurations, active, bindings, new dev.voxelbrew.engine.model.UuidGenerator());
     }
 
-    public ParameterSet withUuidGenerator(dev.voxelbrew.util.UuidGenerator generator) {
+    public ParameterSet withUuidGenerator(dev.voxelbrew.engine.model.UuidGenerator generator) {
         return new ParameterSet(parameters, configurations, active, bindings, generator, builtins);
     }
 

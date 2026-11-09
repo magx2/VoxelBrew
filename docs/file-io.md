@@ -4,27 +4,37 @@ The `import` and `export` Gradle projects separate file I/O from the CAD engine.
 The Java packages are `dev.voxelbrew.importer` and `dev.voxelbrew.exporter`;
 `import` is a Java keyword, so it cannot be a package segment.
 
-| Project    | Owns                                                                                       | Production dependencies      |
-| ---------- | ------------------------------------------------------------------------------------------ | ---------------------------- |
-| util       | Configuration, translations, logging, updates, generic workers                             | No other project             |
-| engine     | CAD/manufacturing models, geometry, tessellation, document schema/codec, feature contracts | util                         |
-| api:import | FileImporter SPI, descriptors, typed options/results, DocumentSource/GcodeSource ports     | engine                       |
-| api:export | ModelExporter and SlicerBackend SPIs, descriptors/options, DocumentSink port               | engine                       |
-| import     | Bounded .jcad/G-code reading, importer discovery and invocation                            | api:import, util             |
-| export     | Atomic .jcad writing, STL/3MF writers, exporter discovery, slicer execution/publication    | api:export, import, util     |
-| cli / gui  | Commands and desktop interactions                                                          | engine, import, export, util |
+| Project    | Owns                                                                                    | Production dependencies          |
+| ---------- | --------------------------------------------------------------------------------------- | -------------------------------- |
+| util       | Configuration, translations, logging, updates, generic workers                          | No other project                 |
+| engine     | Native geometry, evaluation, tessellation, document codec, feature execution            | api:model, util                  |
+| api:model  | Shared document, sketch, parameter, mesh and manufacturing values                       | No application modules           |
+| api:import | FileImporter SPI, descriptors, typed options/results, DocumentSource/GcodeSource ports  | api:model                        |
+| api:export | ModelExporter and SlicerBackend SPIs, descriptors/options, DocumentSink port            | api:model                        |
+| import     | Bounded .jcad/G-code reading, importer discovery and invocation                         | engine, api:import, util         |
+| export     | Atomic .jcad writing, STL/3MF writers, exporter discovery, slicer execution/publication | engine, api:export, import, util |
+| cli / gui  | Commands and desktop interactions                                                       | engine, import, export, util     |
 
-The API projects live in `api/import` and `api/export`. Their binary and source JARs
+The API projects live in `api/model`, `api/import` and `api/export`. Their binary and source JARs
 retain the `-api` suffix and bundle `META-INF/LICENSE` under MIT. See the
 [licensing rationale](../api/READEME.md).
 
 The APIs contain only public contracts and their value types. Concrete format classes,
 registries, services and ServiceLoader registrations stay in `import` / `export`.
-Engine has no production dependency on either API or implementation module. Export inputs
+Engine depends on api/model, but not on the file-I/O APIs or implementations. Export inputs
 `ModelView` and `ManufacturingView` live in `dev.voxelbrew.exporter.api`; the concrete
 `ModelViews` adapters and `ExportSelection` live in `dev.voxelbrew.exporter`. Shared CAD
 placements (`BodyInstance` and `Transform`) stay in `dev.voxelbrew.engine.model`.
 `ManufacturingModel` is a detached CAD/manufacturing snapshot, independent of the export API.
+The shared classes retain their `dev.voxelbrew.engine.*` package names for source
+compatibility, but ship only in `model-api`. Native manufacturing factories moved
+to engine's `ManufacturingModels.evaluate/from`; `ManufacturingModel` contains only
+the detached value and mesh helpers. Document IDs use the API-owned
+`dev.voxelbrew.engine.model.UuidGenerator`.
+
+`verifyApiDependencies` rejects application project dependencies on API compile/runtime
+classpaths. The independent fixture compiles import/export providers against only
+model-api/import-api/export-api; native feature providers compile separately against engine.
 All services are headless.
 STL mesh-to-editable-CAD and STEP import remain outside the implemented workflow.
 
@@ -86,7 +96,7 @@ controls model/support/all geometry selection. Format-specific transform seriali
 ## Authoring an external provider
 
 Compile against `dev.voxelbrew:import-api:<version>` or `dev.voxelbrew:export-api:<version>`
-with `compileOnly` (Maven `provided` scope). Engine domain types are available transitively.
+with `compileOnly` (Maven `provided` scope). Shared MIT model types are available transitively; engine and util are absent from these API dependencies.
 Do not bundle host API classes into a plugin JAR. No dependency on import/export, JavaFX,
 picocli, Protobuf classes or Dagger is needed. This source migration intentionally has no
 old-package shims: recompile existing providers and rename their service resources.
@@ -118,9 +128,9 @@ STL/3MF exporters use the same discovery mechanism.
 `fixtures/exporter-plugin` is an independent Gradle build with published API dependencies
 only. It includes `consumer.ProbeImporter` (CSV `width,height,thickness` in a `.vbplate` file,
 with a `scale` option) and `consumer.ProbeExporter` (a mesh report with a `label` option).
-`./gradlew :engine:buildExporterFixture` publishes engine/util and both APIs to
+`./gradlew :engine:buildExporterFixture` publishes engine/util and all three APIs to
 `engine/build/repository`, then compiles that consumer. For Maven-local development run
-`./gradlew :util:publishToMavenLocal :engine:publishToMavenLocal :api:import:publishToMavenLocal :api:export:publishToMavenLocal`.
+`./gradlew :util:publishToMavenLocal :engine:publishToMavenLocal :api:model:publishToMavenLocal :api:import:publishToMavenLocal :api:export:publishToMavenLocal`.
 The API artifacts also publish source JARs. Copy the consumer JAR into a trusted plugin directory.
 
 ```text
@@ -142,7 +152,7 @@ importers are available through the host API and CLI; the GUI import dialog is f
 
 Both API libraries and the implementations are published alongside engine/util and automatically included
 in development distributions and bundled images. Installation metadata identifies
-`importJar`, `exportJar`, `import-apiJar` and `export-apiJar`; the updater checks their presence and build versions.
+`importJar`, `exportJar`, `model-apiJar`, `import-apiJar` and `export-apiJar`; the updater checks their presence and build versions.
 Older format-1 installation metadata remains readable for recovery/downgrades.
 
 Focused checks:

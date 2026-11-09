@@ -123,7 +123,7 @@ public final class SketchCurves {
                     a.plus(b.minus(a).times(1.0 / 3)).minus(m0.times(2).plus(m1).times(h[i] * h[i] / 18));
             var c1 = b.minus(b.minus(a).times(1.0 / 3))
                     .minus(m0.plus(m1.times(2)).times(h[i] * h[i] / 18));
-            result.add(Sketches.entity(
+            result.add(SketchGeometry.entity(
                     SketchGeometry.derivedId(e.id(), "-span-" + i),
                     Kind.SPLINE,
                     e.construction(),

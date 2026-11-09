@@ -56,7 +56,7 @@ final class SketchEditor extends BorderPane implements AutoCloseable {
             double by) {}
 
     private final SketchController controller;
-    private final dev.voxelbrew.util.UuidGenerator uuidGenerator;
+    private final dev.voxelbrew.engine.model.UuidGenerator uuidGenerator;
     private final dev.voxelbrew.util.i18n.Translations translations;
     private final Canvas canvas = new Canvas();
     private final LinkedHashSet<Ref> selection = new LinkedHashSet<>();

@@ -120,7 +120,8 @@ public final class PrintController implements AutoCloseable {
         onChanged.run();
         worker.execute(() -> {
             try {
-                var model = ManufacturingModel.evaluate(document, MeshOptions.DEFAULT, pluginDirectory);
+                var model = dev.voxelbrew.engine.printing.ManufacturingModels.evaluate(
+                        document, MeshOptions.DEFAULT, pluginDirectory);
                 token.check();
                 var completed = SliceService.slice(
                         backend,

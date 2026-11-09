@@ -18,18 +18,19 @@ Once the check passes, review and stage the milestone changes and create a Git c
 
 ## Project boundaries
 
-| Gradle project | Responsibilities                                                                                                                              | Dependencies                               |
-| -------------- | --------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------ |
-| util           | Translations, user properties, logging, updates, generic concurrency and paths                                                                | Java and archive support; no other project |
-| engine         | CAD document/models, units, sketch math, evaluation, native geometry, schema/codec, tessellation, manufacturing models and feature interfaces | util, Java, Protobuf, pinned OCCT/JNI      |
-| api:import     | Public importer contracts, descriptors, options, results and reader ports                                                                     | engine                                     |
-| api:export     | Public exporter/slicer contracts, descriptors, options and writer ports                                                                       | engine                                     |
-| import         | Bounded .jcad/G-code readers and importer discovery                                                                                           | api:import, util                           |
-| export         | Atomic document writing, STL/3MF writers, exporter discovery, slicer adapters and file publication                                            | api:export, import, util                   |
-| gui            | JavaFX desktop, sketch tools, viewport, properties, timeline, file and print dialogs                                                          | engine, import, export, util               |
-| cli            | Headless modeling, editing, file operations, inspection, export, plugin listing and slicing commands                                          | engine, import, export, util               |
+| Gradle project | Responsibilities                                                                                     | Dependencies                                     |
+| -------------- | ---------------------------------------------------------------------------------------------------- | ------------------------------------------------ |
+| util           | Translations, user properties, logging, updates, generic concurrency and paths                       | Java and archive support; no other project       |
+| engine         | CAD evaluation, native geometry, schema/codec, tessellation and feature execution                    | api:model, util, Java, Protobuf, pinned OCCT/JNI |
+| api:model      | Shared document, sketch, parameter, mesh and manufacturing values under MIT                          | No application modules                           |
+| api:import     | Public importer contracts, descriptors, options, results and reader ports                            | api:model                                        |
+| api:export     | Public exporter/slicer contracts, descriptors, options and writer ports                              | api:model                                        |
+| import         | Bounded .jcad/G-code readers and importer discovery                                                  | engine, api:import, util                         |
+| export         | Atomic document writing, STL/3MF writers, exporter discovery, slicer adapters and file publication   | engine, api:export, import, util                 |
+| gui            | JavaFX desktop, sketch tools, viewport, properties, timeline, file and print dialogs                 | engine, import, export, util                     |
+| cli            | Headless modeling, editing, file operations, inspection, export, plugin listing and slicing commands | engine, import, export, util                     |
 
-Keep these eight first-party subprojects. The user-requested utility and file-I/O
+Keep these nine first-party subprojects. The user-requested utility and file-I/O
 extractions supersede the original three-project boundary. Example plugins belong
 in test fixtures or a separate consumer build. Publish the versioned plugin
 feature contracts from engine and file-I/O contracts from api/import and api/export. Keep JavaFX, CLI parsing, generated Protobuf classes and

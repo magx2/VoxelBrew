@@ -13,6 +13,7 @@
   results, registry-token handles, close safety, and translated OCCT/C++ failures.
 - Keep JNI narrow and validate actual kernel results. Changes to native binaries
   must invalidate relevant Gradle tests, even when Java sources are unchanged.
+- Depend on the MIT api/model values; keep native evaluation and persistence codecs here.
 - Keep production code independent of the import/export modules. Cross-module integration
   tests may use their public readers and writers; export-specific tests belong in export.
 - Evolve `src/main/proto/document.proto` and the in-memory `DocumentCodec` compatibly: reserve retired field numbers,

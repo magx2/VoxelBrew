@@ -4,6 +4,7 @@ plugins {
 }
 
 dependencies {
+    implementation(project(":engine"))
     api(project(":api:import"))
     implementation(project(":util"))
 }

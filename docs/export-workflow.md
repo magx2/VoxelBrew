@@ -1,7 +1,7 @@
 # M2 mesh export and external providers
 
 Format implementations and exporter discovery live in the `export` project.
-The versioned SPI and read-only `ModelView`/`ManufacturingView` contracts live in `export-api`.
+The versioned SPI and read-only `ModelView`/`ManufacturingView` contracts live in `:api:export`.
 `ModelViews` adapters and selection live in `export`; shared CAD placements stay in engine.
 See [file-I/O APIs and boundaries](file-io.md).
 
@@ -21,7 +21,7 @@ Use `--overwrite` explicitly to replace an export. Failed writes preserve the ol
 destination. New output uses atomic create-if-absent publication; replacement
 requires atomic rename. Broken or rolled-back documents cannot be exported.
 
-`export-api` publishes `dev.voxelbrew:export-api:0.1.0-SNAPSHOT` via `maven-publish`.
+`:api:export` publishes `dev.voxelbrew:export-api:0.1.0-SNAPSHOT` via `maven-publish`.
 `./gradlew :engine:buildExporterFixture` publishes both APIs and their engine/util
 dependencies to a local Maven repository under `engine/build/repository`. `fixtures/exporter-plugin` is an
 independent Gradle consumer, not an application subproject. Root `check` compiles

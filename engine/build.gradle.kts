@@ -255,8 +255,8 @@ val buildExporterFixture by
         dependsOn(
             "publishEnginePublicationToFixtureRepository",
             ":util:publishUtilPublicationToFixtureRepository",
-            ":export-api:publishApiPublicationToFixtureRepository",
-            ":import-api:publishApiPublicationToFixtureRepository",
+            ":api:export:publishApiPublicationToFixtureRepository",
+            ":api:import:publishApiPublicationToFixtureRepository",
         )
         dir = rootProject.file("fixtures/exporter-plugin")
         tasks = listOf("jar")

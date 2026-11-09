@@ -6,7 +6,7 @@ plugins {
 apply(from = rootProject.file("gradle/di.gradle.kts"))
 
 dependencies {
-    api(project(":export-api"))
+    api(project(":api:export"))
     implementation(project(":import"))
     implementation(project(":util"))
     testImplementation("com.google.protobuf:protobuf-java:4.30.2")

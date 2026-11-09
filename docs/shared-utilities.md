@@ -2,7 +2,7 @@
 
 `util` is a Java 21 library with no dependency on engine, JavaFX, picocli, Protobuf
 or native libraries. Engine, export, CLI and GUI depend on it. Engine keeps CAD units,
-sketches, documents, geometry, feature contracts and manufacturing models; import-api/export-api
+sketches, documents, geometry, feature contracts and manufacturing models; api/import and api/export
 own file-I/O contracts, while import/export
 own file readers, writers and format-specific pipelines. See [file I/O](file-io.md).
 

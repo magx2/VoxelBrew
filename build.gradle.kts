@@ -14,8 +14,8 @@ val sourceProjects =
     listOf(
         "util",
         "engine",
-        "import-api",
-        "export-api",
+        "api/import",
+        "api/export",
         "import",
         "export",
         "cli",
@@ -97,6 +97,8 @@ spotless {
         target(
             "*.md",
             "*/AGENTS.md",
+            "api/*.md",
+            "api/*/AGENTS.md",
             "docs/*.md",
             ".github/**/*.yml",
             ".github/scripts/*.cjs",
@@ -138,7 +140,10 @@ allprojects {
     repositories { mavenCentral() }
 }
 
-subprojects {
+// The implicit :api parent groups directories; it is not a Java module.
+val libraryProjects = subprojects.filter { it.path != ":api" }
+
+configure(libraryProjects) {
     apply(plugin = "java-library")
     apply(plugin = "com.github.spotbugs")
     extensions.configure<SpotBugsExtension> {
@@ -270,14 +275,14 @@ tasks.register("basicChecks") {
     group = "verification"
     description =
         "Check high-confidence production correctness bugs, without style or coverage quotas."
-    dependsOn(subprojects.map { "${it.path}:spotbugsMain" })
+    dependsOn(libraryProjects.map { "${it.path}:spotbugsMain" })
 }
 
 for (suite in listOf("test", "integrationTest", "e2eTest", "platformCheck")) {
     tasks.register(suite) {
         group = "verification"
         description = "Run $suite across all modules."
-        dependsOn(subprojects.map { "${it.path}:$suite" })
+        dependsOn(libraryProjects.map { "${it.path}:$suite" })
     }
 }
 
@@ -299,7 +304,7 @@ tasks.named("test") { dependsOn(workflowTest, testCleanupTest) }
 
 tasks.named("check") {
     dependsOn(workflowTest, testCleanupTest)
-    dependsOn(subprojects.map { "${it.path}:check" })
+    dependsOn(libraryProjects.map { "${it.path}:check" })
 }
 
 tasks.register("headlessPlatformCheck") {

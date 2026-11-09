@@ -8,11 +8,15 @@ The Java packages are `dev.voxelbrew.importer` and `dev.voxelbrew.exporter`;
 | ---------- | ------------------------------------------------------------------------------------------ | ---------------------------- |
 | util       | Configuration, translations, logging, updates, generic workers                             | No other project             |
 | engine     | CAD/manufacturing models, geometry, tessellation, document schema/codec, feature contracts | util                         |
-| import-api | FileImporter SPI, descriptors, typed options/results, DocumentSource/GcodeSource ports     | engine                       |
-| export-api | ModelExporter and SlicerBackend SPIs, descriptors/options, DocumentSink port               | engine                       |
-| import     | Bounded .jcad/G-code reading, importer discovery and invocation                            | import-api, util             |
-| export     | Atomic .jcad writing, STL/3MF writers, exporter discovery, slicer execution/publication    | export-api, import, util     |
+| api:import | FileImporter SPI, descriptors, typed options/results, DocumentSource/GcodeSource ports     | engine                       |
+| api:export | ModelExporter and SlicerBackend SPIs, descriptors/options, DocumentSink port               | engine                       |
+| import     | Bounded .jcad/G-code reading, importer discovery and invocation                            | api:import, util             |
+| export     | Atomic .jcad writing, STL/3MF writers, exporter discovery, slicer execution/publication    | api:export, import, util     |
 | cli / gui  | Commands and desktop interactions                                                          | engine, import, export, util |
+
+The API projects live in `api/import` and `api/export`. Their binary and source JARs
+retain the `-api` suffix and bundle `META-INF/LICENSE` under MIT. See the
+[licensing rationale](../api/READEME.md).
 
 The APIs contain only public contracts and their value types. Concrete format classes,
 registries, services and ServiceLoader registrations stay in `import` / `export`.
@@ -116,7 +120,7 @@ only. It includes `consumer.ProbeImporter` (CSV `width,height,thickness` in a `.
 with a `scale` option) and `consumer.ProbeExporter` (a mesh report with a `label` option).
 `./gradlew :engine:buildExporterFixture` publishes engine/util and both APIs to
 `engine/build/repository`, then compiles that consumer. For Maven-local development run
-`./gradlew :util:publishToMavenLocal :engine:publishToMavenLocal :import-api:publishToMavenLocal :export-api:publishToMavenLocal`.
+`./gradlew :util:publishToMavenLocal :engine:publishToMavenLocal :api:import:publishToMavenLocal :api:export:publishToMavenLocal`.
 The API artifacts also publish source JARs. Copy the consumer JAR into a trusted plugin directory.
 
 ```text
@@ -144,7 +148,7 @@ Older format-1 installation metadata remains readable for recovery/downgrades.
 Focused checks:
 
 ```text
-./gradlew :import-api:test :export-api:test :import:test :import:integrationTest :export:test :export:integrationTest
+./gradlew :api:import:test :api:export:test :import:test :import:integrationTest :export:test :export:integrationTest
 ```
 
 The compatibility fixture in `export/src/test/test/resources/fixtures/` was

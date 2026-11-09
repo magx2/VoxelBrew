@@ -22,17 +22,17 @@ Once the check passes, review and stage the milestone changes and create a Git c
 | -------------- | --------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------ |
 | util           | Translations, user properties, logging, updates, generic concurrency and paths                                                                | Java and archive support; no other project |
 | engine         | CAD document/models, units, sketch math, evaluation, native geometry, schema/codec, tessellation, manufacturing models and feature interfaces | util, Java, Protobuf, pinned OCCT/JNI      |
-| import-api     | Public importer contracts, descriptors, options, results and reader ports                                                                     | engine                                     |
-| export-api     | Public exporter/slicer contracts, descriptors, options and writer ports                                                                       | engine                                     |
-| import         | Bounded .jcad/G-code readers and importer discovery                                                                                           | import-api, util                           |
-| export         | Atomic document writing, STL/3MF writers, exporter discovery, slicer adapters and file publication                                            | export-api, import, util                   |
+| api:import     | Public importer contracts, descriptors, options, results and reader ports                                                                     | engine                                     |
+| api:export     | Public exporter/slicer contracts, descriptors, options and writer ports                                                                       | engine                                     |
+| import         | Bounded .jcad/G-code readers and importer discovery                                                                                           | api:import, util                           |
+| export         | Atomic document writing, STL/3MF writers, exporter discovery, slicer adapters and file publication                                            | api:export, import, util                   |
 | gui            | JavaFX desktop, sketch tools, viewport, properties, timeline, file and print dialogs                                                          | engine, import, export, util               |
 | cli            | Headless modeling, editing, file operations, inspection, export, plugin listing and slicing commands                                          | engine, import, export, util               |
 
 Keep these eight first-party subprojects. The user-requested utility and file-I/O
 extractions supersede the original three-project boundary. Example plugins belong
 in test fixtures or a separate consumer build. Publish the versioned plugin
-feature contracts from engine and file-I/O contracts from import-api/export-api. Keep JavaFX, CLI parsing, generated Protobuf classes and
+feature contracts from engine and file-I/O contracts from api/import and api/export. Keep JavaFX, CLI parsing, generated Protobuf classes and
 native pointers out of plugin contracts. Both frontends submit the same model
 operations. Util is independent of CAD/JNI/frontend frameworks; engine has no
 production dependency on import/export. See [file-I/O boundaries](file-io.md).
@@ -69,7 +69,7 @@ Expose CLI commands for creating a document, adding sketches and features, editi
 
 ### M2 — Ship mesh export and prove external plugins work
 
-Introduce a versioned ModelExporter SPI and a read-only model view with a tessellation operation in export-api; concrete view adapters and format writers belong to export. Register binary STL and 3MF Core exporters through the same registry as external providers. Take tessellation tolerance as an explicit export option. Write STL coordinates in mm. Write units, object identities, build items and placements in 3MF.
+Introduce a versioned ModelExporter SPI and a read-only model view with a tessellation operation in api/export; concrete view adapters and format writers belong to export. Register binary STL and 3MF Core exporters through the same registry as external providers. Take tessellation tolerance as an explicit export option. Write STL coordinates in mm. Write units, object identities, build items and placements in 3MF.
 
 Discover trusted JARs from a configurable plugin directory using a dedicated class loader and ServiceLoader. Define provider IDs, API compatibility and diagnostics for duplicate IDs, incompatible versions and load errors. Compile a small independent example exporter against the published export-api artifact.
 

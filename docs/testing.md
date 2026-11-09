@@ -54,6 +54,14 @@ and packaged-app evidence in each frontend's `build/package-artifacts`.
 
 ## Parallel execution
 
+CI caches OCCT source, compilation and installed libraries per runner image,
+architecture, native version lock and build/bootstrap recipe. A recipe change
+(including additional OCCT toolkits) restores the previous compatible compilation
+as a starting point and saves the expanded build under a new key. The first run
+after such a change can be slower; subsequent runs reuse the completed build.
+Do not key this cache only by the OCCT version: cache entries are immutable, so
+an exact hit would repeatedly rebuild new toolkits without retaining them.
+
 The committed Gradle configuration enables parallel project execution with at most four
 workers. Ordinary commands such as `gradlew.bat test` and `./gradlew check` use this
 configuration automatically. Override it with `--max-workers=2` for a smaller machine,

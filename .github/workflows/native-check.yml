@@ -64,7 +64,12 @@ jobs:
             .tools/OCCT-7_9_0
             engine/build/native/occt
             engine/build/native/occt-install
-          key: occt-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('scripts/native-versions.properties') }}
+          # Include the recipe: adding toolkits must produce a new immutable cache.
+          # Reuse the previous compilation while warming the updated recipe.
+          key: occt-v2-${{ runner.os }}-${{ runner.arch }}-${{ inputs.os }}-${{ hashFiles('scripts/native-versions.properties') }}-${{ hashFiles('engine/build.gradle.kts', 'scripts/bootstrap-native.sh', 'scripts/bootstrap-native.ps1') }}
+          restore-keys: |
+            occt-v2-${{ runner.os }}-${{ runner.arch }}-${{ inputs.os }}-${{ hashFiles('scripts/native-versions.properties') }}-
+            occt-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('scripts/native-versions.properties') }}
       - name: Bootstrap Ubuntu
         if: runner.os == 'Linux'
         run: bash scripts/bootstrap-native.sh

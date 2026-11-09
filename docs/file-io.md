@@ -272,7 +272,7 @@ backend execution, and temporary files are deleted with the job workspace.
 The public exporter and slicer SPIs are version 2. External exporters implement
 `ExporterProvider`, not the removed `ModelExporter`; model/manufacturing views and
 mesh option metadata remain implementation helpers outside `export-api`.
-See the [export developer guide](../export/README.md) for migration and examples.
+See the [export developer guide](../api/export/README.md) for migration and examples.
 
 ## Distribution and verification
 

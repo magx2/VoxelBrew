@@ -527,42 +527,71 @@ public final class DocumentController implements AutoCloseable {
         return result;
     }
 
-    /** Reads a provider on the file worker; the imported document needs its own Save As. */
+    /** Headless convenience path; the loader stays alive through asynchronous completion. */
     public CompletableFuture<Void> importFile(
             dev.voxelbrew.importer.ImporterRegistry.Factory importers,
             String format,
             Path source,
             Map<String, String> options) {
-        var values = Map.copyOf(options);
+        try {
+            var registry = importers.open(pluginDirectory);
+            try {
+                return importDocument(
+                                registry.require(format),
+                                dev.voxelbrew.importer.api.FileImportDialog.source(source, options))
+                        .whenComplete((value, failure) -> {
+                            try {
+                                registry.close();
+                            } catch (java.io.IOException closeFailure) {
+                                log.warn("Closing importer registry", closeFailure);
+                            }
+                        });
+            } catch (RuntimeException failure) {
+                registry.close();
+                throw failure;
+            }
+        } catch (java.io.IOException failure) {
+            return CompletableFuture.failedFuture(failure);
+        }
+    }
+
+    /** Collects provider settings on the UI thread and reads on the window-owned file worker. */
+    public CompletableFuture<Void> importDocument(
+            dev.voxelbrew.importer.ImporterRegistry.Entry entry, dev.voxelbrew.importer.api.ImportWindow parent) {
         requireIdleIo();
+        if (entry.descriptor().resultKind() != dev.voxelbrew.importer.api.ImportResult.Kind.DOCUMENT)
+            throw new IllegalArgumentException("Choose a document importer");
+        long generation = documentGeneration;
         ioBusy = true;
         onChanged.run();
         var result = new CompletableFuture<Void>();
-        io.execute(() -> {
-            try {
-                CadDocument document;
-                try (var registry = importers.open(pluginDirectory)) {
-                    if (registry.require(format).descriptor().resultKind()
-                            != dev.voxelbrew.importer.api.ImportResult.Kind.DOCUMENT)
-                        throw new IllegalArgumentException("Choose a document importer");
-                    document = ((dev.voxelbrew.importer.api.ImportResult.Document)
-                                    dev.voxelbrew.importer.ImportService.read(registry, format, source, values))
-                            .document();
-                }
-                dispatch.accept(() -> {
-                    if (closed) {
+        dev.voxelbrew.importer.ImportService.importFrom(entry, io, parent).whenComplete((imported, failure) -> {
+            if (failure != null) {
+                while (failure instanceof CompletionException && failure.getCause() != null)
+                    failure = failure.getCause();
+                if (failure instanceof CancellationException) {
+                    dispatch.accept(() -> {
+                        ioBusy = false;
+                        onChanged.run();
                         result.cancel(false);
-                        return;
-                    }
-                    ioBusy = false;
-                    replace(document, null);
-                    unsavedImport = true;
-                    onChanged.run();
-                    result.complete(null);
-                });
-            } catch (Exception failure) {
-                finishIo(result, failure);
+                    });
+                } else
+                    finishIo(
+                            result, failure instanceof Exception exception ? exception : new RuntimeException(failure));
+                return;
             }
+            dispatch.accept(() -> {
+                if (closed || documentGeneration != generation) {
+                    result.cancel(false);
+                    return;
+                }
+                ioBusy = false;
+                var document = ((dev.voxelbrew.importer.api.ImportResult.Document) imported).document();
+                replace(document, null);
+                unsavedImport = true;
+                onChanged.run();
+                result.complete(null);
+            });
         });
         return result;
     }

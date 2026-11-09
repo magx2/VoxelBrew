@@ -1,7 +1,7 @@
 package dev.voxelbrew.importer;
 
-import dev.voxelbrew.importer.api.FileImporter;
 import dev.voxelbrew.importer.api.ImporterDescriptor;
+import dev.voxelbrew.importer.api.ImporterProvider;
 import java.io.IOException;
 import java.net.URL;
 import java.net.URLClassLoader;
@@ -23,7 +23,7 @@ public final class ImporterRegistry implements AutoCloseable {
         ImporterRegistry open(Path directory) throws IOException;
     }
 
-    public record Entry(ImporterDescriptor descriptor, FileImporter provider) {}
+    public record Entry(ImporterDescriptor descriptor, ImporterProvider provider) {}
 
     private final Map<String, Entry> entries = new LinkedHashMap<>();
     private final List<String> diagnostics = new ArrayList<>();
@@ -34,6 +34,13 @@ public final class ImporterRegistry implements AutoCloseable {
     }
 
     public ImporterRegistry(Path directory) throws IOException {
+        this(
+                directory,
+                List.of(new VoxelBrewImporterProvider(), new JsonImporterProvider(), new GcodeImporterProvider()));
+    }
+
+    public ImporterRegistry(Path directory, java.util.Collection<ImporterProvider> builtins) throws IOException {
+        builtins.forEach(this::register);
         var urls = new ArrayList<URL>();
         if (Files.exists(directory)) {
             if (!Files.isDirectory(directory)) throw new IOException("Plugin path is not a directory: " + directory);
@@ -44,8 +51,8 @@ public final class ImporterRegistry implements AutoCloseable {
                         .toList()) urls.add(jar.toUri().toURL());
             }
         }
-        loader = new URLClassLoader(urls.toArray(URL[]::new), FileImporter.class.getClassLoader());
-        var iterator = ServiceLoader.load(FileImporter.class, loader).iterator();
+        loader = new URLClassLoader(urls.toArray(URL[]::new), ImporterProvider.class.getClassLoader());
+        var iterator = ServiceLoader.load(ImporterProvider.class, loader).iterator();
         int failures = 0;
         while (true) {
             try {
@@ -64,9 +71,9 @@ public final class ImporterRegistry implements AutoCloseable {
         diagnostics.forEach(message -> log.warn("Importer discovery: {}", message));
     }
 
-    private void register(FileImporter provider) {
+    private void register(ImporterProvider provider) {
         var descriptor = provider.descriptor();
-        if (descriptor.apiVersion() != FileImporter.API_VERSION) {
+        if (descriptor.apiVersion() != ImporterProvider.API_VERSION) {
             diagnostics.add("Incompatible importer " + descriptor.id() + ": API " + descriptor.apiVersion());
             return;
         }

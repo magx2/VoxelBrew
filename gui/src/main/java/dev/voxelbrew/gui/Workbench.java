@@ -853,15 +853,33 @@ public final class Workbench extends BorderPane implements AutoCloseable {
     }
 
     private void importFile() {
-        try (var providers = importers.open(pluginDirectory)) {
-            ImportDialog.choose(
-                            stage, providers, controller.snapshot().document().parameters(), translations)
-                    .ifPresent(request -> {
-                        cancelTool();
-                        controller
-                                .importFile(importers, request.format(), request.source(), request.options())
-                                .exceptionally(failure -> null);
-                    });
+        try {
+            var providers = importers.open(pluginDirectory);
+            boolean started = false;
+            try {
+                var choice = ImportDialog.choose(stage, providers, translations);
+                if (choice.isPresent()) {
+                    cancelTool();
+                    controller
+                            .importDocument(
+                                    providers.require(choice.get().id()),
+                                    new DesktopImportWindow(
+                                            stage,
+                                            controller.snapshot().document().parameters(),
+                                            translations))
+                            .whenComplete((value, failure) -> {
+                                try {
+                                    providers.close();
+                                } catch (IOException closeFailure) {
+                                    log.warn("Closing importer registry", closeFailure);
+                                }
+                            })
+                            .exceptionally(failure -> null);
+                    started = true;
+                }
+            } finally {
+                if (!started) providers.close();
+            }
         } catch (IOException failure) {
             throw new java.io.UncheckedIOException(failure);
         }

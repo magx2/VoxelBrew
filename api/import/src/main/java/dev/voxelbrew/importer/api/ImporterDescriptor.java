@@ -1,25 +1,12 @@
 package dev.voxelbrew.importer.api;
-
-import java.util.HashSet;
-import java.util.List;
-import lombok.NonNull;
-
+/** Stable discovery metadata; file settings belong to importer-owned dialogs. */
 public record ImporterDescriptor(
         String id,
-        @NonNull String name,
+        @lombok.NonNull String name,
         int apiVersion,
-        List<String> extensions,
-        @NonNull ImportResult.Kind resultKind,
-        List<ImportOption> options) {
+        @lombok.NonNull ImportResult.Kind resultKind) {
     public ImporterDescriptor {
         if (id == null || !id.matches("[a-z0-9][a-z0-9.-]*")) throw new IllegalArgumentException("Invalid importer ID");
-
-        extensions = List.copyOf(extensions);
-        options = List.copyOf(options);
-        if (extensions.isEmpty() || extensions.stream().anyMatch(e -> !e.matches("[a-zA-Z0-9]+")))
-            throw new IllegalArgumentException("Invalid extensions");
-        var keys = new HashSet<String>();
-        for (var option : options)
-            if (!keys.add(option.key())) throw new IllegalArgumentException("Duplicate option " + option.key());
+        if (name.isBlank()) throw new IllegalArgumentException("Missing importer name");
     }
 }

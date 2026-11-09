@@ -37,18 +37,7 @@ final class ImportCommands {
                 for (var descriptor : registry.descriptors()) {
                     spec.commandLine()
                             .getOut()
-                            .println(descriptor.id()
-                                    + "\t"
-                                    + descriptor.name()
-                                    + "\t"
-                                    + descriptor.resultKind()
-                                    + "\t"
-                                    + String.join(",", descriptor.extensions()));
-                    for (var option : descriptor.options())
-                        spec.commandLine()
-                                .getOut()
-                                .println(
-                                        "  " + option.key() + "=" + option.defaultValue() + " (" + option.type() + ")");
+                            .println(descriptor.id() + "\t" + descriptor.name() + "\t" + descriptor.resultKind());
                 }
             }
             return 0;

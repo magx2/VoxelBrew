@@ -9,9 +9,9 @@ The Java packages are `dev.voxelbrew.importer` and `dev.voxelbrew.exporter`;
 | util       | Configuration, translations, logging, updates, generic workers                         | No other project                 |
 | engine     | Native geometry, evaluation, tessellation, document codec, feature execution           | api:model, util                  |
 | api:model  | Shared document, sketch, parameter, mesh and manufacturing values                      | No application modules           |
-| api:import | FileImporter SPI, descriptors, typed options/results, DocumentSource/GcodeSource ports | api:model                        |
+| api:import | ImporterProvider SPI, typed dialogs/results, DocumentSource/GcodeSource ports          | api:model                        |
 | api:export | ExporterProvider SPI, Exporter/ExportWindow contracts                                  | api:model                        |
-| import     | Bounded .vxb/G-code reading, importer discovery and invocation                         | engine, api:import, util         |
+| import     | Bounded .vxb/JSON/G-code reading, importer discovery and invocation                    | engine, api:import, util         |
 | export     | Atomic .vxb writing, STL/3MF writers, exporter discovery, slicer execution/publication | engine, api:export, import, util |
 | cli / gui  | Commands and desktop interactions                                                      | engine, import, export, util     |
 
@@ -79,8 +79,8 @@ supported frontend. This is a hosting contract, not an automatic cross-platform 
 `VoxelBrewExporter` saves the editable binary document with existing schema, atomic-write,
 file-version and newer-file protections. `JsonExporter` writes UTF-8 ProtoJSON for the
 complete document schema, including feature definitions, parameters and print setup.
-JSON is an export only; it does not change the active project path, save counter or dirty
-state, and JSON import is not yet provided. Opaque binary payloads use ProtoJSON base64.
+JSON export does not change the active project path, save counter or dirty
+state. JSON import restores the complete editable schema through the same validation as VXB. Opaque binary payloads use ProtoJSON base64.
 File → Export lists all registered exporters,
 then opens the selected exporter's options. Save and Save As always use VXB; they do not
 reuse the last export format. VXB and JSON remain available without exportable geometry.
@@ -211,6 +211,9 @@ controls model/support/all geometry selection. Format-specific transform seriali
 
 ## Authoring an external provider
 
+See the [import API authoring guide](../api/import/README.md) for a complete importer,
+packaging, typed dialogs and API-version-2 migration.
+
 Compile against `dev.voxelbrew:import-api:<version>` or `dev.voxelbrew:export-api:<version>`
 with `compileOnly` (Maven `provided` scope). Shared MIT model types are available transitively; engine and util are absent from these API dependencies.
 Do not bundle host API classes into a plugin JAR. No dependency on import/export, JavaFX,
@@ -219,26 +222,40 @@ old-package shims: recompile existing providers and rename their service resourc
 
 | Extension | Public interface                                | JAR service resource                                              |
 | --------- | ----------------------------------------------- | ----------------------------------------------------------------- |
-| Import    | `dev.voxelbrew.importer.api.FileImporter`       | `META-INF/services/dev.voxelbrew.importer.api.FileImporter`       |
+| Import    | `dev.voxelbrew.importer.api.ImporterProvider`   | `META-INF/services/dev.voxelbrew.importer.api.ImporterProvider`   |
 | Export    | `dev.voxelbrew.exporter.api.ExporterProvider`   | `META-INF/services/dev.voxelbrew.exporter.api.ExporterProvider`   |
 | Slicing   | `dev.voxelbrew.exporter.printing.SlicerBackend` | `META-INF/services/dev.voxelbrew.exporter.printing.SlicerBackend` |
 
-Each service file lists public, no-argument provider classes, one per line. Implement the
-import interface and return a descriptor with a unique ID, supported API version, extensions,
-capabilities/result kind and STRING/BOOLEAN/INTEGER/DECIMAL/CHOICE options. Declare defaults
-in the descriptor; the host validates options before invoking a provider. Importers return
-`ImportResult.Document(CadDocument)` or `ImportResult.Gcode(GcodeJob)`; declare the matching
-result kind. A document importer must create actual editable definitions, not disguise
-triangles as feature history. Providers must not retain borrowed streams/model views.
-Imports use host-owned bounded input (256 MiB maximum, with .vxb's smaller codec limit).
-Exporters own their destination requests and publication. Built-in file serializers use atomic publication only after success.
+Each service file lists public, no-argument provider classes, one per line. Import providers
+implement `ImporterProvider` (API version 2), advertise a stable ID, name and result kind,
+and create an `Importer<? extends ImportResult>` with the supplied host executor.
+`importFrom(ImportWindow)` requests typed settings synchronously on the interaction thread,
+then schedules reading on that executor. The future covers the complete import. Cancellation
+completes with `CancellationException`; a failed import must preserve the source.
+Document results contain actual editable definitions; toolpaths remain `ImportResult.Gcode`.
 
-`ImporterRegistry`/`ImportService` and `ExporterRegistry` are host services in
-the implementation projects. Trusted JARs are discovered using dedicated, closeable
-ServiceLoader class loaders in `~/.voxelbrew/plugins` or `--plugin-dir`. Plugins execute with
-the application's permissions. Duplicate IDs retain the first provider; incompatible APIs
-and broken providers are diagnosed without disabling unrelated providers. Invocation errors
-name the provider. Import never writes its source. Built-in `.vxb` and G-code importers use ServiceLoader. Built-in exporters use Dagger multibindings with the same provider contract as external JARs.
+`ImportWindow`, `ImportDialog<R>` and `ImportDialogs` mirror their export counterparts,
+including confirmed-settings lifecycle, cancellation and explicit unsupported-dialog errors.
+File readers request `FileImportDialog`, which owns extensions and optional typed settings.
+The CLI resolves that dialog with `FileImportDialog.source(path, options)`; the desktop
+uses a window-local `DesktopImportWindow` renderer. Custom dialogs require a host handler.
+The removed stream-based `FileImporter` SPI and its service resource are not supported:
+external plugins must recompile and register `ImporterProvider` instead. Reader ports
+`DocumentSource` and `GcodeSource` remain in use for direct open and toolpath operations.
+
+`ImporterRegistry`/`ImportService` and `ExporterRegistry` are implementation services.
+Trusted JARs are discovered in `~/.voxelbrew/plugins` or `--plugin-dir`. Built-in importers
+and exporters use Dagger multibindings; standalone registries compose the same built-ins.
+External providers use ServiceLoader. Duplicate IDs preserve the first provider, with
+built-ins first; broken or incompatible import providers generate diagnostics without
+hiding healthy ones. Import opens a fresh registry for each menu action, retaining its
+class loader until the asynchronous operation completes.
+
+Built-in VXB, JSON and G-code readers bound input to 256 MiB; VXB and decoded JSON
+also enforce the codec's 16 MiB payload limit. JSON is strict ProtoJSON: unknown fields,
+unsupported schema/writer versions, invalid units and invalid definitions are rejected.
+Plugins own their source access and must bound their reads themselves. No importer may
+write its source. Exporters own destination requests and safe publication.
 
 `fixtures/exporter-plugin` is an independent Gradle build with published API dependencies
 only. It includes `consumer.ProbeImporter` (CSV `width,height,thickness` in a `.vbplate` file,
@@ -258,8 +275,8 @@ cli export plate.vxb --format document-probe --plugin-dir "path with spaces/plug
 
 Document imports require a separate `--output`; existing destinations require `--overwrite`.
 G-code import prints toolpath counts and rejects `--output`, because it is not editable CAD.
-GUI **File → Import…** (`Ctrl+I`) lists document providers and generates option editors from
-their descriptors. Reads run on the file worker; success opens an unsaved design, and failure
+GUI **File > Import** (`Ctrl+I`) lists document providers, then opens the selected
+importer's source dialog. VXB and JSON are built in; file options come from that dialog. Reads run on the file worker; success opens an unsaved design, and failure
 keeps the current document. Save/Discard/Cancel protects unsaved work before importing. Toolpath
 importers are available through the host API and CLI; the GUI import dialog is for documents.
 

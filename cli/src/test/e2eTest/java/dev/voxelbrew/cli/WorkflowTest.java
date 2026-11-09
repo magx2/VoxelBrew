@@ -46,12 +46,12 @@ class WorkflowTest {
     }
 
     @Test
-    void externalImporterListsOptionsAndPublishesEditableDocumentsAcrossProcesses() throws Exception {
+    void externalImporterListsProvidersAndPublishesEditableDocumentsAcrossProcesses() throws Exception {
         Path plugins = Files.createDirectories(directory.resolve("import plugins with spaces"));
         Files.copy(Path.of(System.getProperty("voxelbrew.test.plugin")), plugins.resolve("provider.jar"));
         String listing = run(0, "importers", "--plugin-dir", plugins.toString());
         assertTrue(listing.contains("plate\tExternal plate"), listing);
-        assertTrue(listing.contains("scale=1 (DECIMAL)"), listing);
+        assertTrue(listing.contains("json\tVoxelBrew JSON document"), listing);
         Path source = directory.resolve("source plate.vbplate"), output = directory.resolve("imported design.jcad");
         Files.writeString(source, "60,40,4");
         run(

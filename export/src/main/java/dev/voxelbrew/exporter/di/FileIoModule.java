@@ -102,8 +102,26 @@ public final class FileIoModule {
     }
 
     @Provides
-    static ImporterRegistry.Factory importers() {
-        return ImporterRegistry::new;
+    static ImporterRegistry.Factory importers(java.util.Set<dev.voxelbrew.importer.api.ImporterProvider> builtins) {
+        return directory -> new ImporterRegistry(directory, builtins);
+    }
+
+    @Provides
+    @IntoSet
+    static dev.voxelbrew.importer.api.ImporterProvider importVxb() {
+        return new VoxelBrewImporterProvider();
+    }
+
+    @Provides
+    @IntoSet
+    static dev.voxelbrew.importer.api.ImporterProvider importJson() {
+        return new JsonImporterProvider();
+    }
+
+    @Provides
+    @IntoSet
+    static dev.voxelbrew.importer.api.ImporterProvider importGcode() {
+        return new GcodeImporterProvider();
     }
 
     @Provides

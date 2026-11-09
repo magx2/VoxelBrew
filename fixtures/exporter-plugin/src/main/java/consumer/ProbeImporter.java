@@ -7,15 +7,33 @@ import java.nio.charset.StandardCharsets;
 import java.util.*;
 
 /** A separate consumer compiled only against published import-api/export-api artifacts. */
-public class ProbeImporter implements FileImporter {
+public class ProbeImporter implements ImporterProvider {
     public ImporterDescriptor descriptor() {
-        return new ImporterDescriptor(
-                "plate",
-                "External plate",
-                API_VERSION,
-                List.of("vbplate"),
-                ImportResult.Kind.DOCUMENT,
-                List.of(new ImportOption("scale", "Scale", ImportOption.Type.DECIMAL, "1", List.of())));
+        return new ImporterDescriptor("plate", "External plate", API_VERSION, ImportResult.Kind.DOCUMENT);
+    }
+
+    public Importer<ImportResult> create(java.util.concurrent.Executor worker) {
+        return parent -> {
+            var request = new FileImportDialog(
+                    "External plate",
+                    List.of("vbplate"),
+                    descriptor().id().equals("plate")
+                            ? List.of(new ImportOption("scale", "Scale", ImportOption.Type.DECIMAL, "1", List.of()))
+                            : List.of());
+            if (parent.show(request).isEmpty())
+                return java.util.concurrent.CompletableFuture.failedFuture(
+                        new java.util.concurrent.CancellationException());
+            var settings = request.getSettings();
+            return java.util.concurrent.CompletableFuture.supplyAsync(
+                    () -> {
+                        try (var input = java.nio.file.Files.newInputStream(settings.path())) {
+                            return read(input, settings.options());
+                        } catch (IOException failure) {
+                            throw new java.util.concurrent.CompletionException(failure);
+                        }
+                    },
+                    worker);
+        };
     }
 
     public ImportResult read(InputStream input, Map<String, String> options) throws IOException {
@@ -42,8 +60,7 @@ public class ProbeImporter implements FileImporter {
     public static final class Incompatible extends ProbeImporter {
         @Override
         public ImporterDescriptor descriptor() {
-            return new ImporterDescriptor(
-                    "future", "Future", 999, List.of("vbplate"), ImportResult.Kind.DOCUMENT, List.of());
+            return new ImporterDescriptor("future", "Future", 999, ImportResult.Kind.DOCUMENT);
         }
     }
 
@@ -57,13 +74,7 @@ public class ProbeImporter implements FileImporter {
     public static class Failing extends ProbeImporter {
         @Override
         public ImporterDescriptor descriptor() {
-            return new ImporterDescriptor(
-                    "failing",
-                    "Failing reader",
-                    API_VERSION,
-                    List.of("vbplate"),
-                    ImportResult.Kind.DOCUMENT,
-                    List.of());
+            return new ImporterDescriptor("failing", "Failing reader", API_VERSION, ImportResult.Kind.DOCUMENT);
         }
 
         @Override
@@ -76,8 +87,7 @@ public class ProbeImporter implements FileImporter {
     public static final class WrongKind extends Failing {
         @Override
         public ImporterDescriptor descriptor() {
-            return new ImporterDescriptor(
-                    "wrong-kind", "Wrong result", API_VERSION, List.of("vbplate"), ImportResult.Kind.GCODE, List.of());
+            return new ImporterDescriptor("wrong-kind", "Wrong result", API_VERSION, ImportResult.Kind.GCODE);
         }
 
         @Override

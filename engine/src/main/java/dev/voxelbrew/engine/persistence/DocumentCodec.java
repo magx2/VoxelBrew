@@ -101,6 +101,26 @@ public final class DocumentCodec {
         }
     }
 
+    /** Parses strict ProtoJSON, applying the same schema, size and domain validation as VXB. */
+    public static CadDocument decodeJson(String json) throws IOException {
+        var message = DocumentProto.Document.newBuilder();
+        try {
+            com.google.protobuf.util.JsonFormat.parser().merge(json, message);
+            byte[] payload = message.build().toByteArray();
+            if (payload.length > MAX_PAYLOAD) throw new DocumentFormatException("Document exceeds 16 MiB limit");
+            return decode(ByteBuffer.allocate(HEADER + payload.length)
+                    .put(MAGIC)
+                    .putInt(payload.length)
+                    .put(sha256(payload))
+                    .put(payload)
+                    .array());
+        } catch (DocumentFormatException failure) {
+            throw failure;
+        } catch (IOException | IllegalArgumentException failure) {
+            throw new DocumentFormatException("Invalid JSON document: " + failure.getMessage(), failure);
+        }
+    }
+
     /** Encodes the shared document schema without accessing the filesystem. */
     public static byte[] encode(CadDocument document) throws IOException {
         return encode(document, document.parameters().builtins().fileVersion());

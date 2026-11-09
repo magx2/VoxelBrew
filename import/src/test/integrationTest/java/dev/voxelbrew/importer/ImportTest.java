@@ -29,7 +29,7 @@ class ImportTest {
         Files.writeString(source, "60,40,4");
         try (var registry = new ImporterRegistry(plugins)) {
             assertEquals(
-                    List.of("failing", "gcode", "plate", "vxb", "wrong-kind"),
+                    List.of("failing", "gcode", "json", "plate", "vxb", "wrong-kind"),
                     registry.descriptors().stream().map(ImporterDescriptor::id).toList());
             String diagnostics = String.join("\n", registry.diagnostics());
             assertTrue(diagnostics.contains("Duplicate importer ID: plate"), diagnostics);
@@ -52,10 +52,11 @@ class ImportTest {
             assertTrue(assertThrows(IOException.class, () -> ImportService.read(registry, "failing", source, Map.of()))
                     .getMessage()
                     .contains("Deliberate importer failure"));
-            assertTrue(
-                    assertThrows(IOException.class, () -> ImportService.read(registry, "wrong-kind", source, Map.of()))
-                            .getMessage()
-                            .contains("different result kind"));
+            assertTrue(assertThrows(
+                            IllegalArgumentException.class,
+                            () -> ImportService.read(registry, "wrong-kind", source, Map.of()))
+                    .getMessage()
+                    .contains("different result kind"));
         }
         assertEquals("60,40,4", Files.readString(source));
         // Windows also verifies the registry released its provider JAR.

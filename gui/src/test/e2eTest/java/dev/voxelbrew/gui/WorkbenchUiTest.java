@@ -2402,13 +2402,46 @@ class WorkbenchUiTest {
     }
 
     @Test
+    void nativeAndJsonImportsOpenUnsavedEditableDesignsAndCancelWithoutChanges() throws Exception {
+        Path original = PreparedDocuments.copy("plate-5mm.jcad", directory);
+        var expected = DocumentReader.load(original);
+        Path json = directory.resolve("editable plate.json");
+        Files.writeString(json, dev.voxelbrew.engine.persistence.DocumentCodec.encodeJson(expected));
+        ready();
+        for (var source : List.of(original, json)) {
+            var before = document();
+            click("import");
+            choice("import-format", source.equals(json) ? 1 : 3);
+            click("import-confirm");
+            key(KeyCode.ESCAPE);
+            ready();
+            assertEquals(before, document());
+            assertFalse(fx(() -> workbench.controller().dirty()));
+            click("import");
+            choice("import-format", source.equals(json) ? 1 : 3);
+            click("import-confirm");
+            text("import-path", source.toString());
+            click("import-confirm");
+            ready();
+            assertEquals(expected.features(), document().features());
+            assertTrue(fx(() -> workbench.controller().dirty()));
+            assertNull(fx(() -> workbench.controller().path()));
+            assertEquals(12000, volume(), .01);
+            save(directory.resolve(source.equals(json) ? "json-copy.vxb" : "native-copy.vxb"));
+        }
+        assertEquals(expected.features(), DocumentReader.load(original).features());
+        assertEquals(dev.voxelbrew.engine.persistence.DocumentCodec.encodeJson(expected), Files.readString(json));
+    }
+
+    @Test
     void externalImportDialogUsesOptionsAndProtectsSourceInBothPalettes() throws Exception {
         Path source = directory.resolve("external plate.vbplate");
         Files.writeString(source, "60,40,4");
         ready();
         choice("appearance", 1);
         shortcut(KeyCode.I, false);
-        choice("import-format", 1); // failing, plate, vxb; toolpaths are excluded.
+        choice("import-format", 2); // failing, json, plate, vxb; toolpaths are excluded.
+        click("import-confirm");
         text("import-path", source.toString());
         text("import-option-scale", "2");
         assertButtonDescriptions();
@@ -2427,6 +2460,7 @@ class WorkbenchUiTest {
         var before = document();
         choice("appearance", 2);
         click("import");
+        click("import-confirm");
         assertButtonDescriptions();
         text("import-path", source.toString());
         click("import-confirm"); // First provider deliberately fails.

@@ -16,6 +16,62 @@ class UnifiedExportTest {
     Path directory;
 
     @Test
+    void threeMfPrefersSlicerPlateAndCarriesSettingsWhileObjKeepsDesignSpace() throws Exception {
+        var base = ExportTest.reference();
+        var setup = dev.voxelbrew.engine.printing.PrintSetup.empty()
+                .withInstances(List.of(new dev.voxelbrew.engine.model.BodyInstance(
+                        "placed", "thickness.body", dev.voxelbrew.engine.model.Transform.translation(25, 35, 7))))
+                .withWorkspaceSettings(Map.of("print-output", "custom.gcode"));
+        var document = new CadDocument(base.id(), base.features(), base.cursor(), setup);
+        Path target = directory.resolve("plate.3mf");
+        var parent = new ExportDialogs()
+                .register(
+                        MeshExportDialog.class,
+                        request -> Optional.of(new MeshExportDialog.Settings(
+                                ExportSelection.design(null),
+                                MeshOptions.DEFAULT,
+                                Map.of(),
+                                new FileExportDialog.Destination(target, false))));
+        new ThreeMfExporter(Runnable::run, directory).export(document, parent).get();
+        try (var zip = new java.util.zip.ZipFile(target.toFile());
+                var input = zip.getInputStream(zip.getEntry("3D/3dmodel.model"))) {
+            var factory = javax.xml.parsers.DocumentBuilderFactory.newInstance();
+            factory.setNamespaceAware(true);
+            var xml = factory.newDocumentBuilder().parse(input);
+            var item = (org.w3c.dom.Element)
+                    xml.getElementsByTagNameNS("*", "item").item(0);
+            assertEquals("1.0 0.0 0.0 0.0 1.0 0.0 0.0 0.0 1.0 25.0 35.0 7.0", item.getAttribute("transform"));
+            var metadata = xml.getElementsByTagNameNS("*", "metadata").item(0).getTextContent();
+            var proto = dev.voxelbrew.engine.persistence.proto.DocumentProto.PrintSetup.newBuilder();
+            com.google.protobuf.util.JsonFormat.parser().merge(metadata, proto);
+            assertEquals("custom.gcode", proto.getWorkspaceSettingsOrThrow("print-output"));
+            assertEquals(25, proto.getInstances(0).getTransform(3));
+        }
+        Path obj = directory.resolve("design.obj");
+        var objParent = new ExportDialogs()
+                .register(
+                        MeshExportDialog.class,
+                        request -> Optional.of(new MeshExportDialog.Settings(
+                                ExportSelection.design(null),
+                                MeshOptions.DEFAULT,
+                                Map.of(),
+                                new FileExportDialog.Destination(obj, false))));
+        try (var registry = new ExporterRegistry(directory)) {
+            registry.require("obj")
+                    .provider()
+                    .create(Runnable::run, directory)
+                    .export(document, objParent)
+                    .get();
+        }
+        var xs = Files.readAllLines(obj).stream()
+                .filter(line -> line.startsWith("v "))
+                .mapToDouble(line -> Double.parseDouble(line.split("\\s+")[1]))
+                .summaryStatistics();
+        assertEquals(0, xs.getMin(), 0.001);
+        assertEquals(60, xs.getMax(), 0.001);
+    }
+
+    @Test
     void builtInGeometryUsesTheSameProviderContractAndRejectsRollback() throws Exception {
         var document = ExportTest.reference();
         try (var registry = new ExporterRegistry(directory)) {

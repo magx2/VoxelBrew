@@ -24,6 +24,7 @@ import javafx.util.StringConverter;
 /** Build placement and actual toolpath preview, sharing all validation and slicing with CLI. */
 @javax.inject.Singleton
 final class PrintingPane extends BorderPane implements AutoCloseable {
+    private final SlicerWorkspace workspace = new SlicerWorkspace();
     private final PrinterCatalog printers;
     private final PrinterVisibility printerVisibility;
     private Set<String> hiddenPrinters = Set.of();
@@ -546,6 +547,45 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
         availability.refresh();
         setBottom(new VBox(8, previewControls, actions));
         BorderPane.setMargin(tabs, new Insets(0, 0, 0, 8));
+        fields.forEach((key, field) -> workspace.add(key, field::getText, field::setText));
+        for (var choice : List.of(bodies, instances, materials, supportIds, supportOwners, targetPlate))
+            workspace.add(choice.getId(), choice::getValue, value -> choice.setValue(value.isEmpty() ? null : value));
+        workspace.add(
+                "print-backend",
+                () -> backends.getValue() == null ? "" : backends.getValue().id(),
+                value -> backends.setValue(backends.getItems().stream()
+                        .filter(b -> b.id().equals(value))
+                        .findFirst()
+                        .orElse(null)));
+        workspace.add(
+                "print-support-role",
+                () -> supportRole.getValue().name(),
+                value -> supportRole.setValue(SupportVolume.Role.valueOf(value)));
+        workspace.add(
+                "print-rotation-space",
+                () -> rotationSpace.getValue().name(),
+                value -> rotationSpace.setValue(PrintRotationGizmo.Space.valueOf(value)));
+        var checks = new ArrayList<CheckBox>(roles.values());
+        checks.addAll(List.of(autoSupports, bedOnly, overwrite, showRotationGizmos));
+        for (var check : checks)
+            workspace.add(
+                    check.getId(),
+                    () -> Boolean.toString(check.isSelected()),
+                    value -> check.setSelected(Boolean.parseBoolean(value)));
+        workspace.add(
+                "print-view-3d",
+                () -> Boolean.toString(threeDimensional),
+                value -> viewMode.selectToggle(Boolean.parseBoolean(value) ? solidView : topView));
+        workspace.add(
+                "print-tab",
+                () -> Integer.toString(tabs.getSelectionModel().getSelectedIndex()),
+                value -> tabs.getSelectionModel().select(Integer.parseInt(value)));
+        workspace.add(
+                "print-legend",
+                () -> Boolean.toString(legend.isExpanded()),
+                value -> legend.setExpanded(Boolean.parseBoolean(value)));
+        workspace.initialize();
+        document.printWorkspace(workspace::capture);
         jobs.onChanged(this::updateJob);
         updateJob();
     }
@@ -915,11 +955,17 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
     void documentChanged() {
         if (closed) return;
         var snapshot = document.snapshot().document();
+        if (!workspace.belongsTo(snapshot.uuidGenerator())) {
+            lastSetup = null;
+            lastBuild = null;
+            outputDestination = null;
+        }
+        updating = true;
+        var pendingWorkspace = workspace.pending(snapshot.uuidGenerator());
+        updating = false;
         if (dragSource != null && !DocumentCodec.fingerprint(snapshot).equals(dragRevision)) cancelDrag();
         if (!Objects.equals(outputProject, document.path())) {
             outputProject = document.path();
-            outputDestination = null;
-            fields.get("print-output").setText("");
         }
         updateOutputDestination();
         var printer = PrintProfile.resolve(setup()).printer();
@@ -1008,7 +1054,9 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
                 bedOnly.setSelected(p.supportsOnBedOnly());
                 lastSetup = setup();
                 loadPlacement();
+                loadSupport();
             }
+            workspace.restore(snapshot.uuidGenerator(), setup().workspaceSettings(), pendingWorkspace);
             if (refreshNames) {
                 // Body renames keep instance IDs unchanged, so JavaFX does not refresh their cells.
                 for (var choice : List.of(bodies, instances, supportOwners)) {
@@ -1515,8 +1563,10 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
             Path destination =
                     jobDestination(outputProject, plateName(plates.get(i).id()), i + 1, plates.size());
             if (!destination.equals(outputDestination)) {
+                String current = fields.get("print-output").getText();
+                if (current.isBlank() || (outputDestination != null && current.equals(outputDestination.toString())))
+                    fields.get("print-output").setText(destination.toString());
                 outputDestination = destination;
-                fields.get("print-output").setText(destination.toString());
             }
             return;
         }

@@ -37,6 +37,51 @@ import org.junit.jupiter.api.io.TempDir;
 @ExtendWith(UiTestShard.class)
 class WorkbenchUiTest {
     @Test
+    void slicerTabsAndJobPreferencesSurviveSaveAndReopen() throws Exception {
+        Path input = PreparedDocuments.copy("plate-5mm.vxb", directory);
+        fx(() -> workbench.controller().open(input)).get(20, TimeUnit.SECONDS);
+        ready();
+        click("workspace-print");
+        click("print-add");
+        ready();
+        text("print-x", "23");
+        click("print-place");
+        ready();
+        click("print-tab-process");
+        text("print-walls", "4");
+        click("print-apply-process");
+        ready();
+        text("print-walls", "5");
+        click("print-tab-supports");
+        text("print-support-width", "7");
+        click("print-tab-job");
+        String output = directory.resolve("custom.gcode").toString();
+        text("print-output", output);
+        click("print-overwrite");
+        Path file = directory.resolve("slicer-settings.vxb");
+        fx(() -> workbench.controller().save(file, false)).get(20, TimeUnit.SECONDS);
+        ready();
+        assertEquals(output, fx(() -> ((TextField) node("#print-output")).getText()));
+        assertFalse(fx(() -> workbench.controller().dirty()));
+        fx(() -> workbench.controller().open(file)).get(20, TimeUnit.SECONDS);
+        ready();
+        click("workspace-print");
+        ready();
+        click("print-tab-job");
+        assertEquals(output, fx(() -> ((TextField) node("#print-output")).getText()));
+        assertTrue(fx(() -> ((CheckBox) node("#print-overwrite")).isSelected()));
+        click("print-tab-process");
+        assertEquals("5", fx(() -> ((TextField) node("#print-walls")).getText()));
+        assertEquals(4, document().printSetup().process().walls());
+        click("print-tab-supports");
+        assertEquals("7", fx(() -> ((TextField) node("#print-support-width")).getText()));
+        click("print-tab-placement");
+        assertEquals("23", fx(() -> ((TextField) node("#print-x")).getText()));
+        assertEquals(
+                23, document().printSetup().instances().getFirst().transform().matrix()[3]);
+    }
+
+    @Test
     void printerSelectionPersistsAndUndoRestoresBuildVolume() throws Exception {
         ready();
         Platform.runLater(() -> ((MenuBar) node("#main-menu"))

@@ -19,6 +19,40 @@ class InjectedDocumentIoTest {
     private final Queue<Runnable> callbacks = new ConcurrentLinkedQueue<>();
 
     @Test
+    void saveAndJsonExportCapturePendingSlicerFields() throws Exception {
+        var controller =
+                new DocumentController(callbacks::add, doc -> new DocumentController.Build(List.of(), List.of(), true));
+        try {
+            var settings = Map.of("print-output", "custom.gcode", "print-walls", "4", "print-overwrite", "true");
+            controller.printWorkspace(() -> settings);
+            assertTrue(controller.dirty());
+            var vxb = directory.resolve("settings.vxb");
+            var save = controller.save(vxb, false);
+            await(save::isDone);
+            save.join();
+            assertEquals(
+                    settings,
+                    dev.voxelbrew.engine.persistence.DocumentCodec.decode(Files.readAllBytes(vxb))
+                            .printSetup()
+                            .workspaceSettings());
+            assertFalse(controller.dirty());
+            var json = directory.resolve("settings.json");
+            var export = controller.exportDocument(
+                    new dev.voxelbrew.exporter.JsonExporterProvider(),
+                    dev.voxelbrew.exporter.api.FileExportDialog.destination(json, false));
+            await(export::isDone);
+            export.join();
+            assertEquals(
+                    settings,
+                    dev.voxelbrew.engine.persistence.DocumentCodec.decodeJson(Files.readString(json))
+                            .printSetup()
+                            .workspaceSettings());
+        } finally {
+            controller.close();
+        }
+    }
+
+    @Test
     void exportersKeepCancellationAndJsonSeparateFromSavingTheEditableDocument() throws Exception {
         var controller =
                 new DocumentController(callbacks::add, doc -> new DocumentController.Build(List.of(), List.of(), true));

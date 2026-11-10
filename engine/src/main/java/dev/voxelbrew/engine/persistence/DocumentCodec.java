@@ -387,7 +387,8 @@ public final class DocumentCodec {
                     base.process(),
                     plates,
                     setup.getActivePlateId(),
-                    setup.hasPrinterSnapshot() ? fromProto(setup.getPrinterSnapshot()) : null);
+                    setup.hasPrinterSnapshot() ? fromProto(setup.getPrinterSnapshot()) : null,
+                    setup.getWorkspaceSettingsMap());
         }
         var p = setup.getProcess();
         var process = new ProcessSettings(
@@ -402,38 +403,45 @@ public final class DocumentCodec {
                 p.getBrimWidth(),
                 p.getRaftLayers());
         return new PrintSetup(
-                setup.getId(),
-                setup.getVersion(),
-                setup.getBackendId(),
-                setup.getPrinterId(),
-                setup.getMaterialId(),
-                process,
-                setup.getInstancesList().stream()
-                        .map(i -> new BodyInstance(
-                                i.getId(),
-                                i.getBodyId(),
-                                new Transform(i.getTransformList().stream()
-                                        .mapToDouble(Double::doubleValue)
-                                        .toArray())))
-                        .toList(),
-                setup.getSupportsList().stream()
-                        .map(s -> new SupportVolume(
-                                s.getId(),
-                                s.getInstanceId(),
-                                switch (s.getRole()) {
-                                    case BLOCKER -> SupportVolume.Role.BLOCKER;
-                                    case ENFORCER -> SupportVolume.Role.ENFORCER;
-                                    case SOLID_SUPPORT -> SupportVolume.Role.SOLID_SUPPORT;
-                                    default ->
-                                        throw new IllegalArgumentException("Unsupported support role " + s.getRole());
-                                },
-                                s.getX(),
-                                s.getY(),
-                                s.getZ(),
-                                s.getWidth(),
-                                s.getDepth(),
-                                s.getHeight()))
-                        .toList());
+                        setup.getId(),
+                        setup.getVersion(),
+                        setup.getBackendId(),
+                        setup.getPrinterId(),
+                        setup.getMaterialId(),
+                        process,
+                        setup.getInstancesList().stream()
+                                .map(i -> new BodyInstance(
+                                        i.getId(),
+                                        i.getBodyId(),
+                                        new Transform(i.getTransformList().stream()
+                                                .mapToDouble(Double::doubleValue)
+                                                .toArray())))
+                                .toList(),
+                        setup.getSupportsList().stream()
+                                .map(s -> new SupportVolume(
+                                        s.getId(),
+                                        s.getInstanceId(),
+                                        switch (s.getRole()) {
+                                            case BLOCKER -> SupportVolume.Role.BLOCKER;
+                                            case ENFORCER -> SupportVolume.Role.ENFORCER;
+                                            case SOLID_SUPPORT -> SupportVolume.Role.SOLID_SUPPORT;
+                                            default ->
+                                                throw new IllegalArgumentException(
+                                                        "Unsupported support role " + s.getRole());
+                                        },
+                                        s.getX(),
+                                        s.getY(),
+                                        s.getZ(),
+                                        s.getWidth(),
+                                        s.getDepth(),
+                                        s.getHeight()))
+                                .toList())
+                .withWorkspaceSettings(setup.getWorkspaceSettingsMap());
+    }
+
+    /** Portable metadata for a manufacturing package, using the same schema as VXB and JSON. */
+    public static String encodePrintSetupJson(PrintSetup setup) throws IOException {
+        return com.google.protobuf.util.JsonFormat.printer().sortingMapKeys().print(toProto(setup));
     }
 
     private static DocumentProto.PrintSetup toProto(PrintSetup setup) {
@@ -444,6 +452,7 @@ public final class DocumentCodec {
                 .setBackendId(setup.backendId())
                 .setPrinterId(setup.printerId())
                 .setMaterialId(setup.materialId())
+                .putAllWorkspaceSettings(new java.util.TreeMap<>(setup.workspaceSettings()))
                 .setProcess(DocumentProto.PrintProcess.newBuilder()
                         .setLayerHeight(p.layerHeight())
                         .setWalls(p.walls())

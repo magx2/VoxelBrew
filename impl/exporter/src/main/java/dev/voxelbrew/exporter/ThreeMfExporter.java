@@ -32,6 +32,24 @@ public final class ThreeMfExporter extends MeshExporter {
     @Override
     public void write(ModelView model, MeshOptions meshOptions, Map<String, String> options, OutputStream output)
             throws IOException {
+        write(
+                model,
+                meshOptions,
+                options,
+                output,
+                model instanceof ManufacturingView manufacturing
+                        ? manufacturing.manufacturingModel().setup()
+                        : null);
+    }
+
+    @Override
+    protected void write(
+            ModelView model,
+            MeshOptions meshOptions,
+            Map<String, String> options,
+            OutputStream output,
+            dev.voxelbrew.engine.printing.PrintSetup setup)
+            throws IOException {
         try (var zip = new ZipOutputStream(output, StandardCharsets.UTF_8)) {
             text(
                     zip,
@@ -48,6 +66,14 @@ public final class ThreeMfExporter extends MeshExporter {
             xml.writeDefaultNamespace("http://schemas.microsoft.com/3dmanufacturing/core/2015/02");
             xml.writeAttribute("unit", "millimeter");
             xml.writeAttribute("xml", "http://www.w3.org/XML/1998/namespace", "lang", "en-US");
+            if (setup != null) {
+                xml.writeNamespace("voxelbrew", "https://voxelbrew.dev/3mf/2026");
+                xml.writeStartElement("metadata");
+                xml.writeAttribute("name", "voxelbrew:printSetup");
+                xml.writeAttribute("preserve", "1");
+                xml.writeCharacters(dev.voxelbrew.engine.persistence.DocumentCodec.encodePrintSetupJson(setup));
+                xml.writeEndElement();
+            }
             xml.writeStartElement("resources");
             Map<String, Integer> ids = new LinkedHashMap<>();
             for (var body : model.bodies()) {

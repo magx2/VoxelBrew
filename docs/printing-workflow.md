@@ -14,6 +14,24 @@ ironing, variable layers, Z-hop, arc moves, binary G-code or multiple tools.
 Support threshold is **degrees from horizontal**. Contact gaps are millimeters;
 Prusa's independent support layers may have different heights from model layers.
 
+## Saved slicer settings
+
+VXB and JSON use the same Protobuf print setup. They retain every applied placement,
+process setting, support instruction, plate name/selection and printer snapshot,
+including edited bed dimensions. Saving also captures the Placement, Process,
+Supports and Job tab fields, formula text, selections, rotation/view preferences,
+preview role filters, custom G-code destination and overwrite choice. Reopening
+restores these fields; unfinished edits still require the corresponding **Apply**
+button before they affect manufacturing. Generated toolpaths remain derived output.
+
+When any slicer plate has instances, 3MF export uses the active slicer plate instead
+of Designer coordinates or Designer body selection. An empty active plate is an
+empty export, not a fallback to Designer. Explicit build-space selections still
+apply. Portable Core 3MF includes the print setup as `voxelbrew:printSetup` metadata;
+other slicers may ignore this application metadata. Use **Prusa project** for native
+PrusaSlicer process/support settings. OBJ and other geometry formats retain their
+existing coordinate-space choices.
+
 ## Desktop plates and placement
 
 The Slicer workspace has a plate strip above the canvas. **Add plate** creates an

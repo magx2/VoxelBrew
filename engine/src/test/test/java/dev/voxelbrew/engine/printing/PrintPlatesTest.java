@@ -9,6 +9,43 @@ import org.junit.jupiter.api.Test;
 
 class PrintPlatesTest {
     @Test
+    void allSlicerSettingsRoundTripAndSurvivePlateAndProfileEdits() throws Exception {
+        var settings = java.util.Map.of(
+                "print-output",
+                "parts/custom.gcode",
+                "print-overwrite",
+                "true",
+                "print-layer-height",
+                "0.25",
+                "print-support-width",
+                "2 + 3",
+                "print-rotation-space",
+                "LOCAL");
+        var process = new ProcessSettings(0.25, 4, 35, true, true, 55, 0.3, 4, 6, 2);
+        var setup = PrintSetup.empty()
+                .withWorkspaceSettings(settings)
+                .withProfile("prusa-slicer", "generic-marlin-200-0.4", "PETG", process)
+                .withInstances(List.of(new BodyInstance("part", "body", Transform.translation(12, 34, 5))))
+                .withSupports(List.of(new SupportVolume("block", "part", SupportVolume.Role.BLOCKER, 1, 2, 3, 4, 5, 6)))
+                .renamePlate("plate-1", "Main")
+                .addPlate("spare")
+                .selectPlate("plate-1");
+        assertEquals(settings, setup.workspaceSettings());
+        var doc = new CadDocument("doc", List.of(), 0, setup);
+        assertEquals(doc, DocumentCodec.decode(DocumentCodec.encode(doc)));
+        assertEquals(doc, DocumentCodec.decodeJson(DocumentCodec.encodeJson(doc)));
+        assertEquals(
+                settings,
+                setup.moveInstance("part", "spare")
+                        .selectPlate("spare")
+                        .removeActivePlate()
+                        .workspaceSettings());
+        assertThrows(
+                UnsupportedOperationException.class,
+                () -> setup.workspaceSettings().put("bad", "value"));
+    }
+
+    @Test
     void namedPlatesPersistRemainUndoableAndSurvivePlacementEdits() throws Exception {
         var instance = new BodyInstance("part", "body", Transform.translation(10, 20, 0));
         var initial = PrintSetup.empty().withInstances(List.of(instance));

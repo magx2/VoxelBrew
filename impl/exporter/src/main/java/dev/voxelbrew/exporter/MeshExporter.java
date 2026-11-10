@@ -32,7 +32,19 @@ public abstract class MeshExporter implements Exporter<Path> {
     public final CompletableFuture<Path> export(CadDocument document, ExportWindow parent) {
         var dialog = new MeshExportDialog(format());
         if (parent.show(dialog).isEmpty()) return CompletableFuture.failedFuture(new CancellationException());
-        var settings = dialog.getSettings();
+        var requested = dialog.getSettings();
+        // 3MF is a plate handoff whenever the user has prepared a slicer plate.
+        var selection = requested.selection();
+        boolean preparedPlate = document.printSetup().plates().stream()
+                .anyMatch(p -> !p.instances().isEmpty());
+        if (format().extensions().contains("3mf") && preparedPlate)
+            selection = new ExportSelection(
+                    ExportSelection.Space.BUILD_PLATE,
+                    selection.contents(),
+                    selection.space() == ExportSelection.Space.DESIGN ? null : selection.body(),
+                    selection.instance());
+        var settings = new MeshExportDialog.Settings(
+                selection, requested.mesh(), requested.options(), requested.destination(), requested.snapshot());
         return CompletableFuture.supplyAsync(
                 () -> {
                     try {
@@ -52,13 +64,14 @@ public abstract class MeshExporter implements Exporter<Path> {
                             if (settings.selection().instance() != null)
                                 view = ModelViews.selectInstance(
                                         view, settings.selection().instance());
-                            writeFile(view, settings);
+                            writeFile(view, settings, document.printSetup());
                         } else {
                             try (var evaluation = Evaluator.evaluate(document, plugins)) {
                                 writeFile(
                                         ExportSelections.view(
                                                 settings.selection(), document, evaluation, settings.mesh()),
-                                        settings);
+                                        settings,
+                                        document.printSetup());
                             }
                         }
                         return settings.destination().path().toAbsolutePath().normalize();
@@ -71,6 +84,22 @@ public abstract class MeshExporter implements Exporter<Path> {
 
     /** Serialization helper for format-level tests; application callers use export(). */
     public final void writeFile(ModelView view, MeshExportDialog.Settings settings) throws IOException {
+        writeFile(view, settings, null);
+    }
+
+    protected void write(
+            ModelView view,
+            MeshOptions mesh,
+            Map<String, String> options,
+            OutputStream output,
+            dev.voxelbrew.engine.printing.PrintSetup setup)
+            throws IOException {
+        write(view, mesh, options, output);
+    }
+
+    private void writeFile(
+            ModelView view, MeshExportDialog.Settings settings, dev.voxelbrew.engine.printing.PrintSetup setup)
+            throws IOException {
         if (view.instances().isEmpty()) throw new IllegalArgumentException("Nothing to export");
         if (!format().multipleInstances() && view.instances().size() != 1)
             throw new IllegalArgumentException("Exporter requires one selected body/instance");
@@ -84,6 +113,7 @@ public abstract class MeshExporter implements Exporter<Path> {
             spec.validate(option.getValue());
             values.put(option.getKey(), option.getValue());
         }
-        AtomicExport.write(settings.destination(), stream -> write(view, settings.mesh(), Map.copyOf(values), stream));
+        AtomicExport.write(
+                settings.destination(), stream -> write(view, settings.mesh(), Map.copyOf(values), stream, setup));
     }
 }

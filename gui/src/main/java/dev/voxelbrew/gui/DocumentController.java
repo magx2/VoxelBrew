@@ -276,8 +276,23 @@ public final class DocumentController implements AutoCloseable {
         schedule(session.document(), false);
     }
 
+    private java.util.function.Supplier<java.util.Map<String, String>> printWorkspace =
+            () -> session.document().printSetup().workspaceSettings();
+
+    void printWorkspace(java.util.function.Supplier<java.util.Map<String, String>> capture) {
+        printWorkspace = capture;
+    }
+
+    private void capturePrintWorkspace() {
+        var setup = session.document().printSetup();
+        var settings = printWorkspace.get();
+        if (!settings.equals(setup.workspaceSettings())) session.setPrintSetup(setup.withWorkspaceSettings(settings));
+    }
+
     public boolean dirty() {
-        return unsavedImport || !session.document().equals(saved);
+        return unsavedImport
+                || !session.document().equals(saved)
+                || !printWorkspace.get().equals(session.document().printSetup().workspaceSettings());
     }
 
     public boolean hasPreview() {
@@ -477,6 +492,7 @@ public final class DocumentController implements AutoCloseable {
 
     public CompletableFuture<Void> save(Path destination, boolean overwrite) {
         requireIdleIo();
+        capturePrintWorkspace();
         var captured = session.document();
         long generation = documentGeneration;
         ioBusy = true;
@@ -524,6 +540,7 @@ public final class DocumentController implements AutoCloseable {
             dev.voxelbrew.exporter.api.ExportWindow parent) {
         requireIdleIo();
 
+        capturePrintWorkspace();
         var captured = session.document();
         long generation = documentGeneration;
         ioBusy = true;

@@ -309,6 +309,9 @@ message PrintSetup {
   repeated PrintPlate plates = 16;
   string active_plate_id = 17;
   PrinterSnapshot printer_snapshot = 18;
+  // Raw slicer tab drafts and job/view preferences, separate from applied
+  // settings.
+  map<string, string> workspace_settings = 19;
 }
 message CustomFeature {
   string provider_id = 1;

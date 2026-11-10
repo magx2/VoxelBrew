@@ -195,6 +195,7 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
                 7,
                 new Label(translations.text("gui.cad_body")),
                 bodyRow,
+                new Separator(),
                 new Label(translations.text("gui.build_instance")),
                 instances);
         showRotationGizmos.setId("print-show-rotation-gizmos");
@@ -222,9 +223,7 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
         HBox.setHgrow(rotationSpace, Priority.ALWAYS);
         var gizmoControls = new HBox(8, showRotationGizmos, rotationSpace);
         gizmoControls.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
-        placement
-                .getChildren()
-                .addAll(new Separator(), placementCoordinates(false), new Separator(), placementCoordinates(true));
+        placement.getChildren().addAll(placementCoordinates(false), placementCoordinates(true));
         var applyPlacement = button(translations.text("gui.apply_placement"), "print-place", this::applyPlacement);
         applyPlacement.setMaxWidth(Double.MAX_VALUE);
         placement

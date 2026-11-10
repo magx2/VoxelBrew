@@ -40,7 +40,13 @@ New instances start at the center of the bed. Placement validation reports objec
 outside the bed or overlapping other objects on the selected plate.
 
 **Slice selected plate** validates and slices only that plate. Each plate gets its
-own default G-code filename. Switching plates or editing a placement invalidates
+own default G-code filename: `<project>-<number>-<plate name>.gcode`. Plate numbers
+start at 1 and are padded to the width of the total plate count (plate 3 of 33,
+named `boo`, in `Foo.vxb` produces `Foo-03-boo.gcode`). Unnamed plates use their
+displayed name. Filename-unsafe characters and literal percent signs in plate
+names are percent-escaped; trailing dots and spaces are escaped too. Renaming a
+plate or changing its number/count refreshes the suggested destination.
+Switching plates or editing a placement invalidates
 the previous preview. **Preview toolpaths** switches between the resulting job and
 object placement. Layer controls appear only in preview; the expandable toolpath
 legend groups color swatches and visibility filters. Property hints describe units

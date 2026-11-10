@@ -172,6 +172,8 @@ class WorkbenchUiTest {
         click("print-add");
         ready();
         var original = document().printSetup();
+        click("print-tab-job");
+        String originalDestination = fx(() -> ((FormulaField) node("#print-output")).getText());
         doubleClickPlate("plate-1");
         key(KeyCode.ENTER);
         assertEquals(original, document().printSetup(), "Unchanged names do not modify the design");
@@ -180,12 +182,14 @@ class WorkbenchUiTest {
         key(KeyCode.ENTER);
         ready();
         assertEquals("Assembly", document().printSetup().activePlate().name());
+        assertTrue(fx(() -> ((FormulaField) node("#print-output")).getText()).endsWith("-1-Assembly.gcode"));
         assertEquals(original.instances(), document().printSetup().instances());
         assertTrue(
                 fx(() -> ((ToggleButton) node("#print-plate-plate-1")).getText().startsWith("Assembly")));
         shortcut(KeyCode.Z, false);
         ready();
         assertEquals(original, document().printSetup());
+        assertEquals(originalDestination, fx(() -> ((FormulaField) node("#print-output")).getText()));
         doubleClickPlate("plate-1");
         text("print-plate-name", "Discarded");
         key(KeyCode.ESCAPE);
@@ -434,7 +438,7 @@ class WorkbenchUiTest {
         assertEquals(
                 PrintController.State.SUCCEEDED,
                 fx(() -> ((PrintingPane) node("#printing-workspace")).jobs().state()));
-        assertTrue(Files.exists(saved.resolveSibling("multiple-plates-plate-1.gcode")));
+        assertTrue(Files.exists(saved.resolveSibling("multiple-plates-1-Plate 1.gcode")));
         click("print-legend");
         for (int palette : List.of(1, 2)) {
             choice("appearance", palette);
@@ -5393,7 +5397,7 @@ class WorkbenchUiTest {
         assertEquals(DocumentReader.load(file), document());
         click("print-tab-job");
         assertEquals(
-                file.resolveSibling("GUI print setup.gcode").toString(),
+                file.resolveSibling("GUI print setup-1-Plate 1.gcode").toString(),
                 fx(() -> ((FormulaField) node("#print-output")).getText()));
         assertEquals(
                 250,

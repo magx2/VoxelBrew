@@ -35,7 +35,7 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
     private final Label plateSize = new Label();
     private boolean threeDimensional;
     private Path outputProject;
-    private String outputPlate;
+    private Path outputDestination;
     private Button autoArrange;
     private final ToggleButton toolpathPreview = new ToggleButton();
     private double plateWidth = 200, plateDepth = 200;
@@ -778,12 +778,8 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
         if (dragSource != null && !DocumentCodec.fingerprint(snapshot).equals(dragRevision)) cancelDrag();
         if (!Objects.equals(outputProject, document.path())) {
             outputProject = document.path();
-            outputPlate = null;
-            fields.get("print-output")
-                    .setText(
-                            outputProject == null
-                                    ? ""
-                                    : jobDestination(outputProject).toString());
+            outputDestination = null;
+            fields.get("print-output").setText("");
         }
         updateOutputDestination();
         var printer = PrintProfile.resolve(setup()).printer();
@@ -1277,17 +1273,17 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
     }
 
     private void updateOutputDestination() {
-        if (outputProject != null && !Objects.equals(outputPlate, setup().activePlateId())) {
-            outputPlate = setup().activePlateId();
-            Path standard = jobDestination(outputProject);
-            fields.get("print-output")
-                    .setText(
-                            setup().plates().size() == 1
-                                    ? standard.toString()
-                                    : standard.resolveSibling(standard.getFileName()
-                                                    .toString()
-                                                    .replace(".gcode", "-" + setup().activePlateId() + ".gcode"))
-                                            .toString());
+        if (outputProject == null) return;
+        var plates = setup().plates();
+        for (int i = 0; i < plates.size(); i++) {
+            if (!plates.get(i).id().equals(setup().activePlateId())) continue;
+            Path destination =
+                    jobDestination(outputProject, plateName(plates.get(i).id()), i + 1, plates.size());
+            if (!destination.equals(outputDestination)) {
+                outputDestination = destination;
+                fields.get("print-output").setText(destination.toString());
+            }
+            return;
         }
     }
 
@@ -1440,10 +1436,24 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
         });
     }
 
-    static Path jobDestination(Path project) {
+    static Path jobDestination(Path project, String plateName, int plateNumber, int plateCount) {
+        if (plateNumber < 1 || plateNumber > plateCount) throw new IllegalArgumentException("Invalid plate number");
         String name = project.getFileName().toString();
         int extension = name.lastIndexOf('.');
-        return project.resolveSibling((extension > 0 ? name.substring(0, extension) : name) + ".gcode");
+        String number =
+                String.format(Locale.ROOT, "%0" + Integer.toString(plateCount).length() + "d", plateNumber);
+        StringBuilder escaped = new StringBuilder();
+        int trailing = plateName.length();
+        while (trailing > 0 && (plateName.charAt(trailing - 1) == '.' || plateName.charAt(trailing - 1) == ' '))
+            trailing--;
+        for (int i = 0; i < plateName.length(); i++) {
+            char character = plateName.charAt(i);
+            if (Character.isISOControl(character) || "<>:\"/\\|?*%".indexOf(character) >= 0 || i >= trailing)
+                escaped.append(String.format(Locale.ROOT, "%%%02X", (int) character));
+            else escaped.append(character);
+        }
+        return project.resolveSibling(
+                (extension > 0 ? name.substring(0, extension) : name) + "-" + number + "-" + escaped + ".gcode");
     }
 
     private ListCell<String> namedCell(ComboBox<String> choice) {

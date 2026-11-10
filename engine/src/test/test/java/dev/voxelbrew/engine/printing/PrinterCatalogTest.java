@@ -20,10 +20,17 @@ class PrinterCatalogTest {
 
     @Test
     void exportsEditableDefaultsWithMatchingImagesWithoutOverwritingUserFiles() throws Exception {
-        assertEquals(62, catalog().exportDefaults());
+        assertEquals(0, catalog().exportDefaults(Set.of()));
+        try (var files = Files.list(directory)) {
+            assertEquals(0, files.count());
+        }
+        var selected = Set.of("bambu-lab-a1-mini", "prusa-mk4");
+        assertEquals(2, catalog().exportDefaults(selected));
         var loaded = catalog().load();
         assertTrue(loaded.diagnostics().isEmpty(), loaded.diagnostics().toString());
-        assertEquals(124, loaded.entries().size());
+        assertEquals(64, loaded.entries().size());
+        assertFalse(Files.exists(directory.resolve("custom-bambu-lab-a1.json")));
+        assertFalse(Files.exists(directory.resolve("custom-bambu-lab-a1.png")));
         var copy = loaded.entries().stream()
                 .filter(entry -> entry.definition().printer().id().equals("custom-bambu-lab-a1-mini"))
                 .findFirst()
@@ -38,7 +45,7 @@ class PrinterCatalogTest {
         var edited = Files.readAllBytes(json);
         var picture = directory.resolve("custom-bambu-lab-a1-mini.png");
         Files.write(picture, new byte[] {1, 2, 3});
-        assertEquals(0, catalog().exportDefaults());
+        assertEquals(0, catalog().exportDefaults(selected));
         assertArrayEquals(edited, Files.readAllBytes(json));
         assertArrayEquals(new byte[] {1, 2, 3}, Files.readAllBytes(picture));
         assertTrue(Files.exists(directory.resolve("PHOTO-LICENSE.txt")));

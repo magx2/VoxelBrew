@@ -274,9 +274,11 @@ JavaFX 21 image loader.
 WebP printer thumbnails use the first frame and preserve transparency. WebP images
 above 16 million pixels use the fallback illustration.
 
-The top-level **Printers** menu provides **Export default printers?**, **Open
-printers folder** and **Reload printers**. Export writes editable copies of all
-bundled presets into `~/.voxelbrew/printers/` (or the configured application home).
+The top-level **Printers** menu provides **Export default printers...**, **Open
+printers folder** and **Reload printers**. Export opens a searchable checklist
+with nothing selected. Choose one or more bundled printers and click **Export
+selected** to write editable copies into `~/.voxelbrew/printers/` (or the
+configured application home). Cancel closes the dialog without writing files.
 Copies use `custom-` IDs and filenames so they coexist with built-ins and appear
 at the top of the list. Each image matches its JSON filename. Existing files are
 never overwritten; the completion dialog reports the number of new presets.

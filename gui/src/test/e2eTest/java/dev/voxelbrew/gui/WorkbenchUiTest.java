@@ -39,6 +39,35 @@ class WorkbenchUiTest {
     @Test
     void printerSelectionPersistsAndUndoRestoresBuildVolume() throws Exception {
         ready();
+        Platform.runLater(() -> ((MenuBar) node("#main-menu"))
+                .getMenus().stream()
+                        .filter(menu -> "menu-printers".equals(menu.getId()))
+                        .findFirst()
+                        .orElseThrow()
+                        .getItems()
+                        .getFirst()
+                        .fire());
+        ready();
+        fx(() -> {
+            var pane = Window.getWindows().stream()
+                    .filter(Window::isShowing)
+                    .map(window -> window.getScene().lookup("#printer-export-dialog"))
+                    .filter(Objects::nonNull)
+                    .map(DialogPane.class::cast)
+                    .findFirst()
+                    .orElseThrow();
+            var confirm = pane.lookup("#printer-export-confirm");
+            assertTrue(confirm.isDisabled(), "Export requires an explicit selection");
+            var choice = (CheckBox) pane.lookup("#printer-export-bambu-lab-a1-mini");
+            choice.setSelected(true);
+            assertFalse(confirm.isDisabled());
+            ((TextField) pane.lookup("#printer-export-search")).setText("Prusa");
+            assertFalse(choice.isVisible());
+            assertTrue(choice.isSelected(), "Filtering retains explicit selections");
+            ((Button) pane.lookupButton(ButtonType.CANCEL)).fire();
+            return null;
+        });
+        ready();
         fx(() -> {
             var menu = ((MenuBar) node("#main-menu"))
                     .getMenus().stream()

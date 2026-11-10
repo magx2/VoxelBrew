@@ -142,3 +142,20 @@ and the export completion dialog were not separately exercised through gestures.
 Ubuntu passed `./gradlew --no-daemon --max-workers=2 :engine:test --tests
 '*PrinterCatalogTest' :util:test :gui:compileJava --console=plain` in the separate
 checkout. Logs: `.tools/printer-export-windows.log`, `.tools/printer-export-ubuntu.log`.
+
+## Selective printer export
+
+Export now requires an explicit selection from a searchable checkbox list;
+nothing is preselected, Export is disabled for an empty selection, and Cancel
+writes nothing. Filtering preserves checked choices. The catalog API accepts
+selected preset IDs and exports only those JSON/image pairs.
+
+Windows passed `gradlew.bat spotlessApply :engine:test --tests '*PrinterCatalogTest'
+:util:test :gui:e2eTest --tests '*WorkbenchUiTest.printerSelectionPersistsAndUndoRestoresBuildVolume'`.
+The GUI check covers empty selection, checking a printer, search persistence and
+cancellation. The catalog check exports two chosen presets, verifies unselected
+JSON/image files remain absent, checks empty-selection behavior, and preserves
+existing edited files. Ubuntu passed `./gradlew --no-daemon --max-workers=2
+:engine:test --tests '*PrinterCatalogTest' :util:test :gui:compileJava --console=plain`.
+Logs: `.tools/printer-export-selection-windows.log` and
+`.tools/printer-export-selection-ubuntu.log`. No full E2E or milestone gate run.

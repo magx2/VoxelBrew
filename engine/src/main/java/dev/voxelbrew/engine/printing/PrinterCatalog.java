@@ -39,12 +39,15 @@ public final class PrinterCatalog {
     }
 
     /** Creates editable copies without overwriting existing user presets or images. */
-    public int exportDefaults() throws java.io.IOException {
+    public int exportDefaults(Set<String> selectedIds) throws java.io.IOException {
+        selectedIds = Set.copyOf(selectedIds);
+        if (selectedIds.isEmpty()) return 0;
         java.nio.file.Files.createDirectories(directory());
         int exported = 0;
         for (var source : resources.load().sources()) {
             if (!source.bundled()) continue;
             var json = JsonParser.parseString(source.json()).getAsJsonObject();
+            if (!selectedIds.contains(json.get("id").getAsString())) continue;
             String stem = "custom-" + json.get("id").getAsString();
             var target = directory().resolve(stem + ".json");
             if (java.nio.file.Files.exists(target)) continue;

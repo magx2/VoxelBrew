@@ -1800,8 +1800,11 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
     }
 
     void exportDefaultPrinters() {
+        var selected = PrinterExportDialog.choose(
+                getScene().getWindow(), translations, printers.load().entries());
+        if (selected.isEmpty()) return;
         try {
-            int count = printers.exportDefaults();
+            int count = printers.exportDefaults(selected);
             reloadPrinters();
             var alert = new Alert(
                     Alert.AlertType.INFORMATION,

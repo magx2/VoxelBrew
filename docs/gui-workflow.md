@@ -30,6 +30,9 @@ or sketch draft first; closing an edited document offers Save, Discard and Cance
   Ctrl+Shift+S; the document name and unsaved-change dot stay visible at the top.
 - **Edit**: Undo, Redo and Parameters. Undo/Redo also remain on the modeling toolbar.
 - **View**: Fit, standard camera directions and **Appearance → System / Light / Dark**.
+- **Slicer**: **Configure slicers…** opens a tab for each installed provider.
+  Save executable paths and provider options here; settings apply to the next
+  slicing job without restarting. Closing without saving discards edits.
 - **Settings**: Language, Updates and **Keyboard shortcuts…**. Restart after changing the language.
 
 Hover over a button or menu action for a description of its purpose, prerequisites

@@ -38,6 +38,13 @@ SHA-256; Ubuntu 24.04 installs `2.7.2+dfsg-1build2`. Override discovery with
 Gradle tests accept `-PslicerExecutable=PATH`. Capability/version probing rejects
 an unqualified executable before slicing. The slicer is not bundled with VoxelBrew.
 
+Use **Slicer → Configure slicers…** to configure installed providers from either
+workspace. Each provider has its own tab and persisted options, including its
+executable path. Cura exposes its machine-definition JSON and process-properties
+file; Prusa exposes its profile option. Save applies the settings to subsequent
+jobs without restarting. An explicit executable on the Job tab still overrides
+the saved path. Closing the dialog without saving discards its edits.
+
 ## CAD, placement and persistence
 
 **Split body** in the Design view creates one editable operation. Select an

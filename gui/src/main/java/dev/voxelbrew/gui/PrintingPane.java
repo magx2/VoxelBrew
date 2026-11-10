@@ -27,6 +27,7 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
     private final DocumentController document;
     private final PrintController jobs;
     private final SlicerCatalog slicers;
+    private final SlicerSettings slicerSettings;
     private final ExecutorService validator;
     private final dev.voxelbrew.util.i18n.Translations translations;
     private Future<?> validationTask;
@@ -69,6 +70,7 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
             DocumentController document,
             PrintController jobs,
             SlicerCatalog slicers,
+            SlicerSettings slicerSettings,
             ExporterCatalog exporters,
             javafx.stage.Stage owner,
             @javax.inject.Named("validation") ExecutorService validator,
@@ -85,6 +87,7 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
         this.document = document;
         this.jobs = jobs;
         this.slicers = slicers;
+        this.slicerSettings = slicerSettings;
         this.validator = validator;
         setId("printing-workspace");
         setPadding(new Insets(8));
@@ -283,6 +286,8 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
         var solidView = new RadioButton("3D");
         topView.setId("print-view-2d");
         solidView.setId("print-view-3d");
+        UiHelp.install(topView, translations);
+        UiHelp.install(solidView, translations);
         topView.setToggleGroup(viewMode);
         solidView.setToggleGroup(viewMode);
         topView.setSelected(true);
@@ -588,9 +593,15 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
         if (!document.canExport())
             throw new IllegalStateException(
                     translations.text("gui.slice_requires_a_complete_successful_rebuild_at_the_timeline_end"));
+        SlicerBackend backend;
+        try {
+            backend = slicerSettings.backend(setup().backendId());
+        } catch (java.io.IOException failure) {
+            throw new IllegalStateException(translations.text("slicer.settings.failed", failure.getMessage()), failure);
+        }
         jobs.start(
                         document.snapshot().document(),
-                        slicers.require(setup().backendId()),
+                        backend,
                         fields.get("print-executable").evaluatedText().isBlank()
                                 ? null
                                 : Path.of(fields.get("print-executable").evaluatedText()),

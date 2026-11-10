@@ -37,6 +37,43 @@ import org.junit.jupiter.api.io.TempDir;
 @ExtendWith(UiTestShard.class)
 class WorkbenchUiTest {
     @Test
+    void slicerMenuPersistsSeparateProviderSettingsAndDiscardsUnsavedEdits() throws Exception {
+        ready();
+        click("menu-slicer");
+        click("slicer-settings");
+        click("slicer-settings-prusa-slicer");
+        text("slicer-option-prusa-slicer-executable", "C:/Slicers/prusa.exe");
+        click("slicer-settings-cura");
+        text("slicer-option-cura-executable", "C:/Slicers/CuraEngine.exe");
+        text("slicer-option-cura-definition", "C:/Slicers/machine.json");
+        text("slicer-option-cura-settings", "C:/Slicers/process.properties");
+        click("slicer-settings-save");
+        long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(10);
+        while (fx(() -> node("#slicer-settings-save").isDisabled()) && System.nanoTime() < deadline) Thread.sleep(25);
+        assertTrue(fx(() -> ((Label) node("#slicer-settings-status")).getText().contains("saved")));
+        assertEquals("C:/Slicers/prusa.exe", configuration.get("slicer.prusa-slicer.executable", ""));
+        assertEquals("C:/Slicers/CuraEngine.exe", configuration.get("slicer.cura.executable", ""));
+        assertEquals("C:/Slicers/machine.json", configuration.get("slicer.cura.definition", ""));
+        assertEquals("C:/Slicers/process.properties", configuration.get("slicer.cura.settings", ""));
+        fx(() -> {
+            Screenshot.save(
+                    stage.getScene(), Path.of(System.getProperty("voxelbrew.ui.artifacts"), "slicer-settings.png"));
+            return null;
+        });
+        click("slicer-settings-close");
+        click("menu-slicer");
+        click("slicer-settings");
+        click("slicer-settings-prusa-slicer");
+        assertEquals(
+                "C:/Slicers/prusa.exe",
+                fx(() -> ((TextField) node("#slicer-option-prusa-slicer-executable")).getText()));
+        text("slicer-option-prusa-slicer-executable", "discarded");
+        key(KeyCode.ESCAPE);
+        assertEquals("C:/Slicers/prusa.exe", configuration.get("slicer.prusa-slicer.executable", ""));
+        assertFalse(fx(() -> workbench.controller().dirty()));
+    }
+
+    @Test
     void extrusionRegionChoiceKeepsOnlyRectangle() throws Exception {
         var rectangle = Sketches.rectangle("r", 0, 0, 20, 10, false);
         var entities = new ArrayList<>(rectangle.entities());
@@ -1953,7 +1990,7 @@ class WorkbenchUiTest {
         String menu = switch (id) {
             case "extrude", "cut", "fillet", "chamfer", "shell", "split-body" -> "operations-menu";
             case "new", "open", "import", "save", "save-as", "export" -> "menu-file";
-            case "language", "updates", "about" -> "menu-settings";
+            case "language", "updates", "about", "keyboard-shortcuts" -> "menu-settings";
             case "appearance", "menu-fit" -> "menu-view";
             default -> null;
         };
@@ -2109,7 +2146,8 @@ class WorkbenchUiTest {
 
     private void openShortcutHelp() throws Exception {
         focus(stage);
-        key(KeyCode.F1);
+        if (fx(() -> stage.getScene().lookup("#sketch-editor") == null)) click("keyboard-shortcuts");
+        else key(KeyCode.F1);
         long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(3);
         while (!fx(() -> node("#keyboard-shortcuts-close").isFocused()) && System.nanoTime() < deadline)
             Thread.sleep(20);

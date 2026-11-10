@@ -12,7 +12,14 @@ class UiHelpTest {
     void finishingAndFeatureNameFieldsHaveLocalizedHelpAtStartup() {
         for (var locale : List.of(Locale.ENGLISH, Locale.forLanguageTag("pl"))) {
             var translations = new Translations(locale);
-            for (var id : List.of("fillet", "chamfer", "shell", "feature-rename-field", "parameters-show-builtins")) {
+            for (var id : List.of(
+                    "fillet",
+                    "chamfer",
+                    "shell",
+                    "feature-rename-field",
+                    "parameters-show-builtins",
+                    "print-view-2d",
+                    "print-view-3d")) {
                 assertFalse(UiHelp.description(translations, id).isBlank(), locale + ": " + id);
             }
         }

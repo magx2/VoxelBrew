@@ -55,3 +55,66 @@ Only the targeted Windows slicer E2E test ran. Full root checks, the full E2E
 suite, Linux/macOS E2E, installers and hardware were not run. The 3D view is a
 fixed isometric projection, not an orbit camera. This change does not qualify
 additional printer hardware or slicer backends.
+
+## Slicer configuration menu follow-up
+
+The top-level **Slicer → Configure slicers…** menu renders installed providers'
+configuration options in separate tabs. Prusa executable/profile and Cura
+executable/definition/settings fields have translated labels and Browse buttons.
+Save publishes all settings atomically through user configuration, preserves
+unrelated preferences and applies to the next job without restarting. Existing
+jobs keep their captured backend configuration. Close/Escape discards unsaved
+edits; provider diagnostics remain visible in the dialog.
+
+Passed on Windows:
+
+```powershell
+$env:GRADLE_USER_HOME = "$PWD/.tools/gradle-home"
+.\gradlew.bat spotlessApply :gui:test :util:test --console=plain
+.\gradlew.bat :gui:e2eTest --tests '*WorkbenchUiTest.slicerMenuPersistsSeparateProviderSettingsAndDiscardsUnsavedEdits' --tests '*WorkbenchUiTest.printingSplitPlacementPetgAndActualPreviewMatchCli' --console=plain
+```
+
+After adding the Prusa profile Browse button, unit checks and the configuration
+dialog E2E test passed again. Ubuntu unit checks passed on the same sources in
+`/tmp/voxelbrew-slicer-menu.Ik6R2b` with `./gradlew :gui:test :util:test --console=plain`.
+The settings unit test covers per-provider isolation, persistence, invalid-option
+rejection without writes, preserving unrelated preferences and immutable captured
+backend settings. Robot coverage verifies the menu, editing both providers,
+saving/reopening, discarding edits and preserving the CAD document's clean state.
+The real-Prusa workflow still produces 40 model layers with GUI/CLI path parity.
+
+Logs: `.tools/slicer-menu-unit.log`, `.tools/slicer-menu-e2e.log`,
+`.tools/slicer-menu-dialog-e2e.log`, `.tools/slicer-menu-linux.log`.
+The reviewed dialog screenshot is `gui/build/ui-artifacts/slicer-settings.png`.
+Native Browse picker gestures, full root checks, full E2E suites and Linux E2E
+were not run. Cura's real-engine qualification remains pending.
+
+## Full Windows clean-check follow-up (2026-11-10)
+
+The user-requested full local gate passed:
+
+```powershell
+$env:GRADLE_USER_HOME = "$PWD/.tools/gradle-home"
+.\gradlew.bat clean check -PnativeJobs=8 --console=plain
+```
+
+Gradle reported `BUILD SUCCESSFUL in 36m`, with 205 actionable tasks
+(203 executed, two up-to-date), including native compilation, unit/integration
+checks, the full Windows GUI suite, real PrusaSlicer workflows, CLI/GUI packaging,
+updates and release-archive checks. No check tasks were excluded.
+
+The initial full run found missing help descriptions for the new 2D/3D controls.
+Both controls now have English/Polish help, covered by the help-catalog test.
+The shortcut test helper was also updated for contextual F1 and the Settings
+menu location of the complete shortcut reference. All five affected desktop
+regressions passed separately and again in the final full run.
+
+The final source changes also passed Ubuntu `:gui:test :util:test
+:gui:compileE2eTestJava` in the separate filesystem checkout
+`/tmp/voxelbrew-slicer-menu.Ik6R2b`. Linux E2E was intentionally not run locally.
+The earlier full-check limitations above are superseded for Windows by this run;
+Cura real-engine and hardware qualification remain pending.
+
+Logs: `.tools/full-clean-check-final.log`,
+`.tools/full-clean-check-first-failures.log`,
+`.tools/clean-check-help-regressions.log`, `.tools/clean-check-fixes-linux.log`.

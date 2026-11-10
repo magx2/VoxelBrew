@@ -37,6 +37,35 @@ import org.junit.jupiter.api.io.TempDir;
 @ExtendWith(UiTestShard.class)
 class WorkbenchUiTest {
     @Test
+    void sliceAllPlatesWritesSeparateJobsWithoutChangingSelection() throws Exception {
+        ready();
+        openPrepared("plate-5mm.vxb");
+        click("workspace-print");
+        ready();
+        click("print-add");
+        ready();
+        click("print-add-plate");
+        ready();
+        click("print-add");
+        ready();
+        Path saved = directory.resolve("all-plates.vxb");
+        save(saved);
+        var original = document().printSetup();
+        click("print-tab-job");
+        text("print-output", directory.resolve("batch.gcode").toString());
+        click("print-slice-all");
+        long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(60);
+        while (fx(() -> ((PrintingPane) node("#printing-workspace")).jobs().running()) && System.nanoTime() < deadline)
+            Thread.sleep(25);
+        assertEquals(
+                PrintController.State.SUCCEEDED,
+                fx(() -> ((PrintingPane) node("#printing-workspace")).jobs().state()));
+        assertEquals(original, document().printSetup());
+        assertTrue(Files.exists(directory.resolve("all-plates-1-Plate 1.gcode")));
+        assertTrue(Files.exists(directory.resolve("all-plates-2-Plate 2.gcode")));
+    }
+
+    @Test
     void autoArrangeMovesActivePlateAndUndoesTogether() throws Exception {
         ready();
         openPrepared("plate-5mm.vxb");

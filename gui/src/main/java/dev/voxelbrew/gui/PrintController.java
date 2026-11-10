@@ -119,6 +119,46 @@ public final class PrintController implements AutoCloseable {
 
     public CompletableFuture<Slicing.Result> start(
             CadDocument document, SlicerBackend backend, Path executable, Path destination, boolean overwrite) {
+        return startJobs(document, backend, executable, List.of(new PlateJob(document, destination)), overwrite);
+    }
+
+    private record PlateJob(CadDocument document, Path destination) {}
+
+    /** Slice detached plate snapshots without changing the active plate or document history. */
+    public CompletableFuture<Slicing.Result> startAll(
+            CadDocument document,
+            SlicerBackend backend,
+            Path executable,
+            Map<String, Path> destinations,
+            boolean overwrite) {
+        var requests = new ArrayList<PlateJob>();
+        var plates = document.printSetup().plates();
+        for (int i = 0; i < plates.size(); i++) {
+            var setup = document.printSetup().selectPlate(plates.get(i).id());
+            if (setup.instances().isEmpty()) continue;
+            var selected = new CadDocument(
+                    document.id(),
+                    document.features(),
+                    document.cursor(),
+                    setup,
+                    document.parameters(),
+                    document.bodyStyles(),
+                    document.bodyNames(),
+                    document.featureNames());
+            requests.add(new PlateJob(
+                    selected,
+                    Objects.requireNonNull(destinations.get(plates.get(i).id()), "Missing plate destination")));
+        }
+        if (requests.isEmpty()) throw new IllegalArgumentException("Add objects to at least one plate");
+        var unique = new HashSet<Path>();
+        for (var request : requests)
+            if (!unique.add(request.destination().toAbsolutePath().normalize()))
+                throw new IllegalArgumentException("Each plate requires a separate output file");
+        return startJobs(document, backend, executable, List.copyOf(requests), overwrite);
+    }
+
+    private CompletableFuture<Slicing.Result> startJobs(
+            CadDocument document, SlicerBackend backend, Path executable, List<PlateJob> requests, boolean overwrite) {
         if (closed || running) throw new IllegalStateException("Wait for the current slicer task to finish");
         running = true;
         state = State.SLICING;
@@ -133,26 +173,60 @@ public final class PrintController implements AutoCloseable {
         onChanged.run();
         worker.execute(() -> {
             try (var exportRegistry = exporters.open(pluginDirectory)) {
-                var model = dev.voxelbrew.engine.printing.ManufacturingModels.evaluate(
-                        document, MeshOptions.DEFAULT, pluginDirectory);
+                var models = new ArrayList<ManufacturingModel>();
+                // Preflight every plate before publishing any output.
+                for (var request : requests) {
+                    token.check();
+                    if (!overwrite && java.nio.file.Files.exists(request.destination()))
+                        throw new IOException("Output already exists: " + request.destination());
+                    var model = ManufacturingModels.evaluate(request.document(), MeshOptions.DEFAULT, pluginDirectory);
+                    PrintValidation.validate(model).requireValid();
+                    models.add(model);
+                }
+                Slicing.Result selectedResult = null;
+                Slicing.Result lastResult = null;
+                for (int i = 0; i < requests.size(); i++) {
+                    token.check();
+                    var request = requests.get(i);
+                    String label = "Plate " + (i + 1) + "/" + requests.size() + " ("
+                            + request.document().printSetup().activePlate().name() + "): ";
+                    var plateToken = new Cancellation();
+                    var unlink = token.onCancel(plateToken::cancel);
+                    Slicing.Result completed;
+                    try {
+                        completed = slicing.slice(
+                                backend,
+                                request.document(),
+                                models.get(i),
+                                exportRegistry,
+                                executable,
+                                request.destination(),
+                                overwrite,
+                                plateToken,
+                                line -> dispatch.accept(() -> {
+                                    if (closed || ticket != generation || state != State.SLICING) return;
+                                    if (diagnostics.size() == 100) diagnostics.removeFirst();
+                                    diagnostics.add(label + line);
+                                    message = label + line;
+                                    onChanged.run();
+                                }),
+                                (captured, commit) -> {
+                                    if (!captured.equals(DocumentCodec.fingerprint(request.document())))
+                                        throw new Slicing.OutdatedException();
+                                    publish(ticket, DocumentCodec.fingerprint(document), token, commit);
+                                });
+                    } finally {
+                        unlink.run();
+                    }
+                    lastResult = completed;
+                    if (request.document()
+                            .printSetup()
+                            .activePlateId()
+                            .equals(document.printSetup().activePlateId())) selectedResult = completed;
+                }
                 token.check();
-                var completed = slicing.slice(
-                        backend,
-                        document,
-                        model,
-                        exportRegistry,
-                        executable,
-                        destination,
-                        overwrite,
-                        token,
-                        line -> dispatch.accept(() -> {
-                            if (closed || ticket != generation || state != State.SLICING) return;
-                            if (diagnostics.size() == 100) diagnostics.removeFirst();
-                            diagnostics.add(line);
-                            message = line;
-                            onChanged.run();
-                        }),
-                        (captured, commit) -> publish(ticket, captured, token, commit));
+                var completed = lastResult;
+                var preview = selectedResult;
                 dispatch.accept(() -> {
                     if (closed || ticket != generation) {
                         future.cancel(false);
@@ -164,10 +238,20 @@ public final class PrintController implements AutoCloseable {
                         message = "Job is outdated; slice the current revision again.";
                         result = null;
                         future.completeExceptionally(new Slicing.OutdatedException());
+                    } else if (token.cancelled()) {
+                        state = State.CANCELLED;
+                        result = null;
+                        message = "Slicing cancelled; completed files were kept.";
+                        future.completeExceptionally(new CancellationException(message));
                     } else {
                         state = State.SUCCEEDED;
-                        result = completed;
-                        message = "Job ready: " + completed.output();
+                        result = preview;
+                        message = requests.size() == 1
+                                ? "Job ready: " + completed.output()
+                                : "Sliced " + requests.size() + " plates. Outputs: "
+                                        + requests.stream()
+                                                .map(PlateJob::destination)
+                                                .toList();
                         future.complete(completed);
                     }
                     onChanged.run();

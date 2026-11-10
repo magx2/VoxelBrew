@@ -131,3 +131,35 @@ Ubuntu validation passed on the same source snapshot in a separate Linux checkou
 Log: `.tools/slicer-gizmo-ubuntu.log`. No Linux E2E, full E2E suite, new milestone
 gate, or physical-printer qualification is claimed. X/Y mouse gestures and dark
 palette rendering were not separately exercised by Robot tests.
+
+## Slice-all follow-up
+
+Slice all plates processes non-empty plates sequentially without changing the
+selected plate or undo history. Each output uses the project name, padded plate
+number and escaped plate name in the destination folder. The overwrite checkbox
+applies to every output. All plate geometry and existing-file conflicts are
+checked before slicing starts. Failure, cancellation or editing stops remaining
+work; files already completed remain available. Preview shows the originally
+selected plate only (no preview if that plate was empty).
+
+Windows checks passed with real PrusaSlicer:
+
+```powershell
+.\gradlew.bat --no-daemon spotlessApply :gui:integrationTest --tests '*PrintControllerTest' :gui:e2eTest --tests '*WorkbenchUiTest.sliceAllPlatesWritesSeparateJobsWithoutChangingSelection' --console=plain
+```
+
+Coverage includes two real outputs, empty-plate skipping, active-preview identity,
+preflight rejection of an invalid later plate before any publication, cancellation
+after the first output, and existing stale-result/single-plate lifecycle tests.
+The focused Windows Robot test clicks Slice all plates and verifies both named
+files and unchanged plate selection. Log: `.tools/slice-all-tests.log`.
+
+Ubuntu passed compilation, destination-name unit tests and integration-test
+compilation in the separate Linux checkout:
+
+```bash
+./gradlew --no-daemon --max-workers=2 :gui:test --tests '*PrintingPaneTest' :gui:compileIntegrationTestJava
+```
+
+Log: `.tools/slice-all-ubuntu.log`. Real slicing was tested on Windows only;
+no Linux E2E, full E2E suite or new milestone gate was run.

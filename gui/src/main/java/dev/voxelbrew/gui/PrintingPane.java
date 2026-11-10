@@ -73,6 +73,7 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
     private final TextArea diagnostics = new TextArea();
     private final EnumMap<GcodeJob.Role, CheckBox> roles = new EnumMap<>(GcodeJob.Role.class);
     private final Button slice;
+    private final Button sliceAll;
     private final Button cancel;
     private final ProgressIndicator progress = new ProgressIndicator();
     private ManufacturingModel model;
@@ -263,6 +264,7 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
         });
 
         slice = button(translations.text("gui.slice"), "print-slice", this::slice);
+        sliceAll = button(translations.text("print.sliceAll"), "print-slice-all", () -> slice(true));
         cancel = button(translations.text("gui.cancel_slicing"), "print-cancel", jobs::cancel);
         var job = new VBox(
                 7,
@@ -423,7 +425,7 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
         slice.setMinWidth(Region.USE_PREF_SIZE);
         cancel.setMinWidth(Region.USE_PREF_SIZE);
         HBox.setHgrow(jobStatus, Priority.ALWAYS);
-        var actions = new HBox(12, progress, jobStatus, cancel, slice);
+        var actions = new HBox(12, progress, jobStatus, cancel, sliceAll, slice);
         actions.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
         actions.getStyleClass().add("slicer-status-bar");
         slice.getStyleClass().add("slicer-primary-action");
@@ -754,6 +756,10 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
     }
 
     private void slice() {
+        slice(false);
+    }
+
+    private void slice(boolean allPlates) {
         if (!document.canExport())
             throw new IllegalStateException(
                     translations.text("gui.slice_requires_a_complete_successful_rebuild_at_the_timeline_end"));
@@ -763,13 +769,26 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
         } catch (java.io.IOException failure) {
             throw new IllegalStateException(translations.text("slicer.settings.failed", failure.getMessage()), failure);
         }
-        jobs.start(
-                        document.snapshot().document(),
-                        backend,
-                        null,
-                        Path.of(fields.get("print-output").evaluatedText()),
-                        overwrite.isSelected())
-                .exceptionally(failure -> null);
+        var snapshot = document.snapshot().document();
+        var destination = Path.of(fields.get("print-output").evaluatedText());
+        var future = allPlates
+                ? jobs.startAll(snapshot, backend, null, batchDestinations(destination), overwrite.isSelected())
+                : jobs.start(snapshot, backend, null, destination, overwrite.isSelected());
+        future.exceptionally(failure -> null);
+    }
+
+    private Map<String, Path> batchDestinations(Path destination) {
+        var outputs = new LinkedHashMap<String, Path>();
+        var plates = setup().plates();
+        Path project = document.path() == null ? Path.of("Untitled.vxb") : document.path();
+        for (int i = 0; i < plates.size(); i++) {
+            var plate = plates.get(i);
+            outputs.put(
+                    plate.id(),
+                    destination.resolveSibling(jobDestination(project, plateName(plate.id()), i + 1, plates.size())
+                            .getFileName()));
+        }
+        return outputs;
     }
 
     void documentChanged() {
@@ -908,6 +927,9 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
         updatePreviewControls();
         autoArrange.setDisable(model == null || model.instances().isEmpty() || !document.canExport() || jobs.running());
         slice.setDisable(!document.canExport() || jobs.running() || validation == null || !validation.valid());
+        sliceAll.setDisable(!document.canExport()
+                || jobs.running()
+                || setup().plates().stream().allMatch(plate -> plate.instances().isEmpty()));
         cancel.setDisable(!jobs.running());
         cancel.setVisible(jobs.running());
         cancel.setManaged(jobs.running());

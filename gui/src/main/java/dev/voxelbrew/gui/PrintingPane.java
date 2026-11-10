@@ -1243,8 +1243,9 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
                         translations.text("print.removePlateConfirm"),
                         ButtonType.OK,
                         ButtonType.CANCEL);
-                confirm.initOwner(getScene().getWindow());
-                if (confirm.showAndWait().orElse(ButtonType.CANCEL) != ButtonType.OK) return;
+                confirm.setHeaderText(translations.text("print.removePlate"));
+                if (Dialogs.show(confirm, getScene().getWindow(), translations).orElse(ButtonType.CANCEL)
+                        != ButtonType.OK) return;
             }
             commit(setup().removeActivePlate());
         });

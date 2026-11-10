@@ -1708,6 +1708,10 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
         });
         canvas.setOnMouseReleased(event -> {
             if (navigating) {
+                if (primaryNavigation && event.isStillSincePress()) {
+                    instances.setValue(null);
+                    draw();
+                }
                 navigating = false;
                 primaryNavigation = false;
                 canvas.setCursor(javafx.scene.Cursor.OPEN_HAND);

@@ -28,6 +28,8 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
     private final PrintController jobs;
     private final SlicerCatalog slicers;
     private final SlicerSettings slicerSettings;
+    private final SlicerAvailability availability;
+    private final Label backendStatus = new Label();
     private final ExecutorService validator;
     private final dev.voxelbrew.util.i18n.Translations translations;
     private Future<?> validationTask;
@@ -95,6 +97,7 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
             PrintController jobs,
             SlicerCatalog slicers,
             SlicerSettings slicerSettings,
+            SlicerAvailability availability,
             ExporterCatalog exporters,
             javafx.stage.Stage owner,
             @javax.inject.Named("validation") ExecutorService validator,
@@ -112,6 +115,7 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
         this.jobs = jobs;
         this.slicers = slicers;
         this.slicerSettings = slicerSettings;
+        this.availability = availability;
         this.validator = validator;
         setId("printing-workspace");
         getStyleClass().add("slicer-workspace");
@@ -152,7 +156,7 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
         backends.setConverter(new StringConverter<>() {
             @Override
             public String toString(SlicerBackend.Descriptor descriptor) {
-                return descriptor == null ? "" : descriptor.name() + " " + descriptor.version();
+                return descriptor == null ? "" : descriptor.name();
             }
 
             @Override
@@ -227,6 +231,7 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
                 7,
                 new Label(translations.text("gui.slicer_backend")),
                 backends,
+                backendStatus,
                 new Label(translations.text("print.printer")),
                 new Label(translations.text("gui.material")),
                 materials,
@@ -241,6 +246,11 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
                 row("print-brim", translations.text("gui.brim_width_mm"), "0"),
                 row("print-raft", translations.text("gui.raft_layers"), "0"),
                 button(translations.text("gui.apply_process_settings"), "print-apply-process", this::applyProcess));
+        backendStatus.setId("print-backend-status");
+        backendStatus.setWrapText(true);
+        backends.valueProperty()
+                .addListener((o, a, b) -> backendStatus.setText(
+                        b == null ? translations.text("gui.choose_an_available_backend") : availability.text(b.id())));
         var capabilities = new Label();
         capabilities.setWrapText(true);
         backends.valueProperty()
@@ -468,6 +478,11 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
         actions.getStyleClass().add("slicer-status-bar");
         slice.getStyleClass().add("slicer-primary-action");
         slice.setText(translations.text("print.slicePlate"));
+        availability.statuses.addListener(
+                (javafx.collections.MapChangeListener<String, SlicerAvailability.Status>) change -> {
+                    if (!closed) updateJob();
+                });
+        availability.refresh();
         setBottom(new VBox(8, previewControls, actions));
         BorderPane.setMargin(tabs, new Insets(0, 0, 0, 8));
         jobs.onChanged(this::updateJob);
@@ -798,6 +813,8 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
     }
 
     private void slice(boolean allPlates) {
+        if (!availability.working(setup().backendId()))
+            throw new IllegalStateException(availability.text(setup().backendId()));
         if (!document.canExport())
             throw new IllegalStateException(
                     translations.text("gui.slice_requires_a_complete_successful_rebuild_at_the_timeline_end"));
@@ -964,8 +981,17 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
     private void updateJob() {
         updatePreviewControls();
         autoArrange.setDisable(model == null || model.instances().isEmpty() || !document.canExport() || jobs.running());
-        slice.setDisable(!document.canExport() || jobs.running() || validation == null || !validation.valid());
-        sliceAll.setDisable(!document.canExport()
+        backendStatus.setText(
+                backends.getValue() == null
+                        ? translations.text("gui.choose_an_available_backend")
+                        : availability.text(backends.getValue().id()));
+        slice.setDisable(!availability.working(setup().backendId())
+                || !document.canExport()
+                || jobs.running()
+                || validation == null
+                || !validation.valid());
+        sliceAll.setDisable(!availability.working(setup().backendId())
+                || !document.canExport()
                 || jobs.running()
                 || setup().plates().stream().allMatch(plate -> plate.instances().isEmpty()));
         cancel.setDisable(!jobs.running());

@@ -41,3 +41,39 @@ Local logs: `.tools/slicer-persistence-final-windows.log`,
 `.tools/slicer-persistence-final-linux.log`. Reports are under each tested module's
 `build/reports/tests/` and `build/test-results/`; GUI artifacts are in
 `gui/build/ui-artifacts/`. Generated files are not committed.
+
+## Importer/exporter follow-up audit — 2026-11-10
+
+Reviewed all seven built-in exporters (VXB, JSON, STL, OBJ, STEP, portable 3MF and
+Prusa project) and all three importers (VXB, JSON and G-code), including registry
+and direct-writer entry points. Geometry-only exporters may omit slicer settings;
+G-code import returns toolpaths rather than an editable manufacturing setup.
+There are no built-in STL, OBJ, STEP or 3MF importers.
+
+Found and fixed one additional gap: direct `MeshExporter.writeFile` calls discarded
+manufacturing metadata before invoking the 3MF writer. The helper now forwards the
+snapshot's print setup. Regression tests exercise that path, both VXB/JSON provider
+round trips (including custom printer dimensions and drafts), and native Prusa
+project placement/process precedence over a requested Designer export.
+
+Windows: **46 tests passed, zero failures/skips**, including real OCCT and independent
+STL/OBJ/3MF/STEP checks, importer/plugin behavior, cancellation and failed-write
+protection. Command:
+
+```powershell
+.\gradlew.bat spotlessApply :api:import:test :api:export:test :impl:importer:test :impl:importer:integrationTest :impl:exporter:test :impl:exporter:integrationTest --console=plain
+```
+
+Ubuntu: API and unit suites passed in a fresh `/tmp/voxelbrew-io-audit.*` source copy:
+
+```bash
+./gradlew :api:import:test :api:export:test :impl:importer:test :impl:exporter:test --console=plain
+```
+
+The initial Ubuntu invocation also requested importer integration tests and stopped
+at `:engine:configureOcct`: this checkout has no native prerequisites. Ubuntu native
+integration remains unverified for this follow-up. No E2E tests, external receiver
+checks or full root gate runs were requested or performed for this audit.
+Logs: `.tools/io-audit-windows.log`, `.tools/io-audit-linux.log` (prerequisite failure),
+and `.tools/io-audit-linux-unit.log`. Reports remain in the respective modules'
+`build/test-results` and `build/reports/tests` directories.

@@ -84,7 +84,12 @@ public abstract class MeshExporter implements Exporter<Path> {
 
     /** Serialization helper for format-level tests; application callers use export(). */
     public final void writeFile(ModelView view, MeshExportDialog.Settings settings) throws IOException {
-        writeFile(view, settings, null);
+        writeFile(
+                view,
+                settings,
+                view instanceof ManufacturingView manufacturing
+                        ? manufacturing.manufacturingModel().setup()
+                        : null);
     }
 
     protected void write(

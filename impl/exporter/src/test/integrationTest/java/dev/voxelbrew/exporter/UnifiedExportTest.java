@@ -16,6 +16,67 @@ class UnifiedExportTest {
     Path directory;
 
     @Test
+    void prusaProjectUsesSlicerProcessAndPlacementEvenWhenDesignSpaceWasRequested() throws Exception {
+        var base = ExportTest.reference();
+        var setup = dev.voxelbrew.engine.printing.PrintSetup.empty()
+                .withProfile(
+                        "prusa-slicer",
+                        "generic-marlin-200-0.4",
+                        "PETG",
+                        new dev.voxelbrew.engine.printing.ProcessSettings(0.25, 4, 35, true, true, 55, 0.3, 4, 6, 2))
+                .withInstances(List.of(new dev.voxelbrew.engine.model.BodyInstance(
+                        "placed", "thickness.body", dev.voxelbrew.engine.model.Transform.translation(25, 35, 0))));
+        var document = new CadDocument(base.id(), base.features(), base.cursor(), setup);
+        Path target = directory.resolve("native-project.3mf");
+        var parent = new ExportDialogs()
+                .register(
+                        MeshExportDialog.class,
+                        request -> Optional.of(new MeshExportDialog.Settings(
+                                ExportSelection.design(null),
+                                MeshOptions.DEFAULT,
+                                Map.of(),
+                                new FileExportDialog.Destination(target, false))));
+        try (var registry = new ExporterRegistry(directory)) {
+            registry.require("prusa-project")
+                    .provider()
+                    .create(Runnable::run, directory)
+                    .export(document, parent)
+                    .get();
+        }
+        try (var zip = new java.util.zip.ZipFile(target.toFile())) {
+            String config;
+            try (var input = zip.getInputStream(zip.getEntry("Metadata/Slic3r_PE.config"))) {
+                config = new String(input.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8);
+            }
+            for (String setting : List.of(
+                    "layer_height = 0.25",
+                    "perimeters = 4",
+                    "fill_density = 35.0%",
+                    "support_material = 1",
+                    "support_material_buildplate_only = 1",
+                    "support_material_threshold = 55.0",
+                    "support_material_contact_distance = 0.3",
+                    "support_material_interface_layers = 4",
+                    "brim_width = 6.0",
+                    "raft_layers = 2",
+                    "filament_type = PETG")) assertTrue(config.contains("; " + setting + "\n"), setting);
+            try (var input = zip.getInputStream(zip.getEntry("3D/3dmodel.model"))) {
+                var factory = javax.xml.parsers.DocumentBuilderFactory.newInstance();
+                factory.setNamespaceAware(true);
+                var vertices = factory.newDocumentBuilder().parse(input).getElementsByTagNameNS("*", "vertex");
+                double minX = Double.POSITIVE_INFINITY, minY = Double.POSITIVE_INFINITY;
+                for (int i = 0; i < vertices.getLength(); i++) {
+                    var vertex = (org.w3c.dom.Element) vertices.item(i);
+                    minX = Math.min(minX, Double.parseDouble(vertex.getAttribute("x")));
+                    minY = Math.min(minY, Double.parseDouble(vertex.getAttribute("y")));
+                }
+                assertEquals(25, minX, 0.001);
+                assertEquals(35, minY, 0.001);
+            }
+        }
+    }
+
+    @Test
     void threeMfPrefersSlicerPlateAndCarriesSettingsWhileObjKeepsDesignSpace() throws Exception {
         var base = ExportTest.reference();
         var setup = dev.voxelbrew.engine.printing.PrintSetup.empty()

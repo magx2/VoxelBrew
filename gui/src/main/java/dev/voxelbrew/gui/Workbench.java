@@ -2121,6 +2121,14 @@ public final class Workbench extends BorderPane implements AutoCloseable {
     }
 
     private void chooseProjectWindow(Path path, Runnable currentWindow) {
+        var document = controller.snapshot().document();
+        if (!controller.dirty()
+                && document.features().isEmpty()
+                && document.gcode().isEmpty()
+                && document.parameters().equals(dev.voxelbrew.engine.parameters.ParameterSet.empty())) {
+            requestChange(currentWindow);
+            return;
+        }
         var current = new ButtonType(translations.text("projectWindow.current"));
         var separate = new ButtonType(translations.text("projectWindow.new"));
         var dialog = new Alert(

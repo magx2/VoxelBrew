@@ -37,6 +37,30 @@ import org.junit.jupiter.api.io.TempDir;
 @ExtendWith(UiTestShard.class)
 class WorkbenchUiTest {
     @Test
+    void autoArrangeMovesActivePlateAndUndoesTogether() throws Exception {
+        ready();
+        openPrepared("plate-5mm.vxb");
+        click("workspace-print");
+        ready();
+        click("print-add");
+        ready();
+        click("print-add");
+        ready();
+        var original = document().printSetup();
+        click("print-auto-arrange");
+        ready();
+        var arranged = document().printSetup();
+        assertNotEquals(original, arranged);
+        assertEquals(original.instances().size(), arranged.instances().size());
+        var a = arranged.instances().get(0).transform().matrix();
+        var b = arranged.instances().get(1).transform().matrix();
+        assertTrue(Math.abs(a[3] - b[3]) >= 65 - 1e-7 || Math.abs(a[7] - b[7]) >= 45 - 1e-7);
+        shortcut(KeyCode.Z, false);
+        ready();
+        assertEquals(original, document().printSetup());
+    }
+
+    @Test
     void slicerInstanceNamesFollowBodyRenamesAndUndo() throws Exception {
         ready();
         openPrepared("plate-5mm.vxb");

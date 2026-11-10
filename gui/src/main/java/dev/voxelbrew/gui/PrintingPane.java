@@ -36,6 +36,7 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
     private boolean threeDimensional;
     private Path outputProject;
     private String outputPlate;
+    private Button autoArrange;
     private final ToggleButton toolpathPreview = new ToggleButton();
     private double plateWidth = 200, plateDepth = 200;
     private final Canvas canvas = new Canvas();
@@ -360,7 +361,8 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
             camera().fit();
             draw();
         });
-        viewBar.getChildren().add(fitView);
+        autoArrange = button(translations.text("print.autoArrange"), "print-auto-arrange", this::autoArrange);
+        viewBar.getChildren().addAll(fitView, autoArrange);
         canvas.setAccessibleHelp(
                 translations.text("print.cameraHelp") + "\n" + translations.text("print.rotationGizmoHelp"));
         placementHint.setTooltip(UiHelp.tooltip(translations.text("print.cameraHelp")));
@@ -570,6 +572,19 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
                         -bounds.minZ())));
         commit(setup().withInstances(all));
         instances.setValue(id);
+    }
+
+    private void autoArrange() {
+        if (model == null || !document.canExport() || jobs.running()) return;
+        cancelDrag();
+        var arranged = PrintArrangement.arrange(model, 5);
+        if (arranged.isEmpty()) {
+            status.setText(translations.text("print.autoArrangeFailed"));
+            return;
+        }
+        toolpathPreview.setSelected(false);
+        var next = setup().withInstances(arranged.get());
+        if (!next.equals(setup())) commit(next);
     }
 
     private void applyPlacement() {
@@ -895,6 +910,7 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
 
     private void updateJob() {
         updatePreviewControls();
+        autoArrange.setDisable(model == null || model.instances().isEmpty() || !document.canExport() || jobs.running());
         slice.setDisable(!document.canExport() || jobs.running() || validation == null || !validation.valid());
         cancel.setDisable(!jobs.running());
         cancel.setVisible(jobs.running());

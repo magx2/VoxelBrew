@@ -9,6 +9,20 @@ import org.junit.jupiter.api.Test;
 
 class ParameterSuggestionsTest {
     @Test
+    void numericFieldsExcludeStringParametersForEmptyAndPartialReferences() {
+        var parameters = ParameterSet.empty().put("width", ParameterUnit.MM, "10", "");
+        assertEquals(
+                List.of("vb.project.version", "width"),
+                ParameterSuggestions.matches(parameters, "", FormulaField.ExpressionType.NUMBER));
+        assertEquals(
+                List.of("vb.project.version"),
+                ParameterSuggestions.matches(parameters, "vb.project.", FormulaField.ExpressionType.NUMBER));
+        assertEquals(List.of(), ParameterSuggestions.matches(parameters, "vb.os.", FormulaField.ExpressionType.NUMBER));
+        assertTrue(ParameterSuggestions.matches(parameters, "vb.project.", FormulaField.ExpressionType.STRING)
+                .contains("vb.project.name"));
+    }
+
+    @Test
     void completesNumericBuiltinInsideArithmetic() {
         var parameters = ParameterSet.empty();
         String formula = "=$vb.project.ver+1";

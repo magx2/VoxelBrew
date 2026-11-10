@@ -1,5 +1,6 @@
 package dev.voxelbrew.gui;
 
+import dev.voxelbrew.engine.parameters.BuiltinParameters;
 import dev.voxelbrew.engine.parameters.ParameterSet;
 import dev.voxelbrew.util.i18n.Translations;
 import java.util.List;
@@ -69,7 +70,7 @@ final class ParameterSuggestions {
             return;
         }
         if (popup == null) createPopup();
-        var matches = matches(parameters.get(), reference.prefix());
+        var matches = matches(parameters.get(), reference.prefix(), field.expressionType());
         String selected = names.getSelectionModel().getSelectedItem();
         if (!names.getItems().equals(matches)) names.getItems().setAll(matches);
         if (selected != null && matches.contains(selected))
@@ -165,7 +166,9 @@ final class ParameterSuggestions {
 
     private void accept(String name) {
         var reference = reference(field.getText(), field.getCaretPosition());
-        if (reference == null || !matches(parameters.get(), reference.prefix()).contains(name)) {
+        if (reference == null
+                || !matches(parameters.get(), reference.prefix(), field.expressionType())
+                        .contains(name)) {
             dismiss();
             return;
         }
@@ -190,8 +193,13 @@ final class ParameterSuggestions {
     }
 
     static List<String> matches(ParameterSet parameters, String prefix) {
+        return matches(parameters, prefix, FormulaField.ExpressionType.STRING);
+    }
+
+    static List<String> matches(ParameterSet parameters, String prefix, FormulaField.ExpressionType type) {
         return parameters.allParameters().stream()
                 .map(ParameterSet.Parameter::name)
+                .filter(name -> type == FormulaField.ExpressionType.STRING || !BuiltinParameters.isString(name))
                 .filter(name -> name.startsWith(prefix))
                 .sorted()
                 .toList();

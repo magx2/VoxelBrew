@@ -26,6 +26,7 @@ final class FormulaField extends TextField {
     private static final PseudoClass INVALID = PseudoClass.getPseudoClass("formula-invalid");
     private final Supplier<ParameterSet> parameters;
     private final Supplier<ParameterUnit> unit;
+    private java.util.function.DoubleConsumer validation = value -> {};
     private final Tooltip preview = UiHelp.tooltip("");
     private final Tooltip syntax = UiHelp.tooltip("");
     private dev.voxelbrew.util.i18n.Translations translations =
@@ -87,7 +88,14 @@ final class FormulaField extends TextField {
 
     double value() {
         if (unit == null) throw new IllegalStateException("This is a text field");
-        return parameters.get().value(getText(), Objects.requireNonNull(unit.get()));
+        double result = parameters.get().value(getText(), Objects.requireNonNull(unit.get()));
+        validation.accept(result);
+        return result;
+    }
+
+    void validateWith(java.util.function.DoubleConsumer validation) {
+        this.validation = Objects.requireNonNull(validation);
+        refreshFormula();
     }
 
     /** Plugin payloads use their declared unit rather than the CAD model's canonical unit. */

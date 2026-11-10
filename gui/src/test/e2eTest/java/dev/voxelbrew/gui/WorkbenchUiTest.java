@@ -37,6 +37,39 @@ import org.junit.jupiter.api.io.TempDir;
 @ExtendWith(UiTestShard.class)
 class WorkbenchUiTest {
     @Test
+    void slicerProcessBoundsValidateLiteralsAndFormulasBeforeSaving() throws Exception {
+        ready();
+        openPrepared("plate-5mm.vxb");
+        click("workspace-print");
+        ready();
+        click("print-tab-process");
+        for (String input : List.of("-1", "101", "=50*3")) {
+            text("print-infill", input);
+            fx(() -> {
+                var field = (FormulaField) node("#print-infill");
+                assertThrows(IllegalArgumentException.class, field::value);
+                assertTrue(field.getPseudoClassStates()
+                        .contains(javafx.css.PseudoClass.getPseudoClass("formula-invalid")));
+                return null;
+            });
+            assertEquals(20, document().printSetup().process().infillPercent());
+        }
+        for (String input : List.of("0", "100", "=25*2")) {
+            text("print-infill", input);
+            key(KeyCode.TAB);
+            assertEquals(
+                    input.startsWith("=") ? 50 : Double.parseDouble(input),
+                    document().printSetup().process().infillPercent());
+        }
+        text("print-walls", "2.5");
+        fx(() -> {
+            assertThrows(IllegalArgumentException.class, () -> ((FormulaField) node("#print-walls")).value());
+            return null;
+        });
+        assertEquals(2, document().printSetup().process().walls());
+    }
+
+    @Test
     void slicedGcodeLocksTabsUntilCleanedAndSurvivesReopenAndExport() throws Exception {
         Path input = PreparedDocuments.copy("plate-5mm.vxb", directory);
         fx(() -> workbench.controller().open(input)).get(20, TimeUnit.SECONDS);

@@ -708,6 +708,13 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
                 ? FormulaField.text(initial, parameters)
                 : FormulaField.number(initial, parameters, unit);
         field.localized(translations);
+        var bounds = PrintFieldBounds.forField(id);
+        if (bounds != null)
+            field.validateWith(value -> {
+                if (!bounds.accepts(value))
+                    throw new IllegalArgumentException(translations.text(
+                            bounds.whole() ? "print.wholeRange" : "print.range", bounds.min(), bounds.max()));
+            });
         field.setId(id);
         fields.put(id, field);
         var caption = new Label(label);
@@ -718,6 +725,10 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
                         ? "position"
                         : id.startsWith("print-support-") ? "support" : id.substring(6);
         String help = translations.textOrDefault("print.property." + helpKey, "");
+        if (bounds != null)
+            help += " "
+                    + translations.text(
+                            bounds.whole() ? "print.wholeRange" : "print.range", bounds.min(), bounds.max());
         var row = new VBox(4, caption, field);
         if (!help.isBlank()) {
             caption.setTooltip(UiHelp.tooltip(help));

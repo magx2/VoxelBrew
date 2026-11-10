@@ -17,7 +17,55 @@ public record PrintSetup(
         List<PrintPlate> plates,
         String activePlateId,
         PrinterDefinition printerSnapshot,
-        java.util.Map<String, String> workspaceSettings) {
+        java.util.Map<String, String> workspaceSettings,
+        boolean supportsDisabled) {
+    public PrintSetup(
+            String id,
+            int version,
+            String backendId,
+            String printerId,
+            String materialId,
+            ProcessSettings process,
+            List<PrintPlate> plates,
+            String activePlateId,
+            PrinterDefinition printerSnapshot,
+            java.util.Map<String, String> workspaceSettings) {
+        this(
+                id,
+                version,
+                backendId,
+                printerId,
+                materialId,
+                process,
+                plates,
+                activePlateId,
+                printerSnapshot,
+                workspaceSettings,
+                false);
+    }
+
+    /** Preserve every support definition while disabling its manufacturing effect. */
+    public PrintSetup withSupportsDisabled(boolean disabled) {
+        return new PrintSetup(
+                id,
+                version,
+                backendId,
+                printerId,
+                materialId,
+                process,
+                plates,
+                activePlateId,
+                printerSnapshot,
+                workspaceSettings,
+                disabled);
+    }
+
+    /** Disposable manufacturing view; editable definitions remain in the original setup. */
+    public PrintSetup forManufacturing() {
+        if (!supportsDisabled) return this;
+        return withSupports(List.of()).withProfile(backendId, printerId, materialId, process.withoutSupports());
+    }
+
     /** UI drafts and job/view preferences; applied manufacturing values remain strongly typed. */
     public PrintSetup withWorkspaceSettings(java.util.Map<String, String> settings) {
         return new PrintSetup(
@@ -30,7 +78,8 @@ public record PrintSetup(
                 plates,
                 activePlateId,
                 printerSnapshot,
-                settings);
+                settings,
+                supportsDisabled);
     }
 
     public PrintSetup(
@@ -79,7 +128,8 @@ public record PrintSetup(
                 plates,
                 activePlateId,
                 printer,
-                workspaceSettings);
+                workspaceSettings,
+                supportsDisabled);
     }
 
     public PrintSetup(
@@ -153,7 +203,8 @@ public record PrintSetup(
                 plates,
                 plateId,
                 printerSnapshot,
-                workspaceSettings);
+                workspaceSettings,
+                supportsDisabled);
     }
 
     public PrintSetup addPlate(String plateId) {
@@ -169,7 +220,8 @@ public record PrintSetup(
                 next,
                 plateId,
                 printerSnapshot,
-                workspaceSettings);
+                workspaceSettings,
+                supportsDisabled);
     }
 
     public PrintSetup renamePlate(String plateId, String name) {
@@ -189,7 +241,8 @@ public record PrintSetup(
                 plates.stream().map(p -> p.id().equals(plateId) ? renamed : p).toList(),
                 activePlateId,
                 printerSnapshot,
-                workspaceSettings);
+                workspaceSettings,
+                supportsDisabled);
     }
 
     public PrintSetup moveInstance(String instanceId, String targetPlateId) {
@@ -229,7 +282,8 @@ public record PrintSetup(
                         .toList(),
                 activePlateId,
                 printerSnapshot,
-                workspaceSettings);
+                workspaceSettings,
+                supportsDisabled);
     }
 
     public PrintSetup removeActivePlate() {
@@ -245,7 +299,8 @@ public record PrintSetup(
                 next,
                 next.getFirst().id(),
                 printerSnapshot,
-                workspaceSettings);
+                workspaceSettings,
+                supportsDisabled);
     }
 
     private PrintSetup replaceActive(PrintPlate plate) {
@@ -261,7 +316,8 @@ public record PrintSetup(
                         .toList(),
                 activePlateId,
                 printerSnapshot,
-                workspaceSettings);
+                workspaceSettings,
+                supportsDisabled);
     }
 
     public static PrintSetup empty() {
@@ -295,6 +351,7 @@ public record PrintSetup(
                 plates,
                 activePlateId,
                 printer.equals(printerId) ? printerSnapshot : null,
-                workspaceSettings);
+                workspaceSettings,
+                supportsDisabled);
     }
 }

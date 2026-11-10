@@ -37,6 +37,61 @@ import org.junit.jupiter.api.io.TempDir;
 @ExtendWith(UiTestShard.class)
 class WorkbenchUiTest {
     @Test
+    void supportsSwitchDisablesEverythingAndRestoresSavedDefinitions() throws Exception {
+        Path input = PreparedDocuments.copy("plate-5mm.vxb", directory);
+        fx(() -> workbench.controller().open(input)).get(20, TimeUnit.SECONDS);
+        ready();
+        click("workspace-print");
+        click("print-add");
+        ready();
+        fx(() -> {
+            var setup = document().printSetup();
+            var process = new ProcessSettings(0.2, 2, 20, true, true, 45, 0.2, 3, 0, 2);
+            workbench
+                    .controller()
+                    .printSetup(setup.withProfile(setup.backendId(), setup.printerId(), setup.materialId(), process)
+                            .withSupports(List.of(new SupportVolume(
+                                    "manual",
+                                    setup.instances().getFirst().id(),
+                                    SupportVolume.Role.ENFORCER,
+                                    0,
+                                    0,
+                                    0,
+                                    5,
+                                    5,
+                                    5))));
+            return null;
+        });
+        ready();
+        var enabled = document().printSetup();
+        click("print-tab-supports");
+        click("print-supports-enabled");
+        ready();
+        assertTrue(document().printSetup().supportsDisabled());
+        assertEquals(enabled.supports(), document().printSetup().supports());
+        assertTrue(fx(() -> node("#print-support-apply").isDisabled()));
+        fx(() -> {
+            Screenshot.save(
+                    stage.getScene(),
+                    Path.of(System.getProperty("voxelbrew.ui.artifacts"), "slicer-supports-disabled.png"));
+            return null;
+        });
+        Path saved = directory.resolve("supports-disabled.vxb");
+        fx(() -> workbench.controller().save(saved, false)).get(20, TimeUnit.SECONDS);
+        fx(() -> workbench.controller().open(saved)).get(20, TimeUnit.SECONDS);
+        ready();
+        click("workspace-print");
+        click("print-tab-supports");
+        assertFalse(fx(() -> ((CheckBox) node("#print-supports-enabled")).isSelected()));
+        click("print-supports-enabled");
+        ready();
+        assertFalse(document().printSetup().supportsDisabled());
+        assertEquals(enabled.supports(), document().printSetup().supports());
+        assertEquals(enabled.process(), document().printSetup().process());
+        assertFalse(fx(() -> node("#print-support-apply").isDisabled()));
+    }
+
+    @Test
     @SuppressWarnings("unchecked")
     void slicerDepthIsIndependentOfObjectOrderAndPickingUsesVisibleSurface() throws Exception {
         Path input = PreparedDocuments.copy("plate-5mm.vxb", directory);

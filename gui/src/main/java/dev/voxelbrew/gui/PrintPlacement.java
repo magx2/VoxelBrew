@@ -39,7 +39,8 @@ final class PrintPlacement {
                 plates,
                 setup.activePlateId(),
                 setup.printerSnapshot(),
-                setup.workspaceSettings());
+                setup.workspaceSettings(),
+                setup.supportsDisabled());
     }
 
     /** Rank feasible planar bed faces by unsupported area, bed contact, then height. */

@@ -9,6 +9,38 @@ import org.junit.jupiter.api.Test;
 
 class PrintPlatesTest {
     @Test
+    void disablingSupportsPersistsAndPreservesDefinitionsAcrossPlateEdits() throws Exception {
+        var process = new ProcessSettings(0.2, 2, 20, true, true, 45, 0.2, 3, 0, 2);
+        var enabled = PrintSetup.empty()
+                .withProfile("prusa-slicer", "generic-marlin-200-0.4", "PLA", process)
+                .withInstances(List.of(new BodyInstance("part", "body", Transform.IDENTITY)))
+                .withSupports(
+                        List.of(new SupportVolume("manual", "part", SupportVolume.Role.ENFORCER, 0, 0, 0, 5, 5, 5)))
+                .addPlate("spare")
+                .selectPlate("plate-1");
+        var disabled = enabled.withSupportsDisabled(true);
+        var document = new CadDocument("doc", List.of(), 0, disabled);
+        assertEquals(document, DocumentCodec.decode(DocumentCodec.encode(document)));
+        assertEquals(document, DocumentCodec.decodeJson(DocumentCodec.encodeJson(document)));
+        assertEquals(enabled, disabled.withSupportsDisabled(false));
+        assertTrue(disabled.renamePlate("plate-1", "Main")
+                .selectPlate("spare")
+                .removeActivePlate()
+                .withWorkspaceSettings(java.util.Map.of())
+                .supportsDisabled());
+        assertTrue(disabled.moveInstance("part", "spare").selectPlate("spare").supportsDisabled());
+        var model =
+                new ManufacturingModel("doc", "revision", disabled, PrintProfile.resolve(disabled), java.util.Map.of());
+        assertTrue(model.setup().supports().isEmpty());
+        assertFalse(model.profile().process().automaticSupports());
+        assertFalse(model.profile().process().supportsOnBedOnly());
+        assertEquals(0, model.profile().process().raftLayers());
+        assertEquals(enabled.supports(), disabled.supports());
+        assertEquals(process, disabled.process());
+        assertFalse(PrintSetup.empty().supportsDisabled());
+    }
+
+    @Test
     void allSlicerSettingsRoundTripAndSurvivePlateAndProfileEdits() throws Exception {
         var settings = java.util.Map.of(
                 "print-output",

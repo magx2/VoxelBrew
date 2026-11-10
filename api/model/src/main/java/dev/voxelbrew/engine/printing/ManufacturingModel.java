@@ -24,8 +24,11 @@ public final class ManufacturingModel {
             Map<String, MeshData> meshes) {
         this.documentId = documentId;
         this.revision = revision;
-        this.setup = setup;
-        this.profile = profile;
+        this.setup = setup.forManufacturing();
+        this.profile = setup.supportsDisabled()
+                ? new PrintProfile(
+                        profile.printer(), profile.material(), profile.process().withoutSupports())
+                : profile;
         this.meshes = Collections.unmodifiableMap(new LinkedHashMap<>(meshes));
     }
 

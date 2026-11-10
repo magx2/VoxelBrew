@@ -34,6 +34,14 @@ existing coordinate-space choices.
 
 ## Desktop plates and placement
 
+The **Supports** tab has an **Enable supports** master switch. Turning it off
+excludes automatic supports, manual enforcers/blockers/support solids and rafts
+on every plate. Their saved settings and definitions are retained for re-enabling;
+the switch is undoable and persists in VXB/JSON. Disabled support controls are
+greyed out, support instructions disappear from the placement view, and existing
+sliced jobs become outdated. The switch also applies to headless slicing and
+build-space exports of the saved document.
+
 The Slicer workspace has a plate strip above the canvas. **Add plate** creates an
 empty plate; choose a plate to edit or slice it. Double-click a plate name to rename
 it inline. Enter saves; Escape or clicking elsewhere cancels. Names accept 1–128

@@ -53,6 +53,20 @@ public record ProcessSettings(
                 raftLayers);
     }
 
+    public ProcessSettings withoutSupports() {
+        return new ProcessSettings(
+                layerHeight,
+                walls,
+                infillPercent,
+                false,
+                false,
+                supportThreshold,
+                supportContactGap,
+                interfaceLayers,
+                brimWidth,
+                0);
+    }
+
     public Quantity<Length> layerHeightQuantity() {
         return quantity(layerHeight, MILLIMETRE);
     }

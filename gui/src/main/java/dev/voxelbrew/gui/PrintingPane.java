@@ -81,6 +81,7 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
     private final ComboBox<SlicerBackend.Descriptor> backends = new ComboBox<>();
     private final ComboBox<SupportVolume.Role> supportRole = new ComboBox<>();
     private final Map<String, FormulaField> fields = new LinkedHashMap<>();
+    private final CheckBox supportsEnabled = new CheckBox();
     private final CheckBox autoSupports = new CheckBox(""), bedOnly = new CheckBox(""), overwrite = new CheckBox("");
     private final Slider layer = new Slider(0, 0, 0);
     private final Label layerLabel = new Label(""),
@@ -292,6 +293,19 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
                                                         "gui.unavailable_here_adaptive_layers_organic_supports_painted_regions_multiple_materials_generated_")));
         process.getChildren().addAll(capabilities, new Label(String.join("\n", slicers.diagnostics())));
 
+        supportsEnabled.setId("print-supports-enabled");
+        supportsEnabled.setText(translations.text("print.supportsEnabled"));
+        supportsEnabled.setSelected(true);
+        UiHelp.install(supportsEnabled, translations);
+        supportsEnabled.setOnAction(event -> {
+            if (!updating) commit(setup().withSupportsDisabled(!supportsEnabled.isSelected()));
+        });
+        autoSupports.disableProperty().bind(supportsEnabled.selectedProperty().not());
+        bedOnly.disableProperty().bind(supportsEnabled.selectedProperty().not());
+        for (String id : List.of("threshold", "gap", "interfaces", "raft"))
+            fields.get("print-" + id)
+                    .disableProperty()
+                    .bind(supportsEnabled.selectedProperty().not());
         var supports = new VBox(
                 7,
                 new Label(translations.text("gui.existing_support_instruction")),
@@ -324,6 +338,15 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
                 translations.text(
                         "gui.generated_support_meshes_are_unavailable_explicit_support_pillars_can_be_exported"));
         supports.getChildren().add(generated);
+        supports.disableProperty().bind(supportsEnabled.selectedProperty().not());
+        for (var child : supports.getChildren()) {
+            if (child instanceof Control control) control.setMaxWidth(Double.MAX_VALUE);
+            if (child instanceof Label label) label.setWrapText(true);
+        }
+        var supportsHelp = new Label(translations.text("print.supportsEnabledHelp"));
+        supportsHelp.setWrapText(true);
+        var supportsTab = new VBox(7, supportsEnabled, supportsHelp, new Separator(), supports);
+
         supportIds.setOnAction(e -> {
             if (!updating) loadSupport();
         });
@@ -345,7 +368,7 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
                 .setAll(
                         tab("Placement", placement),
                         tab("Process", process),
-                        tab("Supports", supports),
+                        tab("Supports", supportsTab),
                         tab("Job", job));
         tabs.setId("print-controls");
         tabs.setPrefWidth(360);
@@ -1039,6 +1062,7 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
                                     .setScale(4, java.math.RoundingMode.HALF_UP)
                                     .stripTrailingZeros()
                                     .toPlainString());
+                supportsEnabled.setSelected(!setup().supportsDisabled());
                 autoSupports.setSelected(p.automaticSupports());
                 bedOnly.setSelected(p.supportsOnBedOnly());
                 lastSetup = setup();

@@ -34,6 +34,47 @@ class PrintingTest {
     }
 
     @Test
+    void disabledSupportsExcludeManualAutomaticAndRaftOutputWithoutDeletingSettings() throws Exception {
+        var session = reference();
+        var setup = session.document().printSetup();
+        var process = new ProcessSettings(0.2, 2, 20, true, true, 45, 0.2, 3, 0, 2);
+        setup = setup.withProfile(setup.backendId(), setup.printerId(), setup.materialId(), process)
+                .withSupports(List.of(
+                        new SupportVolume("enforce", "part", SupportVolume.Role.ENFORCER, 0, 0, 0, 5, 5, 8),
+                        new SupportVolume("pillar", "part", SupportVolume.Role.SOLID_SUPPORT, 65, 0, 0, 5, 5, 8)))
+                .withSupportsDisabled(true);
+        session.setPrintSetup(setup);
+        var model = ManufacturingModels.evaluate(session.document(), MeshOptions.DEFAULT);
+        assertTrue(model.setup().supports().isEmpty());
+        assertEquals("0", PrusaConfiguration.settings(model).get("support_material"));
+        assertEquals("0", PrusaConfiguration.settings(model).get("raft_layers"));
+        assertEquals(
+                1,
+                PrusaProjectExporter.volumes(model, model.instances().getFirst())
+                        .size());
+        var result = SliceService.slice(
+                new PrusaSlicerBackend(),
+                session.document(),
+                model,
+                PrusaSlicerBackend.defaultExecutable(),
+                directory.resolve("supports-off.gcode"),
+                false,
+                new Cancellation(),
+                System.out::println,
+                dev.voxelbrew.slicer.api.Slicing.DIRECT);
+        assertFalse(result.job().segments().stream()
+                .anyMatch(segment -> segment.deposits()
+                        && (segment.role() == GcodeJob.Role.SUPPORT || segment.role() == GcodeJob.Role.INTERFACE)));
+        assertEquals(0.2, result.job().modelLayers().getFirst(), 1e-6);
+        assertEquals(2, session.document().printSetup().supports().size());
+        assertTrue(session.document()
+                .printSetup()
+                .withSupportsDisabled(false)
+                .process()
+                .automaticSupports());
+    }
+
+    @Test
     void realSlicerProducesFortyLayersAndPreservesPlacementAndHole() throws Exception {
         var session = reference();
         var model = dev.voxelbrew.engine.printing.ManufacturingModels.evaluate(session.document(), MeshOptions.DEFAULT);

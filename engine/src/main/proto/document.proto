@@ -312,6 +312,8 @@ message PrintSetup {
   // Raw slicer tab drafts and job/view preferences, separate from applied
   // settings.
   map<string, string> workspace_settings = 19;
+  // False preserves legacy behavior. Definitions are retained while disabled.
+  bool supports_disabled = 20;
 }
 message CustomFeature {
   string provider_id = 1;

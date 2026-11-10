@@ -379,16 +379,17 @@ public final class DocumentCodec {
                     })
                     .toList();
             return new PrintSetup(
-                    base.id(),
-                    setup.getVersion(),
-                    base.backendId(),
-                    base.printerId(),
-                    base.materialId(),
-                    base.process(),
-                    plates,
-                    setup.getActivePlateId(),
-                    setup.hasPrinterSnapshot() ? fromProto(setup.getPrinterSnapshot()) : null,
-                    setup.getWorkspaceSettingsMap());
+                            base.id(),
+                            setup.getVersion(),
+                            base.backendId(),
+                            base.printerId(),
+                            base.materialId(),
+                            base.process(),
+                            plates,
+                            setup.getActivePlateId(),
+                            setup.hasPrinterSnapshot() ? fromProto(setup.getPrinterSnapshot()) : null,
+                            setup.getWorkspaceSettingsMap())
+                    .withSupportsDisabled(setup.getSupportsDisabled());
         }
         var p = setup.getProcess();
         var process = new ProcessSettings(
@@ -436,7 +437,8 @@ public final class DocumentCodec {
                                         s.getDepth(),
                                         s.getHeight()))
                                 .toList())
-                .withWorkspaceSettings(setup.getWorkspaceSettingsMap());
+                .withWorkspaceSettings(setup.getWorkspaceSettingsMap())
+                .withSupportsDisabled(setup.getSupportsDisabled());
     }
 
     /** Portable metadata for a manufacturing package, using the same schema as VXB and JSON. */
@@ -452,6 +454,7 @@ public final class DocumentCodec {
                 .setBackendId(setup.backendId())
                 .setPrinterId(setup.printerId())
                 .setMaterialId(setup.materialId())
+                .setSupportsDisabled(setup.supportsDisabled())
                 .putAllWorkspaceSettings(new java.util.TreeMap<>(setup.workspaceSettings()))
                 .setProcess(DocumentProto.PrintProcess.newBuilder()
                         .setLayerHeight(p.layerHeight())

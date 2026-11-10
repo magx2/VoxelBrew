@@ -118,3 +118,23 @@ Cura real-engine and hardware qualification remain pending.
 Logs: `.tools/full-clean-check-final.log`,
 `.tools/full-clean-check-first-failures.log`,
 `.tools/clean-check-help-regressions.log`, `.tools/clean-check-fixes-linux.log`.
+
+## Hosted CI timing and window synchronization follow-up
+
+Run `42734593074` on `389d9bb` passed all Windows and macOS jobs, but the Ubuntu
+header test sampled the restored width immediately after maximize. Its failure
+screenshot already shows the correct 1600-pixel maximized window. The bounds
+assertion now waits up to five seconds for asynchronous native window-manager
+updates, retaining all four original coordinate/size assertions and tolerances.
+The affected Windows Robot test passed in 28 seconds; Ubuntu E2E compilation
+passed in 14 seconds. No Linux E2E was run locally.
+
+The same hosted run exposed slow downloads from `azure.archive.ubuntu.com`:
+Ubuntu shard 3 spent 7m downloading slicer dependencies and 2m23s downloading
+virtual-desktop dependencies. CI now uses Ubuntu's main HTTPS archive mirror
+and 20-second stalled-request timeouts with three retries. Package versions,
+test selection and platform coverage are unchanged. The next hosted run
+qualifies this workflow change and the Ubuntu gesture synchronization.
+
+Logs: `.tools/ci-failed.log`, `.tools/ci-slow-ubuntu.log`,
+`.tools/ci-window-regression.log`, `.tools/ci-window-linux-compile.log`.

@@ -1251,7 +1251,18 @@ class WorkbenchUiTest {
     }
 
     private void assertWindowBounds(javafx.geometry.Rectangle2D expected) throws Exception {
+        // Native window managers acknowledge move/resize requests asynchronously.
+        // Wait for all four bounds rather than sampling during a partial update.
+        long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
         var actual = windowBounds();
+        while ((Math.abs(expected.getMinX() - actual.getMinX()) > 2
+                        || Math.abs(expected.getMinY() - actual.getMinY()) > 2
+                        || Math.abs(expected.getWidth() - actual.getWidth()) > 2
+                        || Math.abs(expected.getHeight() - actual.getHeight()) > 2)
+                && System.nanoTime() < deadline) {
+            Thread.sleep(30);
+            actual = windowBounds();
+        }
         assertEquals(expected.getMinX(), actual.getMinX(), 2);
         assertEquals(expected.getMinY(), actual.getMinY(), 2);
         assertEquals(expected.getWidth(), actual.getWidth(), 2);

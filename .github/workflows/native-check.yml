@@ -90,7 +90,12 @@ jobs:
           echo "VOXELBREW_SLICER=$GITHUB_WORKSPACE/.tools/PrusaSlicer-2.7.2/PrusaSlicer.app/Contents/MacOS/PrusaSlicer" >> "$GITHUB_ENV"
       - name: Install pinned slicer (Ubuntu)
         if: runner.os == 'Linux'
-        run: bash scripts/bootstrap-slicer.sh
+        run: |
+          # The runner's Azure mirror can stall individual package downloads for minutes.
+          # Use Ubuntu's main mirror and bound stalled requests without changing packages.
+          sudo sed -i 's|http://azure.archive.ubuntu.com/ubuntu|https://archive.ubuntu.com/ubuntu|g' /etc/apt/sources.list.d/ubuntu.sources
+          printf 'Acquire::http::Timeout "20";\nAcquire::https::Timeout "20";\nAcquire::Retries "3";\n' | sudo tee /etc/apt/apt.conf.d/80voxelbrew-downloads
+          bash scripts/bootstrap-slicer.sh
       - name: Install pinned slicer (Windows)
         if: runner.os == 'Windows'
         shell: pwsh

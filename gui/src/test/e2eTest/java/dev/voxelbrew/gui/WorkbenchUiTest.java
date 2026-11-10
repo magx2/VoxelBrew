@@ -75,11 +75,56 @@ class WorkbenchUiTest {
                             .findFirst()
                             .orElseThrow();
             assertEquals(
-                    List.of("printers-export-defaults", "printers-open-folder", "printers-reload"),
+                    List.of(
+                            "printers-export-defaults",
+                            "printers-open-folder",
+                            "printers-reload",
+                            "printers-visibility"),
                     menu.getItems().stream().map(MenuItem::getId).toList());
-            menu.getItems().getLast().fire();
+            menu.getItems().stream()
+                    .filter(item -> "printers-reload".equals(item.getId()))
+                    .findFirst()
+                    .orElseThrow()
+                    .fire();
             return null;
         });
+        Platform.runLater(() -> ((MenuBar) node("#main-menu"))
+                .getMenus().stream()
+                        .filter(menu -> "menu-printers".equals(menu.getId()))
+                        .findFirst()
+                        .orElseThrow()
+                        .getItems()
+                        .stream()
+                        .filter(item -> "printers-visibility".equals(item.getId()))
+                        .findFirst()
+                        .orElseThrow()
+                        .fire());
+        ready();
+        fx(() -> {
+            var pane = Window.getWindows().stream()
+                    .filter(Window::isShowing)
+                    .map(window -> window.getScene().lookup("#printer-visibility-dialog"))
+                    .filter(Objects::nonNull)
+                    .map(DialogPane.class::cast)
+                    .findFirst()
+                    .orElseThrow();
+            var choices = ((javafx.scene.layout.VBox) pane.lookup("#printer-options"))
+                    .getChildren().stream().map(CheckBox.class::cast).toList();
+            assertEquals(62, choices.size());
+            ((TextField) pane.lookup("#printer-export-search")).setText("Prusa");
+            ((Button) pane.lookup("#printer-deselect-all")).fire();
+            assertTrue(choices.stream().noneMatch(CheckBox::isSelected));
+            assertFalse(pane.lookup("#printer-export-confirm").isDisabled(), "Hiding all defaults is allowed");
+            choices.getFirst().setSelected(true);
+            ((Button) pane.lookup("#printer-invert-selection")).fire();
+            assertFalse(choices.getFirst().isSelected());
+            assertEquals(61, choices.stream().filter(CheckBox::isSelected).count());
+            ((Button) pane.lookup("#printer-select-all")).fire();
+            assertTrue(choices.stream().allMatch(CheckBox::isSelected), "Bulk actions include filtered-out printers");
+            ((Button) pane.lookupButton(ButtonType.CANCEL)).fire();
+            return null;
+        });
+        ready();
         openPrepared("plate-5mm.vxb");
         click("workspace-print");
         ready();

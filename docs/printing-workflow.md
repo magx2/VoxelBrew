@@ -283,3 +283,13 @@ Copies use `custom-` IDs and filenames so they coexist with built-ins and appear
 at the top of the list. Each image matches its JSON filename. Existing files are
 never overwritten; the completion dialog reports the number of new presets.
 Photo attribution and licenses are exported alongside the presets.
+
+**Printers > Show/hide default printers...** saves which built-in presets appear
+in the selector. Uncheck unused models and save; reopen the dialog to restore
+them. Custom printers remain visible. Hidden presets remain available for export,
+and saved projects retain their hardware settings. The currently selected project
+printer remains displayed even when hidden, until another printer is selected.
+
+The visibility dialog also provides **Select all**, **Deselect all**, and
+**Invert selection**. These affect all default printers, including entries
+filtered out by search. Changes take effect only after saving visibility.

@@ -598,7 +598,12 @@ public final class Workbench extends BorderPane implements AutoCloseable {
                                 translations.text("print.reloadPrinters"),
                                 "printers-reload",
                                 false,
-                                printing::reloadPrinters));
+                                printing::reloadPrinters),
+                        menuItem(
+                                translations.text("print.visiblePrinters"),
+                                "printers-visibility",
+                                false,
+                                printing::manageVisiblePrinters));
         var menuBar = new MenuBar(fileMenu, editMenu, viewMenu, slicerMenu, printersMenu, settingsMenu);
         menuBar.setId("main-menu");
         menuBar.disableProperty().bind(disabledProperty());

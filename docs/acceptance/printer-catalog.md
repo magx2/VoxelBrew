@@ -159,3 +159,35 @@ existing edited files. Ubuntu passed `./gradlew --no-daemon --max-workers=2
 :engine:test --tests '*PrinterCatalogTest' :util:test :gui:compileJava --console=plain`.
 Logs: `.tools/printer-export-selection-windows.log` and
 `.tools/printer-export-selection-ubuntu.log`. No full E2E or milestone gate run.
+
+## Built-in printer visibility
+
+Added Printers > Show/hide default printers with a searchable visibility checklist.
+Preferences persist under `printers.hiddenDefaults` in user configuration. Custom
+printers remain visible; hidden presets stay available to export and saved project
+snapshots. A project's current printer remains displayed until another is chosen.
+The dialog permits hiding every default and reopening it to restore any subset.
+
+Windows passed `gradlew.bat spotlessApply :gui:test --tests '*PrinterVisibilityTest'
+:util:test :gui:e2eTest --tests '*WorkbenchUiTest.printerSelectionPersistsAndUndoRestoresBuildVolume'`.
+Ubuntu passed `./gradlew --no-daemon --max-workers=2 :gui:test --tests
+'*PrinterVisibilityTest' :util:test --console=plain` in the separate checkout.
+Unit coverage includes persistence, restoration, preservation of unrelated
+preferences and exclusion of custom presets from hidden defaults. The focused
+Windows GUI check covers the updated menu and existing export/selection flow;
+visibility Save gestures were not separately automated. Logs:
+`.tools/printer-visibility-windows.log`, `.tools/printer-visibility-ubuntu.log`.
+
+## Visibility bulk actions
+
+Added Select all, Deselect all and Invert selection to the visibility dialog.
+They affect all bundled printers regardless of the search filter; Save commits
+the resulting preferences and Cancel discards changes.
+
+Windows passed `gradlew.bat spotlessApply :gui:test --tests '*PrinterVisibilityTest'
+:util:test :gui:e2eTest --tests '*WorkbenchUiTest.printerSelectionPersistsAndUndoRestoresBuildVolume'`.
+The focused GUI test exercises all three buttons with an active search filter,
+checks inversion of a mixed selection, and verifies that hiding all remains
+saveable. Ubuntu passed `./gradlew --no-daemon --max-workers=2 :gui:test --tests
+'*PrinterVisibilityTest' :util:test --console=plain`. Logs:
+`.tools/printer-visibility-bulk-windows.log`, `.tools/printer-visibility-bulk-ubuntu.log`.

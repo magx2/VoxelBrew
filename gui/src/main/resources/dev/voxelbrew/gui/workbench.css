@@ -748,6 +748,55 @@
 .slicer-toolbar .toggle-button:focused {
   -fx-background-color: -fx-selection-bar;
 }
+.selected-object-label {
+  -fx-background-color: #25262a;
+  -fx-text-fill: white;
+  -fx-padding: 4 5 4 10;
+  -fx-background-radius: 5;
+  -fx-graphic-text-gap: 8;
+}
+
+.selected-object-label .object-close-button {
+  -fx-background-color: transparent;
+  -fx-background-insets: 0;
+  -fx-background-radius: 3;
+  -fx-border-color: transparent;
+  -fx-border-width: 1;
+  -fx-border-radius: 3;
+  -fx-padding: 0;
+  -fx-min-width: 22;
+  -fx-pref-width: 22;
+  -fx-max-width: 22;
+  -fx-min-height: 22;
+  -fx-pref-height: 22;
+  -fx-max-height: 22;
+  -fx-effect: null;
+  -fx-cursor: hand;
+}
+
+.selected-object-label .object-close-button:hover {
+  -fx-background-color: #45464c;
+}
+
+.selected-object-label .object-close-button:pressed {
+  -fx-background-color: #565860;
+}
+
+.selected-object-label .object-close-button:focused {
+  -fx-border-color: #a9cce1;
+}
+
+.object-close-icon {
+  -fx-fill: transparent;
+  -fx-stroke: #d6d7db;
+  -fx-stroke-width: 1.4;
+  -fx-stroke-line-cap: round;
+}
+
+.object-close-button:hover .object-close-icon {
+  -fx-stroke: white;
+}
+
 #print-plates {
   -fx-padding: 2;
 }

@@ -392,14 +392,19 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
                 localGizmoAxes.isSelected() ? PrintRotationGizmo.Space.LOCAL : PrintRotationGizmo.Space.WORLD));
         selectedObjectName.setId("print-selected-object-name");
         selectedObjectName.setManaged(false);
-        var removeObject = button("\u00d7", "print-remove", this::removeInstance);
+        var removeObject = button("", "print-remove", this::removeInstance);
+        var closeIcon = new javafx.scene.shape.SVGPath();
+        closeIcon.setContent("M 1 1 L 9 9 M 9 1 L 1 9");
+        closeIcon.getStyleClass().add("object-close-icon");
+        closeIcon.setMouseTransparent(true);
+        removeObject.setGraphic(closeIcon);
+        removeObject.getStyleClass().add("object-close-button");
         removeObject.setAccessibleText(translations.text("gui.remove_instance"));
         removeObject.setTooltip(UiHelp.tooltip(translations.text("gui.remove_instance")));
         selectedObjectName.setGraphic(removeObject);
         selectedObjectName.setContentDisplay(ContentDisplay.RIGHT);
         selectedObjectName.setVisible(false);
-        selectedObjectName.setStyle("-fx-background-color: #25262a; -fx-text-fill: white;"
-                + " -fx-padding: 5 9; -fx-background-radius: 4;");
+        selectedObjectName.getStyleClass().add("selected-object-label");
         var center = new StackPane(canvas, localGizmoAxes, selectedObjectName);
         center.setMinSize(150, 150);
         canvas.setManaged(false);

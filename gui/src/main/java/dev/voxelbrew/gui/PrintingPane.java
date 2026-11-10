@@ -217,17 +217,16 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
         targetPlate.setId("print-target-plate");
         targetPlate.setMaxWidth(Double.MAX_VALUE);
         UiText.choices(targetPlate, this::plateName);
-        placement
-                .getChildren()
-                .addAll(
-                        new Separator(),
-                        new Label(translations.text("print.moveToPlate")),
-                        targetPlate,
-                        button(translations.text("print.moveObject"), "print-move-plate", () -> {
-                            String target = targetPlate.getValue();
-                            if (target != null)
-                                commit(setup().moveInstance(selected().id(), target));
-                        }));
+        targetPlate.setMinWidth(0);
+        HBox.setHgrow(targetPlate, Priority.ALWAYS);
+        var moveObject = button(translations.text("print.moveObject"), "print-move-plate", () -> {
+            String target = targetPlate.getValue();
+            if (target != null) commit(setup().moveInstance(selected().id(), target));
+        });
+        moveObject.setMinWidth(Region.USE_PREF_SIZE);
+        var moveRow = new HBox(8, targetPlate, moveObject);
+        moveRow.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
+        placement.getChildren().addAll(new Separator(), new Label(translations.text("print.moveToPlate")), moveRow);
 
         var process = new VBox(
                 7,

@@ -55,6 +55,9 @@ public final class PrusaSlicerBackend implements SlicerBackend {
 
     @Override
     public Probe probe(Path executable, Cancellation cancellation) throws IOException {
+        String profile = configuration.getOrDefault("profile", "");
+        if (!profile.isBlank() && !Files.isReadable(Path.of(profile)))
+            throw new IOException("Cannot read PrusaSlicer profile: " + profile);
         String help = ProcessRunner.run(List.of(executable.toString(), "--help"), null, cancellation, line -> {});
         if (!help.matches("(?s).*PrusaSlicer-2\\.7\\.2(?:\\+|\\s).*"))
             throw new IOException("Expected PrusaSlicer "

@@ -544,6 +544,12 @@ class WorkbenchUiTest {
         long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(10);
         while (fx(() -> node("#slicer-settings-save").isDisabled()) && System.nanoTime() < deadline) Thread.sleep(25);
         assertTrue(fx(() -> ((Label) node("#slicer-settings-status")).getText().contains("saved")));
+        long probeDeadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(20);
+        while (fx(() -> ((Label) node("#slicer-status-cura")).getText().contains("Checking"))
+                && System.nanoTime() < probeDeadline) Thread.sleep(25);
+        assertTrue(fx(() -> ((Label) node("#slicer-status-cura")).getText().contains("Not working")));
+        assertTrue(fx(() -> node("#print-slice").isDisabled()));
+        assertTrue(fx(() -> node("#print-slice-all").isDisabled()));
         assertEquals("C:/Slicers/prusa.exe", configuration.get("slicer.prusa-slicer.executable", ""));
         assertEquals("C:/Slicers/CuraEngine.exe", configuration.get("slicer.cura.executable", ""));
         assertEquals("C:/Slicers/machine.json", configuration.get("slicer.cura.definition", ""));

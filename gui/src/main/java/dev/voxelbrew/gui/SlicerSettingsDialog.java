@@ -17,6 +17,7 @@ import javafx.stage.Window;
 final class SlicerSettingsDialog {
     private final SlicerCatalog catalog;
     private final SlicerSettings settings;
+    private final SlicerAvailability availability;
     private final Translations translations;
     private final ExecutorService worker;
 
@@ -24,10 +25,12 @@ final class SlicerSettingsDialog {
     SlicerSettingsDialog(
             SlicerCatalog catalog,
             SlicerSettings settings,
+            SlicerAvailability availability,
             Translations translations,
             @javax.inject.Named("appearance") ExecutorService worker) {
         this.catalog = catalog;
         this.settings = settings;
+        this.availability = availability;
         this.translations = translations;
         this.worker = worker;
     }
@@ -41,10 +44,16 @@ final class SlicerSettingsDialog {
         message.setId("slicer-settings-status");
         message.setWrapText(true);
         var fields = new LinkedHashMap<String, Map<String, TextField>>();
+        var statusLabels = new LinkedHashMap<String, Label>();
         boolean readable = true;
         for (var descriptor : catalog.descriptors()) {
             var content = new VBox(8);
             content.setPadding(new Insets(12));
+            var providerStatus = new Label(availability.text(descriptor.id()));
+            providerStatus.setId("slicer-status-" + descriptor.id());
+            providerStatus.setWrapText(true);
+            statusLabels.put(descriptor.id(), providerStatus);
+            content.getChildren().add(providerStatus);
             var options = new LinkedHashMap<String, TextField>();
             try {
                 for (var option : new TreeMap<>(settings.options(descriptor.id())).entrySet()) {
@@ -109,6 +118,7 @@ final class SlicerSettingsDialog {
                 }
                 String status = result;
                 Platform.runLater(() -> {
+                    availability.refresh();
                     message.setText(status);
                     save.setDisable(false);
                     tabs.setDisable(false);
@@ -120,6 +130,11 @@ final class SlicerSettingsDialog {
         diagnostics.setWrapText(true);
         if (fields.isEmpty()) message.setText(translations.text("slicer.settings.empty"));
         dialog.getDialogPane().setContent(new VBox(10, tabs, message, diagnostics, save));
+        javafx.collections.MapChangeListener<String, SlicerAvailability.Status> listener =
+                change -> statusLabels.forEach((id, label) -> label.setText(availability.text(id)));
+        availability.statuses.addListener(listener);
+        dialog.setOnHidden(event -> availability.statuses.removeListener(listener));
+        availability.refresh();
         Dialogs.show(dialog, owner, translations);
     }
 }

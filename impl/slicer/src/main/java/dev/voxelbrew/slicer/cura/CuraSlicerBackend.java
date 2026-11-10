@@ -46,6 +46,12 @@ public final class CuraSlicerBackend implements SlicerBackend {
 
     @Override
     public Probe probe(Path executable, Cancellation cancellation) throws IOException {
+        String definition = configuration.getOrDefault("definition", "");
+        if (definition.isBlank() || !Files.isRegularFile(Path.of(definition)))
+            throw new IOException("Configure slicer.cura.definition with a CuraEngine definition JSON file");
+        String settings = configuration.getOrDefault("settings", "");
+        if (!settings.isBlank() && !Files.isReadable(Path.of(settings)))
+            throw new IOException("Cannot read CuraEngine settings: " + settings);
         String output = ProcessRunner.run(List.of(executable.toString(), "help"), null, cancellation, line -> {});
         var version = java.util.regex.Pattern.compile("Cura_SteamEngine version (5\\.[^\\s]+)")
                 .matcher(output);

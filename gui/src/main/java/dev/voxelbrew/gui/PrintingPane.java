@@ -711,7 +711,9 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
         if (id.equals("print-infill")) field.displayUnit("%");
         var bounds = PrintFieldBounds.forField(id);
         if (bounds != null) {
-            field.bounds(bounds.min(), true, bounds.max(), true);
+            if (Set.of("print-support-width", "print-support-depth", "print-support-height")
+                    .contains(id)) field.bounds(0, false, Double.POSITIVE_INFINITY, false);
+            else field.bounds(bounds.min(), true, bounds.max(), true);
             field.dragStep(bounds.step());
             field.validateWith(value -> {
                 if (!bounds.accepts(value))

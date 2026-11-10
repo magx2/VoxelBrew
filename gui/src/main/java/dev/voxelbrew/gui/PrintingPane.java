@@ -358,8 +358,11 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
         });
         cleanSlicing.setMaxWidth(Double.MAX_VALUE);
         var job = new VBox(7, summary, diagnostics, cleanSlicing);
+        VBox.setVgrow(diagnostics, Priority.ALWAYS);
         diagnostics.setEditable(false);
-        diagnostics.setPrefRowCount(5);
+        diagnostics.setWrapText(true);
+        diagnostics.setMinHeight(60);
+        diagnostics.setMaxHeight(Double.MAX_VALUE);
         diagnostics.setId("print-diagnostics");
         summary.setWrapText(true);
         tabs.getTabs()
@@ -660,6 +663,7 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
         content.getChildren().stream().filter(n -> n instanceof Label).forEach(n -> ((Label) n).setWrapText(true));
         var scroll = new ScrollPane(content);
         scroll.setFitToWidth(true);
+        scroll.setFitToHeight(name.equals("Job"));
         scroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
         var tab = new Tab(translations.text("tab." + name), scroll);
         tab.setClosable(false);

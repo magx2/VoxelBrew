@@ -37,6 +37,118 @@ import org.junit.jupiter.api.io.TempDir;
 @ExtendWith(UiTestShard.class)
 class WorkbenchUiTest {
     @Test
+    void slicerCameraMatchesDesignerGesturesWithoutEditingPlacement() throws Exception {
+        ready();
+        openPrepared("plate-5mm.vxb");
+        click("workspace-print");
+        ready();
+        click("print-add");
+        ready();
+        var initial = document();
+        for (String view : List.of("print-view-2d", "print-view-3d")) {
+            click(view);
+            for (var button : List.of(MouseButton.SECONDARY, MouseButton.MIDDLE, MouseButton.PRIMARY)) {
+                long before = slicerCameraFrame();
+                slicerCameraGesture(button, false);
+                assertNotEquals(before, slicerCameraFrame(), view + " / " + button);
+                assertEquals(initial, document(), "Camera changes are transient");
+            }
+            long before = slicerCameraFrame();
+            slicerCameraGesture(MouseButton.MIDDLE, true);
+            assertNotEquals(before, slicerCameraFrame(), "Shift+middle pans");
+            before = slicerCameraFrame();
+            var center = centerOf("print-canvas");
+            fx(() -> {
+                robot.mouseMove(center);
+                robot.mouseWheel(-4);
+                return null;
+            });
+            Thread.sleep(150);
+            assertNotEquals(before, slicerCameraFrame(), "Wheel zooms");
+            assertEquals(initial, document());
+            click("print-fit-view");
+            var part = fx(() -> {
+                var canvas = (javafx.scene.canvas.Canvas) node("#print-canvas");
+                var image = canvas.snapshot(null, null);
+                double x = 0, y = 0;
+                int count = 0;
+                for (int row = 0; row < image.getHeight(); row++)
+                    for (int col = 0; col < image.getWidth(); col++) {
+                        var color = image.getPixelReader().getColor(col, row);
+                        if (color.getBlue() > .5 && color.getGreen() > .4 && color.getRed() < .4) {
+                            x += col;
+                            y += row;
+                            count++;
+                        }
+                    }
+                assertTrue(count > 10, "Object is visible after camera navigation");
+                return canvas.localToScreen(x / count, y / count);
+            });
+            fx(() -> {
+                robot.mouseMove(part);
+                robot.mousePress(MouseButton.PRIMARY);
+                return null;
+            });
+            Thread.sleep(80);
+            fx(() -> {
+                robot.mouseMove(part.add(25, -15));
+                return null;
+            });
+            Thread.sleep(80);
+            fx(() -> {
+                robot.mouseRelease(MouseButton.PRIMARY);
+                return null;
+            });
+            ready();
+            assertNotEquals(
+                    initial.printSetup(), document().printSetup(), "Object dragging works after camera navigation");
+            shortcut(KeyCode.Z, false);
+            ready();
+            assertEquals(initial, document(), "Camera gestures do not add undo steps");
+            fx(() -> {
+                Screenshot.save(
+                        stage.getScene(),
+                        Path.of(System.getProperty("voxelbrew.ui.artifacts"))
+                                .resolve("slicer-camera-" + view + ".png"));
+                return null;
+            });
+        }
+    }
+
+    private void slicerCameraGesture(MouseButton button, boolean shift) throws Exception {
+        var start = fx(() -> node("#print-canvas").localToScreen(15, 15));
+        fx(() -> {
+            robot.mouseMove(start);
+            if (shift) robot.keyPress(KeyCode.SHIFT);
+            robot.mousePress(button);
+            return null;
+        });
+        Thread.sleep(80);
+        fx(() -> {
+            robot.mouseMove(start.add(40, 20));
+            return null;
+        });
+        Thread.sleep(100);
+        fx(() -> {
+            robot.mouseRelease(button);
+            if (shift) robot.keyRelease(KeyCode.SHIFT);
+            return null;
+        });
+        Thread.sleep(100);
+    }
+
+    private long slicerCameraFrame() throws Exception {
+        return fx(() -> {
+            var image = node("#print-canvas").snapshot(null, null);
+            long hash = 1;
+            for (int y = 0; y < image.getHeight(); y += 2)
+                for (int x = 0; x < image.getWidth(); x += 2)
+                    hash = 31 * hash + image.getPixelReader().getArgb(x, y);
+            return hash;
+        });
+    }
+
+    @Test
     void slicerPlateDraggingAndMultiplePlatesPersist() throws Exception {
         ready();
         openPrepared("plate-5mm.vxb");

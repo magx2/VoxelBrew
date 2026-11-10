@@ -25,6 +25,10 @@ Printer, material and process settings are shared by all plates.
 Click and drag an object in either 2D or the isometric 3D view to move it along the
 bed. Shift snaps the movement to 1 mm steps. Release commits one undoable placement;
 Escape cancels. Numeric placement and rotation remain available in the sidebar.
+Camera gestures match Designer: right-drag or Shift + middle-drag pans; middle-drag
+or left-drag on empty space orbits in 3D and pans in 2D; the wheel zooms. The 2D
+view stays top-down. **Fit view** resets pan and zoom. Each view keeps its own
+transient camera state, which never changes placements or creates undo entries.
 New instances start at the center of the bed. Placement validation reports objects
 outside the bed or overlapping other objects on the selected plate.
 

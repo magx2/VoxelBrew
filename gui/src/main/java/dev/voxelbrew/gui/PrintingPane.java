@@ -43,6 +43,9 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
     private final VBox previewControls = new VBox(10);
     private final Label placementHint = new Label();
     private double viewScale, viewOx, viewOy;
+    private final PrintCamera topCamera = new PrintCamera(false), spatialCamera = new PrintCamera(true);
+    private boolean navigating, primaryNavigation;
+    private double navigationX, navigationY;
     private double dragX, dragY;
     private BodyInstance dragSource, dragPreview;
     private String dragRevision;
@@ -322,6 +325,8 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
         solidView.setToggleGroup(viewMode);
         topView.setSelected(true);
         viewMode.selectedToggleProperty().addListener((o, a, b) -> {
+            cancelDrag();
+            navigating = false;
             threeDimensional = b == solidView;
             draw();
         });
@@ -353,6 +358,17 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
                 new Separator(javafx.geometry.Orientation.VERTICAL),
                 plateSize,
                 toolpathPreview);
+        var fitView = new Button(translations.text("print.fitView"));
+        fitView.setId("print-fit-view");
+        fitView.setTooltip(UiHelp.tooltip(translations.text("print.cameraHelp")));
+        fitView.setOnAction(event -> {
+            cancelDrag();
+            camera().fit();
+            draw();
+        });
+        viewBar.getChildren().add(fitView);
+        canvas.setAccessibleHelp(translations.text("print.cameraHelp"));
+        placementHint.setTooltip(UiHelp.tooltip(translations.text("print.cameraHelp")));
         viewBar.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
         viewBar.getStyleClass().add("slicer-toolbar");
         plateStrip.setId("print-plates");
@@ -921,14 +937,11 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
         graphics.setFill(dark ? Color.web("#182028") : Color.web("#edf1f4"));
         graphics.fillRect(0, 0, w, h);
         if (w < 1 || h < 1) return;
-        double extentX = threeDimensional ? plateWidth + plateDepth : plateWidth;
-        double extentY = threeDimensional
-                ? (plateWidth + plateDepth) * 0.5
-                        + PrintProfile.resolve(setup()).printer().usableHeight()
-                : plateDepth;
-        double scale = Math.max(0.001, Math.min((w - 48) / extentX, (h - 48) / extentY));
-        double ox = threeDimensional ? (w - (plateWidth - plateDepth) * scale) / 2 : (w - plateWidth * scale) / 2;
-        double oy = threeDimensional ? h - 30 : (h + plateDepth * scale) / 2;
+        double extentX = threeDimensional ? Math.hypot(plateWidth, plateDepth) : plateWidth;
+        double extentY = threeDimensional ? extentX : plateDepth;
+        double scale = Math.max(0.001, Math.min((w - 48) / extentX, (h - 48) / extentY)) * camera().zoom();
+        double ox = w / 2 - projectX(plateWidth / 2, plateDepth / 2) * scale + camera().panX();
+        double oy = h / 2 + projectY(plateWidth / 2, plateDepth / 2, 0) * scale + camera().panY();
         viewScale = scale;
         viewOx = ox;
         viewOy = oy;
@@ -1112,15 +1125,35 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
     private void installDragging() {
         canvas.setCursor(javafx.scene.Cursor.OPEN_HAND);
         canvas.focusedProperty().addListener((o, a, focused) -> {
-            if (!focused) cancelDrag();
+            if (!focused) {
+                cancelDrag();
+                navigating = false;
+            }
+        });
+        canvas.setOnScroll(event -> {
+            if (dragSource != null) return;
+            camera().scroll(event.getDeltaY());
+            draw();
+            event.consume();
         });
         canvas.setOnMousePressed(event -> {
-            if (event.getButton() != javafx.scene.input.MouseButton.PRIMARY
-                    || toolpathPreview.isSelected()
-                    || model == null
-                    || !document.canExport()
-                    || jobs.running()) return;
             canvas.requestFocus();
+            navigationX = event.getX();
+            navigationY = event.getY();
+            primaryNavigation = false;
+            if (event.getButton() == javafx.scene.input.MouseButton.SECONDARY
+                    || event.getButton() == javafx.scene.input.MouseButton.MIDDLE) {
+                cancelDrag();
+                navigating = true;
+                canvas.setCursor(javafx.scene.Cursor.CLOSED_HAND);
+                event.consume();
+                return;
+            }
+            if (event.getButton() != javafx.scene.input.MouseButton.PRIMARY) return;
+            event.consume();
+            navigating = true;
+            primaryNavigation = true;
+            if (toolpathPreview.isSelected() || model == null || !document.canExport() || jobs.running()) return;
             var all = model.instances();
             for (int i = all.size() - 1; i >= 0; i--) {
                 var instance = all.get(i);
@@ -1139,6 +1172,8 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
                     hit = PrintPlacement.contains(event.getX(), event.getY(), x, y);
                 }
                 if (hit) {
+                    navigating = false;
+                    primaryNavigation = false;
                     instances.setValue(instance.id());
                     dragSource = instance;
                     dragPreview = instance;
@@ -1153,17 +1188,34 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
             }
         });
         canvas.setOnMouseDragged(event -> {
+            if (navigating) {
+                double dx = event.getX() - navigationX, dy = event.getY() - navigationY;
+                navigationX = event.getX();
+                navigationY = event.getY();
+                if (event.isSecondaryButtonDown() || (event.isMiddleButtonDown() && event.isShiftDown()))
+                    camera().pan(dx, dy);
+                else if (event.isMiddleButtonDown() || (primaryNavigation && event.isPrimaryButtonDown()))
+                    camera().orbit(dx, dy);
+                canvas.setCursor(javafx.scene.Cursor.CLOSED_HAND);
+                draw();
+                event.consume();
+                return;
+            }
             if (dragSource == null) return;
-            dragPreview = PrintPlacement.move(
-                    dragSource,
-                    (event.getX() - dragX) / viewScale,
-                    -(event.getY() - dragY) / viewScale,
-                    threeDimensional,
-                    event.isShiftDown());
+            var delta = camera().bedDelta((event.getX() - dragX) / viewScale, -(event.getY() - dragY) / viewScale);
+            if (delta == null) return;
+            dragPreview = PrintPlacement.move(dragSource, delta.getX(), delta.getY(), false, event.isShiftDown());
             draw();
             event.consume();
         });
         canvas.setOnMouseReleased(event -> {
+            if (navigating) {
+                navigating = false;
+                primaryNavigation = false;
+                canvas.setCursor(javafx.scene.Cursor.OPEN_HAND);
+                event.consume();
+                return;
+            }
             if (dragSource == null) return;
             var before = dragSource;
             var after = dragPreview;
@@ -1251,12 +1303,16 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
         Dialogs.show(dialog, getScene().getWindow(), translations);
     }
 
+    private PrintCamera camera() {
+        return threeDimensional ? spatialCamera : topCamera;
+    }
+
     private double projectX(double x, double y) {
-        return threeDimensional ? x - y : x;
+        return camera().x(x, y);
     }
 
     private double projectY(double x, double y, double z) {
-        return threeDimensional ? (x + y) * 0.5 + z : y;
+        return camera().y(x, y, z);
     }
 
     private void line(

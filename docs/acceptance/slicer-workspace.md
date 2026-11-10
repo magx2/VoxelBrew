@@ -49,5 +49,32 @@ Only the focused Windows GUI test was run; the full E2E suite and cross-platform
 E2E were intentionally omitted per repository instructions. No full root milestone
 gate, macOS UI, installer, or physical printer qualification is claimed. Real
 slicing was validated on Windows; Ubuntu coverage here is compilation/unit tests.
-Per-plate process overrides, batch slicing, and free-orbit 3D navigation remain
-outside this change.
+Per-plate process overrides and batch slicing remain outside this change.
+
+## Camera follow-up
+
+Slicer now shares Designer's orbit convention and wheel sensitivity. Right-drag
+and Shift + middle-drag pan; middle-drag and left-drag on empty space orbit in 3D
+and pan in 2D. Each view keeps separate transient pan/zoom/orientation state.
+Fit view resets pan/zoom. Object placement inverts the current camera projection;
+an edge-on bed does not produce unbounded placement coordinates.
+
+Windows validation ran in `.tools/slicer-camera-validation` to avoid concurrent
+build-output changes in the main checkout. The isolated copy used the existing
+Windows OCCT runtime and an explicit `VOXELBREW_SLICER` executable path:
+
+```powershell
+.\gradlew.bat --no-daemon :gui:test --tests dev.voxelbrew.gui.PrintCameraTest --tests dev.voxelbrew.gui.PrintPlacementTest :gui:e2eTest --tests dev.voxelbrew.gui.WorkbenchUiTest.slicerCameraMatchesDesignerGesturesWithoutEditingPlacement --tests dev.voxelbrew.gui.WorkbenchUiTest.slicerPlateDraggingAndMultiplePlatesPersist -x :engine:buildNative --console=plain
+```
+
+Passed. The camera Robot test observes rendered changes for all mouse gestures,
+verifies unchanged document state, then drags an object after navigation and
+undoes that placement in both views. The existing plate/persistence/real-slice
+test also passed. Resulting 2D and rotated 3D screenshots were inspected.
+
+Ubuntu ran `:gui:test --tests dev.voxelbrew.gui.PrintCameraTest --tests
+dev.voxelbrew.gui.PrintPlacementTest` on the same source snapshot: passed.
+Logs: `.tools/slicer-camera-isolated-final.log` and
+`.tools/slicer-camera-ubuntu.log`. Screenshots:
+`.tools/slicer-camera-validation/gui/build/ui-artifacts/slicer-camera-print-view-{2d,3d}.png`.
+No Linux E2E or full-suite run is claimed.

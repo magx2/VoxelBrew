@@ -130,7 +130,6 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
         getStyleClass().add("slicer-workspace");
         canvas.setId("print-canvas");
         canvas.setFocusTraversable(true);
-        Tooltip.install(canvas, selectedObjectTooltip);
         installDragging();
         setPadding(new Insets(8));
         bodies.setId("print-body");
@@ -1577,8 +1576,12 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
         canvas.addEventFilter(javafx.scene.input.MouseEvent.MOUSE_MOVED, event -> {
             var hovered = dragSource == null && !navigating ? objectAt(event.getX(), event.getY()) : null;
             String name = hovered == null ? "" : instanceName(hovered.id());
-            if (!name.equals(selectedObjectTooltip.getText())) selectedObjectTooltip.hide();
-            selectedObjectTooltip.setText(name);
+            if (!name.equals(selectedObjectTooltip.getText())) {
+                selectedObjectTooltip.hide();
+                Tooltip.uninstall(canvas, selectedObjectTooltip);
+                selectedObjectTooltip.setText(name);
+                if (!name.isBlank()) Tooltip.install(canvas, selectedObjectTooltip);
+            }
         });
         canvas.setOnMouseExited(event -> selectedObjectTooltip.hide());
         canvas.focusedProperty().addListener((o, a, focused) -> {

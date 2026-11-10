@@ -1,0 +1,52 @@
+.slicer-availability {
+  -fx-padding: 12 14;
+  -fx-background-radius: 6;
+  -fx-border-radius: 6;
+  -fx-border-width: 1 1 1 5;
+}
+.slicer-availability-heading {
+  -fx-font-size: 15px;
+  -fx-font-weight: bold;
+}
+.slicer-availability.working {
+  -fx-background-color: #edf8f0;
+  -fx-border-color: #268046;
+}
+.slicer-availability.working .label {
+  -fx-text-fill: #175d30;
+}
+.slicer-availability.unavailable {
+  -fx-background-color: #fff0ef;
+  -fx-border-color: #bc3934;
+}
+.slicer-availability.unavailable .label {
+  -fx-text-fill: #922b27;
+}
+.slicer-availability.checking {
+  -fx-background-color: #edf3fc;
+  -fx-border-color: #4774ae;
+}
+.slicer-availability.checking .label {
+  -fx-text-fill: #294f80;
+}
+.dark .slicer-availability.working {
+  -fx-background-color: #203b2b;
+  -fx-border-color: #73d493;
+}
+.dark .slicer-availability.working .label {
+  -fx-text-fill: #a2eab9;
+}
+.dark .slicer-availability.unavailable {
+  -fx-background-color: #462a2b;
+  -fx-border-color: #f28e88;
+}
+.dark .slicer-availability.unavailable .label {
+  -fx-text-fill: #ffb4ae;
+}
+.dark .slicer-availability.checking {
+  -fx-background-color: #26364c;
+  -fx-border-color: #91b7ed;
+}
+.dark .slicer-availability.checking .label {
+  -fx-text-fill: #bdd5f7;
+}

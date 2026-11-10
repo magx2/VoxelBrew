@@ -44,16 +44,15 @@ final class SlicerSettingsDialog {
         message.setId("slicer-settings-status");
         message.setWrapText(true);
         var fields = new LinkedHashMap<String, Map<String, TextField>>();
-        var statusLabels = new LinkedHashMap<String, Label>();
+        var statusLabels = new LinkedHashMap<String, SlicerStatusView>();
         boolean readable = true;
         for (var descriptor : catalog.descriptors()) {
             var content = new VBox(8);
             content.setPadding(new Insets(12));
-            var providerStatus = new Label(availability.text(descriptor.id()));
-            providerStatus.setId("slicer-status-" + descriptor.id());
-            providerStatus.setWrapText(true);
+            var providerStatus = new SlicerStatusView(availability, translations, "slicer-status-" + descriptor.id());
+            providerStatus.showBackend(descriptor.id());
+
             statusLabels.put(descriptor.id(), providerStatus);
-            content.getChildren().add(providerStatus);
             var options = new LinkedHashMap<String, TextField>();
             try {
                 for (var option : new TreeMap<>(settings.options(descriptor.id())).entrySet()) {
@@ -86,19 +85,25 @@ final class SlicerSettingsDialog {
             var scroll = new ScrollPane(content);
             scroll.setFitToWidth(true);
             scroll.setPrefViewportHeight(230);
-            var tab = new Tab(descriptor.name(), scroll);
+            var tab = new Tab(descriptor.name(), new VBox(10, providerStatus, scroll));
             tab.setId("slicer-settings-" + descriptor.id());
             tab.setClosable(false);
             tabs.getTabs().add(tab);
         }
-        var save = new Button(translations.text("action.save"));
+        var saveType = new ButtonType(translations.text("action.save"), ButtonBar.ButtonData.OK_DONE);
+        dialog.getDialogPane().getButtonTypes().setAll(ButtonType.CANCEL, saveType);
+        var save = (Button) dialog.getDialogPane().lookupButton(saveType);
+        save.setDefaultButton(true);
+        save.getStyleClass().add("slicer-primary-action");
         save.setId("slicer-settings-save");
         UiHelp.install(save, translations);
         save.setDisable(!readable || fields.isEmpty());
-        dialog.getDialogPane().getButtonTypes().setAll(ButtonType.CLOSE);
-        var close = dialog.getDialogPane().lookupButton(ButtonType.CLOSE);
+
+        var close = (Button) dialog.getDialogPane().lookupButton(ButtonType.CANCEL);
+        close.prefHeightProperty().bind(save.heightProperty());
         close.setId("slicer-settings-close");
-        save.setOnAction(event -> {
+        save.addEventFilter(javafx.event.ActionEvent.ACTION, event -> {
+            event.consume();
             var values = new LinkedHashMap<String, Map<String, String>>();
             fields.forEach((id, options) -> {
                 var entries = new LinkedHashMap<String, String>();
@@ -129,9 +134,9 @@ final class SlicerSettingsDialog {
         var diagnostics = new Label(String.join("\n", catalog.diagnostics()));
         diagnostics.setWrapText(true);
         if (fields.isEmpty()) message.setText(translations.text("slicer.settings.empty"));
-        dialog.getDialogPane().setContent(new VBox(10, tabs, message, diagnostics, save));
+        dialog.getDialogPane().setContent(new VBox(10, tabs, message, diagnostics));
         javafx.collections.MapChangeListener<String, SlicerAvailability.Status> listener =
-                change -> statusLabels.forEach((id, label) -> label.setText(availability.text(id)));
+                change -> statusLabels.forEach((id, label) -> label.showBackend(id));
         availability.statuses.addListener(listener);
         dialog.setOnHidden(event -> availability.statuses.removeListener(listener));
         availability.refresh();

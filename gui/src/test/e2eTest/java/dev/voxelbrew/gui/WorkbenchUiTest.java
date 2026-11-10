@@ -681,6 +681,20 @@ class WorkbenchUiTest {
         while (fx(() -> ((Label) node("#slicer-status-cura")).getText().contains("Checking"))
                 && System.nanoTime() < probeDeadline) Thread.sleep(25);
         assertTrue(fx(() -> ((Label) node("#slicer-status-cura")).getText().contains("Not working")));
+        fx(() -> {
+            var statusPanel = node("#slicer-status-cura").getParent();
+            assertTrue(statusPanel.getStyleClass().contains("unavailable"));
+            var saveButton = (Button) node("#slicer-settings-save");
+            var cancelButton = (Button) node("#slicer-settings-close");
+            assertSame(saveButton.getParent(), cancelButton.getParent());
+            assertTrue(saveButton.isDefaultButton());
+            assertEquals("Cancel", cancelButton.getText());
+            assertEquals(
+                    saveButton.localToScene(saveButton.getBoundsInLocal()).getCenterY(),
+                    cancelButton.localToScene(cancelButton.getBoundsInLocal()).getCenterY(),
+                    1.0);
+            return null;
+        });
         assertTrue(fx(() -> node("#print-slice").isDisabled()));
         assertTrue(fx(() -> node("#print-slice-all").isDisabled()));
         assertEquals(

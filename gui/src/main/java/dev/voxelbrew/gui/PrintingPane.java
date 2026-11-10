@@ -29,7 +29,7 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
     private final SlicerCatalog slicers;
     private final SlicerSettings slicerSettings;
     private final SlicerAvailability availability;
-    private final Label backendStatus = new Label();
+    private final SlicerStatusView backendStatus;
     private final ExecutorService validator;
     private final dev.voxelbrew.util.i18n.Translations translations;
     private Future<?> validationTask;
@@ -117,6 +117,7 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
         this.slicers = slicers;
         this.slicerSettings = slicerSettings;
         this.availability = availability;
+        backendStatus = new SlicerStatusView(availability, translations, "print-backend-status");
         this.validator = validator;
         setId("printing-workspace");
         getStyleClass().add("slicer-workspace");
@@ -254,11 +255,8 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
                 row("print-brim", translations.text("gui.brim_width_mm"), "0"),
                 row("print-raft", translations.text("gui.raft_layers"), "0"),
                 button(translations.text("gui.apply_process_settings"), "print-apply-process", this::applyProcess));
-        backendStatus.setId("print-backend-status");
-        backendStatus.setWrapText(true);
-        backends.valueProperty()
-                .addListener((o, a, b) -> backendStatus.setText(
-                        b == null ? translations.text("gui.choose_an_available_backend") : availability.text(b.id())));
+
+        backends.valueProperty().addListener((o, a, b) -> backendStatus.showBackend(b == null ? null : b.id()));
         var capabilities = new Label();
         capabilities.setWrapText(true);
         backends.valueProperty()
@@ -1005,10 +1003,8 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
     private void updateJob() {
         updatePreviewControls();
         autoArrange.setDisable(model == null || model.instances().isEmpty() || !document.canExport() || jobs.running());
-        backendStatus.setText(
-                backends.getValue() == null
-                        ? translations.text("gui.choose_an_available_backend")
-                        : availability.text(backends.getValue().id()));
+        backendStatus.showBackend(
+                backends.getValue() == null ? null : backends.getValue().id());
         slice.setDisable(!availability.working(setup().backendId())
                 || !document.canExport()
                 || jobs.running()

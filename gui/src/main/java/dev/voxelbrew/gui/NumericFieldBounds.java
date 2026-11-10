@@ -25,11 +25,11 @@ record NumericFieldBounds(double min, boolean minInclusive, double max, boolean 
     }
 
     String minimumHint() {
-        return Double.isFinite(min) ? format(min) + (minInclusive ? " <=" : " <") : "";
+        return Double.isFinite(min) ? format(min) + (minInclusive ? " ≤" : " <") : "";
     }
 
     String maximumHint() {
-        return Double.isFinite(max) ? (maxInclusive ? "<= " : "< ") + format(max) : "";
+        return Double.isFinite(max) ? (maxInclusive ? "≤ " : "< ") + format(max) : "";
     }
 
     private static String format(double value) {

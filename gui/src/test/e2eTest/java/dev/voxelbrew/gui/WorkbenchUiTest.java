@@ -58,13 +58,13 @@ class WorkbenchUiTest {
             var unitLabel = (Label) field.lookup(".formula-unit");
             assertEquals("%", unitLabel.getText());
             assertTrue(unitLabel.isMouseTransparent());
-            assertEquals("0 <=", minimum.getText());
-            assertEquals("<= 100", maximum.getText());
+            assertEquals("0 ≤", minimum.getText());
+            assertEquals("≤ 100", maximum.getText());
             var layer = (FormulaField) node("#print-layer-height");
             assertEquals("mm", ((Label) layer.lookup(".formula-unit")).getText());
             assertEquals("", ((Label) node("#print-walls").lookup(".formula-unit")).getText());
-            assertEquals("0.05 <=", ((Label) layer.lookup(".formula-minimum")).getText());
-            assertEquals("<= 0.3", ((Label) layer.lookup(".formula-maximum")).getText());
+            assertEquals("0.05 ≤", ((Label) layer.lookup(".formula-minimum")).getText());
+            assertEquals("≤ 0.3", ((Label) layer.lookup(".formula-maximum")).getText());
             var invalid = javafx.css.PseudoClass.getPseudoClass("formula-invalid");
             for (String palette : List.of("light", "dark")) {
                 command(workbench, "appearance-" + palette).fire();

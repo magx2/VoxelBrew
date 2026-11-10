@@ -29,9 +29,9 @@ class NumericFieldBoundsTest {
         assertTrue(minimum.accepts(1e10));
         var maximum = new NumericFieldBounds(Double.NEGATIVE_INFINITY, false, 100, true);
         assertEquals("", maximum.minimumHint());
-        assertEquals("<= 100", maximum.maximumHint());
+        assertEquals("≤ 100", maximum.maximumHint());
         assertTrue(maximum.accepts(-1e10));
-        assertEquals("0.05 <=", new NumericFieldBounds(0.05, true, 0.3, true).minimumHint());
+        assertEquals("0.05 ≤", new NumericFieldBounds(0.05, true, 0.3, true).minimumHint());
         assertEquals("", NumericFieldBounds.UNBOUNDED.minimumHint());
         assertEquals("", NumericFieldBounds.UNBOUNDED.maximumHint());
     }

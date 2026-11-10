@@ -37,6 +37,32 @@ import org.junit.jupiter.api.io.TempDir;
 @ExtendWith(UiTestShard.class)
 class WorkbenchUiTest {
     @Test
+    void slicerInstanceNamesFollowBodyRenamesAndUndo() throws Exception {
+        ready();
+        openPrepared("plate-5mm.vxb");
+        click("workspace-print");
+        ready();
+        click("print-add");
+        ready();
+        var setup = document().printSetup();
+        var body = setup.instances().getFirst().bodyId();
+        fx(() -> {
+            workbench.controller().renameBody(body, "Foo");
+            return null;
+        });
+        ready();
+        assertEquals(setup, document().printSetup(), "Renaming preserves instance identities");
+        assertEquals(
+                "Foo (1)",
+                fx(() -> ((ComboBox<?>) node("#print-instance")).getButtonCell().getText()));
+        shortcut(KeyCode.Z, false);
+        ready();
+        assertEquals(
+                "Body 1 (1)",
+                fx(() -> ((ComboBox<?>) node("#print-instance")).getButtonCell().getText()));
+    }
+
+    @Test
     void slicerRotationGizmosPreviewCommitUndoAndCancel() throws Exception {
         ready();
         openPrepared("plate-5mm.vxb");

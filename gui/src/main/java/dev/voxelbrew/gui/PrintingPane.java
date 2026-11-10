@@ -777,6 +777,7 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
         plateSize.setText(String.format(Locale.ROOT, "%.1f \u00d7 %.1f mm", plateWidth, plateDepth));
         jobs.documentChanged(snapshot);
         if (document.rebuilding()) jobs.invalidateGeometry();
+        boolean refreshNames = lastBuild != document.build() || !setup().equals(lastSetup);
         updating = true;
         try {
             if (lastBuild != document.build()) {
@@ -841,6 +842,13 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
                 bedOnly.setSelected(p.supportsOnBedOnly());
                 lastSetup = setup();
                 loadPlacement();
+            }
+            if (refreshNames) {
+                // Body renames keep instance IDs unchanged, so JavaFX does not refresh their cells.
+                for (var choice : List.of(bodies, instances, supportOwners)) {
+                    choice.setCellFactory(list -> namedCell(choice));
+                    choice.setButtonCell(namedCell(choice));
+                }
             }
         } finally {
             updating = false;

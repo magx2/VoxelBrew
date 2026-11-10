@@ -329,10 +329,15 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
                                                                 .parameters(),
                                                         translations,
                                                         configuration)
+                                                .suggestDestination(geometryDestination())
                                                 .register(
                                                         dev.voxelbrew.exporter.MeshExportDialog.class,
                                                         (parent, request) -> ExportDialog.options(
-                                                                parent, document, translations, request.format()))))),
+                                                                parent,
+                                                                document,
+                                                                translations,
+                                                                request.format(),
+                                                                geometryDestination()))))),
                 summary,
                 diagnostics);
         diagnostics.setEditable(false);
@@ -806,6 +811,11 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
                                         .stripTrailingZeros()
                                         .toPlainString());
                 });
+    }
+
+    private Path geometryDestination() {
+        String output = fields.get("print-output").evaluatedText();
+        return output.isBlank() ? null : Path.of(output);
     }
 
     private void slice() {

@@ -25,6 +25,13 @@ public final class DesktopExportWindow implements ExportWindow {
     private final Translations translations;
     private final UserConfiguration configuration;
 
+    private Path suggestedDestination;
+
+    public DesktopExportWindow suggestDestination(Path destination) {
+        suggestedDestination = destination;
+        return this;
+    }
+
     private final ExportDialogs dialogs = new ExportDialogs().register(FileExportDialog.class, this::chooseDestination);
 
     @Override
@@ -42,7 +49,17 @@ public final class DesktopExportWindow implements ExportWindow {
 
     private Optional<Destination> chooseDestination(FileExportDialog request) {
         var chosen = FileDialog.choose(
-                owner, true, current, parameters, translations, configuration, request.extension(), request.title());
+                owner,
+                true,
+                suggestedDestination == null
+                        ? current
+                        : dev.voxelbrew.gui.ExportDialog.destinationForFormat(
+                                suggestedDestination, request.extension()),
+                parameters,
+                translations,
+                configuration,
+                request.extension(),
+                request.title());
         if (chosen.isEmpty()) return Optional.empty();
         Path path = chosen.get();
         boolean overwrite = Files.exists(path);

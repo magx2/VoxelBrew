@@ -63,6 +63,21 @@ final class ExportDialog {
             DocumentController controller,
             dev.voxelbrew.util.i18n.Translations translations,
             MeshFormat selectedFormat) {
+        return options(owner, controller, translations, selectedFormat, null);
+    }
+
+    static Path destinationForFormat(Path source, String extension) {
+        String name = source.getFileName().toString();
+        int dot = name.lastIndexOf('.');
+        return source.resolveSibling((dot > 0 ? name.substring(0, dot) : name) + "." + extension);
+    }
+
+    static Optional<MeshExportDialog.Settings> options(
+            Window owner,
+            DocumentController controller,
+            dev.voxelbrew.util.i18n.Translations translations,
+            MeshFormat selectedFormat,
+            Path suggestedDestination) {
         java.util.function.Supplier<ParameterSet> parameters =
                 () -> controller.snapshot().document().parameters();
         var dialog = new Dialog<MeshExportDialog.Settings>();
@@ -121,7 +136,15 @@ final class ExportDialog {
                 contents.setValue(ExportSelection.Contents.MODEL);
             }
         });
-        var path = FormulaField.text("", parameters).localized(translations);
+        var path = FormulaField.text(
+                        suggestedDestination == null
+                                ? ""
+                                : destinationForFormat(
+                                                suggestedDestination,
+                                                selectedFormat.extensions().getFirst())
+                                        .toString(),
+                        parameters)
+                .localized(translations);
         path.setId("export-path");
         path.setPrefColumnCount(40);
         var browse = new Button(translations.text("gui.browse"));
@@ -134,6 +157,12 @@ final class ExportDialog {
                 chooser.getExtensionFilters()
                         .add(new FileChooser.ExtensionFilter(
                                 d.name(), "*." + d.extensions().getFirst()));
+            if (!path.evaluatedText().isBlank()) {
+                var initial = Path.of(path.evaluatedText()).toAbsolutePath();
+                if (java.nio.file.Files.isDirectory(initial.getParent()))
+                    chooser.setInitialDirectory(initial.getParent().toFile());
+                chooser.setInitialFileName(initial.getFileName().toString());
+            }
             var selected = chooser.showSaveDialog(owner);
             if (selected != null) path.setText(selected.toString());
         });

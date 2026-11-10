@@ -37,6 +37,35 @@ import org.junit.jupiter.api.io.TempDir;
 @ExtendWith(UiTestShard.class)
 class WorkbenchUiTest {
     @Test
+    void slicerGeometryExportUsesGcodeFolderAndPlateName() throws Exception {
+        ready();
+        openPrepared("plate-5mm.vxb");
+        click("workspace-print");
+        ready();
+        click("print-add");
+        ready();
+        Path saved = directory.resolve("geometry.part.vxb");
+        save(saved);
+        click("print-tab-job");
+        var gcode = Path.of(fx(() -> ((FormulaField) node("#print-output")).getText()));
+        click("print-export");
+        chooseExporter("stl");
+        var expected = ExportDialog.destinationForFormat(gcode, "stl");
+        assertEquals(expected.toString(), fx(() -> ((FormulaField) node("#export-path")).getText()));
+        click("export-confirm");
+        ready();
+        assertTrue(Files.exists(expected));
+        var custom = directory.resolve("custom.name.gcode");
+        text("print-output", custom.toString());
+        click("print-export");
+        chooseExporter("3mf");
+        assertEquals(
+                directory.resolve("custom.name.3mf").toString(),
+                fx(() -> ((FormulaField) node("#export-path")).getText()));
+        key(KeyCode.ESCAPE);
+    }
+
+    @Test
     void sliceAllPlatesWritesSeparateJobsWithoutChangingSelection() throws Exception {
         ready();
         openPrepared("plate-5mm.vxb");

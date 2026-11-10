@@ -51,6 +51,7 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
     private double dragX, dragY;
     private BodyInstance dragSource, dragPreview;
     private String dragRevision;
+    private final CheckBox showRotationGizmos = new CheckBox();
     private List<PrintRotationGizmo.Ring> rotationRings = List.of();
     private PrintRotationGizmo.Drag rotationDrag;
     private PrintRotationGizmo.Axis hoveredRotation;
@@ -162,7 +163,14 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
                 button(translations.text("gui.add_selected_body"), "print-add", this::addInstance),
                 new Label(translations.text("gui.build_instance")),
                 instances);
-        placement.getChildren().addAll(placementCoordinates(false), placementCoordinates(true));
+        showRotationGizmos.setId("print-show-rotation-gizmos");
+        showRotationGizmos.setText(translations.text("print.showRotationGizmos"));
+        UiHelp.install(showRotationGizmos, translations);
+        showRotationGizmos.selectedProperty().addListener((observable, before, after) -> {
+            cancelDrag();
+            draw();
+        });
+        placement.getChildren().addAll(placementCoordinates(false), placementCoordinates(true), showRotationGizmos);
         placement
                 .getChildren()
                 .addAll(
@@ -1103,7 +1111,7 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
     }
 
     private void drawRotationGizmo() {
-        if (!document.canExport() || jobs.running()) return;
+        if (!showRotationGizmos.isSelected() || !document.canExport() || jobs.running()) return;
         var instance = model.instances().stream()
                 .filter(i -> i.id().equals(instances.getValue()))
                 .findFirst();
@@ -1123,6 +1131,7 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
                                     / 2
                             + 12 / viewScale);
             rotationRings = Arrays.stream(PrintRotationGizmo.Axis.values())
+                    .filter(axis -> threeDimensional || axis == PrintRotationGizmo.Axis.Z)
                     .map(axis -> PrintRotationGizmo.ring(axis, center, radius, camera(), viewOx, viewOy, viewScale))
                     .toList();
         }
@@ -1171,7 +1180,8 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
     }
 
     private PrintRotationGizmo.Hit rotationHit(double x, double y) {
-        if (toolpathPreview.isSelected() || !document.canExport() || jobs.running()) return null;
+        if (!showRotationGizmos.isSelected() || toolpathPreview.isSelected() || !document.canExport() || jobs.running())
+            return null;
         var pointer = new javafx.geometry.Point2D(x, y);
         return rotationRings.stream()
                 .map(ring -> ring.hit(pointer))

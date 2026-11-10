@@ -124,8 +124,14 @@ class WorkbenchUiTest {
         click("print-add");
         ready();
         var original = document().printSetup();
+        assertFalse(fx(() -> ((CheckBox) node("#print-show-rotation-gizmos")).isSelected()));
+        assertFalse(slicerHasRing("#728ef5"));
+        click("print-show-rotation-gizmos");
         for (String view : List.of("print-view-2d", "print-view-3d")) {
             click(view);
+            assertTrue(slicerHasRing("#728ef5"));
+            assertEquals(view.equals("print-view-3d"), slicerHasRing("#e46969"));
+            assertEquals(view.equals("print-view-3d"), slicerHasRing("#57ad74"));
             var start = fx(() -> {
                 var canvas = (javafx.scene.canvas.Canvas) node("#print-canvas");
                 var image = canvas.snapshot(null, null);
@@ -190,6 +196,11 @@ class WorkbenchUiTest {
                 }
             }
         }
+        click("print-show-rotation-gizmos");
+        assertFalse(slicerHasRing("#728ef5"));
+        assertFalse(slicerHasRing("#e46969"));
+        assertFalse(slicerHasRing("#57ad74"));
+        assertEquals(original, document().printSetup());
     }
 
     @Test
@@ -249,6 +260,21 @@ class WorkbenchUiTest {
         assertEquals(expected, document().printSetup());
         assertTrue(
                 fx(() -> ((ToggleButton) node("#print-plate-plate-1")).getText().startsWith("Assembly")));
+    }
+
+    private boolean slicerHasRing(String hex) throws Exception {
+        return fx(() -> {
+            var expected = javafx.scene.paint.Color.web(hex);
+            var image = node("#print-canvas").snapshot(null, null);
+            for (int y = 0; y < image.getHeight(); y++)
+                for (int x = 0; x < image.getWidth(); x++) {
+                    var color = image.getPixelReader().getColor(x, y);
+                    if (Math.abs(color.getRed() - expected.getRed()) < .01
+                            && Math.abs(color.getGreen() - expected.getGreen()) < .01
+                            && Math.abs(color.getBlue() - expected.getBlue()) < .01) return true;
+                }
+            return false;
+        });
     }
 
     private void doubleClickPlate(String id) throws Exception {

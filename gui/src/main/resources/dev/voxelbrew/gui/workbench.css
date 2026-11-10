@@ -698,15 +698,56 @@
   -fx-font-size: 13px;
 }
 .slicer-primary-action {
-  -fx-background-color: #2373c8;
+  -fx-background-color: #6555ce;
+  -fx-background-insets: 0;
+  -fx-border-color: transparent;
+  -fx-background-radius: 9;
+  -fx-border-radius: 9;
   -fx-text-fill: white;
   -fx-font-weight: bold;
   -fx-padding: 10 22;
 }
+.slicer-primary-action:hover {
+  -fx-background-color: #7866de;
+}
+.slicer-toolbar .button {
+  -fx-background-color: transparent;
+  -fx-background-insets: 0;
+  -fx-border-color: transparent;
+  -fx-border-radius: 9;
+  -fx-background-radius: 9;
+  -fx-padding: 7 12;
+  -fx-effect: null;
+}
+.slicer-toolbar .button:hover,
+.slicer-toolbar .toggle-button:hover {
+  -fx-background-color: -fx-selection-bar;
+}
+.slicer-toolbar .button:focused {
+  -fx-border-color: -fx-focus-color;
+}
+.slicer-toolbar .toggle-button {
+  -fx-background-color: transparent;
+  -fx-background-insets: 0;
+  -fx-background-radius: 0;
+  -fx-border-color: transparent;
+  -fx-border-width: 0 0 2 0;
+  -fx-padding: 7 13;
+  -fx-text-fill: -fx-text-background-color;
+  -fx-cursor: hand;
+  -fx-effect: null;
+}
+.slicer-toolbar .toggle-button:selected {
+  -fx-background-color: transparent;
+  -fx-border-color: #6555ce;
+  -fx-font-weight: bold;
+}
+.dark .slicer-toolbar .toggle-button:selected {
+  -fx-border-color: #a99cff;
+}
+.slicer-toolbar .toggle-button:focused {
+  -fx-background-color: -fx-selection-bar;
+}
 #print-plates {
   -fx-padding: 2;
-}
-#print-plates .toggle-button:selected {
-  -fx-background-color: -fx-selection-bar;
-  -fx-font-weight: bold;
 }

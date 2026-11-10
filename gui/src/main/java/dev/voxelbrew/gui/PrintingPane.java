@@ -361,7 +361,9 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
         tabs.setPrefWidth(360);
         tabs.setMinWidth(320);
         printerChoice.setId("print-printer");
-        UiText.choices(printerChoice, PrinterCatalog.Entry::toString);
+        UiText.choices(
+                printerChoice,
+                entry -> entry + (entry.bundled() ? " (" + translations.text("print.builtInPrinter") + ")" : ""));
         printerChoice.setMaxWidth(Double.MAX_VALUE);
         printerChoice.setOnAction(event -> {
             if (!updating && printerChoice.getValue() != null)
@@ -1818,7 +1820,7 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
         try {
             var selected = saved == null || (entry != null && entry.definition().equals(saved))
                     ? entry
-                    : new PrinterCatalog.Entry(saved, entry == null ? null : entry.image(), "project");
+                    : new PrinterCatalog.Entry(saved, entry == null ? null : entry.image(), "project", false);
             if (selected != null && !printerChoice.getItems().contains(selected))
                 printerChoice.getItems().addFirst(selected);
             printerChoice.setValue(selected);
@@ -1827,6 +1829,9 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
         }
         printerChoice.setPromptText(p.name());
         printerDetails.setText(p.name()
+                + (printerChoice.getValue() != null && printerChoice.getValue().bundled()
+                        ? " (" + translations.text("print.builtInPrinter") + ")"
+                        : "")
                 + (saved != null && saved.modified() ? " (" + translations.text("print.modifiedPrinter") + ")" : "")
                 + String.format(
                         Locale.ROOT,

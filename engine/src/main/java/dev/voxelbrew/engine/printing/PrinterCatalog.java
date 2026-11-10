@@ -6,7 +6,7 @@ import java.util.*;
 
 /** Validated, reloadable catalog. Saved documents never depend on this service. */
 public final class PrinterCatalog {
-    public record Entry(PrinterDefinition definition, String image, String source) {
+    public record Entry(PrinterDefinition definition, String image, String source, boolean bundled) {
         @Override
         public String toString() {
             return definition.manufacturer() + " " + definition.printer().name();
@@ -67,7 +67,8 @@ public final class PrinterCatalog {
                                         source.bundled() && json.has("image")
                                                 ? json.get("image").getAsString()
                                                 : null),
-                                source.name()));
+                                source.name(),
+                                source.bundled()));
                 if (source.bundled()) bundled.add(id);
             } catch (RuntimeException ex) {
                 errors.add(source.name() + ": " + ex.getMessage());
@@ -75,7 +76,7 @@ public final class PrinterCatalog {
         }
         return new Result(
                 entries.values().stream()
-                        .sorted(Comparator.comparing(Entry::toString))
+                        .sorted(Comparator.comparing(Entry::bundled).thenComparing(Entry::toString))
                         .toList(),
                 errors);
     }

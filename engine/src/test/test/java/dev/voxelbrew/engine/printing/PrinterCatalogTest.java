@@ -24,6 +24,7 @@ class PrinterCatalogTest {
         assertEquals(List.of(), result.diagnostics());
         assertEquals(62, result.entries().size());
         for (var entry : result.entries()) {
+            assertTrue(entry.bundled());
             assertNotNull(entry.image(), entry.toString());
             try (var image = new java.net.URI(entry.image()).toURL().openStream()) {
                 assertTrue(image.readAllBytes().length > 0);
@@ -72,11 +73,18 @@ class PrinterCatalogTest {
     @Test
     void badFilesAndDuplicateIdsAreIsolatedAndReloadDoesNotChangeSnapshots() throws Exception {
         Files.writeString(directory.resolve("custom.json"), custom("my-printer"));
+        assertFalse(catalog().load().entries().stream()
+                .filter(entry -> entry.definition().printer().id().equals("my-printer"))
+                .findFirst()
+                .orElseThrow()
+                .bundled());
         var saved = PrintSetup.empty().withPrinter(catalog().load().require("my-printer"));
         Files.writeString(directory.resolve("broken.json"), "not json");
         Files.writeString(directory.resolve("collision.json"), custom("generic-marlin-200-0.4"));
         var loaded = catalog().load();
         assertEquals(2, loaded.diagnostics().size());
+        assertEquals(
+                "my-printer", loaded.entries().getFirst().definition().printer().id());
         assertEquals(saved.printerSnapshot(), loaded.require("my-printer"));
         Files.writeString(directory.resolve("duplicate.json"), custom("my-printer"));
         assertThrows(IllegalArgumentException.class, () -> catalog().load().require("my-printer"));

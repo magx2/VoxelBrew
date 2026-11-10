@@ -37,6 +37,83 @@ import org.junit.jupiter.api.io.TempDir;
 @ExtendWith(UiTestShard.class)
 class WorkbenchUiTest {
     @Test
+    void slicerRotationGizmosPreviewCommitUndoAndCancel() throws Exception {
+        ready();
+        openPrepared("plate-5mm.vxb");
+        click("workspace-print");
+        ready();
+        click("print-add");
+        ready();
+        var original = document().printSetup();
+        for (String view : List.of("print-view-2d", "print-view-3d")) {
+            click(view);
+            var start = fx(() -> {
+                var canvas = (javafx.scene.canvas.Canvas) node("#print-canvas");
+                var image = canvas.snapshot(null, null);
+                Point2D best = null;
+                for (int y = 0; y < image.getHeight(); y++)
+                    for (int x = 0; x < image.getWidth(); x++) {
+                        var color = image.getPixelReader().getColor(x, y);
+                        if (Math.abs(color.getRed() - 114 / 255.0) < .025
+                                && Math.abs(color.getGreen() - 142 / 255.0) < .025
+                                && color.getBlue() > .94
+                                && (best == null || x - y > best.getX() - best.getY())) best = new Point2D(x, y);
+                    }
+                assertNotNull(best, "Z ring is rendered");
+                return canvas.localToScreen(best);
+            });
+            for (boolean cancel : List.of(false, true)) {
+                fx(() -> {
+                    robot.mouseMove(start);
+                    robot.keyPress(KeyCode.SHIFT);
+                    robot.mousePress(MouseButton.PRIMARY);
+                    return null;
+                });
+                Thread.sleep(100);
+                fx(() -> {
+                    robot.mouseMove(start.add(10, 45));
+                    return null;
+                });
+                Thread.sleep(150);
+                assertEquals(original, document().printSetup(), "Rotation preview is transient");
+                if (cancel) key(KeyCode.ESCAPE);
+                fx(() -> {
+                    robot.mouseRelease(MouseButton.PRIMARY);
+                    robot.keyRelease(KeyCode.SHIFT);
+                    return null;
+                });
+                ready();
+                if (cancel) assertEquals(original, document().printSetup());
+                else {
+                    assertNotEquals(original, document().printSetup(), "Ring drag commits rotation");
+                    var matrix = document()
+                            .printSetup()
+                            .instances()
+                            .getFirst()
+                            .transform()
+                            .matrix();
+                    double angle = Math.toDegrees(Math.atan2(matrix[4], matrix[0]));
+                    assertEquals(Math.rint(angle / 15) * 15, angle, 1e-7);
+                    Path saved = directory.resolve("rotated-" + view + ".vxb");
+                    save(saved);
+                    assertEquals(
+                            document().printSetup(), DocumentReader.load(saved).printSetup());
+                    fx(() -> {
+                        Screenshot.save(
+                                stage.getScene(),
+                                Path.of(System.getProperty("voxelbrew.ui.artifacts"))
+                                        .resolve("slicer-gizmos-" + view + ".png"));
+                        return null;
+                    });
+                    shortcut(KeyCode.Z, false);
+                    ready();
+                    assertEquals(original, document().printSetup(), "One undo restores rotation");
+                }
+            }
+        }
+    }
+
+    @Test
     void plateNamesEditInlineCancelUndoAndPersist() throws Exception {
         ready();
         openPrepared("plate-5mm.vxb");

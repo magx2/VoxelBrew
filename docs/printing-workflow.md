@@ -27,6 +27,11 @@ Printer, material and process settings are shared by all plates.
 Click and drag an object in either 2D or the isometric 3D view to move it along the
 bed. Shift snaps the movement to 1 mm steps. Release commits one undoable placement;
 Escape cancels. Numeric placement and rotation remain available in the sidebar.
+The selected object has colored X/Y/Z rotation rings in both views. Drag a ring
+or its letter handle to rotate around that world axis; Shift snaps to 15 degrees.
+Rotation preserves the object's clearance above the plate. Release commits one
+undoable placement change; Escape discards the preview.
+
 Camera gestures match Designer: right-drag or Shift + middle-drag pans; middle-drag
 or left-drag on empty space orbits in 3D and pans in 2D; the wheel zooms. The 2D
 view stays top-down. **Fit view** resets pan and zoom. Each view keeps its own

@@ -100,3 +100,34 @@ cancellation, invalid input, undo, unchanged captions, and save/reopen. Ubuntu
 validation runs the same `PrintPlatesTest` and GUI compilation in a separate Linux
 checkout. Logs: `.tools/plate-names-*.log`. Only the focused native-platform GUI
 test is included; no full E2E or new milestone gate is claimed.
+
+## Rotation-gizmo follow-up
+
+Selected objects show colored X/Y/Z rings and letter handles in 2D and 3D.
+Dragging previews world-axis rotation about the object center while preserving
+bed clearance. Shift snaps to 15 degrees; release commits one undoable placement;
+Escape cancels. Edge-on rings use projected tangent motion. Camera gestures and
+object translation remain available.
+
+Windows validation passed:
+
+```powershell
+.\gradlew.bat --no-daemon spotlessApply :gui:test --tests '*PrintRotationGizmoTest' --tests '*PrintCameraTest' --tests '*PrintPlacementTest' :gui:e2eTest --tests '*WorkbenchUiTest.slicerRotationGizmosPreviewCommitUndoAndCancel' --tests '*WorkbenchUiTest.slicerCameraMatchesDesignerGesturesWithoutEditingPlacement' --console=plain
+```
+
+Unit tests cover all three axes, pivot/clearance preservation, picking, angle
+wrapping, snapping and edge-on dragging. Windows Robot tests cover Z-ring dragging
+in both views, transient preview, undo, cancellation, saved-document roundtrip,
+and camera/translation regression. Screenshots in
+`gui/build/ui-artifacts/slicer-gizmos-print-view-{2d,3d}.png` were visually inspected.
+Log: `.tools/slicer-gizmo-tests.log`.
+
+Ubuntu validation passed on the same source snapshot in a separate Linux checkout:
+
+```bash
+./gradlew --no-daemon --max-workers=2 :gui:test --tests '*PrintRotationGizmoTest' --tests '*PrintCameraTest' --tests '*PrintPlacementTest'
+```
+
+Log: `.tools/slicer-gizmo-ubuntu.log`. No Linux E2E, full E2E suite, new milestone
+gate, or physical-printer qualification is claimed. X/Y mouse gestures and dark
+palette rendering were not separately exercised by Robot tests.

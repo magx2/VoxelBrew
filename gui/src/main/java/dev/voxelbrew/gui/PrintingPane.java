@@ -50,6 +50,10 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
     private double dragX, dragY;
     private BodyInstance dragSource, dragPreview;
     private String dragRevision;
+    private List<PrintRotationGizmo.Ring> rotationRings = List.of();
+    private PrintRotationGizmo.Drag rotationDrag;
+    private PrintRotationGizmo.Axis hoveredRotation;
+    private double rotationDegrees;
     private final ComboBox<String> targetPlate = new ComboBox<>();
     private final ComboBox<String> bodies = new ComboBox<>(),
             instances = new ComboBox<>(),
@@ -357,7 +361,8 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
             draw();
         });
         viewBar.getChildren().add(fitView);
-        canvas.setAccessibleHelp(translations.text("print.cameraHelp"));
+        canvas.setAccessibleHelp(
+                translations.text("print.cameraHelp") + "\n" + translations.text("print.rotationGizmoHelp"));
         placementHint.setTooltip(UiHelp.tooltip(translations.text("print.cameraHelp")));
         viewBar.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
         viewBar.getStyleClass().add("slicer-toolbar");
@@ -373,7 +378,7 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
                 () -> commit(setup().addPlate("plate-"
                         + document.snapshot().document().uuidGenerator().next()))));
         plateBar.getStyleClass().add("slicer-toolbar");
-        placementHint.setText(translations.text("print.dragHint"));
+        placementHint.setText(translations.text("print.dragHint") + " " + translations.text("print.rotationGizmoHelp"));
         placementHint.setWrapText(true);
         placementHint.getStyleClass().add("slicer-hint");
         preview.setTop(new VBox(8, plateBar, viewBar));
@@ -946,6 +951,7 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
         double w = canvas.getWidth(), h = canvas.getHeight();
         graphics.setFill(dark ? Color.web("#182028") : Color.web("#edf1f4"));
         graphics.fillRect(0, 0, w, h);
+        if (rotationDrag == null) rotationRings = List.of();
         if (w < 1 || h < 1) return;
         double extentX = threeDimensional ? Math.hypot(plateWidth, plateDepth) : plateWidth;
         double extentY = threeDimensional ? extentX : plateDepth;
@@ -1050,7 +1056,86 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
                                 box.coordinate(b, 2));
                     }
             }
+            drawRotationGizmo();
         }
+    }
+
+    private void drawRotationGizmo() {
+        if (!document.canExport() || jobs.running()) return;
+        var instance = model.instances().stream()
+                .filter(i -> i.id().equals(instances.getValue()))
+                .findFirst();
+        if (instance.isEmpty() || !model.meshes().containsKey(instance.get().bodyId())) return;
+        if (rotationDrag == null) {
+            var shown = dragPreview == null ? instance.get() : dragPreview;
+            var bounds = MeshGeometry.bounds(model.placedMesh(shown));
+            var center = new javafx.geometry.Point3D(
+                    (bounds.minX() + bounds.maxX()) / 2,
+                    (bounds.minY() + bounds.maxY()) / 2,
+                    (bounds.minZ() + bounds.maxZ()) / 2);
+            double radius = Math.max(
+                    44 / viewScale,
+                    Math.sqrt(Math.pow(bounds.maxX() - bounds.minX(), 2)
+                                            + Math.pow(bounds.maxY() - bounds.minY(), 2)
+                                            + Math.pow(bounds.maxZ() - bounds.minZ(), 2))
+                                    / 2
+                            + 12 / viewScale);
+            rotationRings = Arrays.stream(PrintRotationGizmo.Axis.values())
+                    .map(axis -> PrintRotationGizmo.ring(axis, center, radius, camera(), viewOx, viewOy, viewScale))
+                    .toList();
+        }
+        var graphics = canvas.getGraphicsContext2D();
+        graphics.save();
+        for (var ring : rotationRings) {
+            graphics.setStroke(rotationColor(ring.axis()));
+            graphics.setLineWidth(
+                    (rotationDrag != null && rotationDrag.axis() == ring.axis()) || hoveredRotation == ring.axis()
+                            ? 3.5
+                            : 1.8);
+            double[] x = new double[73], y = new double[73];
+            for (int i = 0; i <= 72; i++) {
+                var point = ring.point(i * Math.PI / 36);
+                x[i] = point.getX();
+                y[i] = point.getY();
+            }
+            graphics.strokePolyline(x, y, x.length);
+            var handle = ring.point(ring.handleAngle());
+            graphics.setFill(dark ? Color.web("#25262a") : Color.WHITE);
+            graphics.fillOval(handle.getX() - 10, handle.getY() - 10, 20, 20);
+            graphics.strokeOval(handle.getX() - 10, handle.getY() - 10, 20, 20);
+            graphics.setFill(rotationColor(ring.axis()));
+            graphics.setTextAlign(javafx.scene.text.TextAlignment.CENTER);
+            graphics.fillText(ring.axis().name(), handle.getX(), handle.getY() + 4);
+        }
+        if (rotationDrag != null && !rotationRings.isEmpty()) {
+            var center = rotationRings.getFirst().center();
+            graphics.setFill(dark ? Color.web("#25262a") : Color.WHITE);
+            graphics.fillRoundRect(center.getX() - 42, center.getY() - 12, 84, 24, 6, 6);
+            graphics.setFill(dark ? Color.WHITE : Color.web("#27282e"));
+            graphics.fillText(
+                    rotationDrag.axis().name() + " " + String.format(Locale.ROOT, "%.1f°", rotationDegrees),
+                    center.getX(),
+                    center.getY() + 4);
+        }
+        graphics.restore();
+    }
+
+    private static Color rotationColor(PrintRotationGizmo.Axis axis) {
+        return switch (axis) {
+            case X -> Color.web("#e46969");
+            case Y -> Color.web("#57ad74");
+            case Z -> Color.web("#728ef5");
+        };
+    }
+
+    private PrintRotationGizmo.Hit rotationHit(double x, double y) {
+        if (toolpathPreview.isSelected() || !document.canExport() || jobs.running()) return null;
+        var pointer = new javafx.geometry.Point2D(x, y);
+        return rotationRings.stream()
+                .map(ring -> ring.hit(pointer))
+                .filter(Objects::nonNull)
+                .min(Comparator.comparingDouble(PrintRotationGizmo.Hit::distance))
+                .orElse(null);
     }
 
     private void updatePreviewControls() {
@@ -1186,6 +1271,8 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
         if (dragSource == null) return false;
         dragSource = null;
         dragPreview = null;
+        rotationDrag = null;
+        hoveredRotation = null;
         canvas.setCursor(javafx.scene.Cursor.OPEN_HAND);
         draw();
         return true;
@@ -1197,6 +1284,16 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
             if (!focused) {
                 cancelDrag();
                 navigating = false;
+            }
+        });
+        canvas.setOnMouseMoved(event -> {
+            if (dragSource != null || navigating) return;
+            var hit = rotationHit(event.getX(), event.getY());
+            var axis = hit == null ? null : hit.ring().axis();
+            canvas.setCursor(axis == null ? javafx.scene.Cursor.OPEN_HAND : javafx.scene.Cursor.CROSSHAIR);
+            if (axis != hoveredRotation) {
+                hoveredRotation = axis;
+                draw();
             }
         });
         canvas.setOnScroll(event -> {
@@ -1223,6 +1320,20 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
             navigating = true;
             primaryNavigation = true;
             if (toolpathPreview.isSelected() || model == null || !document.canExport() || jobs.running()) return;
+            var rotation = rotationHit(event.getX(), event.getY());
+            if (rotation != null) {
+                navigating = false;
+                primaryNavigation = false;
+                dragSource = selected();
+                dragPreview = dragSource;
+                dragRevision = DocumentCodec.fingerprint(document.snapshot().document());
+                rotationDrag =
+                        new PrintRotationGizmo.Drag(rotation, new javafx.geometry.Point2D(event.getX(), event.getY()));
+                rotationDegrees = 0;
+                canvas.setCursor(javafx.scene.Cursor.CROSSHAIR);
+                draw();
+                return;
+            }
             var all = model.instances();
             for (int i = all.size() - 1; i >= 0; i--) {
                 var instance = all.get(i);
@@ -1271,6 +1382,15 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
                 return;
             }
             if (dragSource == null) return;
+            if (rotationDrag != null) {
+                rotationDegrees = rotationDrag.degrees(
+                        new javafx.geometry.Point2D(event.getX(), event.getY()), event.isShiftDown());
+                dragPreview = PrintRotationGizmo.rotate(
+                        dragSource, model.meshes().get(dragSource.bodyId()), rotationDrag.axis(), rotationDegrees);
+                draw();
+                event.consume();
+                return;
+            }
             var delta = camera().bedDelta((event.getX() - dragX) / viewScale, -(event.getY() - dragY) / viewScale);
             if (delta == null) return;
             dragPreview = PrintPlacement.move(dragSource, delta.getX(), delta.getY(), false, event.isShiftDown());

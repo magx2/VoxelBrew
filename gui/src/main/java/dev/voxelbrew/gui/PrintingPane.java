@@ -84,6 +84,7 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
     private PrintSetup lastSetup;
     private DocumentController.Build lastBuild;
     private String validatedRevision = "";
+    private final Tooltip selectedObjectTooltip = new Tooltip();
     private boolean updating, dark, closed;
     private List<Double> previewLayers = List.of();
     private Slicing.Result displayed;
@@ -116,6 +117,7 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
         getStyleClass().add("slicer-workspace");
         canvas.setId("print-canvas");
         canvas.setFocusTraversable(true);
+        Tooltip.install(canvas, selectedObjectTooltip);
         installDragging();
         setPadding(new Insets(8));
         bodies.setId("print-body");
@@ -1025,6 +1027,10 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
     }
 
     private void draw() {
+        String selectedId = instances.getValue();
+        selectedObjectTooltip.setText(
+                selectedId == null || toolpathPreview.isSelected() ? "" : instanceName(selectedId));
+        if (selectedObjectTooltip.getText().isEmpty()) selectedObjectTooltip.hide();
         var graphics = canvas.getGraphicsContext2D();
         localGizmoAxes.setVisible(false);
         double w = canvas.getWidth(), h = canvas.getHeight();
@@ -1552,6 +1558,7 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
                                 ? choice.getPromptText()
                                 : choice.getConverter().toString(item));
                 setGraphic(null);
+                setTooltip(empty || item == null ? null : UiHelp.tooltip(getText()));
             }
         };
     }
@@ -1652,6 +1659,8 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
 
     @Override
     public void close() {
+        selectedObjectTooltip.hide();
+        Tooltip.uninstall(canvas, selectedObjectTooltip);
         closed = true;
         validationSequence++;
         jobs.close();

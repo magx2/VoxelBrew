@@ -37,6 +37,63 @@ import org.junit.jupiter.api.io.TempDir;
 @ExtendWith(UiTestShard.class)
 class WorkbenchUiTest {
     @Test
+    void slicerPlateControlsOrientationAndObjectRemoval() throws Exception {
+        Path input = PreparedDocuments.copy("plate-5mm.vxb", directory);
+        fx(() -> workbench.controller().open(input)).get(20, TimeUnit.SECONDS);
+        ready();
+        click("workspace-print");
+        assertTrue(fx(() -> node("#print-remove-plate-plate-1").isDisabled()));
+        click("print-add");
+        ready();
+        click("print-auto-orient");
+        Thread.sleep(700);
+        ready();
+        fx(() -> {
+            assertNull(stage.getScene().lookup("#print-duplicate"));
+            assertNull(stage.getScene().lookup("#print-face"));
+            assertNull(stage.getScene().lookup("#print-apply-process"));
+            Screenshot.save(
+                    stage.getScene(), Path.of(System.getProperty("voxelbrew.ui.artifacts"), "slicer-ux-placement.png"));
+            return null;
+        });
+        click("print-remove");
+        ready();
+        assertTrue(document().printSetup().instances().isEmpty());
+        click("print-add-plate");
+        ready();
+        String second = document().printSetup().activePlateId();
+        var from = fx(() -> node("#print-plate-plate-1").localToScreen(20, 15));
+        var to = fx(() -> node("#print-plate-" + second).localToScreen(20, 15));
+        // Windows native drag-and-drop blocks the JavaFX Robot call until release.
+        // Drive this gesture from the test thread so release can reach the OS loop.
+        var dragRobot = new java.awt.Robot();
+        dragRobot.mouseMove((int) from.getX(), (int) from.getY());
+        Thread.sleep(150);
+        dragRobot.mousePress(java.awt.event.InputEvent.BUTTON1_DOWN_MASK);
+        try {
+            Thread.sleep(150);
+            dragRobot.mouseMove((int) from.getX() + 12, (int) from.getY());
+            Thread.sleep(200);
+            dragRobot.mouseMove((int) to.getX(), (int) to.getY());
+            Thread.sleep(250);
+        } finally {
+            dragRobot.mouseRelease(java.awt.event.InputEvent.BUTTON1_DOWN_MASK);
+        }
+        Thread.sleep(300);
+        ready();
+        assertEquals(second, document().printSetup().plates().getFirst().id());
+        assertEquals(second, document().printSetup().activePlateId());
+        click("print-remove-plate-plate-1");
+        ready();
+        assertEquals(second, document().printSetup().activePlateId());
+        assertEquals(1, document().printSetup().plates().size());
+        assertTrue(fx(() -> node("#print-remove-plate-" + second).isDisabled()));
+        click("print-tab-job");
+        assertTrue(fx(() -> ((CheckBox) node("#print-overwrite")).isSelected()));
+        assertNull(fx(() -> stage.getScene().lookup("#print-export")));
+    }
+
+    @Test
     void slicerTabsAndJobPreferencesSurviveSaveAndReopen() throws Exception {
         Path input = PreparedDocuments.copy("plate-5mm.vxb", directory);
         fx(() -> workbench.controller().open(input)).get(20, TimeUnit.SECONDS);
@@ -49,8 +106,9 @@ class WorkbenchUiTest {
         ready();
         click("print-tab-process");
         text("print-walls", "4");
-        click("print-apply-process");
+        click("print-tab-job");
         ready();
+        click("print-tab-process");
         text("print-walls", "5");
         click("print-tab-supports");
         text("print-support-width", "7");
@@ -69,10 +127,10 @@ class WorkbenchUiTest {
         ready();
         click("print-tab-job");
         assertEquals(output, fx(() -> ((TextField) node("#print-output")).getText()));
-        assertTrue(fx(() -> ((CheckBox) node("#print-overwrite")).isSelected()));
+        assertFalse(fx(() -> ((CheckBox) node("#print-overwrite")).isSelected()));
         click("print-tab-process");
         assertEquals("5", fx(() -> ((TextField) node("#print-walls")).getText()));
-        assertEquals(4, document().printSetup().process().walls());
+        assertEquals(5, document().printSetup().process().walls());
         click("print-tab-supports");
         assertEquals("7", fx(() -> ((TextField) node("#print-support-width")).getText()));
         click("print-tab-placement");
@@ -5853,7 +5911,7 @@ class WorkbenchUiTest {
         text("print-rotate-z", "90");
         click("print-place");
         ready();
-        click("print-duplicate");
+        click("print-add");
         ready();
         assertEquals(2, document().printSetup().instances().size());
         click("print-remove");
@@ -5861,7 +5919,7 @@ class WorkbenchUiTest {
         assertEquals(1, document().printSetup().instances().size());
         click("print-tab-process");
         choice("print-material", 1);
-        click("print-apply-process");
+        click("print-tab-job");
         ready();
         assertEquals("PETG", document().printSetup().materialId());
         Path file = directory.resolve("GUI print setup.vxb");
@@ -5928,7 +5986,7 @@ class WorkbenchUiTest {
         Files.copy(job, evidence.resolve("GUI printer job.gcode"), StandardCopyOption.REPLACE_EXISTING);
         click("print-tab-process");
         text("print-layer-height", "0.3");
-        click("print-apply-process");
+        click("print-tab-job");
         ready();
         assertEquals(
                 PrintController.State.OUTDATED,

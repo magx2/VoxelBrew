@@ -19,6 +19,7 @@ final class UiHelp {
 
     static String baseDescription(Translations translations, String id) {
         String key = id;
+        if (id.startsWith("print-remove-plate-")) return translations.text("help.print-remove-plate");
         if (id.startsWith("choose-plane-")) return translations.text("help.choose-plane");
         if (id.startsWith("view-") && !id.startsWith("view-cube-")) return translations.text("help.standard-view");
         if (id.equals("menu-undo") || id.equals("menu-redo") || id.equals("menu-parameters") || id.equals("menu-fit"))

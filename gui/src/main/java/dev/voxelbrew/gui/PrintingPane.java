@@ -97,6 +97,9 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
     private String validatedRevision = "";
     private final Tooltip selectedObjectTooltip = UiHelp.tooltip("");
     private final Label selectedObjectName = new Label();
+    private final TabPane tabs = new TabPane();
+    private int selectedFaceIndex;
+    private String selectedFaceBody;
     private boolean updating, dark, closed;
     private List<Double> previewLayers = List.of();
     private Slicing.Result displayed;
@@ -162,6 +165,7 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
         autoSupports.setId("print-auto-supports");
         bedOnly.setId("print-bed-only");
         overwrite.setId("print-overwrite");
+        overwrite.setSelected(true);
         for (var check : List.of(autoSupports, bedOnly, overwrite)) UiHelp.install(check, translations);
         materials.getItems().setAll("PLA", "PETG");
         supportRole.getItems().setAll(SupportVolume.Role.values());
@@ -216,7 +220,9 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
         HBox.setHgrow(rotationSpace, Priority.ALWAYS);
         var gizmoControls = new HBox(8, showRotationGizmos, rotationSpace);
         gizmoControls.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
-        placement.getChildren().addAll(placementCoordinates(false), placementCoordinates(true));
+        placement
+                .getChildren()
+                .addAll(new Separator(), placementCoordinates(false), new Separator(), placementCoordinates(true));
         var applyPlacement = button(translations.text("gui.apply_placement"), "print-place", this::applyPlacement);
         applyPlacement.setMaxWidth(Double.MAX_VALUE);
         placement
@@ -224,10 +230,10 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
                 .addAll(
                         applyPlacement,
                         gizmoControls,
-                        button(translations.text("gui.duplicate_70_mm_x"), "print-duplicate", this::duplicate),
-                        row("print-face", translations.text("gui.planar_face_id_from_current_cad_revision"), "0"),
-                        button(translations.text("gui.lay_face_on_bed"), "print-lay-face", this::layFace),
-                        button(translations.text("gui.remove_instance"), "print-remove", this::removeInstance));
+                        new Separator(),
+                        equalRow(
+                                button(translations.text("gui.lay_face_on_bed"), "print-lay-face", this::layFace),
+                                button(translations.text("print.autoOrient"), "print-auto-orient", this::autoOrient)));
         instances.setOnAction(e -> {
             if (!updating) {
                 loadPlacement();
@@ -264,8 +270,7 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
                 row("print-gap", translations.text("gui.support_contact_gap_mm"), "0.2"),
                 row("print-interfaces", translations.text("gui.interface_layers"), "3"),
                 row("print-brim", translations.text("gui.brim_width_mm"), "0"),
-                row("print-raft", translations.text("gui.raft_layers"), "0"),
-                button(translations.text("gui.apply_process_settings"), "print-apply-process", this::applyProcess));
+                row("print-raft", translations.text("gui.raft_layers"), "0"));
 
         backends.valueProperty().addListener((o, a, b) -> backendStatus.showBackend(b == null ? null : b.id()));
         var capabilities = new Label();
@@ -328,41 +333,18 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
                 7,
                 row("print-output", translations.text("gui.g_code_destination"), ""),
                 overwrite,
-                button(
-                        translations.text("gui.export_geometry_project"),
-                        "print-export",
-                        () -> ExportDialog.choose(
-                                owner,
-                                document,
-                                exporters,
-                                translations,
-                                id -> document.exportDocument(
-                                        exporters.require(id).provider(),
-                                        new DesktopExportWindow(
-                                                        owner,
-                                                        null,
-                                                        document.snapshot()
-                                                                .document()
-                                                                .parameters(),
-                                                        translations,
-                                                        configuration)
-                                                .suggestDestination(geometryDestination())
-                                                .register(
-                                                        dev.voxelbrew.exporter.MeshExportDialog.class,
-                                                        (parent, request) -> ExportDialog.options(
-                                                                parent,
-                                                                document,
-                                                                translations,
-                                                                request.format(),
-                                                                geometryDestination()))))),
                 summary,
                 diagnostics);
         diagnostics.setEditable(false);
         diagnostics.setPrefRowCount(5);
         diagnostics.setId("print-diagnostics");
         summary.setWrapText(true);
-        var tabs = new TabPane(
-                tab("Placement", placement), tab("Process", process), tab("Supports", supports), tab("Job", job));
+        tabs.getTabs()
+                .setAll(
+                        tab("Placement", placement),
+                        tab("Process", process),
+                        tab("Supports", supports),
+                        tab("Job", job));
         tabs.setId("print-controls");
         tabs.setPrefWidth(360);
         tabs.setMinWidth(320);
@@ -386,8 +368,7 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
                 new Label(translations.text("print.printerSelector")),
                 printerChoice,
                 new HBox(8, printerImage, printerDetails),
-                new HBox(
-                        6,
+                equalRow(
                         button(
                                 translations.text("print.reloadPrinters"),
                                 "print-reload-printers",
@@ -411,7 +392,11 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
                 localGizmoAxes.isSelected() ? PrintRotationGizmo.Space.LOCAL : PrintRotationGizmo.Space.WORLD));
         selectedObjectName.setId("print-selected-object-name");
         selectedObjectName.setManaged(false);
-        selectedObjectName.setMouseTransparent(true);
+        var removeObject = button("\u00d7", "print-remove", this::removeInstance);
+        removeObject.setAccessibleText(translations.text("gui.remove_instance"));
+        removeObject.setTooltip(UiHelp.tooltip(translations.text("gui.remove_instance")));
+        selectedObjectName.setGraphic(removeObject);
+        selectedObjectName.setContentDisplay(ContentDisplay.RIGHT);
         selectedObjectName.setVisible(false);
         selectedObjectName.setStyle("-fx-background-color: #25262a; -fx-text-fill: white;"
                 + " -fx-padding: 5 9; -fx-background-radius: 4;");
@@ -585,6 +570,17 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
                 "print-legend",
                 () -> Boolean.toString(legend.isExpanded()),
                 value -> legend.setExpanded(Boolean.parseBoolean(value)));
+        for (String id : List.of("layer-height", "walls", "infill", "threshold", "gap", "interfaces", "brim", "raft")) {
+            var field = fields.get("print-" + id);
+            field.setOnAction(event -> saveProcess());
+            field.focusedProperty().addListener((o, before, focused) -> {
+                if (!focused) saveProcess();
+            });
+        }
+        backends.setOnAction(event -> saveProcess());
+        materials.setOnAction(event -> saveProcess());
+        autoSupports.setOnAction(event -> saveProcess());
+        bedOnly.setOnAction(event -> saveProcess());
         workspace.initialize();
         document.printWorkspace(workspace::capture);
         jobs.onChanged(this::updateJob);
@@ -593,6 +589,9 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
 
     private Tab tab(String name, VBox content) {
         content.setPadding(new Insets(8));
+        for (var child : content.getChildren()) {
+            if (child instanceof Control control) control.setMaxWidth(Double.MAX_VALUE);
+        }
         content.getChildren().stream().filter(n -> n instanceof Label).forEach(n -> ((Label) n).setWrapText(true));
         var scroll = new ScrollPane(content);
         scroll.setFitToWidth(true);
@@ -665,8 +664,10 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
     private Button button(String title, String id, Runnable action) {
         var button = new Button(title);
         button.setId(id);
+        button.setMaxWidth(Double.MAX_VALUE);
         UiHelp.install(button, translations);
         button.setOnAction(e -> {
+            e.consume();
             try {
                 action.run();
             } catch (RuntimeException failure) {
@@ -761,30 +762,6 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
                 .toList()));
     }
 
-    private void duplicate() {
-        var source = selected();
-        String id = "part-" + document.snapshot().document().uuidGenerator().next();
-        var all = new ArrayList<>(setup().instances());
-        all.add(new BodyInstance(
-                id, source.bodyId(), Transform.translation(70, 0, 0).compose(source.transform())));
-        var supports = new ArrayList<>(setup().supports());
-        for (var s : setup().supports())
-            if (s.instanceId().equals(source.id()))
-                supports.add(new SupportVolume(
-                        "support-"
-                                + document.snapshot().document().uuidGenerator().next(),
-                        id,
-                        s.role(),
-                        s.x(),
-                        s.y(),
-                        s.z(),
-                        s.width(),
-                        s.depth(),
-                        s.height()));
-        commit(setup().withInstances(all).withSupports(supports));
-        instances.setValue(id);
-    }
-
     private void removeInstance() {
         var id = selected().id();
         commit(setup().withInstances(setup().instances().stream()
@@ -805,13 +782,17 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
         replace(new BodyInstance(
                 selected.id(),
                 selected.bodyId(),
-                MeshGeometry.layOnFace(mesh, integer("print-face"), selected.transform())));
+                MeshGeometry.layOnFace(
+                        mesh,
+                        Objects.equals(selectedFaceBody, selected.bodyId()) ? selectedFaceIndex : 0,
+                        selected.transform())));
     }
 
     void selectedFace(String body, int face) {
         if (face >= 0) {
             bodies.setValue(body);
-            fields.get("print-face").setText(Integer.toString(face));
+            selectedFaceIndex = face;
+            selectedFaceBody = body;
         }
     }
 
@@ -858,11 +839,12 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
                 integer("print-interfaces"),
                 number("print-brim"),
                 integer("print-raft"));
-        commit(setup().withProfile(
+        var next = setup().withProfile(
                         backend.id(),
                         setup().printerId(),
                         Objects.requireNonNull(materials.getValue(), translations.text("gui.choose_a_material")),
-                        process));
+                        process);
+        if (!next.equals(setup())) commit(next);
     }
 
     private void applySupport() {
@@ -910,11 +892,6 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
                 });
     }
 
-    private Path geometryDestination() {
-        String output = fields.get("print-output").evaluatedText();
-        return output.isBlank() ? null : Path.of(output);
-    }
-
     private void slice() {
         slice(false);
     }
@@ -931,11 +908,13 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
         } catch (java.io.IOException failure) {
             throw new IllegalStateException(translations.text("slicer.settings.failed", failure.getMessage()), failure);
         }
+        applyProcess();
         var snapshot = document.snapshot().document();
         var destination = Path.of(fields.get("print-output").evaluatedText());
         var future = allPlates
                 ? jobs.startAll(snapshot, backend, null, batchDestinations(destination), overwrite.isSelected())
                 : jobs.start(snapshot, backend, null, destination, overwrite.isSelected());
+        tabs.getSelectionModel().select(3);
         future.exceptionally(failure -> null);
     }
 
@@ -1264,6 +1243,20 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
                     }
                     graphics.fillPolygon(x, y, 3);
                 }
+                graphics.setStroke(Color.BLACK);
+                graphics.setLineWidth(1);
+                var body = document.build().bodies().stream()
+                        .filter(b -> b.id().equals(instance.bodyId()))
+                        .findFirst();
+                if (body.isPresent())
+                    for (var edge : body.get().edges().edges()) {
+                        if (!edge.boundary()) continue;
+                        var a = shown.transform()
+                                .apply(edge.a().x(), edge.a().y(), edge.a().z());
+                        var b = shown.transform()
+                                .apply(edge.b().x(), edge.b().y(), edge.b().z());
+                        line(ox, oy, scale, a[0], a[1], a[2], b[0], b[1], b[2]);
+                    }
                 if (selected) {
                     selectedObjectName.setText(instanceName(instance.id()));
                     selectedObjectName.setMaxWidth(Math.max(0, w - 16));
@@ -1485,23 +1478,36 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
                     commit(setup().selectPlate(plate.id()));
                 } else tab.setSelected(true);
             });
+            var remove = button("\u00d7", "print-remove-plate-" + plate.id(), () -> removePlate(plate.id()));
+            remove.setAccessibleText(translations.text("print.removePlate") + " " + plateName(plate.id()));
+            remove.setTooltip(UiHelp.tooltip(translations.text("print.removePlate")));
+            remove.setDisable(setup().plates().size() == 1);
+            tab.setGraphic(remove);
+            tab.setContentDisplay(ContentDisplay.RIGHT);
+            tab.setOnDragDetected(event -> {
+                var drag = tab.startDragAndDrop(javafx.scene.input.TransferMode.MOVE);
+                var content = new javafx.scene.input.ClipboardContent();
+                content.putString(plate.id());
+                drag.setContent(content);
+                event.consume();
+            });
+            tab.setOnDragOver(event -> {
+                if (event.getGestureSource() instanceof ToggleButton source
+                        && source.getToggleGroup() == group
+                        && event.getDragboard().hasString()
+                        && !plate.id().equals(event.getDragboard().getString()))
+                    event.acceptTransferModes(javafx.scene.input.TransferMode.MOVE);
+                event.consume();
+            });
+            tab.setOnDragDropped(event -> {
+                if (event.getGestureSource() instanceof ToggleButton source && source.getToggleGroup() == group) {
+                    commit(PrintPlacement.reorder(setup(), event.getDragboard().getString(), plate.id()));
+                    event.setDropCompleted(true);
+                }
+                event.consume();
+            });
             plateStrip.getChildren().add(tab);
         }
-        var remove = button(translations.text("print.removePlate"), "print-remove-plate", () -> {
-            if (!setup().instances().isEmpty() || !setup().supports().isEmpty()) {
-                var confirm = new Alert(
-                        Alert.AlertType.CONFIRMATION,
-                        translations.text("print.removePlateConfirm"),
-                        ButtonType.OK,
-                        ButtonType.CANCEL);
-                confirm.setHeaderText(translations.text("print.removePlate"));
-                if (Dialogs.show(confirm, getScene().getWindow(), translations).orElse(ButtonType.CANCEL)
-                        != ButtonType.OK) return;
-            }
-            commit(setup().removeActivePlate());
-        });
-        remove.setDisable(setup().plates().size() == 1);
-        plateStrip.getChildren().add(remove);
         targetPlate
                 .getItems()
                 .setAll(setup().plates().stream()
@@ -1510,6 +1516,60 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
                         .toList());
         targetPlate.getSelectionModel().selectFirst();
         targetPlate.setDisable(targetPlate.getItems().isEmpty());
+    }
+
+    private void removePlate(String id) {
+        if (setup().plates().size() == 1) return;
+        var removing = setup().selectPlate(id);
+        if (!removing.instances().isEmpty() || !removing.supports().isEmpty()) {
+            var confirm = new Alert(
+                    Alert.AlertType.CONFIRMATION,
+                    translations.text("print.removePlateConfirm"),
+                    ButtonType.OK,
+                    ButtonType.CANCEL);
+            confirm.setHeaderText(translations.text("print.removePlate"));
+            if (Dialogs.show(confirm, getScene().getWindow(), translations).orElse(ButtonType.CANCEL) != ButtonType.OK)
+                return;
+        }
+        var next = removing.removeActivePlate();
+        if (!id.equals(setup().activePlateId())) next = next.selectPlate(setup().activePlateId());
+        commit(next);
+    }
+
+    private static HBox equalRow(Button... buttons) {
+        var row = new HBox(6);
+        for (var button : buttons) {
+            button.setMinWidth(0);
+            button.setPrefWidth(0);
+            button.setMaxWidth(Double.MAX_VALUE);
+            button.setWrapText(true);
+            HBox.setHgrow(button, Priority.ALWAYS);
+            row.getChildren().add(button);
+        }
+        return row;
+    }
+
+    private void saveProcess() {
+        if (updating || backends.getValue() == null || materials.getValue() == null) return;
+        try {
+            applyProcess();
+        } catch (IllegalArgumentException failure) {
+            status.setText(failure.getMessage());
+        }
+    }
+
+    private void autoOrient() {
+        var source = selected();
+        var mesh = model.meshes().get(source.bodyId());
+        String revision = DocumentCodec.fingerprint(document.snapshot().document());
+        CompletableFuture.supplyAsync(() -> PrintPlacement.autoOrient(mesh, source.transform()), validator)
+                .whenComplete((placement, failure) -> Platform.runLater(() -> {
+                    if (closed
+                            || !revision.equals(DocumentCodec.fingerprint(
+                                    document.snapshot().document()))) return;
+                    if (failure != null) status.setText(failure.getCause().getMessage());
+                    else replace(new BodyInstance(source.id(), source.bodyId(), placement));
+                }));
     }
 
     private void renamePlate(String plateId, ToggleButton tab) {

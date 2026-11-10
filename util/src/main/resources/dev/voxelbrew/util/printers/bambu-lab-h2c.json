@@ -1,0 +1,37 @@
+{
+  "version": 1,
+  "id": "bambu-lab-h2c",
+  "manufacturer": "Bambu Lab",
+  "name": "H2C",
+  "nozzleMm": 0.4,
+  "filamentDiameterMm": 1.75,
+  "toolCount": 2,
+  "bed": [
+    [
+      0,
+      0
+    ],
+    [
+      300,
+      0
+    ],
+    [
+      300,
+      320
+    ],
+    [
+      0,
+      320
+    ]
+  ],
+  "excludedZones": [],
+  "usableHeightMm": 325,
+  "firmware": "vendor",
+  "outputFormat": "gcode",
+  "genericGcode": false,
+  "image": "enclosed.png",
+  "sources": [
+    "https://csm.bblcdn.com/hub/eff78da43720461787dc8bbe5fa0372d.pdf"
+  ],
+  "notes": "Conservative dual-nozzle intersection; six interchangeable right hotends do not add extruders."
+}

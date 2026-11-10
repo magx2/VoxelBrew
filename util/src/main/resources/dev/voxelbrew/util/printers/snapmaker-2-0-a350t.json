@@ -1,0 +1,37 @@
+{
+  "version": 1,
+  "id": "snapmaker-2-0-a350t",
+  "manufacturer": "Snapmaker",
+  "name": "2.0 A350T",
+  "nozzleMm": 0.4,
+  "filamentDiameterMm": 1.75,
+  "toolCount": 1,
+  "bed": [
+    [
+      0,
+      0
+    ],
+    [
+      320,
+      0
+    ],
+    [
+      320,
+      350
+    ],
+    [
+      0,
+      350
+    ]
+  ],
+  "excludedZones": [],
+  "usableHeightMm": 330,
+  "firmware": "vendor",
+  "outputFormat": "gcode",
+  "genericGcode": false,
+  "image": "generic.png",
+  "sources": [
+    "https://s3-us-west-2.amazonaws.com/snapmaker.com/download/manual/Snapmaker2_A250_EN_V1.3.0.pdf"
+  ],
+  "notes": "Stock single extrusion module, without quick swap or bracing accessories."
+}

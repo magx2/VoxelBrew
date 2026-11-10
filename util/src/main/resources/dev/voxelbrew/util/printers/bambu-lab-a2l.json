@@ -1,0 +1,37 @@
+{
+  "version": 1,
+  "id": "bambu-lab-a2l",
+  "manufacturer": "Bambu Lab",
+  "name": "A2L",
+  "nozzleMm": 0.4,
+  "filamentDiameterMm": 1.75,
+  "toolCount": 1,
+  "bed": [
+    [
+      0,
+      0
+    ],
+    [
+      330,
+      0
+    ],
+    [
+      330,
+      320
+    ],
+    [
+      0,
+      320
+    ]
+  ],
+  "excludedZones": [],
+  "usableHeightMm": 325,
+  "firmware": "vendor",
+  "outputFormat": "gcode",
+  "genericGcode": false,
+  "image": "enclosed.png",
+  "sources": [
+    "https://www.prnewswire.com/news-releases/bambu-lab-launches-a2l-creative-playground-extra-large-302785609.html"
+  ],
+  "notes": ""
+}

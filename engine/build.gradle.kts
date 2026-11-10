@@ -11,6 +11,7 @@ dependencies {
     add("integrationTestImplementation", project(":impl:importer"))
     add("integrationTestImplementation", project(":impl:exporter"))
     implementation(project(":util"))
+    implementation("com.google.code.gson:gson:2.15.0")
     api("javax.measure:unit-api:2.2")
     implementation("tech.units:indriya:2.2.4")
     compileOnly("org.apiguardian:apiguardian-api:1.1.2")

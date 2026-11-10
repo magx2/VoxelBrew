@@ -1,0 +1,37 @@
+{
+  "version": 1,
+  "id": "bambu-lab-a1-mini",
+  "manufacturer": "Bambu Lab",
+  "name": "A1 mini",
+  "nozzleMm": 0.4,
+  "filamentDiameterMm": 1.75,
+  "toolCount": 1,
+  "bed": [
+    [
+      0,
+      0
+    ],
+    [
+      180,
+      0
+    ],
+    [
+      180,
+      180
+    ],
+    [
+      0,
+      180
+    ]
+  ],
+  "excludedZones": [],
+  "usableHeightMm": 180,
+  "firmware": "vendor",
+  "outputFormat": "gcode",
+  "genericGcode": false,
+  "image": "enclosed.png",
+  "sources": [
+    "https://bambulab.com/en-us/a1-mini/tech-specs"
+  ],
+  "notes": ""
+}

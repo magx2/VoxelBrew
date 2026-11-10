@@ -1,0 +1,37 @@
+{
+  "version": 1,
+  "id": "generic-marlin-200-0.4",
+  "manufacturer": "Generic",
+  "name": "Marlin 200",
+  "nozzleMm": 0.4,
+  "filamentDiameterMm": 1.75,
+  "toolCount": 1,
+  "bed": [
+    [
+      0,
+      0
+    ],
+    [
+      200,
+      0
+    ],
+    [
+      200,
+      200
+    ],
+    [
+      0,
+      200
+    ]
+  ],
+  "excludedZones": [],
+  "usableHeightMm": 200,
+  "firmware": "marlin2",
+  "outputFormat": "gcode",
+  "genericGcode": true,
+  "image": "generic.png",
+  "sources": [
+    "docs/printing-workflow.md"
+  ],
+  "notes": ""
+}

@@ -1,0 +1,37 @@
+{
+  "version": 1,
+  "id": "prusa-xl-plus-2-tool",
+  "manufacturer": "Prusa",
+  "name": "XL+ 2-tool",
+  "nozzleMm": 0.4,
+  "filamentDiameterMm": 1.75,
+  "toolCount": 2,
+  "bed": [
+    [
+      0,
+      0
+    ],
+    [
+      360,
+      0
+    ],
+    [
+      360,
+      360
+    ],
+    [
+      0,
+      360
+    ]
+  ],
+  "excludedZones": [],
+  "usableHeightMm": 360,
+  "firmware": "vendor",
+  "outputFormat": "gcode",
+  "genericGcode": false,
+  "image": "enclosed.png",
+  "sources": [
+    "https://www.prusa3d.com/product/original-prusa-xl-semi-assembled-5-toolhead-3d-printer/"
+  ],
+  "notes": ""
+}

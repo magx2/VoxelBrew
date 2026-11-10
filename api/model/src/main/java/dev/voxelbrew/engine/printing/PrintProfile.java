@@ -88,6 +88,19 @@ public record PrintProfile(
     }
 
     public static PrintProfile resolve(PrintSetup setup) {
+        if (setup.printerSnapshot() != null) {
+            var snapshot = setup.printerSnapshot();
+            var legacy = resolve(PrintSetup.empty()
+                    .withProfile(setup.backendId(), "generic-marlin-200-0.4", setup.materialId(), setup.process()));
+            return new PrintProfile(
+                    snapshot.printer(),
+                    new Material(
+                            legacy.material().id(),
+                            snapshot.filamentDiameter(),
+                            legacy.material().nozzleTemperature(),
+                            legacy.material().bedTemperature()),
+                    setup.process());
+        }
         double width = 200, depth = 200, height = 200;
         if (setup.printerId().startsWith("generic-marlin-rect-")
                 && setup.printerId().endsWith("-0.4")) {

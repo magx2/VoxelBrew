@@ -1,0 +1,37 @@
+{
+  "version": 1,
+  "id": "prusa-mk2-5",
+  "manufacturer": "Prusa",
+  "name": "MK2.5",
+  "nozzleMm": 0.4,
+  "filamentDiameterMm": 1.75,
+  "toolCount": 1,
+  "bed": [
+    [
+      0,
+      0
+    ],
+    [
+      250,
+      0
+    ],
+    [
+      250,
+      210
+    ],
+    [
+      0,
+      210
+    ]
+  ],
+  "excludedZones": [],
+  "usableHeightMm": 200,
+  "firmware": "vendor",
+  "outputFormat": "gcode",
+  "genericGcode": false,
+  "image": "generic.png",
+  "sources": [
+    "https://github.com/prusa3d/PrusaSlicer-settings/tree/master/live/PrusaResearch"
+  ],
+  "notes": ""
+}

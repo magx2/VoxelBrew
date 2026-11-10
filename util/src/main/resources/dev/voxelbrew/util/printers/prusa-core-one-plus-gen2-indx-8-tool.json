@@ -1,0 +1,37 @@
+{
+  "version": 1,
+  "id": "prusa-core-one-plus-gen2-indx-8-tool",
+  "manufacturer": "Prusa",
+  "name": "CORE One+ Gen2 INDX 8-tool",
+  "nozzleMm": 0.4,
+  "filamentDiameterMm": 1.75,
+  "toolCount": 8,
+  "bed": [
+    [
+      0,
+      0
+    ],
+    [
+      248,
+      0
+    ],
+    [
+      248,
+      205
+    ],
+    [
+      0,
+      205
+    ]
+  ],
+  "excludedZones": [],
+  "usableHeightMm": 270,
+  "firmware": "vendor",
+  "outputFormat": "gcode",
+  "genericGcode": false,
+  "image": "enclosed.png",
+  "sources": [
+    "https://www.prusa3d.com/product/prusa-core-one-gen-2-indx-8-tool/"
+  ],
+  "notes": ""
+}

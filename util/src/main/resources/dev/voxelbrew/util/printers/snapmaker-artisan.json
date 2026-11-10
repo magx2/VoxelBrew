@@ -1,0 +1,37 @@
+{
+  "version": 1,
+  "id": "snapmaker-artisan",
+  "manufacturer": "Snapmaker",
+  "name": "Artisan",
+  "nozzleMm": 0.4,
+  "filamentDiameterMm": 1.75,
+  "toolCount": 2,
+  "bed": [
+    [
+      0,
+      0
+    ],
+    [
+      350,
+      0
+    ],
+    [
+      350,
+      400
+    ],
+    [
+      0,
+      400
+    ]
+  ],
+  "excludedZones": [],
+  "usableHeightMm": 400,
+  "firmware": "vendor",
+  "outputFormat": "gcode",
+  "genericGcode": false,
+  "image": "generic.png",
+  "sources": [
+    "https://shop.snapmaker.com/pages/snapmaker-3d-printer"
+  ],
+  "notes": "Shared dual-nozzle area; single nozzle operation can use a larger width."
+}

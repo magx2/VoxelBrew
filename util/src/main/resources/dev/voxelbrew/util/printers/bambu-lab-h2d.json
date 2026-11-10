@@ -1,0 +1,37 @@
+{
+  "version": 1,
+  "id": "bambu-lab-h2d",
+  "manufacturer": "Bambu Lab",
+  "name": "H2D",
+  "nozzleMm": 0.4,
+  "filamentDiameterMm": 1.75,
+  "toolCount": 2,
+  "bed": [
+    [
+      0,
+      0
+    ],
+    [
+      300,
+      0
+    ],
+    [
+      300,
+      320
+    ],
+    [
+      0,
+      320
+    ]
+  ],
+  "excludedZones": [],
+  "usableHeightMm": 325,
+  "firmware": "vendor",
+  "outputFormat": "gcode",
+  "genericGcode": false,
+  "image": "enclosed.png",
+  "sources": [
+    "https://bambulab.com/en-us/h2d/specs"
+  ],
+  "notes": "Shared dual-nozzle area, not the total union of both nozzle ranges."
+}

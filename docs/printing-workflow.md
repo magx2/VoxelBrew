@@ -198,3 +198,73 @@ Adaptive layers, organic/tree supports, painted regions, multiple materials and
 generated support mesh export are **unavailable**, not qualified capabilities.
 The paths-only backend offers a sliced job and explicit custom pillars instead.
 General constraints and sketches attached to generated faces remain later work.
+
+## Printer presets
+
+Use the searchable printer selector above the Slicer tabs. A choice applies to all
+plates in this project, updates the bed outline and preflight limits, and creates
+one undoable edit. Existing objects are not moved. The project stores a complete
+hardware snapshot (print-setup version 4), so another computer does not need the
+same preset installed. Existing version 1?3 setups still load normally.
+
+**Reload printers** discovers local changes without changing the saved selection.
+Select the preset again to adopt updated values. Editing dimensions creates a
+project-local **Modified** snapshot; it does not edit the JSON source. Bed polygons
+and red excluded areas are rendered in both views.
+
+Bundled JSON files and schematic images live in `util` resources. See the
+[dated model inventory](printer-catalog.md). These are hardware/layout presets;
+manufacturer-specific startup, calibration, toolchanging and output packaging
+are not implemented. Vendor entries therefore support layout, preflight and mesh
+export, with slicing explicitly unavailable. Generic single-tool Marlin 2 presets
+use the existing backend restrictions (Prusa currently requires a 0.4 mm nozzle).
+
+CLI: `printers` lists IDs; `print-settings part.vxb --printer bambu-lab-a1-mini`
+saves that preset into the project. `print-setup part.vxb` reports its identity.
+
+### Creating a custom printer
+
+Create a UTF-8 `.json` file directly in `~/.voxelbrew/printers/` (Windows:
+`%USERPROFILE%\.voxelbrew\printers`). `-Dvoxelbrew.home=...` relocates that folder.
+Use **Open folder** to create/open it, then **Reload printers** after saving.
+All dimensions are in millimeters. IDs must be unique; a custom file cannot
+replace a bundled ID. Conflicting custom IDs are both excluded. Invalid files
+produce individual diagnostics while the remaining catalog stays available.
+
+```json
+{
+  "version": 1,
+  "id": "my-printer",
+  "manufacturer": "Custom",
+  "name": "Workshop printer",
+  "bed": [
+    [0, 0],
+    [220, 0],
+    [220, 220],
+    [0, 220]
+  ],
+  "excludedZones": [],
+  "usableHeightMm": 250,
+  "nozzleMm": 0.4,
+  "filamentDiameterMm": 1.75,
+  "toolCount": 1,
+  "firmware": "marlin2",
+  "outputFormat": "gcode",
+  "genericGcode": true
+}
+```
+
+`genericGcode: true` explicitly requests the generic process, without any
+manufacturer startup routines. Use `false` for hardware that needs vendor
+integration. It requires one tool, Marlin 2 and text G-code when enabled.
+Place an optional image beside the JSON with the same filename stem: `foo.json`
+uses `foo.png`. Images are selected in this order: PNG, JPG, JPEG, GIF, BMP.
+Extensions are case-insensitive (for example, `foo.PNG` is supported). The stem
+must match the JSON filename, not the printer ID. Custom presets ignore the
+`image` field; bundled presets retain their shared resource images.
+
+Missing or unreadable images fall back to a bundled illustration. Inaccessible
+or oversized candidates are skipped; an image that fails decoding uses the
+bundled illustration. No network images are loaded. JSON files are limited to
+1 MiB and images to 5 MiB. SVG, WebP and TIFF are not supported by the current
+JavaFX 21 image loader.

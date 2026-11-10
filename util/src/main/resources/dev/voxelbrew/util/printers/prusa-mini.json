@@ -1,0 +1,37 @@
+{
+  "version": 1,
+  "id": "prusa-mini",
+  "manufacturer": "Prusa",
+  "name": "MINI",
+  "nozzleMm": 0.4,
+  "filamentDiameterMm": 1.75,
+  "toolCount": 1,
+  "bed": [
+    [
+      0,
+      0
+    ],
+    [
+      180,
+      0
+    ],
+    [
+      180,
+      180
+    ],
+    [
+      0,
+      180
+    ]
+  ],
+  "excludedZones": [],
+  "usableHeightMm": 180,
+  "firmware": "vendor",
+  "outputFormat": "gcode",
+  "genericGcode": false,
+  "image": "generic.png",
+  "sources": [
+    "https://www.prusa3d.com/product/original-prusa-mini-semi-assembled-3d-printer-4/"
+  ],
+  "notes": ""
+}

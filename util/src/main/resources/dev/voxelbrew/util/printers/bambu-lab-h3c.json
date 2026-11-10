@@ -1,0 +1,37 @@
+{
+  "version": 1,
+  "id": "bambu-lab-h3c",
+  "manufacturer": "Bambu Lab",
+  "name": "H3C",
+  "nozzleMm": 0.4,
+  "filamentDiameterMm": 1.75,
+  "toolCount": 9,
+  "bed": [
+    [
+      0,
+      0
+    ],
+    [
+      330,
+      0
+    ],
+    [
+      330,
+      320
+    ],
+    [
+      0,
+      320
+    ]
+  ],
+  "excludedZones": [],
+  "usableHeightMm": 325,
+  "firmware": "vendor",
+  "outputFormat": "gcode",
+  "genericGcode": false,
+  "image": "enclosed.png",
+  "sources": [
+    "https://blog.bambulab.com/tool-changer-game-changer-bambu-lab-presents-h3c-the-defining-new-generation-of-3d-printers/"
+  ],
+  "notes": ""
+}

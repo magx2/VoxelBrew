@@ -24,6 +24,10 @@ public final class ApplicationPaths {
         return home().resolve("plugins");
     }
 
+    public static Path printers() {
+        return home().resolve("printers");
+    }
+
     public static Path logs() {
         return home().resolve("log");
     }

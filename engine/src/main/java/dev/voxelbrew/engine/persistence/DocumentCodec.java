@@ -303,10 +303,62 @@ public final class DocumentCodec {
         return message.build();
     }
 
+    private static PrinterDefinition fromProto(DocumentProto.PrinterSnapshot p) {
+        return new PrinterDefinition(
+                new PrintProfile.Printer(
+                        p.getId(),
+                        p.getName(),
+                        p.getNozzleMm(),
+                        p.getBedList().stream()
+                                .map(v -> new PrintProfile.Point(v.getX(), v.getY()))
+                                .toList(),
+                        p.getExcludedZonesList().stream()
+                                .map(z -> z.getPointsList().stream()
+                                        .map(v -> new PrintProfile.Point(v.getX(), v.getY()))
+                                        .toList())
+                                .toList(),
+                        p.getUsableHeight(),
+                        p.getFirmware(),
+                        p.getOutputFormat()),
+                p.getManufacturer(),
+                p.getFilamentDiameter(),
+                p.getToolCount(),
+                p.getGenericGcode(),
+                p.getModified());
+    }
+
+    private static DocumentProto.PrinterPoint point(PrintProfile.Point p) {
+        return DocumentProto.PrinterPoint.newBuilder().setX(p.x()).setY(p.y()).build();
+    }
+
+    private static DocumentProto.PrinterSnapshot toProto(PrinterDefinition definition) {
+        var p = definition.printer();
+        var out = DocumentProto.PrinterSnapshot.newBuilder()
+                .setId(p.id())
+                .setName(p.name())
+                .setManufacturer(definition.manufacturer())
+                .setNozzleMm(p.nozzleMm())
+                .addAllBed(p.bed().stream().map(DocumentCodec::point).toList())
+                .setUsableHeight(p.usableHeight())
+                .setFirmware(p.firmware())
+                .setOutputFormat(p.outputFormat())
+                .setFilamentDiameter(definition.filamentDiameter())
+                .setToolCount(definition.toolCount())
+                .setGenericGcode(definition.genericGcode())
+                .setModified(definition.modified());
+        for (var zone : p.excludedZones())
+            out.addExcludedZones(DocumentProto.PrinterPolygon.newBuilder()
+                    .addAllPoints(zone.stream().map(DocumentCodec::point).toList()));
+        return out.build();
+    }
+
     private static PrintSetup fromProto(DocumentProto.PrintSetup setup) {
-        if (setup.getVersion() == 2 || setup.getVersion() == 3) {
+        if (setup.hasPrinterSnapshot() && setup.getVersion() != 4)
+            throw new IllegalArgumentException("Printer snapshot requires print setup version 4");
+        if (setup.getVersion() >= 2 && setup.getVersion() <= 4) {
             var base = fromProto(setup.toBuilder()
                     .setVersion(1)
+                    .clearPrinterSnapshot()
                     .clearPlates()
                     .clearActivePlateId()
                     .build());
@@ -314,6 +366,7 @@ public final class DocumentCodec {
                     .map(plate -> {
                         var contents = fromProto(setup.toBuilder()
                                 .setVersion(1)
+                                .clearPrinterSnapshot()
                                 .clearPlates()
                                 .clearActivePlateId()
                                 .clearInstances()
@@ -333,7 +386,8 @@ public final class DocumentCodec {
                     base.materialId(),
                     base.process(),
                     plates,
-                    setup.getActivePlateId());
+                    setup.getActivePlateId(),
+                    setup.hasPrinterSnapshot() ? fromProto(setup.getPrinterSnapshot()) : null);
         }
         var p = setup.getProcess();
         var process = new ProcessSettings(
@@ -401,6 +455,7 @@ public final class DocumentCodec {
                         .setInterfaceLayers(p.interfaceLayers())
                         .setBrimWidth(p.brimWidth())
                         .setRaftLayers(p.raftLayers()));
+        if (setup.printerSnapshot() != null) out.setPrinterSnapshot(toProto(setup.printerSnapshot()));
         for (var i : setup.instances())
             out.addInstances(DocumentProto.PrintInstance.newBuilder()
                     .setId(i.id())

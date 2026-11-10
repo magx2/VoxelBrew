@@ -30,6 +30,7 @@ final class PrintingCommands {
         cli.addSubcommand("print-setup", Setup.class);
         cli.addSubcommand("validate", Validate.class);
         cli.addSubcommand("slicers", Slicers.class);
+        cli.addSubcommand("printers", Printers.class);
         cli.addSubcommand("slice", Slice.class);
         cli.addSubcommand("inspect-job", InspectJob.class);
     }
@@ -211,14 +212,16 @@ final class PrintingCommands {
     @Command(
             name = "print-settings",
             mixinStandardHelpOptions = true,
-            description =
-                    "Edit the persisted generic 0.4 mm printer, material and process. Unspecified values are retained.")
+            description = "Edit the persisted printer, material and process. Unspecified values are retained.")
     static final class Settings extends VoxelBrew.FileCommand {
 
         @javax.inject.Inject
-        Settings(DocumentSource documents, DocumentOutput documentWriter) {
+        Settings(DocumentSource documents, DocumentOutput documentWriter, PrinterCatalog printers) {
             super(documents, documentWriter);
+            this.printers = printers;
         }
+
+        private final PrinterCatalog printers;
 
         @Option(names = "--backend")
         String backend;
@@ -280,6 +283,10 @@ final class PrintingCommands {
                     or(printer, setup.printerId()),
                     or(material, setup.materialId()),
                     next));
+            if (printer != null && !printer.startsWith("generic-marlin-rect-"))
+                session.setPrintSetup(session.document()
+                        .printSetup()
+                        .withPrinter(printers.load().require(printer)));
             PrintProfile.resolve(session.document().printSetup());
             return save(session);
         }
@@ -434,6 +441,39 @@ final class PrintingCommands {
             result.diagnostics().forEach(spec.commandLine().getErr()::println);
             spec.commandLine().getOut().println(result.valid() ? "VALID" : "INVALID");
             return result.valid() ? 0 : 1;
+        }
+    }
+
+    @Command(
+            name = "printers",
+            mixinStandardHelpOptions = true,
+            description = "List bundled and custom printer hardware presets.")
+    @RequiredArgsConstructor(access = AccessLevel.PACKAGE, onConstructor_ = @javax.inject.Inject)
+    static final class Printers implements Callable<Integer> {
+        private final PrinterCatalog printers;
+
+        @Spec
+        CommandLine.Model.CommandSpec spec;
+
+        @Override
+        public Integer call() {
+            var result = printers.load();
+            for (var entry : result.entries()) {
+                var p = entry.definition();
+                spec.commandLine()
+                        .getOut()
+                        .printf(
+                                java.util.Locale.ROOT,
+                                "%s\t%s\t%.1f mm height\t%.2f mm nozzle\t%d tools\t%s%n",
+                                p.printer().id(),
+                                entry,
+                                p.printer().usableHeight(),
+                                p.printer().nozzleMm(),
+                                p.toolCount(),
+                                p.genericGcode() ? "generic-gcode" : "layout-only");
+            }
+            result.diagnostics().forEach(spec.commandLine().getErr()::println);
+            return 0;
         }
     }
 

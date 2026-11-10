@@ -1,0 +1,37 @@
+{
+  "version": 1,
+  "id": "prusa-i3-mk1",
+  "manufacturer": "Prusa",
+  "name": "i3 MK1",
+  "nozzleMm": 0.4,
+  "filamentDiameterMm": 1.75,
+  "toolCount": 1,
+  "bed": [
+    [
+      0,
+      0
+    ],
+    [
+      200,
+      0
+    ],
+    [
+      200,
+      200
+    ],
+    [
+      0,
+      200
+    ]
+  ],
+  "excludedZones": [],
+  "usableHeightMm": 200,
+  "firmware": "vendor",
+  "outputFormat": "gcode",
+  "genericGcode": false,
+  "image": "generic.png",
+  "sources": [
+    "https://blog.prusa3d.com/prusa-i3-is-now-1-75-mm_3863/"
+  ],
+  "notes": ""
+}

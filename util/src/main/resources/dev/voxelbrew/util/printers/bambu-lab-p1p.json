@@ -1,0 +1,37 @@
+{
+  "version": 1,
+  "id": "bambu-lab-p1p",
+  "manufacturer": "Bambu Lab",
+  "name": "P1P",
+  "nozzleMm": 0.4,
+  "filamentDiameterMm": 1.75,
+  "toolCount": 1,
+  "bed": [
+    [
+      0,
+      0
+    ],
+    [
+      256,
+      0
+    ],
+    [
+      256,
+      256
+    ],
+    [
+      0,
+      256
+    ]
+  ],
+  "excludedZones": [],
+  "usableHeightMm": 256,
+  "firmware": "vendor",
+  "outputFormat": "gcode",
+  "genericGcode": false,
+  "image": "enclosed.png",
+  "sources": [
+    "https://bambulab.com/en-us/compare"
+  ],
+  "notes": ""
+}

@@ -17,6 +17,10 @@ public final class PrusaConfiguration {
     }
 
     public static SortedMap<String, String> settings(ManufacturingModel model) throws IOException {
+        if (model.setup().printerSnapshot() != null
+                && !model.setup().printerSnapshot().genericGcode())
+            throw new IOException(
+                    "Machine-specific Prusa project export is unavailable for this printer; use a mesh export");
         var result = new TreeMap<String, String>();
         try (var input = Objects.requireNonNull(PrusaConfiguration.class.getResourceAsStream("prusa-2.7.2.ini"));
                 var reader = new BufferedReader(new InputStreamReader(input, StandardCharsets.UTF_8))) {

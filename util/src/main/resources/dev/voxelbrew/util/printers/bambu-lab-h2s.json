@@ -1,0 +1,37 @@
+{
+  "version": 1,
+  "id": "bambu-lab-h2s",
+  "manufacturer": "Bambu Lab",
+  "name": "H2S",
+  "nozzleMm": 0.4,
+  "filamentDiameterMm": 1.75,
+  "toolCount": 1,
+  "bed": [
+    [
+      0,
+      0
+    ],
+    [
+      340,
+      0
+    ],
+    [
+      340,
+      320
+    ],
+    [
+      0,
+      320
+    ]
+  ],
+  "excludedZones": [],
+  "usableHeightMm": 340,
+  "firmware": "vendor",
+  "outputFormat": "gcode",
+  "genericGcode": false,
+  "image": "enclosed.png",
+  "sources": [
+    "https://blog.bambulab.com/h2s-the-ultimate-single-nozzle-3d-printer-now-bigger-than-ever/"
+  ],
+  "notes": ""
+}

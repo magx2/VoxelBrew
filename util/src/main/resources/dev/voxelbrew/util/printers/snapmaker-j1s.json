@@ -1,0 +1,37 @@
+{
+  "version": 1,
+  "id": "snapmaker-j1s",
+  "manufacturer": "Snapmaker",
+  "name": "J1s",
+  "nozzleMm": 0.4,
+  "filamentDiameterMm": 1.75,
+  "toolCount": 2,
+  "bed": [
+    [
+      0,
+      0
+    ],
+    [
+      300,
+      0
+    ],
+    [
+      300,
+      200
+    ],
+    [
+      0,
+      200
+    ]
+  ],
+  "excludedZones": [],
+  "usableHeightMm": 200,
+  "firmware": "vendor",
+  "outputFormat": "gcode",
+  "genericGcode": false,
+  "image": "enclosed.png",
+  "sources": [
+    "https://www.snapmaker.com/en/product-comparison"
+  ],
+  "notes": "Default printing mode; duplication and mirror modes have smaller areas."
+}

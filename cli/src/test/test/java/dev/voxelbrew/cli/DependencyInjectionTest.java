@@ -19,6 +19,32 @@ class DependencyInjectionTest {
     Path directory;
 
     @Test
+    void printerCommandsListAndEmbedHardwareWithoutNativeEvaluation() throws Exception {
+        var document = new AtomicReference<>(CadDocument.empty());
+        var files = new FileIoModule(path -> document.get(), (value, path, overwrite) -> document.set(value), path -> {
+            throw new IOException("No G-code needed");
+        });
+        var graph = graph("en", files, () -> {
+            throw new AssertionError("No update lookup");
+        });
+        var listing = new StringWriter();
+        var command = quiet(graph.commandLine()).setOut(new PrintWriter(listing));
+        assertEquals(0, command.execute("printers"));
+        assertTrue(listing.toString().contains("bambu-lab-a1-mini"));
+        assertEquals(
+                0,
+                quiet(graph.commandLine()).execute("print-settings", "virtual.vxb", "--printer", "bambu-lab-a1-mini"));
+        var saved = document.get().printSetup();
+        assertEquals(4, saved.version());
+        assertEquals(180, saved.printerSnapshot().printer().usableHeight());
+        assertEquals(0, quiet(graph.commandLine()).execute("print-settings", "virtual.vxb", "--material", "PETG"));
+        assertEquals(saved.printerSnapshot(), document.get().printSetup().printerSnapshot());
+        assertEquals(
+                1, quiet(graph.commandLine()).execute("print-settings", "virtual.vxb", "--printer", "missing-printer"));
+        assertEquals(saved.printerSnapshot(), document.get().printSetup().printerSnapshot());
+    }
+
+    @Test
     void injectedPortsReachNestedCommandsAndParsedArgumentsNeverLeakToTheNextParser() throws Exception {
         var document = new AtomicReference<>(CadDocument.empty());
         var overwrites = new ArrayList<Boolean>();

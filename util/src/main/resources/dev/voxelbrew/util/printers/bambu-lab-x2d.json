@@ -1,0 +1,37 @@
+{
+  "version": 1,
+  "id": "bambu-lab-x2d",
+  "manufacturer": "Bambu Lab",
+  "name": "X2D",
+  "nozzleMm": 0.4,
+  "filamentDiameterMm": 1.75,
+  "toolCount": 2,
+  "bed": [
+    [
+      0,
+      0
+    ],
+    [
+      235.5,
+      0
+    ],
+    [
+      235.5,
+      256
+    ],
+    [
+      0,
+      256
+    ]
+  ],
+  "excludedZones": [],
+  "usableHeightMm": 256,
+  "firmware": "vendor",
+  "outputFormat": "gcode",
+  "genericGcode": false,
+  "image": "enclosed.png",
+  "sources": [
+    "https://www.prnewswire.com/news-releases/xcellence-made-simple-bambu-lab-launches-x2d-nextgen-flagship-3d-printer-featuring-dualextrusion-system-302745980.html"
+  ],
+  "notes": "Dual-nozzle intersection; single main nozzle has a larger volume."
+}

@@ -1,0 +1,37 @@
+{
+  "version": 1,
+  "id": "prusa-core-one-l-plus",
+  "manufacturer": "Prusa",
+  "name": "CORE One L+",
+  "nozzleMm": 0.4,
+  "filamentDiameterMm": 1.75,
+  "toolCount": 1,
+  "bed": [
+    [
+      0,
+      0
+    ],
+    [
+      300,
+      0
+    ],
+    [
+      300,
+      300
+    ],
+    [
+      0,
+      300
+    ]
+  ],
+  "excludedZones": [],
+  "usableHeightMm": 330,
+  "firmware": "vendor",
+  "outputFormat": "gcode",
+  "genericGcode": false,
+  "image": "enclosed.png",
+  "sources": [
+    "https://www.prusa3d.com/p/core-one-l/"
+  ],
+  "notes": ""
+}

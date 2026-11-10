@@ -274,6 +274,28 @@ message PrintPlate {
   repeated SupportVolume supports = 3;
   string name = 4;
 }
+message PrinterPoint {
+  double x = 1;
+  double y = 2;
+}
+message PrinterPolygon {
+  repeated PrinterPoint points = 1;
+}
+message PrinterSnapshot {
+  string id = 1;
+  string name = 2;
+  string manufacturer = 3;
+  double nozzle_mm = 4;
+  repeated PrinterPoint bed = 5;
+  repeated PrinterPolygon excluded_zones = 6;
+  double usable_height = 7;
+  string firmware = 8;
+  string output_format = 9;
+  double filament_diameter = 10;
+  uint32 tool_count = 11;
+  bool generic_gcode = 12;
+  bool modified = 13;
+}
 message PrintSetup {
   string id = 1;
   uint32 version = 2;
@@ -286,6 +308,7 @@ message PrintSetup {
   reserved 9 to 15;
   repeated PrintPlate plates = 16;
   string active_plate_id = 17;
+  PrinterSnapshot printer_snapshot = 18;
 }
 message CustomFeature {
   string provider_id = 1;

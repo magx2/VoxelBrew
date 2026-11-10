@@ -1,0 +1,37 @@
+{
+  "version": 1,
+  "id": "prusa-core-one",
+  "manufacturer": "Prusa",
+  "name": "CORE One",
+  "nozzleMm": 0.4,
+  "filamentDiameterMm": 1.75,
+  "toolCount": 1,
+  "bed": [
+    [
+      0,
+      0
+    ],
+    [
+      250,
+      0
+    ],
+    [
+      250,
+      220
+    ],
+    [
+      0,
+      220
+    ]
+  ],
+  "excludedZones": [],
+  "usableHeightMm": 270,
+  "firmware": "vendor",
+  "outputFormat": "gcode",
+  "genericGcode": false,
+  "image": "enclosed.png",
+  "sources": [
+    "https://www.prusa3d.com/p/core-one/"
+  ],
+  "notes": ""
+}

@@ -15,7 +15,25 @@ public record PrintSetup(
         String materialId,
         @NonNull ProcessSettings process,
         List<PrintPlate> plates,
-        String activePlateId) {
+        String activePlateId,
+        PrinterDefinition printerSnapshot) {
+    public PrintSetup(
+            String id,
+            int version,
+            String backendId,
+            String printerId,
+            String materialId,
+            ProcessSettings process,
+            List<PrintPlate> plates,
+            String activePlateId) {
+        this(id, version, backendId, printerId, materialId, process, plates, activePlateId, null);
+    }
+
+    public PrintSetup withPrinter(PrinterDefinition printer) {
+        return new PrintSetup(
+                id, 4, backendId, printer.printer().id(), materialId, process, plates, activePlateId, printer);
+    }
+
     public PrintSetup(
             String id,
             int version,
@@ -38,8 +56,12 @@ public record PrintSetup(
 
     public PrintSetup {
         CadDocument.identifier(id, "print setup ID");
-        if (version != 1 && version != 2 && version != 3)
+        if (version != 1 && version != 2 && version != 3 && version != 4)
             throw new IllegalArgumentException("unsupported print setup version " + version);
+        if (printerSnapshot != null
+                && (version != 4 || !printerId.equals(printerSnapshot.printer().id())))
+            throw new IllegalArgumentException("Printer snapshot requires version 4 and matching ID");
+        if (version == 4 && printerSnapshot == null) throw new IllegalArgumentException("Missing printer snapshot");
         CadDocument.identifier(backendId, "slicer backend ID");
         CadDocument.identifier(printerId, "printer profile ID");
         CadDocument.identifier(materialId, "material profile ID");
@@ -72,13 +94,14 @@ public record PrintSetup(
     }
 
     public PrintSetup selectPlate(String plateId) {
-        return new PrintSetup(id, version, backendId, printerId, materialId, process, plates, plateId);
+        return new PrintSetup(id, version, backendId, printerId, materialId, process, plates, plateId, printerSnapshot);
     }
 
     public PrintSetup addPlate(String plateId) {
         var next = new java.util.ArrayList<>(plates);
         next.add(new PrintPlate(plateId, List.of(), List.of()));
-        return new PrintSetup(id, Math.max(2, version), backendId, printerId, materialId, process, next, plateId);
+        return new PrintSetup(
+                id, Math.max(2, version), backendId, printerId, materialId, process, next, plateId, printerSnapshot);
     }
 
     public PrintSetup renamePlate(String plateId, String name) {
@@ -90,13 +113,14 @@ public record PrintSetup(
         if (plate.equals(renamed)) return this;
         return new PrintSetup(
                 id,
-                3,
+                Math.max(3, version),
                 backendId,
                 printerId,
                 materialId,
                 process,
                 plates.stream().map(p -> p.id().equals(plateId) ? renamed : p).toList(),
-                activePlateId);
+                activePlateId,
+                printerSnapshot);
     }
 
     public PrintSetup moveInstance(String instanceId, String targetPlateId) {
@@ -134,7 +158,8 @@ public record PrintSetup(
                         .map(p ->
                                 p.id().equals(targetPlateId) ? destination : p.id().equals(activePlateId) ? source : p)
                         .toList(),
-                activePlateId);
+                activePlateId,
+                printerSnapshot);
     }
 
     public PrintSetup removeActivePlate() {
@@ -148,7 +173,8 @@ public record PrintSetup(
                 materialId,
                 process,
                 next,
-                next.getFirst().id());
+                next.getFirst().id(),
+                printerSnapshot);
     }
 
     private PrintSetup replaceActive(PrintPlate plate) {
@@ -162,7 +188,8 @@ public record PrintSetup(
                 plates.stream()
                         .map(p -> p.id().equals(activePlateId) ? plate : p)
                         .toList(),
-                activePlateId);
+                activePlateId,
+                printerSnapshot);
     }
 
     public static PrintSetup empty() {
@@ -186,6 +213,15 @@ public record PrintSetup(
     }
 
     public PrintSetup withProfile(String backend, String printer, String material, ProcessSettings settings) {
-        return new PrintSetup(id, version, backend, printer, material, settings, plates, activePlateId);
+        return new PrintSetup(
+                id,
+                printer.equals(printerId) ? version : Math.min(version, 3),
+                backend,
+                printer,
+                material,
+                settings,
+                plates,
+                activePlateId,
+                printer.equals(printerId) ? printerSnapshot : null);
     }
 }

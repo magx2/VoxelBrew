@@ -24,6 +24,11 @@ import javafx.util.StringConverter;
 /** Build placement and actual toolpath preview, sharing all validation and slicing with CLI. */
 @javax.inject.Singleton
 final class PrintingPane extends BorderPane implements AutoCloseable {
+    private final PrinterCatalog printers;
+    private PrinterCatalog.Result printerCatalog;
+    private final ComboBox<PrinterCatalog.Entry> printerChoice = new ComboBox<>();
+    private final Label printerDetails = new Label();
+    private final javafx.scene.image.ImageView printerImage = new javafx.scene.image.ImageView();
     private final DocumentController document;
     private final PrintController jobs;
     private final SlicerCatalog slicers;
@@ -40,7 +45,7 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
     private Path outputDestination;
     private Button autoArrange;
     private final ToggleButton toolpathPreview = new ToggleButton();
-    private double plateWidth = 200, plateDepth = 200;
+    private double plateWidth = 200, plateDepth = 200, plateMinX, plateMinY;
     private final Canvas canvas = new Canvas();
     private final HBox plateStrip = new HBox(6);
     private TextField plateNameEditor;
@@ -94,6 +99,7 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
 
     @javax.inject.Inject
     PrintingPane(
+            PrinterCatalog printers,
             DocumentController document,
             PrintController jobs,
             SlicerCatalog slicers,
@@ -106,6 +112,7 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
             dev.voxelbrew.util.config.UserConfiguration configuration,
             @javax.inject.Named("slicerExecutable") java.nio.file.Path defaultExecutable) {
         this.translations = translations;
+        this.printers = printers;
         autoSupports.setText(translations.text("gui.automatic_supports"));
         bedOnly.setText(translations.text("gui.build_plate_only"));
         overwrite.setText(translations.text("gui.replace_existing_job"));
@@ -241,7 +248,6 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
                 new Label(translations.text("gui.slicer_backend")),
                 backends,
                 backendStatus,
-                new Label(translations.text("print.printer")),
                 new Label(translations.text("gui.material")),
                 materials,
                 row("print-layer-height", translations.text("gui.layer_height_mm"), "0.2"),
@@ -355,7 +361,61 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
         tabs.setId("print-controls");
         tabs.setPrefWidth(360);
         tabs.setMinWidth(320);
-        setRight(tabs);
+        printerChoice.setId("print-printer");
+        UiText.choices(printerChoice, PrinterCatalog.Entry::toString);
+        printerChoice.setMaxWidth(Double.MAX_VALUE);
+        printerChoice.setOnAction(event -> {
+            if (!updating && printerChoice.getValue() != null)
+                commit(setup().withPrinter(printerChoice.getValue().definition()));
+        });
+        var printerSearch = new TextField();
+        printerSearch.setId("print-printer-search");
+        printerSearch.setPromptText(translations.text("print.searchPrinters"));
+        printerSearch.textProperty().addListener((o, a, b) -> {
+            updating = true;
+            try {
+                printerChoice
+                        .getItems()
+                        .setAll(printerCatalog.entries().stream()
+                                .filter(e ->
+                                        e.toString().toLowerCase(Locale.ROOT).contains(b.toLowerCase(Locale.ROOT)))
+                                .toList());
+            } finally {
+                updating = false;
+            }
+        });
+        printerDetails.setWrapText(true);
+        printerDetails.setId("print-printer-details");
+        printerImage.setFitWidth(96);
+        printerImage.setFitHeight(72);
+        printerImage.setPreserveRatio(true);
+        var printerPanel = new VBox(
+                6,
+                new Label(translations.text("print.printerSelector")),
+                printerSearch,
+                printerChoice,
+                new HBox(8, printerImage, printerDetails),
+                new HBox(
+                        6,
+                        button(
+                                translations.text("print.reloadPrinters"),
+                                "print-reload-printers",
+                                this::reloadPrinters),
+                        button(translations.text("print.openPrinters"), "print-open-printers", () -> {
+                            try {
+                                java.nio.file.Files.createDirectories(printers.directory());
+                                java.awt.Desktop.getDesktop()
+                                        .open(printers.directory().toFile());
+                            } catch (java.io.IOException ex) {
+                                throw new IllegalStateException(ex);
+                            }
+                        })));
+        printerPanel.setPadding(new Insets(8));
+        printerPanel.setMaxWidth(360);
+        var sidebar = new VBox(6, printerPanel, tabs);
+        VBox.setVgrow(tabs, Priority.ALWAYS);
+        setRight(sidebar);
+        reloadPrinters();
         localGizmoAxes.setId("print-gizmo-local");
         localGizmoAxes.setText(translations.text("print.localGizmoAxes"));
         UiHelp.install(localGizmoAxes, translations);
@@ -639,8 +699,8 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
                 id,
                 body,
                 Transform.translation(
-                        (plateWidth - (bounds.maxX() - bounds.minX())) / 2 - bounds.minX(),
-                        (plateDepth - (bounds.maxY() - bounds.minY())) / 2 - bounds.minY(),
+                        plateMinX + (plateWidth - (bounds.maxX() - bounds.minX())) / 2 - bounds.minX(),
+                        plateMinY + (plateDepth - (bounds.maxY() - bounds.minY())) / 2 - bounds.minY(),
                         -bounds.minZ())));
         commit(setup().withInstances(all));
         instances.setValue(id);
@@ -879,8 +939,23 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
         }
         updateOutputDestination();
         var printer = PrintProfile.resolve(setup()).printer();
-        plateWidth = printer.bed().get(2).x();
-        plateDepth = printer.bed().get(2).y();
+        plateWidth =
+                printer.bed().stream().mapToDouble(PrintProfile.Point::x).max().orElse(200)
+                        - printer.bed().stream()
+                                .mapToDouble(PrintProfile.Point::x)
+                                .min()
+                                .orElse(0);
+        plateDepth =
+                printer.bed().stream().mapToDouble(PrintProfile.Point::y).max().orElse(200)
+                        - printer.bed().stream()
+                                .mapToDouble(PrintProfile.Point::y)
+                                .min()
+                                .orElse(0);
+        plateMinX =
+                printer.bed().stream().mapToDouble(PrintProfile.Point::x).min().orElse(0);
+        plateMinY =
+                printer.bed().stream().mapToDouble(PrintProfile.Point::y).min().orElse(0);
+        updatePrinterDetails();
         plateSize.setText(String.format(Locale.ROOT, "%.1f \u00d7 %.1f mm", plateWidth, plateDepth));
         jobs.documentChanged(snapshot);
         if (document.rebuilding()) jobs.invalidateGeometry();
@@ -1005,12 +1080,14 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
         autoArrange.setDisable(model == null || model.instances().isEmpty() || !document.canExport() || jobs.running());
         backendStatus.showBackend(
                 backends.getValue() == null ? null : backends.getValue().id());
-        slice.setDisable(!availability.working(setup().backendId())
+        slice.setDisable(!printerCanSlice()
+                || !availability.working(setup().backendId())
                 || !document.canExport()
                 || jobs.running()
                 || validation == null
                 || !validation.valid());
-        sliceAll.setDisable(!availability.working(setup().backendId())
+        sliceAll.setDisable(!printerCanSlice()
+                || !availability.working(setup().backendId())
                 || !document.canExport()
                 || jobs.running()
                 || setup().plates().stream().allMatch(plate -> plate.instances().isEmpty()));
@@ -1085,18 +1162,31 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
         double extentX = threeDimensional ? Math.hypot(plateWidth, plateDepth) : plateWidth;
         double extentY = threeDimensional ? extentX : plateDepth;
         double scale = Math.max(0.001, Math.min((w - 48) / extentX, (h - 48) / extentY)) * camera().zoom();
-        double ox = w / 2 - projectX(plateWidth / 2, plateDepth / 2) * scale + camera().panX();
-        double oy = h / 2 + projectY(plateWidth / 2, plateDepth / 2, 0) * scale + camera().panY();
+        double ox = w / 2 - projectX(plateMinX + plateWidth / 2, plateMinY + plateDepth / 2) * scale + camera().panX();
+        double oy =
+                h / 2 + projectY(plateMinX + plateWidth / 2, plateMinY + plateDepth / 2, 0) * scale + camera().panY();
         viewScale = scale;
         viewOx = ox;
         viewOy = oy;
         graphics.setStroke(dark ? Color.web("#3b4651") : Color.web("#bac4cc"));
         graphics.setLineWidth(1);
+        var hardware = PrintProfile.resolve(setup()).printer();
+        graphics.save();
+        bedPath(hardware.bed(), ox, oy, scale);
+        graphics.clip();
         double grid = Math.max(10, Math.ceil(Math.max(plateWidth, plateDepth) / 100 / 10) * 10);
-        for (double n = 0; n < plateWidth; n += grid) line(ox, oy, scale, n, 0, 0, n, plateDepth, 0);
-        for (double n = 0; n < plateDepth; n += grid) line(ox, oy, scale, 0, n, 0, plateWidth, n, 0);
-        line(ox, oy, scale, plateWidth, 0, 0, plateWidth, plateDepth, 0);
-        line(ox, oy, scale, 0, plateDepth, 0, plateWidth, plateDepth, 0);
+        for (double n = plateMinX; n <= plateMinX + plateWidth; n += grid)
+            line(ox, oy, scale, n, plateMinY, 0, n, plateMinY + plateDepth, 0);
+        for (double n = plateMinY; n <= plateMinY + plateDepth; n += grid)
+            line(ox, oy, scale, plateMinX, n, 0, plateMinX + plateWidth, n, 0);
+        graphics.restore();
+        bedPath(hardware.bed(), ox, oy, scale);
+        graphics.stroke();
+        for (var zone : hardware.excludedZones()) {
+            bedPath(zone, ox, oy, scale);
+            graphics.setFill(Color.color(0.85, 0.25, 0.15, 0.3));
+            graphics.fill();
+        }
         graphics.setFill(dark ? Color.LIGHTGRAY : Color.DARKSLATEGRAY);
         graphics.fillText("0,0", ox, oy + 16);
         if (toolpathPreview.isSelected() && displayed != null && !previewLayers.isEmpty()) {
@@ -1685,6 +1775,87 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
         return id;
     }
 
+    private void bedPath(List<PrintProfile.Point> points, double ox, double oy, double scale) {
+        var graphics = canvas.getGraphicsContext2D();
+        graphics.beginPath();
+        for (int i = 0; i < points.size(); i++) {
+            var p = points.get(i);
+            double x = ox + projectX(p.x(), p.y()) * scale;
+            double y = oy - projectY(p.x(), p.y(), 0) * scale;
+            if (i == 0) graphics.moveTo(x, y);
+            else graphics.lineTo(x, y);
+        }
+        graphics.closePath();
+    }
+
+    private boolean printerCanSlice() {
+        return setup().printerSnapshot() == null || setup().printerSnapshot().genericGcode();
+    }
+
+    private void reloadPrinters() {
+        printerCatalog = printers.load();
+        updating = true;
+        try {
+            printerChoice.getItems().setAll(printerCatalog.entries());
+        } finally {
+            updating = false;
+        }
+        if (!printerCatalog.diagnostics().isEmpty())
+            diagnostics.setText(String.join("\n", printerCatalog.diagnostics()));
+        updatePrinterDetails();
+    }
+
+    private void updatePrinterDetails() {
+        if (printerCatalog == null) return;
+        var saved = setup().printerSnapshot();
+        var p = PrintProfile.resolve(setup()).printer();
+        var entry = printerCatalog.entries().stream()
+                .filter(e -> e.definition().printer().id().equals(p.id()))
+                .findFirst()
+                .orElse(null);
+        updating = true;
+        try {
+            var selected = saved == null || (entry != null && entry.definition().equals(saved))
+                    ? entry
+                    : new PrinterCatalog.Entry(saved, entry == null ? null : entry.image(), "project");
+            if (selected != null && !printerChoice.getItems().contains(selected))
+                printerChoice.getItems().addFirst(selected);
+            printerChoice.setValue(selected);
+        } finally {
+            updating = false;
+        }
+        printerChoice.setPromptText(p.name());
+        printerDetails.setText(p.name()
+                + (saved != null && saved.modified() ? " (" + translations.text("print.modifiedPrinter") + ")" : "")
+                + String.format(
+                        Locale.ROOT,
+                        "\n%.1f x %.1f x %.1f mm / %.2f mm",
+                        plateWidth,
+                        plateDepth,
+                        p.usableHeight(),
+                        p.nozzleMm())
+                + (saved == null
+                        ? ""
+                        : translations.text(
+                                "print.printerHardware", Double.toString(saved.filamentDiameter()), saved.toolCount()))
+                + "\n" + translations.text(printerCanSlice() ? "print.genericPrinter" : "print.layoutPrinter"));
+        String image = entry == null ? null : entry.image();
+        if (image == null) {
+            var fallback = dev.voxelbrew.util.config.PrinterResources.class.getResource(
+                    dev.voxelbrew.util.config.PrinterResources.ROOT + "generic.png");
+            if (fallback != null) image = fallback.toExternalForm();
+        }
+        var loadedImage = image == null ? null : new javafx.scene.image.Image(image, 96, 72, true, true);
+        if (loadedImage != null && loadedImage.isError()) {
+            var fallback = dev.voxelbrew.util.config.PrinterResources.class.getResource(
+                    dev.voxelbrew.util.config.PrinterResources.ROOT + "generic.png");
+            loadedImage = fallback == null
+                    ? null
+                    : new javafx.scene.image.Image(fallback.toExternalForm(), 96, 72, true, true);
+        }
+        printerImage.setImage(loadedImage);
+    }
+
     private void editPlate() {
         var dialog = new Dialog<ButtonType>();
         dialog.initOwner(getScene().getWindow());
@@ -1714,7 +1885,15 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
                         Double.parseDouble(width.getText()),
                         Double.parseDouble(depth.getText()),
                         Double.parseDouble(height.getText()));
-                commit(setup().withProfile(setup().backendId(), printer, setup().materialId(), setup().process()));
+                if (setup().printerSnapshot() == null) {
+                    commit(setup().withProfile(setup().backendId(), printer, setup().materialId(), setup().process()));
+                } else {
+                    commit(setup().withPrinter(setup().printerSnapshot()
+                            .rectangular(
+                                    Double.parseDouble(width.getText()),
+                                    Double.parseDouble(depth.getText()),
+                                    Double.parseDouble(height.getText()))));
+                }
             } catch (IllegalArgumentException failure) {
                 error.setText(translations.text("print.invalidDimensions"));
                 event.consume();

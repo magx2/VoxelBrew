@@ -37,6 +37,46 @@ import org.junit.jupiter.api.io.TempDir;
 @ExtendWith(UiTestShard.class)
 class WorkbenchUiTest {
     @Test
+    void printerSelectionPersistsAndUndoRestoresBuildVolume() throws Exception {
+        ready();
+        openPrepared("plate-5mm.vxb");
+        click("workspace-print");
+        ready();
+        var original = document().printSetup();
+        text("print-printer-search", "A1 mini");
+        click("print-printer");
+        key(KeyCode.DOWN);
+        key(KeyCode.ENTER);
+        ready();
+        assertEquals("bambu-lab-a1-mini", document().printSetup().printerId());
+        assertEquals(
+                180, PrintProfile.resolve(document().printSetup()).printer().usableHeight());
+        assertTrue(fx(() -> ((Label) node("#print-printer-details")).getText()).contains("180.0"));
+        click("print-reload-printers");
+        ready();
+        var selected = document().printSetup();
+        assertEquals("bambu-lab-a1-mini", selected.printerId());
+        shortcut(KeyCode.Z, false);
+        ready();
+        assertEquals(original, document().printSetup());
+        shortcut(KeyCode.Z, true);
+        ready();
+        assertEquals(selected, document().printSetup());
+        Path saved = directory.resolve("printer-snapshot.vxb");
+        save(saved);
+        open(saved);
+        ready();
+        assertEquals(selected, document().printSetup());
+        click("workspace-print");
+        ready();
+        fx(() -> {
+            Screenshot.save(
+                    stage.getScene(), Path.of(System.getProperty("voxelbrew.ui.artifacts"), "printer-selector.png"));
+            return null;
+        });
+    }
+
+    @Test
     void slicerSelectedObjectNameStaysAbovePlateObject() throws Exception {
         ready();
         openPrepared("plate-5mm.vxb");

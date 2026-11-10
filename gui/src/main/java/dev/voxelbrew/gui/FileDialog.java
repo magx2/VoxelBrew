@@ -115,6 +115,8 @@ final class FileDialog {
                 var link = new Hyperlink(project.toString());
                 link.setId("file-recent-" + i);
                 link.setMnemonicParsing(false);
+                link.setTextOverrun(OverrunStyle.CENTER_ELLIPSIS);
+                link.setEllipsisString("...");
                 link.setMinWidth(0);
                 link.setMaxWidth(Double.MAX_VALUE);
                 UiHelp.describe(link, project.toString());

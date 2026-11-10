@@ -275,6 +275,9 @@ public final class Workbench extends BorderPane implements AutoCloseable {
     private final Viewport viewport;
 
     private final PrintingPane printing;
+    private final Tab designTab;
+    private final Tab printTab;
+    private final TabPane workspaces;
     private final TreeView<Entry> tree = new TreeView<>();
     private final VBox inspector = new VBox(12), form = new VBox(9);
     private final VBox featureDiagnostics = new VBox(6);
@@ -664,23 +667,27 @@ public final class Workbench extends BorderPane implements AutoCloseable {
         var design = new BorderPane(split);
         design.setId("design-workspace");
         design.setTop(toolbar);
-        var designTab = new Tab(translations.text("tab.Designer"), design);
+        designTab = new Tab(translations.text("tab.Designer"), design);
         designTab.setId("workspace-design");
         designTab.setClosable(false);
-        var printTab = new Tab(translations.text("tab.Slicer"), printing);
+        printTab = new Tab(translations.text("tab.Slicer"), printing);
         printTab.setId("workspace-print");
         printTab.setClosable(false);
-        var workspaces = new TabPane(designTab, printTab);
+        workspaces = new TabPane(designTab, printTab);
         designTab.setTooltip(UiHelp.tooltip(UiHelp.description(translations, "workspace-design")));
         printTab.setTooltip(UiHelp.tooltip(UiHelp.description(translations, "workspace-print")));
         workspaces.setId("workspaces");
         workspaces.getSelectionModel().selectedItemProperty().addListener((o, a, b) -> {
+            if (b == printTab && printTab.isDisable()) {
+                workspaces.getSelectionModel().select(designTab);
+                return;
+            }
             if (b == printTab && (controller.path() == null || controller.dirty())) {
                 javafx.application.Platform.runLater(() -> {
                     workspaces.getSelectionModel().select(designTab);
                     save(false)
                             .thenRun(() -> {
-                                if (controller.path() != null && !controller.dirty())
+                                if (controller.path() != null && !controller.dirty() && !printTab.isDisable())
                                     workspaces.getSelectionModel().select(printTab);
                             })
                             .exceptionally(failure -> null);
@@ -764,7 +771,10 @@ public final class Workbench extends BorderPane implements AutoCloseable {
                     case "redo" -> redo.fire();
                     case "parameters" -> parameters.fire();
                     case "workspace-design" -> workspaces.getSelectionModel().select(designTab);
-                    case "workspace-print" -> workspaces.getSelectionModel().select(printTab);
+                    case "workspace-print" -> {
+                        if (!printTab.isDisable())
+                            workspaces.getSelectionModel().select(printTab);
+                    }
                     case "context-help" -> {
                         var help = new Alert(Alert.AlertType.INFORMATION);
                         help.initOwner(stage);
@@ -942,6 +952,9 @@ public final class Workbench extends BorderPane implements AutoCloseable {
         refreshing = true;
         try {
             var snapshot = controller.snapshot();
+            printTab.setDisable(controller.build().bodies().isEmpty());
+            if (printTab.isDisable() && printTab.isSelected())
+                workspaces.getSelectionModel().select(designTab);
             if (tool == Tool.PLANE && !planeSelectionCurrent()) {
                 tool = Tool.NONE;
                 planeSnapshot = null;

@@ -20,23 +20,22 @@ class UiTestShardTest {
         assertFalse(methods.isEmpty());
         for (int count : new int[] {4, 5}) {
             var assigned = new HashSet<String>();
+            int minimum = Integer.MAX_VALUE, maximum = 0;
             for (int shard = 1; shard <= count; shard++) {
                 int selectedShard = shard;
                 var selected = methods.stream()
                         .filter(name -> UiTestShard.shardFor(name, count) == selectedShard)
                         .toList();
                 assertFalse(selected.isEmpty(), "Empty shard " + shard + "/" + count);
+                minimum = Math.min(minimum, selected.size());
+                maximum = Math.max(maximum, selected.size());
                 for (String name : selected) assertTrue(assigned.add(name), "Duplicate test " + name);
             }
             assertEquals(new HashSet<>(methods), assigned);
-        }
-        for (String name : methods) {
-            int original = UiTestShard.shardFor(name, 4);
-            int split = UiTestShard.shardFor(name, 5);
-            if (original < 4) assertEquals(original, split, "Moved test " + name);
-            else assertTrue(split == 4 || split == 5, "Lost batch 4 test " + name);
+            assertTrue(maximum - minimum <= 1, "Shard sizes must differ by at most one test");
         }
         for (String name : methods) assertEquals(1, UiTestShard.shardFor(name, 1));
         assertThrows(IllegalArgumentException.class, () -> UiTestShard.shardFor("test", 0));
+        assertThrows(IllegalArgumentException.class, () -> UiTestShard.shardFor("missingTest", 5));
     }
 }

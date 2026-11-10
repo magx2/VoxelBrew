@@ -44,7 +44,10 @@ final class FormulaField extends TextField {
         getStyleClass().addAll("formula-field", expressionType.styleClass);
         setTooltip(preview);
         localizeHelp();
-        textProperty().addListener((o, a, b) -> refreshFormula());
+        textProperty().addListener((o, a, b) -> {
+            refreshFormula();
+            requestLayout();
+        });
         focusedProperty().addListener((o, a, b) -> refreshFormula());
         sceneProperty().addListener((o, a, b) -> {
             if (b != null) refreshFormula();
@@ -165,6 +168,7 @@ final class FormulaField extends TextField {
             private final Button help = new Button("?");
             private final Label minimum = new Label();
             private final Label maximum = new Label();
+            private final javafx.scene.text.Text textMeasure = new javafx.scene.text.Text();
 
             {
                 mark.getStyleClass().add("formula-mark");
@@ -215,9 +219,16 @@ final class FormulaField extends TextField {
             protected void layoutChildren(double x, double y, double width, double height) {
                 double left = hintWidth(minimum);
                 double right = hintWidth(maximum);
-                super.layoutChildren(x + left, y, Math.max(0, width - left - right), height);
+                double editorWidth = Math.max(0, width - left - right);
+                if (right > 0) {
+                    textMeasure.setFont(getFont());
+                    textMeasure.setText(getText());
+                    editorWidth = Math.min(
+                            editorWidth, snapSizeX(textMeasure.getLayoutBounds().getWidth()) + 2);
+                }
+                super.layoutChildren(x + left, y, editorWidth, height);
                 minimum.resizeRelocate(x, y, Math.max(0, left - 6), height);
-                maximum.resizeRelocate(x + width - right + 6, y, Math.max(0, right - 6), height);
+                maximum.resizeRelocate(x + left + editorWidth + 6, y, Math.max(0, right - 6), height);
                 mark.resizeRelocate(7, y, 18, height);
                 help.resizeRelocate(getWidth() - 25, y + (height - 18) / 2, 18, 18);
             }

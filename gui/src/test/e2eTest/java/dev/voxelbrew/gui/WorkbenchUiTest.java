@@ -77,6 +77,10 @@ class WorkbenchUiTest {
                             minimum.getTextFill());
                     assertTrue(minimum.localToScene(minimum.getBoundsInLocal()).getMaxX()
                             < maximum.localToScene(maximum.getBoundsInLocal()).getMinX());
+                    double suffixGap =
+                            maximum.localToScene(maximum.getBoundsInLocal()).getMinX()
+                                    - text.localToScene(text.getLayoutBounds()).getMaxX();
+                    assertTrue(suffixGap >= 4 && suffixGap <= 12, "Maximum follows the text: " + suffixGap);
                     Screenshot.save(
                             stage.getScene(),
                             Path.of(

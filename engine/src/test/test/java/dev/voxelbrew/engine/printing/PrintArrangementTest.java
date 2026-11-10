@@ -43,6 +43,25 @@ class PrintArrangementTest {
     }
 
     @Test
+    void centersSingleObjectAndMultipleObjectsOnPlate() {
+        for (int count : List.of(1, 4)) {
+            var model = model(60, count);
+            var result = PrintArrangement.arrange(model, 5).orElseThrow();
+            double minX = Double.POSITIVE_INFINITY, minY = Double.POSITIVE_INFINITY;
+            double maxX = Double.NEGATIVE_INFINITY, maxY = Double.NEGATIVE_INFINITY;
+            for (var instance : result) {
+                var bounds = MeshGeometry.bounds(model.placedMesh(instance));
+                minX = Math.min(minX, bounds.minX());
+                minY = Math.min(minY, bounds.minY());
+                maxX = Math.max(maxX, bounds.maxX());
+                maxY = Math.max(maxY, bounds.maxY());
+            }
+            assertEquals(100, (minX + maxX) / 2, 1e-8);
+            assertEquals(100, (minY + maxY) / 2, 1e-8);
+        }
+    }
+
+    @Test
     void oversizedObjectLeavesOriginalUntouched() {
         var model = model(300, 1);
         var initial = model.instances();

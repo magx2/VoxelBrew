@@ -16,6 +16,7 @@ public final class PrintArrangement {
     public static Optional<List<BodyInstance>> arrange(ManufacturingModel model, double gap) {
         if (!Double.isFinite(gap) || gap <= 0) throw new IllegalArgumentException("Gap must be positive");
         var bed = MeshGeometry.polygon(model.profile().printer().bed());
+        var plateBounds = bed.getBounds2D();
         for (var zone : model.profile().printer().excludedZones()) bed.subtract(MeshGeometry.polygon(zone));
         var bedBounds = bed.getBounds2D();
         var parts = new ArrayList<Part>();
@@ -76,6 +77,26 @@ public final class PrintArrangement {
                                             chosen.getY() - part.bounds().getY(),
                                             0)
                                     .compose(source.transform())));
+        }
+        if (!occupied.isEmpty()) {
+            var groupBounds = (Rectangle2D) occupied.getFirst().clone();
+            occupied.forEach(groupBounds::add);
+            double dx = plateBounds.getCenterX() - groupBounds.getCenterX();
+            double dy = plateBounds.getCenterY() - groupBounds.getCenterY();
+            boolean fits = occupied.stream().allMatch(rect -> {
+                var outside = new Area(new Rectangle2D.Double(
+                        rect.getX() + dx - gap,
+                        rect.getY() + dy - gap,
+                        rect.getWidth() + 2 * gap,
+                        rect.getHeight() + 2 * gap));
+                outside.subtract(bed);
+                return outside.isEmpty();
+            });
+            if (fits) {
+                var shift = Transform.translation(dx, dy, 0);
+                placements.replaceAll(
+                        (id, instance) -> new BodyInstance(id, instance.bodyId(), shift.compose(instance.transform())));
+            }
         }
         return Optional.of(
                 model.instances().stream().map(i -> placements.get(i.id())).toList());

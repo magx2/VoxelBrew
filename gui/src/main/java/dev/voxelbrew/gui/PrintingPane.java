@@ -1079,14 +1079,12 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
         autoArrange.setDisable(model == null || model.instances().isEmpty() || !document.canExport() || jobs.running());
         backendStatus.showBackend(
                 backends.getValue() == null ? null : backends.getValue().id());
-        slice.setDisable(!printerCanSlice()
-                || !availability.working(setup().backendId())
+        slice.setDisable(!availability.working(setup().backendId())
                 || !document.canExport()
                 || jobs.running()
                 || validation == null
                 || !validation.valid());
-        sliceAll.setDisable(!printerCanSlice()
-                || !availability.working(setup().backendId())
+        sliceAll.setDisable(!availability.working(setup().backendId())
                 || !document.canExport()
                 || jobs.running()
                 || setup().plates().stream().allMatch(plate -> plate.instances().isEmpty()));
@@ -1795,10 +1793,6 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
         graphics.closePath();
     }
 
-    private boolean printerCanSlice() {
-        return setup().printerSnapshot() == null || setup().printerSnapshot().genericGcode();
-    }
-
     private void reloadPrinters() {
         printerCatalog = printers.load();
         updating = true;
@@ -1845,7 +1839,7 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
                         ? ""
                         : translations.text(
                                 "print.printerHardware", Double.toString(saved.filamentDiameter()), saved.toolCount()))
-                + "\n" + translations.text(printerCanSlice() ? "print.genericPrinter" : "print.layoutPrinter"));
+                + "\n" + translations.text("print.genericPrinter"));
         String image = entry == null ? null : entry.image();
         if (image == null) {
             var fallback = dev.voxelbrew.util.config.PrinterResources.class.getResource(

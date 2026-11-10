@@ -17,10 +17,6 @@ public final class PrusaConfiguration {
     }
 
     public static SortedMap<String, String> settings(ManufacturingModel model) throws IOException {
-        if (model.setup().printerSnapshot() != null
-                && !model.setup().printerSnapshot().genericGcode())
-            throw new IOException(
-                    "Machine-specific Prusa project export is unavailable for this printer; use a mesh export");
         var result = new TreeMap<String, String>();
         try (var input = Objects.requireNonNull(PrusaConfiguration.class.getResourceAsStream("prusa-2.7.2.ini"));
                 var reader = new BufferedReader(new InputStreamReader(input, StandardCharsets.UTF_8))) {
@@ -38,7 +34,22 @@ public final class PrusaConfiguration {
                 profile.printer().bed().stream().map(v -> v.x() + "x" + v.y()).collect(Collectors.joining(",")));
         result.put("max_print_height", amount(profile.printer().usableHeightQuantity(), MILLIMETRE));
         result.put("nozzle_diameter", amount(profile.printer().nozzleDiameterQuantity(), MILLIMETRE));
-        result.put("gcode_flavor", profile.printer().firmware());
+        result.put(
+                "gcode_flavor",
+                profile.printer().firmware().equals("vendor")
+                        ? "marlin2"
+                        : profile.printer().firmware());
+        for (var key : List.of(
+                "extrusion_width",
+                "first_layer_extrusion_width",
+                "infill_extrusion_width",
+                "perimeter_extrusion_width",
+                "solid_infill_extrusion_width",
+                "top_infill_extrusion_width"))
+            result.put(key, Double.toString(profile.printer().nozzleMm() * 1.125));
+        result.put(
+                "support_material_extrusion_width",
+                Double.toString(profile.printer().nozzleMm()));
         result.put("filament_type", material.id());
         result.put("filament_diameter", amount(material.filamentDiameterQuantity(), MILLIMETRE));
         result.put("filament_density", material.id().equals("PETG") ? "1.27" : "1.24");

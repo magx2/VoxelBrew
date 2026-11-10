@@ -62,7 +62,8 @@ public final class CuraSlicerBackend implements SlicerBackend {
     Map<String, String> settings(ManufacturingModel model) throws IOException {
         var profile = model.profile();
         var process = profile.process();
-        if (!profile.printer().firmware().equals("marlin2")
+        if ((!profile.printer().firmware().equals("marlin2")
+                        && !profile.printer().firmware().equals("vendor"))
                 || !profile.printer().outputFormat().equals("gcode"))
             throw new IOException("Cura adapter requires Marlin 2 text G-code");
         if (!model.setup().supports().isEmpty()

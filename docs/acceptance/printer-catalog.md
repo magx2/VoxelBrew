@@ -99,3 +99,28 @@ Tests decode actual lossy and lossless WebP fixtures, preserve transparency,
 handle uppercase extensions and invalid/missing files, and verify discovery
 precedence on reload. Logs: `.tools/printer-webp-windows.log` and
 `.tools/printer-webp-ubuntu.log`. No GUI gesture/E2E or packaged-app tests were run.
+
+## Selected-printer slicing follow-up
+
+Removed the layout-only gate from the GUI, SliceService and Prusa project
+configuration. Selected hardware now drives generic single-tool slicing; vendor
+firmware maps to Marlin 2 in Prusa and is accepted by Cura's generic adapter.
+Prusa extrusion widths scale with the selected nozzle. The persisted
+`genericGcode` field is retained for compatibility but no longer blocks slicing.
+Manufacturer startup/calibration/toolchanging and hardware qualification remain
+outside this generic process.
+
+Windows passed `gradlew.bat spotlessApply :impl:slicer:integrationTest --tests
+'*PrinterPresetSlicingTest' :impl:slicer:test --tests '*CuraSlicerBackendTest'
+:gui:e2eTest --tests '*WorkbenchUiTest.printerSelectionPersistsAndUndoRestoresBuildVolume'`.
+Real PrusaSlicer produced independently inspected toolpaths for modified generic
+hardware, Bambu A1 mini and Prusa XL 5-tool presets. The focused GUI test verifies
+Slice remains enabled after selecting A1 mini and adding a body.
+Log: `.tools/printer-slicing-windows.log`.
+
+Ubuntu real-slicer integration was attempted but blocked at `:engine:configureOcct`
+by missing native prerequisites in the separate checkout. Ubuntu passed
+`./gradlew --no-daemon --max-workers=2 :impl:slicer:compileIntegrationTestJava
+:impl:slicer:test --tests '*CuraSlicerBackendTest' --console=plain`. Logs:
+`.tools/printer-slicing-ubuntu.log` and `.tools/printer-slicing-ubuntu-compile.log`.
+No Ubuntu E2E, full milestone gate, real Cura run or hardware test was performed.

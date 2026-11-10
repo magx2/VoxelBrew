@@ -52,6 +52,11 @@ class WorkbenchUiTest {
         assertEquals(
                 180, PrintProfile.resolve(document().printSetup()).printer().usableHeight());
         assertTrue(fx(() -> ((Label) node("#print-printer-details")).getText()).contains("180.0"));
+        click("print-add");
+        ready();
+        assertFalse(fx(() -> node("#print-slice").isDisabled()), "Selected printer permits slicing");
+        shortcut(KeyCode.Z, false);
+        ready();
         click("print-reload-printers");
         ready();
         var selected = document().printSetup();

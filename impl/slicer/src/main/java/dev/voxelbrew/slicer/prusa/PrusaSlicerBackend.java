@@ -80,11 +80,11 @@ public final class PrusaSlicerBackend implements SlicerBackend {
         if (!Set.of("PLA", "PETG").contains(profile.material().id()))
             throw new IOException(
                     "Unsupported material profile: " + profile.material().id());
-        if (!profile.printer().firmware().equals("marlin2")
-                || !profile.printer().outputFormat().equals("gcode")
-                || Math.abs(profile.printer().nozzleMm() - 0.4) > 1e-9)
+        if ((!profile.printer().firmware().equals("marlin2")
+                        && !profile.printer().firmware().equals("vendor"))
+                || !profile.printer().outputFormat().equals("gcode"))
             throw new IOException(
-                    "Unsupported printer/nozzle/output pairing; this backend is qualified for generic Marlin 2 / 0.4 mm / text G-code");
+                    "Unsupported printer/output pairing; this backend requires Marlin 2 or vendor hardware with generic text G-code");
         Path project = request.input(), config = request.workingDirectory().resolve("process.ini");
         Files.writeString(config, PrusaConfiguration.ini(request.model()), StandardCharsets.UTF_8);
         var arguments = new ArrayList<String>();

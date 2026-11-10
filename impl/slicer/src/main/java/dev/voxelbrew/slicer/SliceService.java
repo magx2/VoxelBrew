@@ -59,10 +59,6 @@ public final class SliceService {
             PublicationGuard guard)
             throws IOException {
         cancellation.check();
-        if (model.setup().printerSnapshot() != null
-                && !model.setup().printerSnapshot().genericGcode())
-            throw new IOException(
-                    "Selected printer is available for layout and mesh export; machine-specific slicing is not supported");
         PrintValidation.validate(model).requireValid();
         var descriptor = backend.descriptor();
         if (!descriptor.id().equals(model.setup().backendId()))

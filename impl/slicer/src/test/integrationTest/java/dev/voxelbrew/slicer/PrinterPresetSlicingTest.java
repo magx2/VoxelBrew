@@ -16,7 +16,7 @@ class PrinterPresetSlicingTest {
     Path directory;
 
     @Test
-    void selectedHardwareControlsRealSliceAndRejectsVendorBeforePublication() throws Exception {
+    void selectedHardwareControlsRealSliceIncludingVendorPresets() throws Exception {
         var catalog = new PrinterCatalog(new PrinterResources(directory)).load();
         var session = SlicerAcceptanceTest.cube();
         session.setPrintSetup(session.document()
@@ -39,23 +39,26 @@ class PrinterPresetSlicingTest {
                 ignored -> {},
                 dev.voxelbrew.slicer.api.Slicing.DIRECT);
         assertFalse(result.job().modelLayers().isEmpty());
-        byte[] previous = Files.readAllBytes(target);
-        session.setPrintSetup(session.document().printSetup().withPrinter(catalog.require("bambu-lab-a1-mini")));
-        var vendorModel = ManufacturingModels.evaluate(session.document(), MeshOptions.DEFAULT);
-        var failure = assertThrows(
-                java.io.IOException.class,
-                () -> SliceService.slice(
-                        new PrusaSlicerBackend(),
-                        session.document(),
-                        vendorModel,
-                        PrusaSlicerBackend.defaultExecutable(),
-                        target,
-                        true,
-                        new Cancellation(),
-                        ignored -> {},
-                        dev.voxelbrew.slicer.api.Slicing.DIRECT));
-        assertTrue(failure.getMessage().contains("machine-specific"));
-        assertArrayEquals(previous, Files.readAllBytes(target));
+        for (String id : java.util.List.of("bambu-lab-a1-mini", "prusa-xl-5-tool")) {
+            session.setPrintSetup(session.document().printSetup().withPrinter(catalog.require(id)));
+            var vendorModel = ManufacturingModels.evaluate(session.document(), MeshOptions.DEFAULT);
+            var settings = PrusaConfiguration.settings(vendorModel);
+            assertEquals("marlin2", settings.get("gcode_flavor"));
+            assertEquals(id, settings.get("printer_settings_id"));
+            assertEquals(
+                    Double.toString(catalog.require(id).printer().usableHeight()), settings.get("max_print_height"));
+            var sliced = SliceService.slice(
+                    new PrusaSlicerBackend(),
+                    session.document(),
+                    vendorModel,
+                    PrusaSlicerBackend.defaultExecutable(),
+                    target,
+                    true,
+                    new Cancellation(),
+                    ignored -> {},
+                    dev.voxelbrew.slicer.api.Slicing.DIRECT);
+            assertFalse(sliced.job().modelLayers().isEmpty());
+        }
         session.setPrintSetup(session.document()
                 .printSetup()
                 .withPrinter(catalog.require("generic-marlin-200-0.4").rectangular(10, 10, 5)));

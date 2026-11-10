@@ -215,9 +215,10 @@ and red excluded areas are rendered in both views.
 Bundled JSON files and schematic images live in `util` resources. See the
 [dated model inventory](printer-catalog.md). These are hardware/layout presets;
 manufacturer-specific startup, calibration, toolchanging and output packaging
-are not implemented. Vendor entries therefore support layout, preflight and mesh
-export, with slicing explicitly unavailable. Generic single-tool Marlin 2 presets
-use the existing backend restrictions (Prusa currently requires a 0.4 mm nozzle).
+are not implemented. All selected printers can use the generic single-tool slicing
+process with their bed, height, nozzle and filament dimensions. Vendor firmware
+uses generic Marlin 2 text G-code; this is not a manufacturer-specific machine
+profile. Backend process and output-format restrictions still apply.
 
 CLI: `printers` lists IDs; `print-settings part.vxb --printer bambu-lab-a1-mini`
 saves that preset into the project. `print-setup part.vxb` reports its identity.
@@ -256,7 +257,8 @@ produce individual diagnostics while the remaining catalog stays available.
 
 `genericGcode: true` explicitly requests the generic process, without any
 manufacturer startup routines. Use `false` for hardware that needs vendor
-integration. It requires one tool, Marlin 2 and text G-code when enabled.
+integration; this metadata no longer disables generic slicing. `true` requires
+one tool, Marlin 2 and text G-code.
 Place an optional image beside the JSON with the same filename stem: `foo.json`
 uses `foo.png`. Images are selected in this order: PNG, JPG, JPEG, WebP, GIF, BMP.
 Extensions are case-insensitive (for example, `foo.PNG` is supported). The stem

@@ -9,6 +9,26 @@ import org.junit.jupiter.api.Test;
 
 class PrintRotationGizmoTest {
     @Test
+    void localRotationUsesObjectAxesWhileWorldUsesPlateAxes() {
+        var mesh = MeshGeometry.box(
+                new SupportVolume("box", "part", SupportVolume.Role.SOLID_SUPPORT, 0, 0, 0, 60, 40, 5));
+        var source = new BodyInstance(
+                "part", "body", Transform.translation(50, 50, 0).compose(Transform.rotation(0, 0, 90)));
+        var local =
+                PrintRotationGizmo.rotate(source, mesh, PrintRotationGizmo.Axis.X, 30, PrintRotationGizmo.Space.LOCAL);
+        var world = PrintRotationGizmo.rotate(source, mesh, PrintRotationGizmo.Axis.Y, 30);
+        assertArrayEquals(world.transform().matrix(), local.transform().matrix(), 1e-8);
+        assertNotEquals(PrintRotationGizmo.rotate(source, mesh, PrintRotationGizmo.Axis.X, 30), local);
+        var frame = PrintRotationGizmo.frame(source.transform(), PrintRotationGizmo.Space.LOCAL);
+        var ring = PrintRotationGizmo.ring(
+                PrintRotationGizmo.Axis.X, javafx.geometry.Point3D.ZERO, 1, new PrintCamera(false), 0, 0, 1, frame);
+        assertEquals(-1, ring.u().getX(), 1e-8);
+        assertEquals(0, ring.u().getY(), 1e-8);
+        assertEquals(PrintRotationGizmo.Axis.X, PrintRotationGizmo.topAxis(Transform.rotation(0, 90, 0)));
+        assertEquals(PrintRotationGizmo.Axis.Z, PrintRotationGizmo.topAxis(Transform.IDENTITY));
+    }
+
+    @Test
     void rotatesEveryAxisAroundCenterAndPreservesClearance() {
         var mesh = MeshGeometry.box(
                 new SupportVolume("box", "part", SupportVolume.Role.SOLID_SUPPORT, 0, 0, 0, 60, 40, 5));

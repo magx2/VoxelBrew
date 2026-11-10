@@ -51,6 +51,8 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
     private double dragX, dragY;
     private BodyInstance dragSource, dragPreview;
     private String dragRevision;
+    private final ComboBox<PrintRotationGizmo.Space> rotationSpace = new ComboBox<>();
+    private final CheckBox localGizmoAxes = new CheckBox();
     private final CheckBox showRotationGizmos = new CheckBox();
     private List<PrintRotationGizmo.Ring> rotationRings = List.of();
     private PrintRotationGizmo.Drag rotationDrag;
@@ -170,11 +172,30 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
             cancelDrag();
             draw();
         });
-        placement.getChildren().addAll(placementCoordinates(false), placementCoordinates(true), showRotationGizmos);
+        rotationSpace.setId("print-rotation-space");
+        rotationSpace.getItems().setAll(PrintRotationGizmo.Space.values());
+        rotationSpace.setValue(PrintRotationGizmo.Space.WORLD);
+        UiText.enums(rotationSpace, translations, "print.rotationSpace.");
+        UiHelp.install(rotationSpace, translations);
+        rotationSpace
+                .disableProperty()
+                .bind(showRotationGizmos.selectedProperty().not());
+        rotationSpace.setOnAction(event -> {
+            localGizmoAxes.setSelected(rotationSpace.getValue() == PrintRotationGizmo.Space.LOCAL);
+            cancelDrag();
+            draw();
+        });
+        rotationSpace.setMinWidth(0);
+        rotationSpace.setMaxWidth(Double.MAX_VALUE);
+        HBox.setHgrow(rotationSpace, Priority.ALWAYS);
+        var gizmoControls = new HBox(8, showRotationGizmos, rotationSpace);
+        gizmoControls.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
+        placement.getChildren().addAll(placementCoordinates(false), placementCoordinates(true));
         placement
                 .getChildren()
                 .addAll(
                         button(translations.text("gui.apply_placement"), "print-place", this::applyPlacement),
+                        gizmoControls,
                         button(translations.text("gui.duplicate_70_mm_x"), "print-duplicate", this::duplicate),
                         row("print-face", translations.text("gui.planar_face_id_from_current_cad_revision"), "0"),
                         button(translations.text("gui.lay_face_on_bed"), "print-lay-face", this::layFace),
@@ -312,7 +333,14 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
         tabs.setPrefWidth(360);
         tabs.setMinWidth(320);
         setRight(tabs);
-        var center = new StackPane(canvas);
+        localGizmoAxes.setId("print-gizmo-local");
+        localGizmoAxes.setText(translations.text("print.localGizmoAxes"));
+        UiHelp.install(localGizmoAxes, translations);
+        localGizmoAxes.setManaged(false);
+        localGizmoAxes.setVisible(false);
+        localGizmoAxes.setOnAction(event -> rotationSpace.setValue(
+                localGizmoAxes.isSelected() ? PrintRotationGizmo.Space.LOCAL : PrintRotationGizmo.Space.WORLD));
+        var center = new StackPane(canvas, localGizmoAxes);
         center.setMinSize(150, 150);
         canvas.setManaged(false);
         canvas.widthProperty().bind(center.widthProperty());
@@ -998,6 +1026,7 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
 
     private void draw() {
         var graphics = canvas.getGraphicsContext2D();
+        localGizmoAxes.setVisible(false);
         double w = canvas.getWidth(), h = canvas.getHeight();
         graphics.setFill(dark ? Color.web("#182028") : Color.web("#edf1f4"));
         graphics.fillRect(0, 0, w, h);
@@ -1130,9 +1159,11 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
                                             + Math.pow(bounds.maxZ() - bounds.minZ(), 2))
                                     / 2
                             + 12 / viewScale);
+            var frame = PrintRotationGizmo.frame(shown.transform(), rotationSpace.getValue());
             rotationRings = Arrays.stream(PrintRotationGizmo.Axis.values())
-                    .filter(axis -> threeDimensional || axis == PrintRotationGizmo.Axis.Z)
-                    .map(axis -> PrintRotationGizmo.ring(axis, center, radius, camera(), viewOx, viewOy, viewScale))
+                    .filter(axis -> threeDimensional || axis == PrintRotationGizmo.topAxis(frame))
+                    .map(axis ->
+                            PrintRotationGizmo.ring(axis, center, radius, camera(), viewOx, viewOy, viewScale, frame))
                     .toList();
         }
         var graphics = canvas.getGraphicsContext2D();
@@ -1169,6 +1200,24 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
                     center.getY() + 4);
         }
         graphics.restore();
+        if (!rotationRings.isEmpty()) {
+            double bottom = rotationRings.stream()
+                    .mapToDouble(ring -> ring.center().getY()
+                            + Math.hypot(ring.u().getY(), ring.v().getY()))
+                    .max()
+                    .orElse(0);
+            localGizmoAxes.setStyle("-fx-padding: 4 8; -fx-background-radius: 4; -fx-background-color: "
+                    + (dark ? "#25262a;" : "white;"));
+            localGizmoAxes.autosize();
+            localGizmoAxes.relocate(
+                    Math.max(
+                            0,
+                            Math.min(
+                                    canvas.getWidth() - localGizmoAxes.getWidth(),
+                                    rotationRings.getFirst().center().getX() - localGizmoAxes.getWidth() / 2)),
+                    Math.max(0, Math.min(canvas.getHeight() - localGizmoAxes.getHeight(), bottom + 12)));
+            localGizmoAxes.setVisible(true);
+        }
     }
 
     private static Color rotationColor(PrintRotationGizmo.Axis axis) {
@@ -1439,7 +1488,11 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
                 rotationDegrees = rotationDrag.degrees(
                         new javafx.geometry.Point2D(event.getX(), event.getY()), event.isShiftDown());
                 dragPreview = PrintRotationGizmo.rotate(
-                        dragSource, model.meshes().get(dragSource.bodyId()), rotationDrag.axis(), rotationDegrees);
+                        dragSource,
+                        model.meshes().get(dragSource.bodyId()),
+                        rotationDrag.axis(),
+                        rotationDegrees,
+                        rotationSpace.getValue());
                 draw();
                 event.consume();
                 return;

@@ -7,8 +7,13 @@ import dev.voxelbrew.engine.printing.MeshGeometry;
 import javafx.geometry.Point2D;
 import javafx.geometry.Point3D;
 
-/** World-axis rotation rings and transient placement math, independent of scene event dispatch. */
+/** World/object-axis rotation rings and transient placement math, independent of scene event dispatch. */
 final class PrintRotationGizmo {
+    enum Space {
+        WORLD,
+        LOCAL
+    }
+
     enum Axis {
         X,
         Y,
@@ -98,6 +103,34 @@ final class PrintRotationGizmo {
     private PrintRotationGizmo() {}
 
     static Ring ring(Axis axis, Point3D center, double radius, PrintCamera camera, double ox, double oy, double scale) {
+        return ring(axis, center, radius, camera, ox, oy, scale, Transform.IDENTITY);
+    }
+
+    static Transform frame(Transform placement, Space space) {
+        if (space == Space.WORLD) return Transform.IDENTITY;
+        var matrix = placement.matrix();
+        matrix[3] = matrix[7] = matrix[11] = 0;
+        return new Transform(matrix);
+    }
+
+    /** In top view expose the axis whose ring faces the build plane most directly. */
+    static Axis topAxis(Transform frame) {
+        var matrix = frame.matrix();
+        int best = 2;
+        for (int axis = 0; axis < 3; axis++)
+            if (Math.abs(matrix[8 + axis]) > Math.abs(matrix[8 + best]) + 1e-9) best = axis;
+        return Axis.values()[best];
+    }
+
+    static Ring ring(
+            Axis axis,
+            Point3D center,
+            double radius,
+            PrintCamera camera,
+            double ox,
+            double oy,
+            double scale,
+            Transform frame) {
         Point3D u = switch (axis) {
             case X -> new Point3D(0, 1, 0);
             case Y -> new Point3D(0, 0, 1);
@@ -113,8 +146,13 @@ final class PrintRotationGizmo {
                 new Point2D(
                         ox + camera.x(center.getX(), center.getY()) * scale,
                         oy - camera.y(center.getX(), center.getY(), center.getZ()) * scale),
-                project(u, camera).multiply(radius * scale),
-                project(v, camera).multiply(radius * scale));
+                project(direction(u, frame), camera).multiply(radius * scale),
+                project(direction(v, frame), camera).multiply(radius * scale));
+    }
+
+    private static Point3D direction(Point3D vector, Transform frame) {
+        var point = frame.apply(vector.getX(), vector.getY(), vector.getZ());
+        return new Point3D(point[0], point[1], point[2]);
     }
 
     private static Point2D project(Point3D point, PrintCamera camera) {
@@ -122,6 +160,10 @@ final class PrintRotationGizmo {
     }
 
     static BodyInstance rotate(BodyInstance source, MeshData mesh, Axis axis, double degrees) {
+        return rotate(source, mesh, axis, degrees, Space.WORLD);
+    }
+
+    static BodyInstance rotate(BodyInstance source, MeshData mesh, Axis axis, double degrees, Space space) {
         if (Math.abs(degrees) < 1e-9) return source;
         var before = MeshGeometry.bounds(MeshGeometry.transform(mesh, source.transform()));
         double x = (before.minX() + before.maxX()) / 2,
@@ -129,6 +171,8 @@ final class PrintRotationGizmo {
                 z = (before.minZ() + before.maxZ()) / 2;
         var rotation = Transform.rotation(
                 axis == Axis.X ? degrees : 0, axis == Axis.Y ? degrees : 0, axis == Axis.Z ? degrees : 0);
+        var frame = frame(source.transform(), space);
+        rotation = frame.compose(rotation).compose(frame.inverse());
         var placed = Transform.translation(x, y, z)
                 .compose(rotation)
                 .compose(Transform.translation(-x, -y, -z))

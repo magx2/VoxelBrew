@@ -196,6 +196,26 @@ class WorkbenchUiTest {
                 }
             }
         }
+        text("print-rotate-x", "30");
+        click("print-place");
+        ready();
+        var tilted = document().printSetup();
+        long worldFrame = slicerCameraFrame();
+        choice("print-rotation-space", 1);
+        assertNotEquals(worldFrame, slicerCameraFrame(), "Local rings follow object orientation");
+        assertEquals(tilted, document().printSetup(), "Coordinate mode is transient");
+        assertTrue(fx(() -> ((CheckBox) node("#print-gizmo-local")).isSelected()));
+        click("print-gizmo-local");
+        assertEquals(
+                PrintRotationGizmo.Space.WORLD, fx(() -> ((ComboBox<?>) node("#print-rotation-space")).getValue()));
+        assertEquals(worldFrame, slicerCameraFrame(), "World rings keep their plate alignment");
+        click("print-gizmo-local");
+        assertEquals(
+                PrintRotationGizmo.Space.LOCAL, fx(() -> ((ComboBox<?>) node("#print-rotation-space")).getValue()));
+        assertEquals(tilted, document().printSetup());
+        choice("print-rotation-space", 0);
+        shortcut(KeyCode.Z, false);
+        ready();
         click("print-show-rotation-gizmos");
         assertFalse(slicerHasRing("#728ef5"));
         assertFalse(slicerHasRing("#e46969"));

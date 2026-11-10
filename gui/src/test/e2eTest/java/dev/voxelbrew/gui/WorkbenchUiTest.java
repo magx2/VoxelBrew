@@ -57,10 +57,17 @@ class WorkbenchUiTest {
             var maximum = (Label) field.lookup(".formula-maximum");
             var unitLabel = (Label) field.lookup(".formula-unit");
             assertEquals("%", unitLabel.getText());
+            assertEquals(1, field.dragStep());
             assertTrue(unitLabel.isMouseTransparent());
             assertEquals("0 ≤", minimum.getText());
             assertEquals("≤ 100", maximum.getText());
             var layer = (FormulaField) node("#print-layer-height");
+            assertEquals(0.01, layer.dragStep());
+            assertEquals(1, ((FormulaField) node("#print-walls")).dragStep());
+            assertEquals(0.01, ((FormulaField) node("#print-gap")).dragStep());
+            assertEquals(1, ((FormulaField) node("#print-threshold")).dragStep());
+            assertEquals(1, ((FormulaField) node("#print-interfaces")).dragStep());
+            assertEquals(1, ((FormulaField) node("#print-raft")).dragStep());
             assertEquals("mm", ((Label) layer.lookup(".formula-unit")).getText());
             assertEquals("", ((Label) node("#print-walls").lookup(".formula-unit")).getText());
             assertEquals("0.05 ≤", ((Label) layer.lookup(".formula-minimum")).getText());
@@ -118,6 +125,7 @@ class WorkbenchUiTest {
             var label = (Label) field.lookup(".formula-unit");
             for (var unit : ParameterUnit.values()) {
                 selected.set(unit);
+                assertEquals(unit == ParameterUnit.DEG ? 1 : unit == ParameterUnit.RAD ? 0.01 : 0.1, field.dragStep());
                 assertEquals(
                         unit == ParameterUnit.NUMBER ? "" : unit == ParameterUnit.DEG ? "°" : unit.toString(),
                         label.getText());
@@ -4424,6 +4432,35 @@ class WorkbenchUiTest {
             middle.accept(MouseEvent.MOUSE_RELEASED, 110.0);
             middle.accept(MouseEvent.MOUSE_DRAGGED, 150.0);
             assertEquals("2.25", field.getText());
+            for (double invalidStep : new double[] {0, -1, Double.NaN, Double.POSITIVE_INFINITY}) {
+                assertThrows(IllegalArgumentException.class, () -> field.dragStep(invalidStep));
+            }
+            field.dragStep(0.01).bounds(0.05, true, 0.3, true);
+            field.setText("0.2");
+            middle.accept(MouseEvent.MOUSE_PRESSED, 100.0);
+            middle.accept(MouseEvent.MOUSE_DRAGGED, 101.0);
+            assertEquals("0.21", field.getText());
+            field.dragStep(1);
+            middle.accept(MouseEvent.MOUSE_DRAGGED, 102.0);
+            assertEquals("0.22", field.getText(), "Step is fixed for the active gesture");
+            middle.accept(MouseEvent.MOUSE_RELEASED, 102.0);
+            field.bounds(1, true, 20, true);
+            field.setText("2");
+            middle.accept(MouseEvent.MOUSE_PRESSED, 100.0);
+            middle.accept(MouseEvent.MOUSE_DRAGGED, 101.0);
+            assertEquals("3", field.getText());
+            middle.accept(MouseEvent.MOUSE_DRAGGED, 99.0);
+            assertEquals("1", field.getText());
+            middle.accept(MouseEvent.MOUSE_RELEASED, 99.0);
+            field.bounds(0, false, 5, false);
+            field.setText("2");
+            middle.accept(MouseEvent.MOUSE_PRESSED, 100.0);
+            middle.accept(MouseEvent.MOUSE_DRAGGED, 1000.0);
+            assertEquals("4", field.getText());
+            middle.accept(MouseEvent.MOUSE_DRAGGED, -1000.0);
+            assertEquals("1", field.getText());
+            middle.accept(MouseEvent.MOUSE_RELEASED, -1000.0);
+            field.dragStep(0.1);
             for (boolean inclusive : new boolean[] {true, false}) {
                 field.bounds(1, inclusive, 2, inclusive);
                 field.setText("1.25");

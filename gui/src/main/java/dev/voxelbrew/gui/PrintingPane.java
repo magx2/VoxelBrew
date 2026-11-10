@@ -712,6 +712,7 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
         var bounds = PrintFieldBounds.forField(id);
         if (bounds != null) {
             field.bounds(bounds.min(), true, bounds.max(), true);
+            field.dragStep(bounds.step());
             field.validateWith(value -> {
                 if (!bounds.accepts(value))
                     throw new IllegalArgumentException(translations.text(bounds.helpKey(), bounds.min(), bounds.max()));
@@ -2130,6 +2131,7 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
                 .localized(translations);
         for (var field : List.of(width, depth, height)) {
             field.bounds(0, false, 10000, true);
+            field.dragStep(1);
             field.validateWith(value -> {
                 if (!Double.isFinite(value) || value <= 0 || value > 10000)
                     throw new IllegalArgumentException(translations.text("print.buildRange"));

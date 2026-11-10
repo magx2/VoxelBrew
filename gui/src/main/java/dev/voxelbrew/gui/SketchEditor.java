@@ -71,19 +71,19 @@ final class SketchEditor extends BorderPane implements AutoCloseable {
     private SketchTools.Tool advanced;
     private final VBox toolOptions = new VBox(6);
     private final FormulaField toolRadius = numeric("5", ParameterUnit.MM),
-            toolRho = numeric("0.5", ParameterUnit.NUMBER),
+            toolRho = numeric("0.5", ParameterUnit.NUMBER).dragStep(0.01),
             textContent = FormulaField.text("Text", this::formulaParameters),
             textFont = FormulaField.text("SansSerif", this::formulaParameters),
             textHeight = numeric("10", ParameterUnit.MM),
             textAngle = numeric("0", ParameterUnit.DEG),
-            textSpacing = numeric("0", ParameterUnit.NUMBER),
+            textSpacing = numeric("0", ParameterUnit.NUMBER).dragStep(0.01),
             pointX = numeric("0", ParameterUnit.MM),
             pointY = numeric("0", ParameterUnit.MM);
     private final ComboBox<Integer> splineDegree = new ComboBox<>();
     private final ComboBox<String> textStyle = new ComboBox<>();
     private final CheckBox closedCurve = new CheckBox("");
     private final FormulaField dimensionValue = FormulaField.number("10", this::formulaParameters, this::dimensionUnit),
-            sides = numeric("6", ParameterUnit.NUMBER);
+            sides = numeric("6", ParameterUnit.NUMBER).dragStep(1);
     private final CheckBox construction = new CheckBox(""), auto = new CheckBox(""), showBadges = new CheckBox("");
     private final Label selected = new Label(""), status = new Label(""), error = new Label(), hint = new Label();
     private final Button finish, undo, redo;

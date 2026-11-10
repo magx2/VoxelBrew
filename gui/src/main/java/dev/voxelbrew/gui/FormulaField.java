@@ -35,6 +35,7 @@ final class FormulaField extends TextField {
     private final ObjectProperty<NumericFieldBounds> bounds = new SimpleObjectProperty<>(NumericFieldBounds.UNBOUNDED);
     private final StringProperty unitSuffix = new SimpleStringProperty("");
     private String displayUnit;
+    private Double dragStep;
     private final Tooltip preview = UiHelp.tooltip("");
     private final Tooltip syntax = UiHelp.tooltip("");
     private dev.voxelbrew.util.i18n.Translations translations =
@@ -120,6 +121,25 @@ final class FormulaField extends TextField {
 
     NumericFieldBounds bounds() {
         return bounds.get();
+    }
+
+    /** Change in declared display units per horizontal screen pixel during middle-button dragging. */
+    FormulaField dragStep(double step) {
+        if (unit == null) throw new IllegalStateException("This is a text field");
+        if (!Double.isFinite(step) || step <= 0)
+            throw new IllegalArgumentException("Drag step must be finite and positive");
+        dragStep = step;
+        return this;
+    }
+
+    double dragStep() {
+        if (dragStep != null) return dragStep;
+        if (unit == null) throw new IllegalStateException("This is a text field");
+        return switch (Objects.requireNonNull(unit.get())) {
+            case DEG -> 1;
+            case RAD -> 0.01;
+            default -> 0.1;
+        };
     }
 
     /** Display-only unit for quantities such as percentages whose stored values are unitless. */

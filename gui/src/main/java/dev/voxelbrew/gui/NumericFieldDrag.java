@@ -10,10 +10,10 @@ import javafx.scene.input.MouseEvent;
 
 /** Edits a numeric literal in place; the field's normal acceptance still applies. */
 final class NumericFieldDrag {
-    private static final BigDecimal STEP = new BigDecimal("0.1");
     private final FormulaField field;
     private String original;
     private BigDecimal startValue;
+    private BigDecimal step;
     private double startX;
 
     NumericFieldDrag(FormulaField field) {
@@ -29,6 +29,7 @@ final class NumericFieldDrag {
                 return;
             }
             original = field.getText();
+            step = BigDecimal.valueOf(field.dragStep());
             startX = event.getScreenX();
             field.requestFocus();
             event.consume();
@@ -39,10 +40,10 @@ final class NumericFieldDrag {
                 original = null;
                 return;
             }
-            // One unit per ten screen pixels, calculated from the press to avoid accumulated drift.
+            // Capture the step at press and calculate from the origin to avoid drift or mid-drag jumps.
             double pixels = Math.rint(event.getScreenX() - startX);
             if (Double.isFinite(pixels)) {
-                var value = constrain(startValue.add(BigDecimal.valueOf(pixels).multiply(STEP)));
+                var value = constrain(startValue.add(BigDecimal.valueOf(pixels).multiply(step)));
                 if (field.bounds().accepts(value.doubleValue())) {
                     field.setText(
                             value.compareTo(startValue) == 0
@@ -87,8 +88,8 @@ final class NumericFieldDrag {
 
     /** Strict limits stop at the nearest drag step inside the range, without inventing tiny epsilon values. */
     private BigDecimal stepInside(BigDecimal limit, RoundingMode rounding, BigDecimal direction) {
-        var steps = limit.subtract(startValue).divide(STEP, 0, rounding).add(direction);
-        return startValue.add(steps.multiply(STEP));
+        var steps = limit.subtract(startValue).divide(step, 0, rounding).add(direction);
+        return startValue.add(steps.multiply(step));
     }
 
     private boolean editable() {

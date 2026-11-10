@@ -91,6 +91,7 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
     private final EnumMap<GcodeJob.Role, CheckBox> roles = new EnumMap<>(GcodeJob.Role.class);
     private final Button slice;
     private final Button sliceAll;
+    private final Button cleanSlicing;
     private final Button cancel;
     private final ProgressIndicator progress = new ProgressIndicator();
     private ManufacturingModel model;
@@ -350,7 +351,13 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
         slice = button(translations.text("gui.slice"), "print-slice", this::slice);
         sliceAll = button(translations.text("print.sliceAll"), "print-slice-all", () -> slice(true));
         cancel = button(translations.text("gui.cancel_slicing"), "print-cancel", jobs::cancel);
-        var job = new VBox(7, summary, diagnostics);
+        cleanSlicing = button(translations.text("print.cleanSlicing"), "print-clean-slicing", () -> {
+            document.invalidateGcode();
+            jobs.clear();
+            draw();
+        });
+        cleanSlicing.setMaxWidth(Double.MAX_VALUE);
+        var job = new VBox(7, summary, diagnostics, cleanSlicing);
         diagnostics.setEditable(false);
         diagnostics.setPrefRowCount(5);
         diagnostics.setId("print-diagnostics");
@@ -1142,6 +1149,11 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
     }
 
     private void updateJob() {
+        boolean sliced =
+                jobs.result() != null || !document.snapshot().document().gcode().isEmpty();
+        for (int i = 0; i < 3; i++) tabs.getTabs().get(i).setDisable(sliced);
+        if (sliced) tabs.getSelectionModel().select(3);
+        cleanSlicing.setDisable(!sliced || jobs.running());
         updatePreviewControls();
         boolean placementUnavailable =
                 model == null || model.instances().isEmpty() || !document.canExport() || jobs.running() || orienting;

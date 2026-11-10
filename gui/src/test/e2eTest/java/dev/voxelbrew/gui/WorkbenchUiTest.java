@@ -37,7 +37,7 @@ import org.junit.jupiter.api.io.TempDir;
 @ExtendWith(UiTestShard.class)
 class WorkbenchUiTest {
     @Test
-    void slicedGcodeIsSavedReopenedExportedAndInvalidatedByDraftEdit() throws Exception {
+    void slicedGcodeLocksTabsUntilCleanedAndSurvivesReopenAndExport() throws Exception {
         Path input = PreparedDocuments.copy("plate-5mm.vxb", directory);
         fx(() -> workbench.controller().open(input)).get(20, TimeUnit.SECONDS);
         ready();
@@ -47,6 +47,7 @@ class WorkbenchUiTest {
         click("print-tab-job");
         assertNull(fx(() -> workbench.lookup("#print-output")));
         assertNull(fx(() -> workbench.lookup("#print-overwrite")));
+        assertTrue(fx(() -> node("#print-clean-slicing").isDisabled()));
         long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(30);
         while (fx(() -> node("#print-slice").isDisabled()) && System.nanoTime() < deadline) Thread.sleep(25);
         click("print-slice");
@@ -58,6 +59,11 @@ class WorkbenchUiTest {
                 fx(() -> ((PrintingPane) node("#printing-workspace")).jobs().state()));
         var lines = document().activeGcode();
         assertFalse(lines.isEmpty());
+        assertTrue(fx(() -> ((TabPane) node("#print-controls"))
+                .getTabs().subList(0, 3).stream().allMatch(Tab::isDisable)));
+        assertEquals(
+                3,
+                fx(() -> ((TabPane) node("#print-controls")).getSelectionModel().getSelectedIndex()));
         Path saved = directory.resolve("sliced.vxb");
         fx(() -> workbench.controller().save(saved, false)).get(20, TimeUnit.SECONDS);
         assertEquals(lines, DocumentReader.load(saved).activeGcode());
@@ -84,6 +90,18 @@ class WorkbenchUiTest {
                     .get(20, TimeUnit.SECONDS);
             assertEquals(lines, Files.readAllLines(output));
         }
+        assertTrue(fx(() -> ((TabPane) node("#print-controls"))
+                .getTabs().subList(0, 3).stream().allMatch(Tab::isDisable)));
+        var setupBeforeClean = document().printSetup();
+        click("print-clean-slicing");
+        assertEquals(setupBeforeClean, document().printSetup());
+        assertTrue(document().gcode().isEmpty());
+        assertTrue(fx(() -> node("#print-clean-slicing").isDisabled()));
+        assertTrue(
+                fx(() -> ((TabPane) node("#print-controls")).getTabs().stream().noneMatch(Tab::isDisable)));
+        assertEquals(
+                PrintController.State.IDLE,
+                fx(() -> ((PrintingPane) node("#printing-workspace")).jobs().state()));
         click("print-tab-process");
         text("print-layer-height", "0.25");
         assertTrue(document().gcode().isEmpty());

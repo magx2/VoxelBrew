@@ -125,6 +125,19 @@ public final class PrintController implements AutoCloseable {
         return List.copyOf(diagnostics);
     }
 
+    public void clear() {
+        if (running) throw new IllegalStateException("Wait for slicing to finish before clearing the job");
+        generation++;
+        result = null;
+        completedGcode = Map.of();
+        restoredLines = List.of();
+        revision = "";
+        diagnostics.clear();
+        state = State.IDLE;
+        message = "Ready to slice";
+        onChanged.run();
+    }
+
     public void documentChanged(CadDocument document) {
         if (revision.isEmpty() || revision.equals(DocumentCodec.fingerprint(document))) return;
         outdated("Model or print settings changed. Slice again to update the job.");

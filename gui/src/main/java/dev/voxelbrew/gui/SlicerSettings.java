@@ -17,8 +17,8 @@ final class SlicerSettings {
 
     Map<String, String> options(String id) throws IOException {
         var values = new TreeMap<>(catalog.require(id).configurationOptions());
-        var saved = configuration.read();
-        values.replaceAll((key, fallback) -> saved.getOrDefault("slicer." + id + "." + key, fallback));
+        var saved = configuration.section("slicer", id).read();
+        values.replaceAll((key, fallback) -> saved.getOrDefault(key, fallback));
         return Map.copyOf(values);
     }
 
@@ -27,11 +27,10 @@ final class SlicerSettings {
     }
 
     void save(Map<String, Map<String, String>> providers) throws IOException {
-        var values = new TreeMap<String, String>();
         for (var entry : providers.entrySet()) {
             catalog.require(entry.getKey()).configure(entry.getValue());
-            entry.getValue().forEach((key, value) -> values.put("slicer." + entry.getKey() + "." + key, value));
         }
-        configuration.update(values, Set.of());
+        for (var entry : providers.entrySet())
+            configuration.section("slicer", entry.getKey()).update(entry.getValue(), Set.of());
     }
 }

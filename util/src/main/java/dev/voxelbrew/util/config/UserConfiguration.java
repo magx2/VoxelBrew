@@ -33,6 +33,37 @@ public final class UserConfiguration {
         return file;
     }
 
+    /** Separate provider settings beside this file, migrating legacy prefixed keys on first access. */
+    public UserConfiguration section(String namespace, String id) throws IOException {
+        if (namespace == null
+                || !namespace.matches("[a-z0-9][a-z0-9-]*")
+                || id == null
+                || !id.matches("[a-z0-9][a-z0-9.-]*"))
+            throw new IllegalArgumentException("Invalid configuration section");
+        var target = new UserConfiguration(file.resolveSibling("config-" + namespace + "-" + id + ".properties"));
+        String prefix = namespace + "." + id + ".";
+        if (read().keySet().stream().anyMatch(key -> key.startsWith(prefix))) {
+            try {
+                change(legacy -> {
+                    var keys = legacy.stringPropertyNames().stream()
+                            .filter(key -> key.startsWith(prefix))
+                            .toList();
+                    try {
+                        // Publish the destination before removing anything; existing destination values win.
+                        target.change(values -> keys.forEach(
+                                key -> values.putIfAbsent(key.substring(prefix.length()), legacy.getProperty(key))));
+                    } catch (IOException failure) {
+                        throw new java.io.UncheckedIOException(failure);
+                    }
+                    keys.forEach(legacy::remove);
+                });
+            } catch (java.io.UncheckedIOException failure) {
+                throw failure.getCause();
+            }
+        }
+        return target;
+    }
+
     public Map<String, String> read() throws IOException {
         Properties properties = load();
         var result = new TreeMap<String, String>();

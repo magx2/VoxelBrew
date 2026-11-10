@@ -13,6 +13,24 @@ class BackendConfigurationTest {
     Path directory;
 
     @Test
+    void registryReadsSeparateFilesAndMigratesLegacySettings() throws Exception {
+        var configuration = new dev.voxelbrew.util.config.UserConfiguration(directory.resolve("config.properties"));
+        configuration.set("slicer.prusa-slicer.executable", "legacy-prusa");
+        var cura = new dev.voxelbrew.util.config.UserConfiguration(directory.resolve("config-slicer-cura.properties"));
+        cura.set("executable", "separate-cura");
+        try (var registry = new SlicerRegistry(directory, configuration)) {
+            assertEquals(
+                    Path.of("legacy-prusa"), registry.require("prusa-slicer").executable());
+            assertEquals(Path.of("separate-cura"), registry.require("cura").executable());
+            assertTrue(configuration.read().isEmpty());
+        }
+        try (var registry = new SlicerRegistry(directory, configuration)) {
+            assertEquals(
+                    Path.of("legacy-prusa"), registry.require("prusa-slicer").executable());
+        }
+    }
+
+    @Test
     void registryKeepsProviderSettingsSeparateAndReportsInvalidOptions() throws Exception {
         try (var registry = new SlicerRegistry(
                 directory,

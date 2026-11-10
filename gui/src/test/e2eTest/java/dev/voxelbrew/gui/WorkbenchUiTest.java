@@ -579,10 +579,18 @@ class WorkbenchUiTest {
         assertTrue(fx(() -> ((Label) node("#slicer-status-cura")).getText().contains("Not working")));
         assertTrue(fx(() -> node("#print-slice").isDisabled()));
         assertTrue(fx(() -> node("#print-slice-all").isDisabled()));
-        assertEquals("C:/Slicers/prusa.exe", configuration.get("slicer.prusa-slicer.executable", ""));
-        assertEquals("C:/Slicers/CuraEngine.exe", configuration.get("slicer.cura.executable", ""));
-        assertEquals("C:/Slicers/machine.json", configuration.get("slicer.cura.definition", ""));
-        assertEquals("C:/Slicers/process.properties", configuration.get("slicer.cura.settings", ""));
+        assertEquals(
+                "C:/Slicers/prusa.exe",
+                configuration.section("slicer", "prusa-slicer").get("executable", ""));
+        assertEquals(
+                "C:/Slicers/CuraEngine.exe",
+                configuration.section("slicer", "cura").get("executable", ""));
+        assertEquals(
+                "C:/Slicers/machine.json",
+                configuration.section("slicer", "cura").get("definition", ""));
+        assertEquals(
+                "C:/Slicers/process.properties",
+                configuration.section("slicer", "cura").get("settings", ""));
         fx(() -> {
             Screenshot.save(
                     stage.getScene(), Path.of(System.getProperty("voxelbrew.ui.artifacts"), "slicer-settings.png"));
@@ -597,7 +605,9 @@ class WorkbenchUiTest {
                 fx(() -> ((TextField) node("#slicer-option-prusa-slicer-executable")).getText()));
         text("slicer-option-prusa-slicer-executable", "discarded");
         key(KeyCode.ESCAPE);
-        assertEquals("C:/Slicers/prusa.exe", configuration.get("slicer.prusa-slicer.executable", ""));
+        assertEquals(
+                "C:/Slicers/prusa.exe",
+                configuration.section("slicer", "prusa-slicer").get("executable", ""));
         assertFalse(fx(() -> workbench.controller().dirty()));
     }
 

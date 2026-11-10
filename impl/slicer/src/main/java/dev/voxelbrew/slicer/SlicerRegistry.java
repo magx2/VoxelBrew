@@ -18,10 +18,31 @@ public final class SlicerRegistry implements dev.voxelbrew.slicer.api.SlicerCata
     private final List<String> diagnostics = new ArrayList<>();
 
     public SlicerRegistry(Path directory) throws IOException {
-        this(directory, dev.voxelbrew.util.config.UserConfiguration.user().read());
+        this(directory, dev.voxelbrew.util.config.UserConfiguration.user());
+    }
+
+    public SlicerRegistry(Path directory, dev.voxelbrew.util.config.UserConfiguration configuration)
+            throws IOException {
+        this(directory, id -> configuration.section("slicer", id).read());
     }
 
     public SlicerRegistry(Path directory, Map<String, String> configuration) throws IOException {
+        this(directory, id -> {
+            var options = new TreeMap<String, String>();
+            String prefix = "slicer." + id + ".";
+            configuration.forEach((key, value) -> {
+                if (key.startsWith(prefix)) options.put(key.substring(prefix.length()), value);
+            });
+            return options;
+        });
+    }
+
+    @FunctionalInterface
+    private interface Configuration {
+        Map<String, String> options(String id) throws IOException;
+    }
+
+    private SlicerRegistry(Path directory, Configuration configuration) throws IOException {
         var urls = new ArrayList<URL>();
         if (Files.isDirectory(directory))
             try (var files = Files.list(directory)) {
@@ -37,12 +58,6 @@ public final class SlicerRegistry implements dev.voxelbrew.slicer.api.SlicerCata
                 if (!services.hasNext()) break;
                 var backend = services.next();
                 var descriptor = backend.descriptor();
-                var options = new TreeMap<String, String>();
-                String prefix = "slicer." + descriptor.id() + ".";
-                configuration.forEach((key, value) -> {
-                    if (key.startsWith(prefix)) options.put(key.substring(prefix.length()), value);
-                });
-                backend = backend.configure(options);
                 if (descriptor.apiVersion() != SlicerBackend.API_VERSION) {
                     diagnostics.add("Incompatible slicer " + descriptor.id() + ": API " + descriptor.apiVersion());
                     continue;
@@ -51,9 +66,10 @@ public final class SlicerRegistry implements dev.voxelbrew.slicer.api.SlicerCata
                     diagnostics.add("Invalid slicer ID: " + descriptor.id());
                     continue;
                 }
+                backend = backend.configure(configuration.options(descriptor.id()));
                 if (providers.putIfAbsent(descriptor.id(), new Entry(backend, descriptor)) != null)
                     diagnostics.add("Duplicate slicer ID: " + descriptor.id());
-            } catch (ServiceConfigurationError | LinkageError | RuntimeException failure) {
+            } catch (IOException | ServiceConfigurationError | LinkageError | RuntimeException failure) {
                 diagnostics.add("Slicer provider failed: " + failure);
             }
         }

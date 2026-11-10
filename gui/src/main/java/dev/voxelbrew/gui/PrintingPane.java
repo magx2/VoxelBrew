@@ -188,6 +188,8 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
 
         var process = new VBox(
                 7,
+                new Label(translations.text("gui.slicer_backend")),
+                backends,
                 new Label(translations.text("print.printer")),
                 new Label(translations.text("gui.material")),
                 materials,
@@ -201,8 +203,6 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
                 row("print-interfaces", translations.text("gui.interface_layers"), "3"),
                 row("print-brim", translations.text("gui.brim_width_mm"), "0"),
                 row("print-raft", translations.text("gui.raft_layers"), "0"),
-                new Label(translations.text("gui.slicer_backend")),
-                backends,
                 button(translations.text("gui.apply_process_settings"), "print-apply-process", this::applyProcess));
         var capabilities = new Label();
         capabilities.setWrapText(true);

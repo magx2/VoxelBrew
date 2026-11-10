@@ -295,7 +295,7 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
 
         supportsEnabled.setId("print-supports-enabled");
         supportsEnabled.setText(translations.text("print.supportsEnabled"));
-        supportsEnabled.setSelected(true);
+        supportsEnabled.setSelected(false);
         UiHelp.install(supportsEnabled, translations);
         supportsEnabled.setOnAction(event -> {
             if (!updating) commit(setup().withSupportsDisabled(!supportsEnabled.isSelected()));

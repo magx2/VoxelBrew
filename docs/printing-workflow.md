@@ -34,7 +34,8 @@ existing coordinate-space choices.
 
 ## Desktop plates and placement
 
-The **Supports** tab has an **Enable supports** master switch. Turning it off
+The **Supports** tab has an **Enable supports** master switch, off by default for
+new desktop projects. Existing projects retain their saved setting. Turning it off
 excludes automatic supports, manual enforcers/blockers/support solids and rafts
 on every plate. Their saved settings and definitions are retained for re-enabling;
 the switch is undoable and persists in VXB/JSON. Disabled support controls are

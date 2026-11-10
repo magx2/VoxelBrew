@@ -137,7 +137,7 @@ public final class DocumentController implements AutoCloseable {
     private volatile boolean closed;
     private volatile long sequence;
     private long documentGeneration;
-    private ModelSession session = new ModelSession(CadDocument.empty());
+    private ModelSession session = new ModelSession(newDesktopDocument());
     private CadDocument saved = session.document();
     private boolean unsavedImport;
 
@@ -312,7 +312,17 @@ public final class DocumentController implements AutoCloseable {
     }
 
     public void newDocument() {
-        replace(CadDocument.empty(), null);
+        replace(newDesktopDocument(), null);
+    }
+
+    static CadDocument newDesktopDocument() {
+        var document = CadDocument.empty();
+        return new CadDocument(
+                document.id(),
+                document.features(),
+                document.cursor(),
+                document.printSetup().withSupportsDisabled(true),
+                document.parameters());
     }
 
     private void replace(CadDocument document, Path source) {

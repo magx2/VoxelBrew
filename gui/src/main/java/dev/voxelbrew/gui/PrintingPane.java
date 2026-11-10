@@ -156,17 +156,7 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
                 button(translations.text("gui.add_selected_body"), "print-add", this::addInstance),
                 new Label(translations.text("gui.build_instance")),
                 instances);
-        for (var name : List.of("x", "y", "z", "rotate-x", "rotate-y", "rotate-z"))
-            placement
-                    .getChildren()
-                    .add(row(
-                            "print-" + name,
-                            name.startsWith("rotate")
-                                    ? translations.text(
-                                            "print.rotation",
-                                            name.substring("rotate-".length()).toUpperCase(Locale.ROOT))
-                                    : name + " (mm)",
-                            "0"));
+        placement.getChildren().addAll(placementCoordinates(false), placementCoordinates(true));
         placement
                 .getChildren()
                 .addAll(
@@ -451,6 +441,30 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
     }
 
     private VBox row(String id, String label, String initial) {
+        return row(id, label, initial, true);
+    }
+
+    private VBox placementCoordinates(boolean rotation) {
+        var coordinates = new HBox(8);
+        for (String axis : List.of("x", "y", "z")) {
+            String id = "print-" + (rotation ? "rotate-" : "") + axis;
+            String caption =
+                    rotation ? translations.text("print.rotation", axis.toUpperCase(Locale.ROOT)) : axis + " (mm)";
+            var column = row(id, caption, "0", false);
+            column.setMinWidth(0);
+            column.setPrefWidth(0);
+            HBox.setHgrow(column, Priority.ALWAYS);
+            fields.get(id).setMinWidth(0);
+            fields.get(id).setPrefColumnCount(5);
+            coordinates.getChildren().add(column);
+        }
+        var hint = new Label(translations.text("print.property." + (rotation ? "rotation" : "position")));
+        hint.setWrapText(true);
+        hint.getStyleClass().add("slicer-property-help");
+        return new VBox(4, coordinates, hint);
+    }
+
+    private VBox row(String id, String label, String initial, boolean showHelp) {
         java.util.function.Supplier<ParameterSet> parameters =
                 () -> document.snapshot().document().parameters();
         var unit = id.startsWith("print-rotate-") || id.equals("print-threshold")
@@ -480,8 +494,7 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
             var hint = new Label(help);
             hint.setWrapText(true);
             hint.getStyleClass().add("slicer-property-help");
-            if (!Set.of("print-y", "print-z", "print-rotate-y", "print-rotate-z")
-                    .contains(id)) row.getChildren().add(hint);
+            if (showHelp) row.getChildren().add(hint);
             field.setAccessibleHelp(help);
         }
         return row;

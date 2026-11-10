@@ -4380,6 +4380,42 @@ class WorkbenchUiTest {
             middle.accept(MouseEvent.MOUSE_RELEASED, 110.0);
             middle.accept(MouseEvent.MOUSE_DRAGGED, 150.0);
             assertEquals("2.25", field.getText());
+            for (boolean inclusive : new boolean[] {true, false}) {
+                field.bounds(1, inclusive, 2, inclusive);
+                field.setText("1.25");
+                middle.accept(MouseEvent.MOUSE_PRESSED, 100.0);
+                middle.accept(MouseEvent.MOUSE_DRAGGED, 1000.0);
+                assertEquals(inclusive ? "2" : "1.95", field.getText());
+                assertEquals(inclusive ? 20 : 19.5, field.value(), 1e-9);
+                middle.accept(MouseEvent.MOUSE_DRAGGED, -1000.0);
+                assertEquals(inclusive ? "1" : "1.05", field.getText());
+                assertEquals(inclusive ? 10 : 10.5, field.value(), 1e-9);
+                middle.accept(MouseEvent.MOUSE_DRAGGED, 101.0);
+                assertEquals("1.35", field.getText());
+                field.fireEvent(new KeyEvent(KeyEvent.KEY_PRESSED, "", "", KeyCode.ESCAPE, false, false, false, false));
+                assertEquals("1.25", field.getText());
+            }
+            field.bounds(0.05, true, 0.3, true);
+            field.setText("0.2");
+            middle.accept(MouseEvent.MOUSE_PRESSED, 100.0);
+            middle.accept(MouseEvent.MOUSE_DRAGGED, 200.0);
+            assertEquals("0.3", field.getText());
+            middle.accept(MouseEvent.MOUSE_DRAGGED, 0.0);
+            assertEquals("0.05", field.getText());
+            middle.accept(MouseEvent.MOUSE_RELEASED, 0.0);
+            field.bounds(0, false, Double.POSITIVE_INFINITY, false);
+            field.setText("0.5");
+            middle.accept(MouseEvent.MOUSE_PRESSED, 100.0);
+            middle.accept(MouseEvent.MOUSE_DRAGGED, -1000.0);
+            assertEquals("0.1", field.getText());
+            middle.accept(MouseEvent.MOUSE_RELEASED, -1000.0);
+            field.bounds(Double.NEGATIVE_INFINITY, false, 1, false);
+            field.setText("0.5");
+            middle.accept(MouseEvent.MOUSE_PRESSED, 100.0);
+            middle.accept(MouseEvent.MOUSE_DRAGGED, 1000.0);
+            assertEquals("0.9", field.getText());
+            middle.accept(MouseEvent.MOUSE_RELEASED, 1000.0);
+            field.bounds(Double.NEGATIVE_INFINITY, false, Double.POSITIVE_INFINITY, false);
             for (String unchanged : List.of("=5", "  =5", "$width", "", "NaN", "1e999", "2 mm")) {
                 field.setText(unchanged);
                 middle.accept(MouseEvent.MOUSE_PRESSED, 100.0);

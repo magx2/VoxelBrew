@@ -2,7 +2,7 @@ package dev.voxelbrew.gui;
 
 import dev.voxelbrew.engine.parameters.Expressions;
 import java.math.BigDecimal;
-import javafx.scene.control.TextField;
+import java.math.RoundingMode;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
 import javafx.scene.input.MouseButton;
@@ -10,12 +10,13 @@ import javafx.scene.input.MouseEvent;
 
 /** Edits a numeric literal in place; the field's normal acceptance still applies. */
 final class NumericFieldDrag {
-    private final TextField field;
+    private static final BigDecimal STEP = new BigDecimal("0.1");
+    private final FormulaField field;
     private String original;
     private BigDecimal startValue;
     private double startX;
 
-    NumericFieldDrag(TextField field) {
+    NumericFieldDrag(FormulaField field) {
         this.field = field;
         field.addEventFilter(MouseEvent.MOUSE_PRESSED, event -> {
             original = null;
@@ -41,10 +42,12 @@ final class NumericFieldDrag {
             // One unit per ten screen pixels, calculated from the press to avoid accumulated drift.
             double pixels = Math.rint(event.getScreenX() - startX);
             if (Double.isFinite(pixels)) {
-                var value = startValue.add(BigDecimal.valueOf(pixels).movePointLeft(1));
-                if (Double.isFinite(value.doubleValue())) {
+                var value = constrain(startValue.add(BigDecimal.valueOf(pixels).multiply(STEP)));
+                if (field.bounds().accepts(value.doubleValue())) {
                     field.setText(
-                            pixels == 0 ? original : value.stripTrailingZeros().toPlainString());
+                            value.compareTo(startValue) == 0
+                                    ? original
+                                    : value.stripTrailingZeros().toPlainString());
                 }
             }
             event.consume();
@@ -65,6 +68,27 @@ final class NumericFieldDrag {
             if (!focused) original = null;
         });
         field.sceneProperty().addListener(o -> original = null);
+    }
+
+    private BigDecimal constrain(BigDecimal value) {
+        var bounds = field.bounds();
+        if (Double.isFinite(bounds.min())) {
+            var minimum = BigDecimal.valueOf(bounds.min());
+            if (!bounds.minInclusive()) minimum = stepInside(minimum, RoundingMode.FLOOR, BigDecimal.ONE);
+            value = value.max(minimum);
+        }
+        if (Double.isFinite(bounds.max())) {
+            var maximum = BigDecimal.valueOf(bounds.max());
+            if (!bounds.maxInclusive()) maximum = stepInside(maximum, RoundingMode.CEILING, BigDecimal.ONE.negate());
+            value = value.min(maximum);
+        }
+        return value;
+    }
+
+    /** Strict limits stop at the nearest drag step inside the range, without inventing tiny epsilon values. */
+    private BigDecimal stepInside(BigDecimal limit, RoundingMode rounding, BigDecimal direction) {
+        var steps = limit.subtract(startValue).divide(STEP, 0, rounding).add(direction);
+        return startValue.add(steps.multiply(STEP));
     }
 
     private boolean editable() {

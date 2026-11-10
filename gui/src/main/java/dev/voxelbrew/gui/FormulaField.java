@@ -114,6 +114,10 @@ final class FormulaField extends TextField {
         return this;
     }
 
+    NumericFieldBounds bounds() {
+        return bounds.get();
+    }
+
     void validateWith(java.util.function.DoubleConsumer validation) {
         this.validation = Objects.requireNonNull(validation);
         refreshFormula();

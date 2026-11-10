@@ -712,8 +712,7 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
         if (bounds != null)
             field.validateWith(value -> {
                 if (!bounds.accepts(value))
-                    throw new IllegalArgumentException(translations.text(
-                            bounds.whole() ? "print.wholeRange" : "print.range", bounds.min(), bounds.max()));
+                    throw new IllegalArgumentException(translations.text(bounds.helpKey(), bounds.min(), bounds.max()));
             });
         field.setId(id);
         fields.put(id, field);
@@ -725,10 +724,7 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
                         ? "position"
                         : id.startsWith("print-support-") ? "support" : id.substring(6);
         String help = translations.textOrDefault("print.property." + helpKey, "");
-        if (bounds != null)
-            help += " "
-                    + translations.text(
-                            bounds.whole() ? "print.wholeRange" : "print.range", bounds.min(), bounds.max());
+        if (bounds != null) help += " " + translations.text(bounds.helpKey(), bounds.min(), bounds.max());
         var row = new VBox(4, caption, field);
         if (!help.isBlank()) {
             caption.setTooltip(UiHelp.tooltip(help));
@@ -2114,14 +2110,31 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
         var dialog = new Dialog<ButtonType>();
         dialog.initOwner(getScene().getWindow());
         dialog.setTitle(translations.text("print.editPlate"));
-        var width = new TextField(Double.toString(plateWidth));
-        var depth = new TextField(Double.toString(plateDepth));
-        var height = new TextField(
-                Double.toString(PrintProfile.resolve(setup()).printer().usableHeight()));
+        var width = FormulaField.number(
+                        Double.toString(plateWidth),
+                        () -> document.snapshot().document().parameters(),
+                        ParameterUnit.MM)
+                .localized(translations);
+        var depth = FormulaField.number(
+                        Double.toString(plateDepth),
+                        () -> document.snapshot().document().parameters(),
+                        ParameterUnit.MM)
+                .localized(translations);
+        var height = FormulaField.number(
+                        Double.toString(PrintProfile.resolve(setup()).printer().usableHeight()),
+                        () -> document.snapshot().document().parameters(),
+                        ParameterUnit.MM)
+                .localized(translations);
+        for (var field : List.of(width, depth, height))
+            field.validateWith(value -> {
+                if (!Double.isFinite(value) || value <= 0 || value > 10000)
+                    throw new IllegalArgumentException(translations.text("print.buildRange"));
+            });
         width.setId("print-bed-width");
         depth.setId("print-bed-depth");
         height.setId("print-bed-height");
-        var error = new Label();
+        var error = new Label(translations.text("print.buildRange"));
+        error.setWrapText(true);
         dialog.getDialogPane()
                 .setContent(new VBox(
                         8,
@@ -2135,18 +2148,12 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
         dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
         dialog.getDialogPane().lookupButton(ButtonType.OK).addEventFilter(javafx.event.ActionEvent.ACTION, event -> {
             try {
-                String printer = PrintProfile.rectangularPrinterId(
-                        Double.parseDouble(width.getText()),
-                        Double.parseDouble(depth.getText()),
-                        Double.parseDouble(height.getText()));
+                String printer = PrintProfile.rectangularPrinterId(width.value(), depth.value(), height.value());
                 if (setup().printerSnapshot() == null) {
                     commit(setup().withProfile(setup().backendId(), printer, setup().materialId(), setup().process()));
                 } else {
                     commit(setup().withPrinter(setup().printerSnapshot()
-                            .rectangular(
-                                    Double.parseDouble(width.getText()),
-                                    Double.parseDouble(depth.getText()),
-                                    Double.parseDouble(height.getText()))));
+                            .rectangular(width.value(), depth.value(), height.value())));
                 }
             } catch (IllegalArgumentException failure) {
                 error.setText(translations.text("print.invalidDimensions"));

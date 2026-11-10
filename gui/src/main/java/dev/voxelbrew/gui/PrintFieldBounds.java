@@ -1,7 +1,13 @@
 package dev.voxelbrew.gui;
 
-/** Input bounds matching the persisted ProcessSettings contract. */
+/** Input bounds matching manufacturing value contracts. */
 record PrintFieldBounds(double min, double max, boolean whole) {
+    String helpKey() {
+        if (!Double.isFinite(min)) return "print.finite";
+        if (!Double.isFinite(max)) return "print.atLeast";
+        return whole ? "print.wholeRange" : "print.range";
+    }
+
     boolean accepts(double value) {
         return Double.isFinite(value) && value >= min && value <= max && (!whole || value == Math.rint(value));
     }
@@ -15,6 +21,18 @@ record PrintFieldBounds(double min, double max, boolean whole) {
             case "print-gap" -> new PrintFieldBounds(0, 2, false);
             case "print-interfaces", "print-raft" -> new PrintFieldBounds(0, 20, true);
             case "print-brim" -> new PrintFieldBounds(0, 50, false);
+            case "print-support-width", "print-support-depth", "print-support-height" ->
+                new PrintFieldBounds(1e-6, Double.POSITIVE_INFINITY, false);
+            case "print-x",
+                    "print-y",
+                    "print-z",
+                    "print-rotate-x",
+                    "print-rotate-y",
+                    "print-rotate-z",
+                    "print-support-x",
+                    "print-support-y",
+                    "print-support-z" ->
+                new PrintFieldBounds(Double.NEGATIVE_INFINITY, Double.POSITIVE_INFINITY, false);
             default -> null;
         };
     }

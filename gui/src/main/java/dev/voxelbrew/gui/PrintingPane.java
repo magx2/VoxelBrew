@@ -48,6 +48,8 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
     private Path outputProject;
     private Path outputDestination;
     private Button autoArrange;
+    private Button orientAll;
+    private boolean orienting;
     private final ToggleButton toolpathPreview = new ToggleButton();
     private double plateWidth = 200, plateDepth = 200, plateMinX, plateMinY;
     private final Canvas canvas = new Canvas();
@@ -449,8 +451,9 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
             updatePreviewControls();
             draw();
         });
-        var viewBar = new HBox(
+        var viewBar = new FlowPane(
                 12,
+                8,
                 topView,
                 solidView,
                 new Separator(javafx.geometry.Orientation.VERTICAL),
@@ -465,7 +468,8 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
             draw();
         });
         autoArrange = button(translations.text("print.autoArrange"), "print-auto-arrange", this::autoArrange);
-        viewBar.getChildren().addAll(fitView, autoArrange);
+        orientAll = button(translations.text("print.orientAll"), "print-orient-all", () -> autoOrient(true));
+        viewBar.getChildren().addAll(fitView, new HBox(6, autoArrange, orientAll));
         canvas.setAccessibleHelp(
                 translations.text("print.cameraHelp") + "\n" + translations.text("print.rotationGizmoHelp"));
         placementHint.setTooltip(UiHelp.tooltip(translations.text("print.cameraHelp")));
@@ -1094,7 +1098,10 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
 
     private void updateJob() {
         updatePreviewControls();
-        autoArrange.setDisable(model == null || model.instances().isEmpty() || !document.canExport() || jobs.running());
+        boolean placementUnavailable =
+                model == null || model.instances().isEmpty() || !document.canExport() || jobs.running() || orienting;
+        autoArrange.setDisable(placementUnavailable);
+        orientAll.setDisable(placementUnavailable);
         backendStatus.showBackend(
                 backends.getValue() == null ? null : backends.getValue().id());
         slice.setDisable(!availability.working(setup().backendId())
@@ -1564,16 +1571,44 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
     }
 
     private void autoOrient() {
-        var source = selected();
-        var mesh = model.meshes().get(source.bodyId());
+        autoOrient(false);
+    }
+
+    private void autoOrient(boolean all) {
+        if (model == null || !document.canExport() || jobs.running() || orienting) return;
+        cancelDrag();
+        var captured = setup();
+        var sources = all ? captured.instances() : List.of(selected());
+        var meshes = model.meshes();
         String revision = DocumentCodec.fingerprint(document.snapshot().document());
-        CompletableFuture.supplyAsync(() -> PrintPlacement.autoOrient(mesh, source.transform()), validator)
-                .whenComplete((placement, failure) -> Platform.runLater(() -> {
-                    if (closed
-                            || !revision.equals(DocumentCodec.fingerprint(
-                                    document.snapshot().document()))) return;
+        orienting = true;
+        updateJob();
+        CompletableFuture.supplyAsync(
+                        () -> {
+                            var oriented = new LinkedHashMap<String, BodyInstance>();
+                            for (var source : sources) {
+                                var placement =
+                                        PrintPlacement.autoOrient(meshes.get(source.bodyId()), source.transform());
+                                oriented.put(source.id(), new BodyInstance(source.id(), source.bodyId(), placement));
+                            }
+                            return captured.withInstances(captured.instances().stream()
+                                    .map(source -> oriented.getOrDefault(source.id(), source))
+                                    .toList());
+                        },
+                        validator)
+                .whenComplete((next, failure) -> Platform.runLater(() -> {
+                    orienting = false;
+                    if (closed) return;
+                    updateJob();
+                    if (!revision.equals(
+                            DocumentCodec.fingerprint(document.snapshot().document()))) return;
                     if (failure != null) status.setText(failure.getCause().getMessage());
-                    else replace(new BodyInstance(source.id(), source.bodyId(), placement));
+                    else {
+                        toolpathPreview.setSelected(false);
+                        if (!next.equals(setup())) commit(next);
+                        updatePreviewControls();
+                        draw();
+                    }
                 }));
     }
 

@@ -37,6 +37,56 @@ import org.junit.jupiter.api.io.TempDir;
 @ExtendWith(UiTestShard.class)
 class WorkbenchUiTest {
     @Test
+    void orientAllPlacesEveryObjectAndUndoesAsOneEdit() throws Exception {
+        Path input = PreparedDocuments.copy("plate-5mm.vxb", directory);
+        fx(() -> workbench.controller().open(input)).get(20, TimeUnit.SECONDS);
+        ready();
+        click("workspace-print");
+        assertTrue(fx(() -> node("#print-orient-all").isDisabled()));
+        click("print-add");
+        ready();
+        click("print-add");
+        ready();
+        fx(() -> {
+            var setup = workbench.controller().snapshot().document().printSetup();
+            workbench
+                    .controller()
+                    .printSetup(setup.withInstances(setup.instances().stream()
+                            .map(i -> new BodyInstance(
+                                    i.id(),
+                                    i.bodyId(),
+                                    Transform.rotation(90, 0, 0).compose(i.transform())))
+                            .toList()));
+            return null;
+        });
+        ready();
+        var before = document().printSetup().instances();
+        click("print-orient-all");
+        long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(20);
+        while (document().printSetup().instances().equals(before) && System.nanoTime() < deadline) Thread.sleep(40);
+        ready();
+        assertEquals(2, document().printSetup().instances().size());
+        for (var instance : document().printSetup().instances()) {
+            var mesh = fx(() -> workbench.controller().build().bodies().stream()
+                    .filter(b -> b.id().equals(instance.bodyId()))
+                    .findFirst()
+                    .orElseThrow()
+                    .mesh());
+            var bounds = MeshGeometry.bounds(MeshGeometry.transform(mesh, instance.transform()));
+            assertEquals(0, bounds.minZ(), 0.001);
+            assertEquals(5, bounds.maxZ(), 0.001);
+        }
+        fx(() -> {
+            Screenshot.save(
+                    stage.getScene(), Path.of(System.getProperty("voxelbrew.ui.artifacts"), "slicer-orient-all.png"));
+            workbench.controller().undo();
+            return null;
+        });
+        ready();
+        assertEquals(before, document().printSetup().instances());
+    }
+
+    @Test
     void slicerPlateControlsOrientationAndObjectRemoval() throws Exception {
         Path input = PreparedDocuments.copy("plate-5mm.vxb", directory);
         fx(() -> workbench.controller().open(input)).get(20, TimeUnit.SECONDS);

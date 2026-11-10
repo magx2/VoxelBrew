@@ -165,11 +165,17 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
                 throw new UnsupportedOperationException();
             }
         });
+        bodies.setMinWidth(0);
+        bodies.setMaxWidth(Double.MAX_VALUE);
+        HBox.setHgrow(bodies, Priority.ALWAYS);
+        var addBody = button(translations.text("gui.add_selected_body"), "print-add", this::addInstance);
+        addBody.setMinWidth(Region.USE_PREF_SIZE);
+        var bodyRow = new HBox(8, bodies, addBody);
+        bodyRow.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
         var placement = new VBox(
                 7,
                 new Label(translations.text("gui.cad_body")),
-                bodies,
-                button(translations.text("gui.add_selected_body"), "print-add", this::addInstance),
+                bodyRow,
                 new Label(translations.text("gui.build_instance")),
                 instances);
         showRotationGizmos.setId("print-show-rotation-gizmos");

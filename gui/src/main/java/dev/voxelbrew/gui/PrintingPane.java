@@ -86,7 +86,7 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
     private PrintSetup lastSetup;
     private DocumentController.Build lastBuild;
     private String validatedRevision = "";
-    private final Tooltip selectedObjectTooltip = new Tooltip();
+    private final Tooltip selectedObjectTooltip = UiHelp.tooltip("");
     private boolean updating, dark, closed;
     private List<Double> previewLayers = List.of();
     private Slicing.Result displayed;
@@ -1065,10 +1065,7 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
     }
 
     private void draw() {
-        String selectedId = instances.getValue();
-        selectedObjectTooltip.setText(
-                selectedId == null || toolpathPreview.isSelected() ? "" : instanceName(selectedId));
-        if (selectedObjectTooltip.getText().isEmpty()) selectedObjectTooltip.hide();
+        selectedObjectTooltip.hide();
         var graphics = canvas.getGraphicsContext2D();
         localGizmoAxes.setVisible(false);
         double w = canvas.getWidth(), h = canvas.getHeight();
@@ -1424,8 +1421,36 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
         return true;
     }
 
+    private BodyInstance objectAt(double pointerX, double pointerY) {
+        if (model == null || toolpathPreview.isSelected()) return null;
+        var all = model.instances();
+        for (int i = all.size() - 1; i >= 0; i--) {
+            var instance = all.get(i);
+            if (!model.meshes().containsKey(instance.bodyId())) continue;
+            var mesh = model.placedMesh(instance);
+            for (int t = 0; t < mesh.triangleCount(); t++) {
+                double[] x = new double[3], y = new double[3];
+                for (int c = 0; c < 3; c++) {
+                    int v = mesh.vertexIndex(t, c);
+                    x[c] = viewOx + projectX(mesh.coordinate(v, 0), mesh.coordinate(v, 1)) * viewScale;
+                    y[c] = viewOy
+                            - projectY(mesh.coordinate(v, 0), mesh.coordinate(v, 1), mesh.coordinate(v, 2)) * viewScale;
+                }
+                if (PrintPlacement.contains(pointerX, pointerY, x, y)) return instance;
+            }
+        }
+        return null;
+    }
+
     private void installDragging() {
         canvas.setCursor(javafx.scene.Cursor.OPEN_HAND);
+        canvas.addEventFilter(javafx.scene.input.MouseEvent.MOUSE_MOVED, event -> {
+            var hovered = dragSource == null && !navigating ? objectAt(event.getX(), event.getY()) : null;
+            String name = hovered == null ? "" : instanceName(hovered.id());
+            if (!name.equals(selectedObjectTooltip.getText())) selectedObjectTooltip.hide();
+            selectedObjectTooltip.setText(name);
+        });
+        canvas.setOnMouseExited(event -> selectedObjectTooltip.hide());
         canvas.focusedProperty().addListener((o, a, focused) -> {
             if (!focused) {
                 cancelDrag();
@@ -1449,6 +1474,7 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
             event.consume();
         });
         canvas.setOnMousePressed(event -> {
+            selectedObjectTooltip.hide();
             canvas.requestFocus();
             navigationX = event.getX();
             navigationY = event.getY();

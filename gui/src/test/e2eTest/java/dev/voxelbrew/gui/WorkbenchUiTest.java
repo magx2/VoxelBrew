@@ -37,6 +37,60 @@ import org.junit.jupiter.api.io.TempDir;
 @ExtendWith(UiTestShard.class)
 class WorkbenchUiTest {
     @Test
+    void slicerSelectedObjectTooltipAppearsOnHover() throws Exception {
+        ready();
+        openPrepared("plate-5mm.vxb");
+        click("workspace-print");
+        ready();
+        click("print-add");
+        ready();
+        for (String view : List.of("print-view-2d", "print-view-3d")) {
+            click(view);
+            ready();
+            String id = "print-canvas";
+            fx(() -> {
+                robot.mouseMove(centerOf(id));
+                return null;
+            });
+            long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(4);
+            while (!fx(() -> Window.getWindows().stream()
+                            .anyMatch(window -> window instanceof Tooltip tip
+                                    && tip.isShowing()
+                                    && tip.getText().equals("Body 1 (1)")))
+                    && System.nanoTime() < deadline) Thread.sleep(40);
+            assertTrue(
+                    fx(() -> Window.getWindows().stream()
+                            .anyMatch(window -> window instanceof Tooltip tip
+                                    && tip.isShowing()
+                                    && tip.getText().equals("Body 1 (1)"))),
+                    id + " shows the selected object name");
+            fx(() -> {
+                for (var window : List.copyOf(Window.getWindows()))
+                    if (window instanceof Tooltip && window.isShowing())
+                        Screenshot.save(
+                                window.getScene(),
+                                Path.of(System.getProperty("voxelbrew.ui.artifacts"))
+                                        .resolve(view + "-object-tooltip.png"));
+                robot.mouseMove(centerOf("print-add"));
+                return null;
+            });
+            Thread.sleep(300);
+            fx(() -> {
+                var canvas = node("#print-canvas");
+                robot.mouseMove(canvas.localToScreen(15, 15));
+                return null;
+            });
+            Thread.sleep(1200);
+            assertFalse(
+                    fx(() -> Window.getWindows().stream()
+                            .anyMatch(window -> window instanceof Tooltip tip
+                                    && tip.isShowing()
+                                    && tip.getText().equals("Body 1 (1)"))),
+                    "Empty plate space has no object tooltip");
+        }
+    }
+
+    @Test
     void slicerGeometryExportUsesGcodeFolderAndPlateName() throws Exception {
         ready();
         openPrepared("plate-5mm.vxb");

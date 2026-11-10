@@ -87,6 +87,7 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
     private DocumentController.Build lastBuild;
     private String validatedRevision = "";
     private final Tooltip selectedObjectTooltip = UiHelp.tooltip("");
+    private final Label selectedObjectName = new Label();
     private boolean updating, dark, closed;
     private List<Double> previewLayers = List.of();
     private Slicing.Result displayed;
@@ -358,7 +359,13 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
         localGizmoAxes.setVisible(false);
         localGizmoAxes.setOnAction(event -> rotationSpace.setValue(
                 localGizmoAxes.isSelected() ? PrintRotationGizmo.Space.LOCAL : PrintRotationGizmo.Space.WORLD));
-        var center = new StackPane(canvas, localGizmoAxes);
+        selectedObjectName.setId("print-selected-object-name");
+        selectedObjectName.setManaged(false);
+        selectedObjectName.setMouseTransparent(true);
+        selectedObjectName.setVisible(false);
+        selectedObjectName.setStyle("-fx-background-color: #25262a; -fx-text-fill: white;"
+                + " -fx-padding: 5 9; -fx-background-radius: 4;");
+        var center = new StackPane(canvas, localGizmoAxes, selectedObjectName);
         center.setMinSize(150, 150);
         canvas.setManaged(false);
         canvas.widthProperty().bind(center.widthProperty());
@@ -1065,6 +1072,7 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
 
     private void draw() {
         selectedObjectTooltip.hide();
+        selectedObjectName.setVisible(false);
         var graphics = canvas.getGraphicsContext2D();
         localGizmoAxes.setVisible(false);
         double w = canvas.getWidth(), h = canvas.getHeight();
@@ -1134,6 +1142,37 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
                     graphics.fillPolygon(x, y, 3);
                 }
                 if (selected) {
+                    selectedObjectName.setText(instanceName(instance.id()));
+                    selectedObjectName.setMaxWidth(Math.max(0, w - 16));
+                    selectedObjectName.autosize();
+                    double left = Double.POSITIVE_INFINITY, right = Double.NEGATIVE_INFINITY;
+                    double top = Double.POSITIVE_INFINITY;
+                    for (int t = 0; t < mesh.triangleCount(); t++) {
+                        for (int c = 0; c < 3; c++) {
+                            int v = mesh.vertexIndex(t, c);
+                            double px = ox + projectX(mesh.coordinate(v, 0), mesh.coordinate(v, 1)) * scale;
+                            double py = oy
+                                    - projectY(mesh.coordinate(v, 0), mesh.coordinate(v, 1), mesh.coordinate(v, 2))
+                                            * scale;
+                            left = Math.min(left, px);
+                            right = Math.max(right, px);
+                            top = Math.min(top, py);
+                        }
+                    }
+                    if (Double.isFinite(top)) {
+                        selectedObjectName.relocate(
+                                Math.max(
+                                        8,
+                                        Math.min(
+                                                w - selectedObjectName.getWidth() - 8,
+                                                (left + right - selectedObjectName.getWidth()) / 2)),
+                                Math.max(
+                                        8,
+                                        Math.min(
+                                                h - selectedObjectName.getHeight() - 8,
+                                                top - selectedObjectName.getHeight() - 8)));
+                        selectedObjectName.setVisible(true);
+                    }
                     var bounds = MeshGeometry.bounds(mesh);
                     graphics.setStroke(dark ? Color.web("#9bdcff") : Color.web("#075b91"));
                     graphics.setLineWidth(2);

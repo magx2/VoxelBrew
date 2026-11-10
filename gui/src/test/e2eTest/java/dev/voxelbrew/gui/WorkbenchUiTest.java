@@ -37,6 +37,56 @@ import org.junit.jupiter.api.io.TempDir;
 @ExtendWith(UiTestShard.class)
 class WorkbenchUiTest {
     @Test
+    void slicerSelectedObjectNameStaysAbovePlateObject() throws Exception {
+        ready();
+        openPrepared("plate-5mm.vxb");
+        click("workspace-print");
+        ready();
+        click("print-add");
+        ready();
+        fx(() -> {
+            workbench
+                    .controller()
+                    .renameBody(document().printSetup().instances().getFirst().bodyId(), "Foo");
+            return null;
+        });
+        ready();
+        for (String view : List.of("print-view-2d", "print-view-3d")) {
+            click(view);
+            ready();
+            fx(() -> {
+                robot.mouseMove(centerOf("print-canvas"));
+                robot.mouseClick(MouseButton.PRIMARY);
+                return null;
+            });
+            ready();
+            fx(() -> {
+                robot.mouseMove(centerOf("print-add"));
+                return null;
+            });
+            Thread.sleep(1200);
+            fx(() -> {
+                var label = (Label) node("#print-selected-object-name");
+                assertTrue(label.isVisible(), "Selection name stays visible without hovering");
+                assertEquals("Foo (1)", label.getText());
+                var bounds = label.localToScreen(label.getBoundsInLocal());
+                var object = centerOf("print-canvas");
+                assertTrue(bounds.getMaxY() < object.getY(), "Name appears above the selected object");
+                assertTrue(bounds.getMinX() < object.getX() && bounds.getMaxX() > object.getX());
+                Screenshot.save(
+                        stage.getScene(),
+                        Path.of(System.getProperty("voxelbrew.ui.artifacts"))
+                                .resolve(view + "-selected-object-name.png"));
+                return null;
+            });
+        }
+        click("print-add-plate");
+        ready();
+        assertFalse(
+                fx(() -> workbench.lookup("#print-selected-object-name").isVisible()), "Empty plate clears the name");
+    }
+
+    @Test
     void slicerSelectedObjectTooltipAppearsOnHover() throws Exception {
         ready();
         openPrepared("plate-5mm.vxb");

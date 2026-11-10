@@ -23,6 +23,7 @@ public final class GcodeReader {
 
     /** Reads UTF-8 toolpaths; closing a provider's borrowed stream remains under host control. */
     public static GcodeJob read(InputStream input) throws IOException {
+        var lines = new ArrayList<String>();
         var segments = new ArrayList<Segment>();
         var layers = new TreeSet<Double>();
         var report = new LinkedHashMap<String, String>();
@@ -34,6 +35,7 @@ public final class GcodeReader {
         try (var reader = new BufferedReader(new InputStreamReader(input, StandardCharsets.UTF_8))) {
             String line;
             while ((line = reader.readLine()) != null) {
+                lines.add(line);
                 if (line.startsWith(";TYPE:")) role = role(line.substring(6).strip());
                 else if (line.startsWith(";WIDTH:")) width = number(line.substring(7));
                 else if (line.startsWith(";HEIGHT:")) height = number(line.substring(8));
@@ -105,7 +107,7 @@ public final class GcodeReader {
         }
         if (segments.stream().noneMatch(Segment::deposits))
             throw new IOException("Slicer output contains no deposition moves");
-        return new GcodeJob(segments, new ArrayList<>(layers), filament, time, report);
+        return new GcodeJob(segments, new ArrayList<>(layers), filament, time, report, lines);
     }
 
     private static double number(String text) {

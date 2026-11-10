@@ -37,6 +37,60 @@ import org.junit.jupiter.api.io.TempDir;
 @ExtendWith(UiTestShard.class)
 class WorkbenchUiTest {
     @Test
+    void slicedGcodeIsSavedReopenedExportedAndInvalidatedByDraftEdit() throws Exception {
+        Path input = PreparedDocuments.copy("plate-5mm.vxb", directory);
+        fx(() -> workbench.controller().open(input)).get(20, TimeUnit.SECONDS);
+        ready();
+        click("workspace-print");
+        click("print-add");
+        ready();
+        click("print-tab-job");
+        assertNull(fx(() -> workbench.lookup("#print-output")));
+        assertNull(fx(() -> workbench.lookup("#print-overwrite")));
+        long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(30);
+        while (fx(() -> node("#print-slice").isDisabled()) && System.nanoTime() < deadline) Thread.sleep(25);
+        click("print-slice");
+        deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(60);
+        while (fx(() -> ((PrintingPane) node("#printing-workspace")).jobs().running()) && System.nanoTime() < deadline)
+            Thread.sleep(25);
+        assertEquals(
+                PrintController.State.SUCCEEDED,
+                fx(() -> ((PrintingPane) node("#printing-workspace")).jobs().state()));
+        var lines = document().activeGcode();
+        assertFalse(lines.isEmpty());
+        Path saved = directory.resolve("sliced.vxb");
+        fx(() -> workbench.controller().save(saved, false)).get(20, TimeUnit.SECONDS);
+        assertEquals(lines, DocumentReader.load(saved).activeGcode());
+        fx(() -> workbench.controller().open(saved)).get(20, TimeUnit.SECONDS);
+        ready();
+        click("workspace-print");
+        deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(20);
+        while (fx(() -> ((PrintingPane) node("#printing-workspace")).jobs().result()) == null
+                && System.nanoTime() < deadline) Thread.sleep(25);
+        assertEquals(
+                lines,
+                fx(() -> ((PrintingPane) node("#printing-workspace"))
+                        .jobs()
+                        .result()
+                        .job()
+                        .lines()));
+        try (var registry = new dev.voxelbrew.exporter.ExporterRegistry(directory)) {
+            Path output = directory.resolve("exported.gcode");
+            fx(() -> workbench
+                            .controller()
+                            .exportDocument(
+                                    registry.require("gcode").provider(),
+                                    dev.voxelbrew.exporter.api.FileExportDialog.destination(output, false)))
+                    .get(20, TimeUnit.SECONDS);
+            assertEquals(lines, Files.readAllLines(output));
+        }
+        click("print-tab-process");
+        text("print-layer-height", "0.25");
+        assertTrue(document().gcode().isEmpty());
+        assertNull(fx(() -> ((PrintingPane) node("#printing-workspace")).jobs().result()));
+    }
+
+    @Test
     void supportsSwitchDisablesEverythingAndRestoresSavedDefinitions() throws Exception {
         Path input = PreparedDocuments.copy("plate-5mm.vxb", directory);
         fx(() -> workbench.controller().open(input)).get(20, TimeUnit.SECONDS);
@@ -251,7 +305,7 @@ class WorkbenchUiTest {
         assertEquals(1, document().printSetup().plates().size());
         assertTrue(fx(() -> node("#print-remove-plate-" + second).isDisabled()));
         click("print-tab-job");
-        assertTrue(fx(() -> ((CheckBox) node("#print-overwrite")).isSelected()));
+        assertNull(fx(() -> workbench.lookup("#print-overwrite")));
         assertNull(fx(() -> stage.getScene().lookup("#print-export")));
     }
 
@@ -275,21 +329,16 @@ class WorkbenchUiTest {
         click("print-tab-supports");
         text("print-support-width", "7");
         click("print-tab-job");
-        String output = directory.resolve("custom.gcode").toString();
-        text("print-output", output);
-        click("print-overwrite");
         Path file = directory.resolve("slicer-settings.vxb");
         fx(() -> workbench.controller().save(file, false)).get(20, TimeUnit.SECONDS);
         ready();
-        assertEquals(output, fx(() -> ((TextField) node("#print-output")).getText()));
         assertFalse(fx(() -> workbench.controller().dirty()));
         fx(() -> workbench.controller().open(file)).get(20, TimeUnit.SECONDS);
         ready();
         click("workspace-print");
         ready();
         click("print-tab-job");
-        assertEquals(output, fx(() -> ((TextField) node("#print-output")).getText()));
-        assertFalse(fx(() -> ((CheckBox) node("#print-overwrite")).isSelected()));
+        assertNull(fx(() -> workbench.lookup("#print-overwrite")));
         click("print-tab-process");
         assertEquals("5", fx(() -> ((TextField) node("#print-walls")).getText()));
         assertEquals(5, document().printSetup().process().walls());
@@ -578,36 +627,24 @@ class WorkbenchUiTest {
     }
 
     @Test
-    void slicerGeometryExportUsesGcodeFolderAndPlateName() throws Exception {
+    void slicerGeometryExportUsesFileMenu() throws Exception {
         ready();
         openPrepared("plate-5mm.vxb");
         click("workspace-print");
         ready();
         click("print-add");
         ready();
-        Path saved = directory.resolve("geometry.part.vxb");
-        save(saved);
-        click("print-tab-job");
-        var gcode = Path.of(fx(() -> ((FormulaField) node("#print-output")).getText()));
-        click("print-export");
+        Path target = directory.resolve("geometry.stl");
+        click("export");
         chooseExporter("stl");
-        var expected = ExportDialog.destinationForFormat(gcode, "stl");
-        assertEquals(expected.toString(), fx(() -> ((FormulaField) node("#export-path")).getText()));
+        text("export-path", target.toString());
         click("export-confirm");
         ready();
-        assertTrue(Files.exists(expected));
-        var custom = directory.resolve("custom.name.gcode");
-        text("print-output", custom.toString());
-        click("print-export");
-        chooseExporter("3mf");
-        assertEquals(
-                directory.resolve("custom.name.3mf").toString(),
-                fx(() -> ((FormulaField) node("#export-path")).getText()));
-        key(KeyCode.ESCAPE);
+        assertTrue(Files.exists(target));
     }
 
     @Test
-    void sliceAllPlatesWritesSeparateJobsWithoutChangingSelection() throws Exception {
+    void sliceAllPlatesStoresSeparateJobsWithoutChangingSelection() throws Exception {
         ready();
         openPrepared("plate-5mm.vxb");
         click("workspace-print");
@@ -622,7 +659,6 @@ class WorkbenchUiTest {
         save(saved);
         var original = document().printSetup();
         click("print-tab-job");
-        text("print-output", directory.resolve("batch.gcode").toString());
         click("print-slice-all");
         long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(60);
         while (fx(() -> ((PrintingPane) node("#printing-workspace")).jobs().running()) && System.nanoTime() < deadline)
@@ -636,9 +672,12 @@ class WorkbenchUiTest {
             assertEquals(slider.getMax(), slider.getValue(), "New slice opens at the final layer");
             return null;
         });
-        assertEquals(original, document().printSetup());
-        assertTrue(Files.exists(directory.resolve("all-plates-1-Plate 1.gcode")));
-        assertTrue(Files.exists(directory.resolve("all-plates-2-Plate 2.gcode")));
+        assertEquals(original.activePlateId(), document().printSetup().activePlateId());
+        assertEquals(
+                original.plates().stream().map(PrintPlate::id).collect(java.util.stream.Collectors.toSet()),
+                document().gcode().keySet());
+        assertFalse(Files.exists(directory.resolve("all-plates-1-Plate 1.gcode")));
+        assertFalse(Files.exists(directory.resolve("all-plates-2-Plate 2.gcode")));
     }
 
     @Test
@@ -813,7 +852,6 @@ class WorkbenchUiTest {
         ready();
         var original = document().printSetup();
         click("print-tab-job");
-        String originalDestination = fx(() -> ((FormulaField) node("#print-output")).getText());
         doubleClickPlate("plate-1");
         key(KeyCode.ENTER);
         assertEquals(original, document().printSetup(), "Unchanged names do not modify the design");
@@ -822,14 +860,12 @@ class WorkbenchUiTest {
         key(KeyCode.ENTER);
         ready();
         assertEquals("Assembly", document().printSetup().activePlate().name());
-        assertTrue(fx(() -> ((FormulaField) node("#print-output")).getText()).endsWith("-1-Assembly.gcode"));
         assertEquals(original.instances(), document().printSetup().instances());
         assertTrue(
                 fx(() -> ((ToggleButton) node("#print-plate-plate-1")).getText().startsWith("Assembly")));
         shortcut(KeyCode.Z, false);
         ready();
         assertEquals(original, document().printSetup());
-        assertEquals(originalDestination, fx(() -> ((FormulaField) node("#print-output")).getText()));
         doubleClickPlate("plate-1");
         text("print-plate-name", "Discarded");
         key(KeyCode.ESCAPE);
@@ -1132,7 +1168,8 @@ class WorkbenchUiTest {
         assertEquals(
                 PrintController.State.SUCCEEDED,
                 fx(() -> ((PrintingPane) node("#printing-workspace")).jobs().state()));
-        assertTrue(Files.exists(saved.resolveSibling("multiple-plates-1-Plate 1.gcode")));
+        assertFalse(document().activeGcode().isEmpty());
+        assertFalse(Files.exists(saved.resolveSibling("multiple-plates-1-Plate 1.gcode")));
         click("print-legend");
         for (int palette : List.of(1, 2)) {
             choice("appearance", palette);
@@ -6136,9 +6173,6 @@ class WorkbenchUiTest {
         assertEquals(DocumentReader.load(file), document());
         click("print-tab-job");
         assertEquals(
-                file.resolveSibling("GUI print setup-1-Plate 1.gcode").toString(),
-                fx(() -> ((FormulaField) node("#print-output")).getText()));
-        assertEquals(
                 250,
                 PrintProfile.resolve(document().printSetup())
                         .printer()
@@ -6146,7 +6180,6 @@ class WorkbenchUiTest {
                         .get(2)
                         .x());
         Path job = directory.resolve("GUI printer job.gcode");
-        text("print-output", job.toString());
         long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(20);
         while (fx(() -> node("#print-slice").isDisabled()) && System.nanoTime() < deadline) Thread.sleep(25);
         click("print-slice");
@@ -6157,6 +6190,14 @@ class WorkbenchUiTest {
                 PrintController.State.SUCCEEDED,
                 fx(() -> ((PrintingPane) node("#printing-workspace")).jobs().state()),
                 fx(() -> ((Label) node("#print-status")).getText()));
+        try (var registry = new dev.voxelbrew.exporter.ExporterRegistry(directory)) {
+            fx(() -> workbench
+                            .controller()
+                            .exportDocument(
+                                    registry.require("gcode").provider(),
+                                    dev.voxelbrew.exporter.api.FileExportDialog.destination(job, false)))
+                    .get(20, TimeUnit.SECONDS);
+        }
         var actual = GcodeReader.read(job);
         assertEquals(40, actual.modelLayers().size());
         assertEquals("PETG", actual.report().get("material"));

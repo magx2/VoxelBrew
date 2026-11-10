@@ -36,7 +36,15 @@ final class ExportDialog {
         dialog.setTitle(translations.text("action.export"));
         var format = new ComboBox<ExporterDescriptor>();
         format.setId("export-format");
-        format.getItems().setAll(registry.descriptors());
+        format.getItems()
+                .setAll(registry.descriptors().stream()
+                        .filter(descriptor -> !descriptor.id().equals("gcode")
+                                || !controller
+                                        .snapshot()
+                                        .document()
+                                        .activeGcode()
+                                        .isEmpty())
+                        .toList());
         format.getSelectionModel().selectFirst();
         format.setMaxWidth(Double.MAX_VALUE);
         dialog.getDialogPane().setContent(new VBox(8, new Label(translations.text("gui.format")), format));

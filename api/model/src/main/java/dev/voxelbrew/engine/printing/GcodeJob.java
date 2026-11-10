@@ -8,7 +8,17 @@ public record GcodeJob(
         List<Double> modelLayers,
         OptionalDouble filamentMm,
         Optional<String> estimatedTime,
-        Map<String, String> report) {
+        Map<String, String> report,
+        List<String> lines) {
+    public GcodeJob(
+            List<Segment> segments,
+            List<Double> modelLayers,
+            OptionalDouble filamentMm,
+            Optional<String> estimatedTime,
+            Map<String, String> report) {
+        this(segments, modelLayers, filamentMm, estimatedTime, report, List.of());
+    }
+
     public enum Role {
         PERIMETER,
         EXTERNAL_PERIMETER,
@@ -60,6 +70,7 @@ public record GcodeJob(
     }
 
     public GcodeJob {
+        lines = List.copyOf(lines);
         segments = List.copyOf(segments);
         modelLayers = List.copyOf(modelLayers);
         report = Map.copyOf(report);

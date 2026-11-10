@@ -693,10 +693,19 @@ class WorkflowTest {
                 .toString();
         assertTrue(run(0, "slice", file, "--output", output, "--slicer", slicer).contains("model_layers=40"));
         assertTrue(run(0, "inspect-job", output).contains("material=PETG"));
+        assertEquals(
+                Files.readAllLines(Path.of(output)),
+                DocumentReader.load(Path.of(file)).activeGcode());
+        Path exported = directory.resolve("stored-job.gcode");
+        run(0, "export", file, "--format", "gcode", "--output", exported.toString());
+        assertEquals(Files.readAllLines(Path.of(output)), Files.readAllLines(exported));
         byte[] original = Files.readAllBytes(Path.of(output));
         assertTrue(run(1, "slice", file, "--output", output, "--slicer", slicer).contains("overwrite"));
         assertArrayEquals(original, Files.readAllBytes(Path.of(output)));
         run(0, "remove-instance", file, "--instance", "left");
+        assertTrue(DocumentReader.load(Path.of(file)).gcode().isEmpty());
+        assertTrue(run(1, "export", file, "--format", "gcode", "--output", exported.toString(), "--overwrite")
+                .contains("No G-code"));
         assertTrue(run(1, "validate", file).contains("MISSING_INSTANCE"));
         run(0, "remove-support", file, "--id", "blocker");
         run(0, "validate", file);

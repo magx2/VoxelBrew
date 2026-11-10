@@ -1,5 +1,13 @@
 # File import and export modules
 
+Sliced jobs belong to `CadDocument.gcode()`, keyed by plate ID, with one UTF-8
+source line per list element. The Protobuf `Gcode.lines` field and JSON document
+export preserve comments, empty lines and all commands. `GcodeJob.lines()` also
+retains the input of the standalone G-code importer; `GcodeSource.readLines`
+parses an embedded job for preview without needing its original file.
+The built-in `gcode` exporter writes the active plate's stored job atomically and
+rejects a missing job. It does not run a slicer or regenerate toolpaths.
+
 The `import` and `export` Gradle projects separate file I/O from the CAD engine.
 The Java packages are `dev.voxelbrew.importer` and `dev.voxelbrew.exporter`;
 `import` is a Java keyword, so it cannot be a package segment.

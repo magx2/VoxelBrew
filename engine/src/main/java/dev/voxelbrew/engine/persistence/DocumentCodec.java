@@ -91,7 +91,11 @@ public final class DocumentCodec {
                                             e.getValue().getMaterial(),
                                             e.getValue().getColor()))),
                     message.getBodyNamesMap(),
-                    message.getFeatureNamesMap());
+                    message.getFeatureNamesMap(),
+                    message.getGcodeMap().entrySet().stream()
+                            .collect(java.util.stream.Collectors.toMap(
+                                    java.util.Map.Entry::getKey,
+                                    e -> e.getValue().getLinesList())));
             document.parameters().builtins().fileVersion(message.getFileVersion());
             return document;
         } catch (DocumentFormatException failure) {
@@ -270,9 +274,9 @@ public final class DocumentCodec {
 
     /** Includes CAD definitions and print setup, excluding writer version and derived output. */
     public static String fingerprint(CadDocument document) {
-        return java.util.HexFormat.of()
-                .formatHex(sha256(
-                        toProto(document).toBuilder().clearFileVersion().build().toByteArray()));
+        var definition = toProto(document).toBuilder().clearGcode().clearFileVersion();
+        definition.setPrintSetup(definition.getPrintSetup().toBuilder().clearWorkspaceSettings());
+        return java.util.HexFormat.of().formatHex(sha256(definition.build().toByteArray()));
     }
 
     private static DocumentProto.Document toProto(CadDocument document) {
@@ -286,6 +290,13 @@ public final class DocumentCodec {
                 .setPrintSetup(toProto(document.printSetup()))
                 .setParameters(ParameterCodec.toProto(document.parameters()));
         document.features().forEach(feature -> message.addFeatures(toProto(feature)));
+        document.gcode().entrySet().stream()
+                .sorted(java.util.Map.Entry.comparingByKey())
+                .forEach(entry -> message.putGcode(
+                        entry.getKey(),
+                        DocumentProto.Gcode.newBuilder()
+                                .addAllLines(entry.getValue())
+                                .build()));
         document.bodyNames().entrySet().stream()
                 .sorted(java.util.Map.Entry.comparingByKey())
                 .forEach(entry -> message.putBodyNames(entry.getKey(), entry.getValue()));

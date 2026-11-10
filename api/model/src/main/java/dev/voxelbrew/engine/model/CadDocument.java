@@ -14,7 +14,29 @@ public record CadDocument(
         @NonNull dev.voxelbrew.engine.parameters.ParameterSet parameters,
         Map<String, BodyStyle> bodyStyles,
         Map<String, String> bodyNames,
-        Map<String, String> featureNames) {
+        Map<String, String> featureNames,
+        Map<String, List<String>> gcode) {
+    public CadDocument(
+            String id,
+            List<Feature> features,
+            int cursor,
+            dev.voxelbrew.engine.printing.PrintSetup printSetup,
+            dev.voxelbrew.engine.parameters.ParameterSet parameters,
+            Map<String, BodyStyle> bodyStyles,
+            Map<String, String> bodyNames,
+            Map<String, String> featureNames) {
+        this(id, features, cursor, printSetup, parameters, bodyStyles, bodyNames, featureNames, Map.of());
+    }
+
+    /** Complete UTF-8 jobs keyed by plate, with one element per source line. */
+    public CadDocument withGcode(Map<String, List<String>> jobs) {
+        return new CadDocument(id, features, cursor, printSetup, parameters, bodyStyles, bodyNames, featureNames, jobs);
+    }
+
+    public List<String> activeGcode() {
+        return gcode.getOrDefault(printSetup.activePlateId(), List.of());
+    }
+
     public CadDocument(
             String id,
             List<Feature> features,
@@ -55,6 +77,15 @@ public record CadDocument(
     }
 
     public CadDocument {
+        var jobs = new java.util.TreeMap<String, List<String>>();
+        gcode.forEach((plate, lines) -> {
+            identifier(plate, "G-code plate ID");
+            var copy = List.copyOf(lines);
+            if (copy.stream().anyMatch(line -> line.indexOf('\n') >= 0 || line.indexOf('\r') >= 0))
+                throw new IllegalArgumentException("Each G-code element must contain one line");
+            if (!copy.isEmpty()) jobs.put(plate, copy);
+        });
+        gcode = Map.copyOf(jobs);
 
         bodyStyles = Map.copyOf(bodyStyles);
         bodyStyles.keySet().forEach(BodyStyle::requireBodyId);

@@ -18,6 +18,7 @@ public final class ModelSession {
     private java.util.Map<String, String> featureNames;
     private int cursor;
     private long revision;
+    private java.util.Map<String, List<String>> gcode;
 
     private record State(
             List<Feature> features,
@@ -40,10 +41,20 @@ public final class ModelSession {
         bodyNames = document.bodyNames();
         featureNames = document.featureNames();
         cursor = document.cursor();
+        gcode = document.gcode();
     }
 
     public synchronized CadDocument document() {
-        return new CadDocument(id, features, cursor, printSetup, parameters, bodyStyles, bodyNames, featureNames);
+        return new CadDocument(
+                id, features, cursor, printSetup, parameters, bodyStyles, bodyNames, featureNames, gcode);
+    }
+
+    public synchronized void setGcode(java.util.Map<String, List<String>> jobs) {
+        gcode = document().withGcode(jobs).gcode();
+    }
+
+    public synchronized void invalidateGcode() {
+        gcode = java.util.Map.of();
     }
 
     public synchronized long revision() {
@@ -227,6 +238,7 @@ public final class ModelSession {
     public synchronized void setCursor(int newCursor) {
         new CadDocument(id, features, newCursor);
         cursor = newCursor;
+        invalidateGcode();
         revision++;
         log.debug("Document {} moved to cursor {} at revision {}", id, cursor, revision);
     }
@@ -238,6 +250,7 @@ public final class ModelSession {
         boolean followEnd = cursor == features.size();
         redo.push(new State(features, printSetup, parameters, bodyStyles, bodyNames, featureNames));
         var previous = undo.pop();
+        invalidateGcode();
         log.debug("Undo in document {} from revision {}", id, revision);
         features = previous.features();
         printSetup = previous.printSetup();
@@ -257,6 +270,7 @@ public final class ModelSession {
         boolean followEnd = cursor == features.size();
         undo.push(new State(features, printSetup, parameters, bodyStyles, bodyNames, featureNames));
         var next = redo.pop();
+        invalidateGcode();
         log.debug("Redo in document {} from revision {}", id, revision);
         features = next.features();
         printSetup = next.printSetup();
@@ -291,7 +305,12 @@ public final class ModelSession {
     }
 
     public synchronized void setPrintSetup(dev.voxelbrew.engine.printing.PrintSetup setup) {
+        var retained = gcode;
+        boolean selectionOnly =
+                printSetup.plates().stream().anyMatch(plate -> plate.id().equals(setup.activePlateId()))
+                        && printSetup.selectPlate(setup.activePlateId()).equals(setup);
         commit(features, setup);
+        if (selectionOnly) gcode = retained;
     }
 
     private void commit(List<Feature> next, dev.voxelbrew.engine.printing.PrintSetup setup) {
@@ -372,6 +391,7 @@ public final class ModelSession {
         undo.push(new State(features, printSetup, parameters, bodyStyles, bodyNames, featureNames));
         redo.clear();
         features = validated;
+        invalidateGcode();
         printSetup = setup;
         parameters = expressions.withUuidGenerator(uuidGenerator);
         bodyStyles = java.util.Map.copyOf(styles);

@@ -572,6 +572,9 @@ final class PrintingCommands {
                         spec.commandLine().getErr()::println,
                         Slicing.DIRECT);
                 describe(result.job(), spec.commandLine().getOut());
+                var jobs = new java.util.HashMap<>(document.gcode());
+                jobs.put(document.printSetup().activePlateId(), result.job().lines());
+                documentWriter.save(document.withGcode(jobs), file, true);
                 spec.commandLine().getOut().println("Job: " + result.output());
                 return 0;
             } finally {

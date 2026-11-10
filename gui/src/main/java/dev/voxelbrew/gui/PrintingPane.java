@@ -45,8 +45,6 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
     private long validationSequence;
     private final Label plateSize = new Label();
     private boolean threeDimensional;
-    private Path outputProject;
-    private Path outputDestination;
     private Button autoArrange;
     private Button orientAll;
     private boolean orienting;
@@ -83,7 +81,7 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
     private final ComboBox<SupportVolume.Role> supportRole = new ComboBox<>();
     private final Map<String, FormulaField> fields = new LinkedHashMap<>();
     private final CheckBox supportsEnabled = new CheckBox();
-    private final CheckBox autoSupports = new CheckBox(""), bedOnly = new CheckBox(""), overwrite = new CheckBox("");
+    private final CheckBox autoSupports = new CheckBox(""), bedOnly = new CheckBox("");
     private final Slider layer = new Slider(0, 0, 0);
     private final Label layerLabel = new Label(""),
             validationLabel = new Label(""),
@@ -129,7 +127,6 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
         this.printerVisibility = printerVisibility;
         autoSupports.setText(translations.text("gui.automatic_supports"));
         bedOnly.setText(translations.text("gui.build_plate_only"));
-        overwrite.setText(translations.text("gui.replace_existing_job"));
         layerLabel.setText(translations.text("gui.no_sliced_layers"));
         validationLabel.setText(translations.text("gui.add_a_build_instance"));
         status.setText(translations.text("gui.ready_to_slice"));
@@ -169,9 +166,7 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
         UiText.enums(supportRole, translations, "print.support.");
         autoSupports.setId("print-auto-supports");
         bedOnly.setId("print-bed-only");
-        overwrite.setId("print-overwrite");
-        overwrite.setSelected(true);
-        for (var check : List.of(autoSupports, bedOnly, overwrite)) UiHelp.install(check, translations);
+        for (var check : List.of(autoSupports, bedOnly)) UiHelp.install(check, translations);
         materials.getItems().setAll("PLA", "PETG");
         supportRole.getItems().setAll(SupportVolume.Role.values());
         supportRole.setValue(SupportVolume.Role.SOLID_SUPPORT);
@@ -355,12 +350,7 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
         slice = button(translations.text("gui.slice"), "print-slice", this::slice);
         sliceAll = button(translations.text("print.sliceAll"), "print-slice-all", () -> slice(true));
         cancel = button(translations.text("gui.cancel_slicing"), "print-cancel", jobs::cancel);
-        var job = new VBox(
-                7,
-                row("print-output", translations.text("gui.g_code_destination"), ""),
-                overwrite,
-                summary,
-                diagnostics);
+        var job = new VBox(7, summary, diagnostics);
         diagnostics.setEditable(false);
         diagnostics.setPrefRowCount(5);
         diagnostics.setId("print-diagnostics");
@@ -615,7 +605,7 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
                 () -> rotationSpace.getValue().name(),
                 value -> rotationSpace.setValue(PrintRotationGizmo.Space.valueOf(value)));
         var checks = new ArrayList<CheckBox>(roles.values());
-        checks.addAll(List.of(autoSupports, bedOnly, overwrite, showRotationGizmos));
+        checks.addAll(List.of(autoSupports, bedOnly, showRotationGizmos));
         for (var check : checks)
             workspace.add(
                     check.getId(),
@@ -645,6 +635,11 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
         autoSupports.setOnAction(event -> saveProcess());
         bedOnly.setOnAction(event -> saveProcess());
         workspace.initialize();
+        fields.values().forEach(field -> field.textProperty().addListener((o, before, after) -> invalidateJob()));
+        for (var choice : List.of(materials, backends, supportRole, supportOwners, rotationSpace))
+            choice.valueProperty().addListener((o, before, after) -> invalidateJob());
+        for (var check : List.of(autoSupports, bedOnly, supportsEnabled))
+            check.selectedProperty().addListener((o, before, after) -> invalidateJob());
         document.printWorkspace(workspace::capture);
         jobs.onChanged(this::updateJob);
         updateJob();
@@ -959,6 +954,12 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
         slice(false);
     }
 
+    private void invalidateJob() {
+        if (updating) return;
+        jobs.invalidateGeometry();
+        document.invalidateGcode();
+    }
+
     private void slice(boolean allPlates) {
         if (!availability.working(setup().backendId()))
             throw new IllegalStateException(availability.text(setup().backendId()));
@@ -972,27 +973,20 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
             throw new IllegalStateException(translations.text("slicer.settings.failed", failure.getMessage()), failure);
         }
         applyProcess();
-        var snapshot = document.snapshot().document();
-        var destination = Path.of(fields.get("print-output").evaluatedText());
-        var future = allPlates
-                ? jobs.startAll(snapshot, backend, null, batchDestinations(destination), overwrite.isSelected())
-                : jobs.start(snapshot, backend, null, destination, overwrite.isSelected());
         tabs.getSelectionModel().select(3);
-        future.exceptionally(failure -> null);
-    }
-
-    private Map<String, Path> batchDestinations(Path destination) {
-        var outputs = new LinkedHashMap<String, Path>();
-        var plates = setup().plates();
-        Path project = document.path() == null ? Path.of("Untitled.vxb") : document.path();
-        for (int i = 0; i < plates.size(); i++) {
-            var plate = plates.get(i);
-            outputs.put(
-                    plate.id(),
-                    destination.resolveSibling(jobDestination(project, plateName(plate.id()), i + 1, plates.size())
-                            .getFileName()));
+        document.captureSlicerWorkspace();
+        var snapshot = document.snapshot().document();
+        try {
+            jobs.startEmbedded(snapshot, backend, allPlates)
+                    .thenAccept(result -> {
+                        var stored = new LinkedHashMap<>(snapshot.gcode());
+                        stored.putAll(jobs.completedGcode());
+                        document.gcode(stored);
+                    })
+                    .exceptionally(failure -> null);
+        } catch (java.io.IOException failure) {
+            throw new java.io.UncheckedIOException(failure);
         }
-        return outputs;
     }
 
     void documentChanged() {
@@ -1001,16 +995,11 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
         if (!workspace.belongsTo(snapshot.uuidGenerator())) {
             lastSetup = null;
             lastBuild = null;
-            outputDestination = null;
         }
         updating = true;
         var pendingWorkspace = workspace.pending(snapshot.uuidGenerator());
         updating = false;
         if (dragSource != null && !DocumentCodec.fingerprint(snapshot).equals(dragRevision)) cancelDrag();
-        if (!Objects.equals(outputProject, document.path())) {
-            outputProject = document.path();
-        }
-        updateOutputDestination();
         var printer = PrintProfile.resolve(setup()).printer();
         plateWidth =
                 printer.bed().stream().mapToDouble(PrintProfile.Point::x).max().orElse(200)
@@ -1032,6 +1021,7 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
         plateSize.setText(String.format(Locale.ROOT, "%.1f \u00d7 %.1f mm", plateWidth, plateDepth));
         jobs.documentChanged(snapshot);
         if (document.rebuilding()) jobs.invalidateGeometry();
+        else jobs.restoreEmbedded(snapshot);
         boolean refreshNames = lastBuild != document.build() || !setup().equals(lastSetup);
         updating = true;
         try {
@@ -1762,23 +1752,6 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
         rebuildPlateStrip();
         updateJob();
         return true;
-    }
-
-    private void updateOutputDestination() {
-        if (outputProject == null) return;
-        var plates = setup().plates();
-        for (int i = 0; i < plates.size(); i++) {
-            if (!plates.get(i).id().equals(setup().activePlateId())) continue;
-            Path destination =
-                    jobDestination(outputProject, plateName(plates.get(i).id()), i + 1, plates.size());
-            if (!destination.equals(outputDestination)) {
-                String current = fields.get("print-output").getText();
-                if (current.isBlank() || (outputDestination != null && current.equals(outputDestination.toString())))
-                    fields.get("print-output").setText(destination.toString());
-                outputDestination = destination;
-            }
-            return;
-        }
     }
 
     boolean cancelDrag() {

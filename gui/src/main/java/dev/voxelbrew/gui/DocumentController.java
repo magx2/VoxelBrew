@@ -286,7 +286,11 @@ public final class DocumentController implements AutoCloseable {
     private void capturePrintWorkspace() {
         var setup = session.document().printSetup();
         var settings = printWorkspace.get();
-        if (!settings.equals(setup.workspaceSettings())) session.setPrintSetup(setup.withWorkspaceSettings(settings));
+        if (!settings.equals(setup.workspaceSettings())) {
+            var jobs = session.document().gcode();
+            session.setPrintSetup(setup.withWorkspaceSettings(settings));
+            session.setGcode(jobs);
+        }
     }
 
     public boolean dirty() {
@@ -368,6 +372,7 @@ public final class DocumentController implements AutoCloseable {
     }
 
     public void rebuild() {
+        session.invalidateGcode();
         preview = null;
         schedule(session.document(), false);
     }
@@ -376,6 +381,22 @@ public final class DocumentController implements AutoCloseable {
         session.setPrintSetup(setup);
         preview = null;
         schedule(session.document(), false);
+    }
+
+    void gcode(java.util.Map<String, java.util.List<String>> jobs) {
+        capturePrintWorkspace();
+        session.setGcode(jobs);
+        onChanged.run();
+    }
+
+    void invalidateGcode() {
+        if (session.document().gcode().isEmpty()) return;
+        session.invalidateGcode();
+        onChanged.run();
+    }
+
+    void captureSlicerWorkspace() {
+        capturePrintWorkspace();
     }
 
     public void bodyStyle(String bodyId, BodyStyle style) {
@@ -625,8 +646,6 @@ public final class DocumentController implements AutoCloseable {
     public CompletableFuture<Void> importDocument(
             dev.voxelbrew.importer.api.ImporterCatalog.Entry entry, dev.voxelbrew.importer.api.ImportWindow parent) {
         requireIdleIo();
-        if (entry.descriptor().resultKind() != dev.voxelbrew.importer.api.ImportResult.Kind.DOCUMENT)
-            throw new IllegalArgumentException("Choose a document importer");
         long generation = documentGeneration;
         ioBusy = true;
         onChanged.run();
@@ -654,8 +673,16 @@ public final class DocumentController implements AutoCloseable {
                             return;
                         }
                         ioBusy = false;
-                        var document = ((dev.voxelbrew.importer.api.ImportResult.Document) imported).document();
-                        replace(document, null);
+                        if (imported instanceof dev.voxelbrew.importer.api.ImportResult.Document loaded) {
+                            replace(loaded.document(), null);
+                        } else if (imported instanceof dev.voxelbrew.importer.api.ImportResult.Gcode loaded) {
+                            var jobs =
+                                    new java.util.HashMap<>(session.document().gcode());
+                            jobs.put(
+                                    session.document().printSetup().activePlateId(),
+                                    loaded.job().lines());
+                            session.setGcode(jobs);
+                        }
                         unsavedImport = true;
                         onChanged.run();
                         result.complete(null);

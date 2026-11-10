@@ -1,5 +1,18 @@
 # Printing workflow
 
+Slicing stores each plate's complete G-code in the document. Save/export as
+VoxelBrew (`.vxb`) or JSON to retain it; opening or importing either format also
+restores its toolpath preview. File > Import can attach a standalone G-code job
+to the active plate. Use **File > Export > G-code** to write that plate's stored
+job; this choice is available when the plate has G-code. The Slicer Job tab has
+no destination or overwrite controls and does not export files.
+
+CAD edits and changes to slicer settings, placement, supports or draft input
+clear stored jobs. Undo does not resurrect them. Selecting a plate or inspecting
+preview layers does not change the job. Slice all retains separate jobs for all
+nonempty plates. CLI `slice --output` continues writing its explicit destination
+and also saves the result into the input `.vxb` document.
+
 The M4 backend is **PrusaSlicer 2.7.2**, invoked as an external process. The reference
 printer is generic Marlin 2, one **0.4 mm** nozzle, **1.75 mm** filament, a rectangular
 **200 × 200 mm** bed without excluded zones, **200 mm** usable height, and text
@@ -20,9 +33,9 @@ VXB and JSON use the same Protobuf print setup. They retain every applied placem
 process setting, support instruction, plate name/selection and printer snapshot,
 including edited bed dimensions. Saving also captures the Placement, Process,
 Supports and Job tab fields, formula text, selections, rotation/view preferences,
-preview role filters, custom G-code destination and overwrite choice. Reopening
+and preview role filters. Reopening
 restores these fields; unfinished edits still require the corresponding **Apply**
-button before they affect manufacturing. Generated toolpaths remain derived output.
+button before they affect manufacturing. Generated toolpaths are saved as line lists.
 
 When any slicer plate has instances, 3MF export uses the active slicer plate instead
 of Designer coordinates or Designer body selection. An empty active plate is an
@@ -66,15 +79,9 @@ transient camera state, which never changes placements or creates undo entries.
 New instances start at the center of the bed. Placement validation reports objects
 outside the bed or overlapping other objects on the selected plate.
 
-**Slice selected plate** validates and slices only that plate. Each plate gets its
-own default G-code filename: `<project>-<number>-<plate name>.gcode`. Plate numbers
-start at 1 and are padded to the width of the total plate count (plate 3 of 33,
-named `boo`, in `Foo.vxb` produces `Foo-03-boo.gcode`). Unnamed plates use their
-displayed name. Filename-unsafe characters and literal percent signs in plate
-names are percent-escaped; trailing dots and spaces are escaped too. Renaming a
-plate or changing its number/count refreshes the suggested destination.
-Switching plates or editing a placement invalidates
-the previous preview. **Preview toolpaths** switches between the resulting job and
+**Slice selected plate** validates and slices only that plate. **Slice all**
+retains a separate job for each nonempty plate. Select a plate and use File >
+Export > G-code to write its job. Editing placement invalidates stored jobs. **Preview toolpaths** switches between the resulting job and
 object placement. Layer controls appear only in preview; the expandable toolpath
 legend groups color swatches and visibility filters. Property hints describe units
 and the effect of process settings.
@@ -114,8 +121,7 @@ Use **Slicer → Configure slicers…** to configure installed providers from ei
 workspace. Each provider has its own tab and persisted options, including its
 executable path. Cura exposes its machine-definition JSON and process-properties
 file; Prusa exposes its profile option. Save applies the settings to subsequent
-jobs without restarting. An explicit executable on the Job tab still overrides
-the saved path. Closing the dialog without saving discards its edits.
+jobs without restarting. Closing the dialog without saving discards its edits.
 
 Slicer options are stored separately beside the application configuration:
 `~/.voxelbrew/slicers/prusa-slicer.properties`,
@@ -140,7 +146,6 @@ Each half exports separately with `--body halves.negative` or `halves.positive`.
 The **Slicer** workspace has Placement, Process, Supports and Job tabs. Entering
 Slicer saves the project first; cancelling Save As keeps Designer open. F1 shows
 help for the current workspace. The full shortcut reference remains in Settings.
-The Job destination defaults to the project folder and basename with `.gcode`.
 
 Use **2D** for the top view or **3D** for the isometric plate and placed geometry.
 After slicing, 2D shows the selected layer and 3D shows paths up to that layer.
@@ -203,10 +208,11 @@ multipart assemblies. Prefer `prusa-project`, or use its GUI multipart import.
 
 ## Slicing and preview
 
-Select the profile, apply settings, choose a destination, then Slice. The engine
+Select the profile, apply settings, then Slice. Export the stored job through
+File > Export when needed. The engine
 requires a successful complete rebuild at the timeline end. Both frontends use
 the same validation and backend. CLI separates `validate`, `slice`, and
-`inspect-job`. Existing jobs require explicit overwrite.
+`inspect-job`. File export and CLI output require explicit overwrite for existing destinations.
 
 The GUI previews actual parsed G-code with layer scrubbing and role filters.
 Unavailable roles are disabled; unknown deposition is labeled unknown. Time and

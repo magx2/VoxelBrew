@@ -23,6 +23,8 @@ class DocumentImportersTest {
             document = DocumentCodec.decode(Objects.requireNonNull(input).readAllBytes());
         }
         document.parameters().builtins().fileVersion(17);
+        document = document.withGcode(
+                Map.of(document.printSetup().activePlateId(), List.of("G21", "", "; saved job", "M104 S0")));
         for (var format : List.of("vxb", "json")) {
             Path source = directory.resolve("editable design." + format);
             if (format.equals("vxb")) Files.write(source, DocumentCodec.encode(document));

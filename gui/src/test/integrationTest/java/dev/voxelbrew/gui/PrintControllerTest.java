@@ -40,6 +40,27 @@ class PrintControllerTest {
         return s;
     }
 
+    @Test
+    void embeddedRealSliceSurvivesReopenWithoutPublishingDestination() throws Exception {
+        var session = document();
+        try (var controller = new PrintController(callbacks::add, session::document)) {
+            var future = controller.startEmbedded(session.document(), new PrusaSlicerBackend(), false);
+            await(future::isDone);
+            var sliced = future.get();
+            assertFalse(Files.exists(sliced.output()));
+            assertFalse(sliced.job().lines().isEmpty());
+            session.setGcode(controller.completedGcode());
+        }
+        var reopened = dev.voxelbrew.engine.persistence.DocumentCodec.decode(
+                dev.voxelbrew.engine.persistence.DocumentCodec.encode(session.document()));
+        try (var controller = new PrintController(callbacks::add, () -> reopened)) {
+            controller.restoreEmbedded(reopened);
+            await(() -> controller.state() == PrintController.State.SUCCEEDED);
+            assertEquals(reopened.activeGcode(), controller.result().job().lines());
+            assertEquals(40, controller.result().job().modelLayers().size());
+        }
+    }
+
     private static final class HeldBackend implements SlicerBackend {
         final CountDownLatch entered = new CountDownLatch(1), release = new CountDownLatch(1);
 

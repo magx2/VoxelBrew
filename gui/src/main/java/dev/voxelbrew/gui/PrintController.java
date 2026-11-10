@@ -34,6 +34,14 @@ public final class PrintController implements AutoCloseable {
     private final Supplier<CadDocument> current;
     private final Path pluginDirectory;
     private final Slicing slicing;
+    private final dev.voxelbrew.importer.api.GcodeSource gcodeReader;
+    private Map<String, List<String>> completedGcode = Map.of();
+    private List<String> restoredLines = List.of();
+
+    public Map<String, List<String>> completedGcode() {
+        return completedGcode;
+    }
+
     private final dev.voxelbrew.exporter.api.ExporterCatalog.Factory exporters;
 
     @Getter
@@ -78,7 +86,6 @@ public final class PrintController implements AutoCloseable {
                 dev.voxelbrew.slicer.api.SlicerRuntime.load().slicing());
     }
 
-    @javax.inject.Inject
     PrintController(
             @NonNull @javax.inject.Named("ui") Consumer<Runnable> dispatch,
             @NonNull Supplier<CadDocument> current,
@@ -86,12 +93,32 @@ public final class PrintController implements AutoCloseable {
             @NonNull @javax.inject.Named("slicing") ExecutorService worker,
             dev.voxelbrew.exporter.api.ExporterCatalog.Factory exporters,
             Slicing slicing) {
+        this(
+                dispatch,
+                current,
+                pluginDirectory,
+                worker,
+                exporters,
+                slicing,
+                dev.voxelbrew.importer.api.ImportRuntime.load().gcode());
+    }
+
+    @javax.inject.Inject
+    PrintController(
+            @javax.inject.Named("ui") Consumer<Runnable> dispatch,
+            Supplier<CadDocument> current,
+            @javax.inject.Named("plugins") Path pluginDirectory,
+            @javax.inject.Named("slicing") ExecutorService worker,
+            dev.voxelbrew.exporter.api.ExporterCatalog.Factory exporters,
+            Slicing slicing,
+            dev.voxelbrew.importer.api.GcodeSource gcodeReader) {
         this.dispatch = dispatch;
         this.current = current;
         this.pluginDirectory = pluginDirectory;
         this.worker = worker;
         this.exporters = exporters;
         this.slicing = slicing;
+        this.gcodeReader = gcodeReader;
     }
 
     public List<String> diagnostics() {
@@ -112,6 +139,8 @@ public final class PrintController implements AutoCloseable {
     private void outdated(String reason) {
         if (cancellation != null) cancellation.cancel();
         result = null;
+        completedGcode = Map.of();
+        restoredLines = List.of();
         state = State.OUTDATED;
         message = reason;
         onChanged.run();
@@ -123,6 +152,68 @@ public final class PrintController implements AutoCloseable {
     }
 
     private record PlateJob(CadDocument document, Path destination) {}
+
+    /** Scratch output is private to slicing; only File > Export publishes a user job. */
+    public CompletableFuture<Slicing.Result> startEmbedded(
+            CadDocument document, SlicerBackend backend, boolean allPlates) throws IOException {
+        Path directory = java.nio.file.Files.createTempDirectory("voxelbrew-job-");
+        var destinations = new LinkedHashMap<String, Path>();
+        for (var plate : document.printSetup().plates())
+            destinations.put(plate.id(), directory.resolve(plate.id() + ".gcode"));
+        try {
+            var future = allPlates
+                    ? startAll(document, backend, null, destinations, false)
+                    : start(
+                            document,
+                            backend,
+                            null,
+                            destinations.get(document.printSetup().activePlateId()),
+                            false);
+            future.whenComplete((value, failure) -> cleanup(directory, destinations.values()));
+            return future;
+        } catch (RuntimeException failure) {
+            cleanup(directory, destinations.values());
+            throw failure;
+        }
+    }
+
+    private static void cleanup(Path directory, Collection<Path> paths) {
+        try {
+            for (Path path : paths) java.nio.file.Files.deleteIfExists(path);
+            java.nio.file.Files.deleteIfExists(directory);
+        } catch (IOException failure) {
+            log.warn("Cannot remove temporary slicer output {}", directory, failure);
+        }
+    }
+
+    public void restoreEmbedded(CadDocument document) {
+        var lines = document.activeGcode();
+        if (running || lines.isEmpty() || lines.equals(restoredLines)) return;
+        restoredLines = lines;
+        String captured = DocumentCodec.fingerprint(document);
+        worker.execute(() -> {
+            try {
+                var job = gcodeReader.readLines(lines);
+                dispatch.accept(() -> {
+                    if (closed
+                            || running
+                            || !captured.equals(DocumentCodec.fingerprint(current.get()))
+                            || !lines.equals(current.get().activeGcode())) return;
+                    revision = captured;
+                    result = new Slicing.Result(null, job, "");
+                    state = State.SUCCEEDED;
+                    message = "Stored G-code ready to export";
+                    onChanged.run();
+                });
+            } catch (IOException failure) {
+                dispatch.accept(() -> {
+                    if (closed || !lines.equals(current.get().activeGcode())) return;
+                    message = "Cannot preview stored G-code: " + failure.getMessage();
+                    onChanged.run();
+                });
+            }
+        });
+    }
 
     /** Slice detached plate snapshots without changing the active plate or document history. */
     public CompletableFuture<Slicing.Result> startAll(
@@ -163,6 +254,7 @@ public final class PrintController implements AutoCloseable {
         running = true;
         state = State.SLICING;
         result = null;
+        completedGcode = Map.of();
         diagnostics.clear();
         revision = DocumentCodec.fingerprint(document);
         message = "Validating print setup";
@@ -185,6 +277,7 @@ public final class PrintController implements AutoCloseable {
                 }
                 Slicing.Result selectedResult = null;
                 Slicing.Result lastResult = null;
+                var jobs = new LinkedHashMap<String, List<String>>();
                 for (int i = 0; i < requests.size(); i++) {
                     token.check();
                     var request = requests.get(i);
@@ -219,6 +312,9 @@ public final class PrintController implements AutoCloseable {
                         unlink.run();
                     }
                     lastResult = completed;
+                    jobs.put(
+                            request.document().printSetup().activePlateId(),
+                            completed.job().lines());
                     if (request.document()
                             .printSetup()
                             .activePlateId()
@@ -245,13 +341,9 @@ public final class PrintController implements AutoCloseable {
                         future.completeExceptionally(new CancellationException(message));
                     } else {
                         state = State.SUCCEEDED;
+                        completedGcode = Map.copyOf(jobs);
                         result = preview;
-                        message = requests.size() == 1
-                                ? "Job ready: " + completed.output()
-                                : "Sliced " + requests.size() + " plates. Outputs: "
-                                        + requests.stream()
-                                                .map(PlateJob::destination)
-                                                .toList();
+                        message = "Sliced " + requests.size() + " plate(s). G-code ready to export.";
                         future.complete(completed);
                     }
                     onChanged.run();

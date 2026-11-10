@@ -176,7 +176,17 @@ class ExportTest {
         Files.copy(Path.of(System.getProperty("voxelbrew.test.plugin")), plugins.resolve("external provider.jar"));
         try (var registry = new ExporterRegistry(plugins)) {
             assertEquals(
-                    List.of("3mf", "document-probe", "failing", "json", "obj", "prusa-project", "step", "stl", "vxb"),
+                    List.of(
+                            "3mf",
+                            "document-probe",
+                            "failing",
+                            "gcode",
+                            "json",
+                            "obj",
+                            "prusa-project",
+                            "step",
+                            "stl",
+                            "vxb"),
                     registry.descriptors().stream().map(ExporterDescriptor::id).toList());
             assertTrue(registry.diagnostics().stream().anyMatch(s -> s.contains("Duplicate")));
             assertTrue(registry.diagnostics().stream().anyMatch(s -> s.contains("DoesNotExist")));

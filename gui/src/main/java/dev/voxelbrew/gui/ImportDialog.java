@@ -20,10 +20,7 @@ final class ImportDialog {
         dialog.setTitle(translations.text("import.title"));
         var format = new ComboBox<ImporterDescriptor>();
         format.setId("import-format");
-        format.getItems()
-                .setAll(registry.descriptors().stream()
-                        .filter(d -> d.resultKind() == ImportResult.Kind.DOCUMENT)
-                        .toList());
+        format.getItems().setAll(registry.descriptors().stream().toList());
         UiText.choices(format, ImporterDescriptor::name);
         format.getSelectionModel().selectFirst();
         var diagnostics = new Label(String.join("\n", registry.diagnostics()));

@@ -23,9 +23,13 @@ message Document {
   // Next unused document identifier.
   int64 next_uuid = 21;
   map<string, string> feature_names = 22;
+  map<string, Gcode> gcode = 24;
   uint64 file_version =
       23;  // Successful saves; zero for unsaved/legacy documents.
   reserved 6 to 15;
+}
+message Gcode {
+  repeated string lines = 1;
 }
 // Stable body IDs, including inactive ancestors retained for split inheritance.
 message BodyStyle {

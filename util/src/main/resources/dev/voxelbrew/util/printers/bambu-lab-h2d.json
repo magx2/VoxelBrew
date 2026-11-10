@@ -29,7 +29,7 @@
   "firmware": "vendor",
   "outputFormat": "gcode",
   "genericGcode": false,
-  "image": "enclosed.png",
+  "image": "bambu-lab-h2d.png",
   "sources": [
     "https://bambulab.com/en-us/h2d/specs"
   ],

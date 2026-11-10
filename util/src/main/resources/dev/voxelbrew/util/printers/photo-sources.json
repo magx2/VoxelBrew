@@ -1,0 +1,355 @@
+[
+  {
+    "file": "bambu-lab-a1-mini.png",
+    "source": "https://raw.githubusercontent.com/OrcaSlicer/OrcaSlicer/af5f6806acb6ce1b304b3cf9aa3c1517198c4e61/resources/profiles/BBL/Bambu%20Lab%20A1%20mini_cover.png",
+    "sha256": "1dd868b4ba04bcc35734b561dd01eaecfb3b1e74456addaadc9aa8ca0ba94909",
+    "license": "AGPL-3.0",
+    "attribution": "OrcaSlicer contributors (including upstream Bambu Studio and PrusaSlicer contributors)",
+    "presets": [
+      "bambu-lab-a1-mini"
+    ]
+  },
+  {
+    "file": "bambu-lab-a1.png",
+    "source": "https://raw.githubusercontent.com/OrcaSlicer/OrcaSlicer/af5f6806acb6ce1b304b3cf9aa3c1517198c4e61/resources/profiles/BBL/Bambu%20Lab%20A1_cover.png",
+    "sha256": "bab4ce9e1e95a81e801d34d7617782cb98d8d9050d9af82ddb7ea14366dc2226",
+    "license": "AGPL-3.0",
+    "attribution": "OrcaSlicer contributors (including upstream Bambu Studio and PrusaSlicer contributors)",
+    "presets": [
+      "bambu-lab-a1"
+    ]
+  },
+  {
+    "file": "bambu-lab-a2l.png",
+    "source": "https://raw.githubusercontent.com/OrcaSlicer/OrcaSlicer/af5f6806acb6ce1b304b3cf9aa3c1517198c4e61/resources/profiles/BBL/Bambu%20Lab%20A2L_cover.png",
+    "sha256": "00f499e1666e038096c0cf46aeabdb729634a010c17edb12fc4d5b2bc19e9e9f",
+    "license": "AGPL-3.0",
+    "attribution": "OrcaSlicer contributors (including upstream Bambu Studio and PrusaSlicer contributors)",
+    "presets": [
+      "bambu-lab-a2l"
+    ]
+  },
+  {
+    "file": "bambu-lab-h2c.png",
+    "source": "https://raw.githubusercontent.com/OrcaSlicer/OrcaSlicer/af5f6806acb6ce1b304b3cf9aa3c1517198c4e61/resources/profiles/BBL/Bambu%20Lab%20H2C_cover.png",
+    "sha256": "89f3be4e422e8595c653e8ef72acd2a7d37448559e6cfd68e366c3438974cdb1",
+    "license": "AGPL-3.0",
+    "attribution": "OrcaSlicer contributors (including upstream Bambu Studio and PrusaSlicer contributors)",
+    "presets": [
+      "bambu-lab-h2c"
+    ]
+  },
+  {
+    "file": "bambu-lab-h2d-pro.png",
+    "source": "https://raw.githubusercontent.com/OrcaSlicer/OrcaSlicer/af5f6806acb6ce1b304b3cf9aa3c1517198c4e61/resources/profiles/BBL/Bambu%20Lab%20H2D%20Pro_cover.png",
+    "sha256": "d689f97d0aa8bacdfe932db8e5f2cafdb353ffd95fdcbb74e7ab8155fa27dfec",
+    "license": "AGPL-3.0",
+    "attribution": "OrcaSlicer contributors (including upstream Bambu Studio and PrusaSlicer contributors)",
+    "presets": [
+      "bambu-lab-h2d-pro"
+    ]
+  },
+  {
+    "file": "bambu-lab-h2d.png",
+    "source": "https://raw.githubusercontent.com/OrcaSlicer/OrcaSlicer/af5f6806acb6ce1b304b3cf9aa3c1517198c4e61/resources/profiles/BBL/Bambu%20Lab%20H2D_cover.png",
+    "sha256": "722ce2d9436b54e2364c5ce0e0931d376dca3b322deffd2f39d5616dbce672f2",
+    "license": "AGPL-3.0",
+    "attribution": "OrcaSlicer contributors (including upstream Bambu Studio and PrusaSlicer contributors)",
+    "presets": [
+      "bambu-lab-h2d"
+    ]
+  },
+  {
+    "file": "bambu-lab-h2s.png",
+    "source": "https://raw.githubusercontent.com/OrcaSlicer/OrcaSlicer/af5f6806acb6ce1b304b3cf9aa3c1517198c4e61/resources/profiles/BBL/Bambu%20Lab%20H2S_cover.png",
+    "sha256": "7f1d5223e6d0db96f0fd870213423d98a3643db647f6e583a08a13983bd3965f",
+    "license": "AGPL-3.0",
+    "attribution": "OrcaSlicer contributors (including upstream Bambu Studio and PrusaSlicer contributors)",
+    "presets": [
+      "bambu-lab-h2s"
+    ]
+  },
+  {
+    "file": "bambu-lab-p1p.png",
+    "source": "https://raw.githubusercontent.com/OrcaSlicer/OrcaSlicer/af5f6806acb6ce1b304b3cf9aa3c1517198c4e61/resources/profiles/BBL/Bambu%20Lab%20P1P_cover.png",
+    "sha256": "261ef3fab9b861d67912f9197e1aa8b3a4b0fad79a16f5911d25191f5fec0fa6",
+    "license": "AGPL-3.0",
+    "attribution": "OrcaSlicer contributors (including upstream Bambu Studio and PrusaSlicer contributors)",
+    "presets": [
+      "bambu-lab-p1p"
+    ]
+  },
+  {
+    "file": "bambu-lab-p1s.png",
+    "source": "https://raw.githubusercontent.com/OrcaSlicer/OrcaSlicer/af5f6806acb6ce1b304b3cf9aa3c1517198c4e61/resources/profiles/BBL/Bambu%20Lab%20P1S_cover.png",
+    "sha256": "070ab3d7499d4e7991348e75291d91c3d8b73bb30f8e3e80af6185414cf59a87",
+    "license": "AGPL-3.0",
+    "attribution": "OrcaSlicer contributors (including upstream Bambu Studio and PrusaSlicer contributors)",
+    "presets": [
+      "bambu-lab-p1s"
+    ]
+  },
+  {
+    "file": "bambu-lab-p2s.png",
+    "source": "https://raw.githubusercontent.com/OrcaSlicer/OrcaSlicer/af5f6806acb6ce1b304b3cf9aa3c1517198c4e61/resources/profiles/BBL/Bambu%20Lab%20P2S_cover.png",
+    "sha256": "ee0138a981d5466c92ac1efbb59e9b8d552b1305ff701d3fafbb7c9c780894c4",
+    "license": "AGPL-3.0",
+    "attribution": "OrcaSlicer contributors (including upstream Bambu Studio and PrusaSlicer contributors)",
+    "presets": [
+      "bambu-lab-p2s"
+    ]
+  },
+  {
+    "file": "bambu-lab-x1-carbon.png",
+    "source": "https://raw.githubusercontent.com/OrcaSlicer/OrcaSlicer/af5f6806acb6ce1b304b3cf9aa3c1517198c4e61/resources/profiles/BBL/Bambu%20Lab%20X1%20Carbon_cover.png",
+    "sha256": "70354bd90ed45fdaa6e73f4ceb827acde5299ba9a3393c7d84097999bc419e62",
+    "license": "AGPL-3.0",
+    "attribution": "OrcaSlicer contributors (including upstream Bambu Studio and PrusaSlicer contributors)",
+    "presets": [
+      "bambu-lab-x1-carbon"
+    ]
+  },
+  {
+    "file": "bambu-lab-x1e.png",
+    "source": "https://raw.githubusercontent.com/OrcaSlicer/OrcaSlicer/af5f6806acb6ce1b304b3cf9aa3c1517198c4e61/resources/profiles/BBL/Bambu%20Lab%20X1E_cover.png",
+    "sha256": "9771817f162e64e5bd6645f4e46178123cfa98cf7242431ff064e3b5033ea446",
+    "license": "AGPL-3.0",
+    "attribution": "OrcaSlicer contributors (including upstream Bambu Studio and PrusaSlicer contributors)",
+    "presets": [
+      "bambu-lab-x1e"
+    ]
+  },
+  {
+    "file": "bambu-lab-x1.png",
+    "source": "https://raw.githubusercontent.com/OrcaSlicer/OrcaSlicer/af5f6806acb6ce1b304b3cf9aa3c1517198c4e61/resources/profiles/BBL/Bambu%20Lab%20X1_cover.png",
+    "sha256": "d2cd32bd75af2a890f038c7c9c6900ae61d8ce7fcaeb7166f010fcac52b73ae3",
+    "license": "AGPL-3.0",
+    "attribution": "OrcaSlicer contributors (including upstream Bambu Studio and PrusaSlicer contributors)",
+    "presets": [
+      "bambu-lab-x1"
+    ]
+  },
+  {
+    "file": "bambu-lab-x2d.png",
+    "source": "https://raw.githubusercontent.com/OrcaSlicer/OrcaSlicer/af5f6806acb6ce1b304b3cf9aa3c1517198c4e61/resources/profiles/BBL/Bambu%20Lab%20X2D_cover.png",
+    "sha256": "f59d0106e1f2d46a9c3967fc96e3620408f7cd8689559229eeae7b4fac0a3b6d",
+    "license": "AGPL-3.0",
+    "attribution": "OrcaSlicer contributors (including upstream Bambu Studio and PrusaSlicer contributors)",
+    "presets": [
+      "bambu-lab-x2d"
+    ]
+  },
+  {
+    "file": "bambu-lab-h3c.png",
+    "source": "https://raw.githubusercontent.com/bambulab/BambuStudio/master/resources/profiles/BBL/Bambu%20Lab%20H3C_cover.png",
+    "sha256": "8e49fac1b0754396007f9203b8cd233f7c7922e66d7440d90dd9a47334731a1a",
+    "license": "AGPL-3.0",
+    "attribution": "Bambu Studio contributors",
+    "presets": [
+      "bambu-lab-h3c"
+    ]
+  },
+  {
+    "file": "prusa-core-one.png",
+    "source": "https://raw.githubusercontent.com/OrcaSlicer/OrcaSlicer/af5f6806acb6ce1b304b3cf9aa3c1517198c4e61/resources/profiles/Prusa/Prusa%20CORE%20One_cover.png",
+    "sha256": "7b8112b365cc8ee1a4aa68a7c23fc5c0b0d7d4e90195346d98a3d4ae7095a248",
+    "license": "AGPL-3.0",
+    "attribution": "OrcaSlicer contributors (including upstream Bambu Studio and PrusaSlicer contributors)",
+    "presets": [
+      "prusa-core-one"
+    ]
+  },
+  {
+    "file": "prusa-core-one-l.png",
+    "source": "https://raw.githubusercontent.com/OrcaSlicer/OrcaSlicer/af5f6806acb6ce1b304b3cf9aa3c1517198c4e61/resources/profiles/Prusa/Prusa%20CORE%20One%20L_cover.png",
+    "sha256": "676a09dc1e915dc0a7e2c085058201edcdca926b3046e81260a0df12824b4024",
+    "license": "AGPL-3.0",
+    "attribution": "OrcaSlicer contributors (including upstream Bambu Studio and PrusaSlicer contributors)",
+    "presets": [
+      "prusa-core-one-l"
+    ]
+  },
+  {
+    "file": "prusa-mini.png",
+    "source": "https://raw.githubusercontent.com/OrcaSlicer/OrcaSlicer/af5f6806acb6ce1b304b3cf9aa3c1517198c4e61/resources/profiles/Prusa/Prusa%20MINI_cover.png",
+    "sha256": "f7d4c95b8228f759a512d17a3315b05620ed7fd51b37c13b86ce61a40db25fb3",
+    "license": "AGPL-3.0",
+    "attribution": "OrcaSlicer contributors (including upstream Bambu Studio and PrusaSlicer contributors)",
+    "presets": [
+      "prusa-mini",
+      "prusa-mini-plus"
+    ]
+  },
+  {
+    "file": "prusa-mk3-5.png",
+    "source": "https://raw.githubusercontent.com/OrcaSlicer/OrcaSlicer/af5f6806acb6ce1b304b3cf9aa3c1517198c4e61/resources/profiles/Prusa/Prusa%20MK3.5_cover.png",
+    "sha256": "53701f9caf2b18d563bf3149c75ada64f7492f9756ff403dfcaefd2fb4377e5a",
+    "license": "AGPL-3.0",
+    "attribution": "OrcaSlicer contributors (including upstream Bambu Studio and PrusaSlicer contributors)",
+    "presets": [
+      "prusa-mk3-5"
+    ]
+  },
+  {
+    "file": "prusa-mk3s.png",
+    "source": "https://raw.githubusercontent.com/OrcaSlicer/OrcaSlicer/af5f6806acb6ce1b304b3cf9aa3c1517198c4e61/resources/profiles/Prusa/Prusa%20MK3S_cover.png",
+    "sha256": "62921ff457ef447895c22726b0ee59e37340768c76be82ab5058d025d624bcba",
+    "license": "AGPL-3.0",
+    "attribution": "OrcaSlicer contributors (including upstream Bambu Studio and PrusaSlicer contributors)",
+    "presets": [
+      "prusa-mk3s",
+      "prusa-mk3s-plus"
+    ]
+  },
+  {
+    "file": "prusa-mk4.png",
+    "source": "https://raw.githubusercontent.com/OrcaSlicer/OrcaSlicer/af5f6806acb6ce1b304b3cf9aa3c1517198c4e61/resources/profiles/Prusa/Prusa%20MK4_cover.png",
+    "sha256": "e3955cec9bd8fc7de2522b1c76c5d29f3d54fd523f5b82d91b7b2657fd55612d",
+    "license": "AGPL-3.0",
+    "attribution": "OrcaSlicer contributors (including upstream Bambu Studio and PrusaSlicer contributors)",
+    "presets": [
+      "prusa-mk4"
+    ]
+  },
+  {
+    "file": "prusa-mk4s.png",
+    "source": "https://raw.githubusercontent.com/OrcaSlicer/OrcaSlicer/af5f6806acb6ce1b304b3cf9aa3c1517198c4e61/resources/profiles/Prusa/Prusa%20MK4S_cover.png",
+    "sha256": "6197ff2e94686237997dbd7261bcc63dab13bb3f4834924bbb767eb0f60aa283",
+    "license": "AGPL-3.0",
+    "attribution": "OrcaSlicer contributors (including upstream Bambu Studio and PrusaSlicer contributors)",
+    "presets": [
+      "prusa-mk4s"
+    ]
+  },
+  {
+    "file": "prusa-xl-1-tool.png",
+    "source": "https://raw.githubusercontent.com/OrcaSlicer/OrcaSlicer/af5f6806acb6ce1b304b3cf9aa3c1517198c4e61/resources/profiles/Prusa/Prusa%20XL_cover.png",
+    "sha256": "a75d7ab3f8e865370898feac2fa1cb0296c6b920c59348f9523c5cb72c01e42d",
+    "license": "AGPL-3.0",
+    "attribution": "OrcaSlicer contributors (including upstream Bambu Studio and PrusaSlicer contributors)",
+    "presets": [
+      "prusa-xl-1-tool"
+    ]
+  },
+  {
+    "file": "prusa-xl-5-tool.png",
+    "source": "https://raw.githubusercontent.com/OrcaSlicer/OrcaSlicer/af5f6806acb6ce1b304b3cf9aa3c1517198c4e61/resources/profiles/Prusa/Prusa%20XL%205T_cover.png",
+    "sha256": "c6820f881fbc93de79208e247f81e5f57bdf12f0696eee6364db8fbbf64f0121",
+    "license": "AGPL-3.0",
+    "attribution": "OrcaSlicer contributors (including upstream Bambu Studio and PrusaSlicer contributors)",
+    "presets": [
+      "prusa-xl-5-tool"
+    ]
+  },
+  {
+    "file": "snapmaker-2-0-a250.png",
+    "source": "https://raw.githubusercontent.com/OrcaSlicer/OrcaSlicer/af5f6806acb6ce1b304b3cf9aa3c1517198c4e61/resources/profiles/Snapmaker/Snapmaker%20A250_cover.png",
+    "sha256": "abfbe760c965973a671732e1c59a3f2d5c289d6d22eb2a2dce57cb8fc05edea2",
+    "license": "AGPL-3.0",
+    "attribution": "OrcaSlicer contributors (including upstream Bambu Studio and PrusaSlicer contributors)",
+    "presets": [
+      "snapmaker-2-0-a250"
+    ]
+  },
+  {
+    "file": "snapmaker-2-0-a350.png",
+    "source": "https://raw.githubusercontent.com/OrcaSlicer/OrcaSlicer/af5f6806acb6ce1b304b3cf9aa3c1517198c4e61/resources/profiles/Snapmaker/Snapmaker%20A350_cover.png",
+    "sha256": "c224321bed97a359a6c5f36b6457bf15f7c8353ee27f1e02e3ea8b894865e64a",
+    "license": "AGPL-3.0",
+    "attribution": "OrcaSlicer contributors (including upstream Bambu Studio and PrusaSlicer contributors)",
+    "presets": [
+      "snapmaker-2-0-a350"
+    ]
+  },
+  {
+    "file": "snapmaker-artisan.png",
+    "source": "https://raw.githubusercontent.com/OrcaSlicer/OrcaSlicer/af5f6806acb6ce1b304b3cf9aa3c1517198c4e61/resources/profiles/Snapmaker/Snapmaker%20Artisan_cover.png",
+    "sha256": "018a6d6129623dbda2a01fc5acd9857817ac374723fa2d059afd0c3f9a22a281",
+    "license": "AGPL-3.0",
+    "attribution": "OrcaSlicer contributors (including upstream Bambu Studio and PrusaSlicer contributors)",
+    "presets": [
+      "snapmaker-artisan",
+      "snapmaker-artisan-premium"
+    ]
+  },
+  {
+    "file": "snapmaker-j1.png",
+    "source": "https://raw.githubusercontent.com/OrcaSlicer/OrcaSlicer/af5f6806acb6ce1b304b3cf9aa3c1517198c4e61/resources/profiles/Snapmaker/Snapmaker%20J1_cover.png",
+    "sha256": "2dcce6b43a89a7e436b7934de9bdd2feff7fcb575cada4917bf3806eb72b4136",
+    "license": "AGPL-3.0",
+    "attribution": "OrcaSlicer contributors (including upstream Bambu Studio and PrusaSlicer contributors)",
+    "presets": [
+      "snapmaker-j1"
+    ]
+  },
+  {
+    "file": "snapmaker-u1.png",
+    "source": "https://raw.githubusercontent.com/OrcaSlicer/OrcaSlicer/af5f6806acb6ce1b304b3cf9aa3c1517198c4e61/resources/profiles/Snapmaker/Snapmaker%20U1_cover.png",
+    "sha256": "f6993b4a3c2c97e87d59f8773f70a2d0d5de9a9ba650c01110375a0ec4bcde89",
+    "license": "AGPL-3.0",
+    "attribution": "OrcaSlicer contributors (including upstream Bambu Studio and PrusaSlicer contributors)",
+    "presets": [
+      "snapmaker-u1"
+    ]
+  },
+  {
+    "file": "prusa-mk2-5.png",
+    "source": "https://github.com/prusa3d/PrusaSlicer/blob/version_2.7.2/resources/profiles/PrusaResearch/MK2.5_thumbnail.png",
+    "sha256": "39c131bb9c6198374a65a19f1c76ff4ef5433d43dd71325848cb260e80c4d5f2",
+    "license": "AGPL-3.0",
+    "attribution": "PrusaSlicer contributors / Prusa Research",
+    "presets": [
+      "prusa-mk2-5"
+    ]
+  },
+  {
+    "file": "prusa-mk2-5s.png",
+    "source": "https://github.com/prusa3d/PrusaSlicer/blob/version_2.7.2/resources/profiles/PrusaResearch/MK2.5S_thumbnail.png",
+    "sha256": "75ee0bd1a5399002c7debc46b72d768de37f68bb56d4ce0f9f07311116a1c1d5",
+    "license": "AGPL-3.0",
+    "attribution": "PrusaSlicer contributors / Prusa Research",
+    "presets": [
+      "prusa-mk2-5s"
+    ]
+  },
+  {
+    "file": "prusa-mk2s.png",
+    "source": "https://github.com/prusa3d/PrusaSlicer/blob/version_2.7.2/resources/profiles/PrusaResearch/MK2S_thumbnail.png",
+    "sha256": "75b952a25c2783f60773ea09e22c9fe01225780923dedb500ac6f69576b36e25",
+    "license": "AGPL-3.0",
+    "attribution": "PrusaSlicer contributors / Prusa Research",
+    "presets": [
+      "prusa-mk2s"
+    ]
+  },
+  {
+    "file": "prusa-mk3.png",
+    "source": "https://github.com/prusa3d/PrusaSlicer/blob/version_2.7.2/resources/profiles/PrusaResearch/MK3_thumbnail.png",
+    "sha256": "c9b160a2cc76f4959d9094f83c9efdbbead4c3ed0153c5b143f0c554c432aec3",
+    "license": "AGPL-3.0",
+    "attribution": "PrusaSlicer contributors / Prusa Research",
+    "presets": [
+      "prusa-mk3"
+    ]
+  },
+  {
+    "file": "prusa-mk3-9.png",
+    "source": "https://github.com/prusa3d/PrusaSlicer/blob/version_2.7.2/resources/profiles/PrusaResearch/MK39_thumbnail.png",
+    "sha256": "59610ddfcd017bbad3ba8d2067e01033eb23c4ed527d8dab9568018cf7676c7f",
+    "license": "AGPL-3.0",
+    "attribution": "PrusaSlicer contributors / Prusa Research",
+    "presets": [
+      "prusa-mk3-9"
+    ]
+  },
+  {
+    "file": "prusa-xl-2-tool.png",
+    "source": "https://github.com/prusa3d/PrusaSlicer/blob/version_2.7.2/resources/profiles/PrusaResearch/XL2_thumbnail.png",
+    "sha256": "bb81dc3b0f9384a5ed02730c3f6e6bad494f485f2c481038b2f4fe53b7e10bcd",
+    "license": "AGPL-3.0",
+    "attribution": "PrusaSlicer contributors / Prusa Research",
+    "presets": [
+      "prusa-xl-2-tool"
+    ]
+  }
+]

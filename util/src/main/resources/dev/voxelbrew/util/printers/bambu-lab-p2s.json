@@ -29,7 +29,7 @@
   "firmware": "vendor",
   "outputFormat": "gcode",
   "genericGcode": false,
-  "image": "enclosed.png",
+  "image": "bambu-lab-p2s.png",
   "sources": [
     "https://bambulab.com/en-us/compare"
   ],

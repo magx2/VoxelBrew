@@ -258,7 +258,7 @@ produce individual diagnostics while the remaining catalog stays available.
 manufacturer startup routines. Use `false` for hardware that needs vendor
 integration. It requires one tool, Marlin 2 and text G-code when enabled.
 Place an optional image beside the JSON with the same filename stem: `foo.json`
-uses `foo.png`. Images are selected in this order: PNG, JPG, JPEG, GIF, BMP.
+uses `foo.png`. Images are selected in this order: PNG, JPG, JPEG, WebP, GIF, BMP.
 Extensions are case-insensitive (for example, `foo.PNG` is supported). The stem
 must match the JSON filename, not the printer ID. Custom presets ignore the
 `image` field; bundled presets retain their shared resource images.
@@ -266,5 +266,8 @@ must match the JSON filename, not the printer ID. Custom presets ignore the
 Missing or unreadable images fall back to a bundled illustration. Inaccessible
 or oversized candidates are skipped; an image that fails decoding uses the
 bundled illustration. No network images are loaded. JSON files are limited to
-1 MiB and images to 5 MiB. SVG, WebP and TIFF are not supported by the current
+1 MiB and images to 5 MiB. SVG and TIFF are not supported by the current
 JavaFX 21 image loader.
+
+WebP printer thumbnails use the first frame and preserve transparency. WebP images
+above 16 million pixels use the fallback illustration.

@@ -103,14 +103,14 @@ class PrinterCatalogTest {
         Files.write(directory.resolve("generic.png"), new byte[] {1});
         Files.write(directory.resolve("pictured.png"), new byte[] {1});
         assertNull(customImage(), "Neither the JSON image field nor the printer ID selects the image");
-        var extensions = List.of("PNG", "jpg", "jpeg", "gif", "bmp");
+        var extensions = List.of("PNG", "jpg", "jpeg", "webp", "gif", "bmp");
         for (var extension : extensions) Files.write(directory.resolve("custom.printer." + extension), new byte[] {1});
         for (var extension : extensions) {
             var expected = directory.resolve("custom.printer." + extension);
             assertEquals(expected.toUri().toString(), customImage());
             Files.delete(expected);
         }
-        Files.write(directory.resolve("custom.printer.webp"), new byte[] {1});
+        Files.write(directory.resolve("custom.printer.svg"), new byte[] {1});
         assertNull(customImage(), "Unsupported formats retain the default illustration");
     }
 

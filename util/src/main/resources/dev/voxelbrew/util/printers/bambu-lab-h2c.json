@@ -29,7 +29,7 @@
   "firmware": "vendor",
   "outputFormat": "gcode",
   "genericGcode": false,
-  "image": "enclosed.png",
+  "image": "bambu-lab-h2c.png",
   "sources": [
     "https://csm.bblcdn.com/hub/eff78da43720461787dc8bbe5fa0372d.pdf"
   ],

@@ -29,7 +29,7 @@
   "firmware": "vendor",
   "outputFormat": "gcode",
   "genericGcode": false,
-  "image": "generic.png",
+  "image": "snapmaker-2-0-a250.png",
   "sources": [
     "https://s3-us-west-2.amazonaws.com/snapmaker.com/download/manual/Snapmaker2_A250_EN_V1.3.0.pdf"
   ],

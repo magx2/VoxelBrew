@@ -29,7 +29,7 @@
   "firmware": "vendor",
   "outputFormat": "gcode",
   "genericGcode": false,
-  "image": "enclosed.png",
+  "image": "bambu-lab-a2l.png",
   "sources": [
     "https://www.prnewswire.com/news-releases/bambu-lab-launches-a2l-creative-playground-extra-large-302785609.html"
   ],

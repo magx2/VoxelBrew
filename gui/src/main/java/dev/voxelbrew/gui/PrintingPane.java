@@ -1845,8 +1845,8 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
                     dev.voxelbrew.util.config.PrinterResources.ROOT + "generic.png");
             if (fallback != null) image = fallback.toExternalForm();
         }
-        var loadedImage = image == null ? null : new javafx.scene.image.Image(image, 96, 72, true, true);
-        if (loadedImage != null && loadedImage.isError()) {
+        var loadedImage = image == null ? null : PrinterImages.load(image);
+        if (loadedImage == null || loadedImage.isError()) {
             var fallback = dev.voxelbrew.util.config.PrinterResources.class.getResource(
                     dev.voxelbrew.util.config.PrinterResources.ROOT + "generic.png");
             loadedImage = fallback == null

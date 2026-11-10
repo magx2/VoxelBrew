@@ -29,7 +29,7 @@
   "firmware": "vendor",
   "outputFormat": "gcode",
   "genericGcode": false,
-  "image": "generic.png",
+  "image": "snapmaker-artisan.png",
   "sources": [
     "https://shop.snapmaker.com/pages/snapmaker-3d-printer"
   ],

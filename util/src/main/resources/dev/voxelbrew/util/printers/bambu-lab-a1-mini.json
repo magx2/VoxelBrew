@@ -29,7 +29,7 @@
   "firmware": "vendor",
   "outputFormat": "gcode",
   "genericGcode": false,
-  "image": "enclosed.png",
+  "image": "bambu-lab-a1-mini.png",
   "sources": [
     "https://bambulab.com/en-us/a1-mini/tech-specs"
   ],

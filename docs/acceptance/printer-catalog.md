@@ -65,3 +65,37 @@ Validation commands: Windows `gradlew.bat spotlessApply :engine:test --tests
 :engine:test --tests '*PrinterCatalogTest' :util:test` in the separate Linux checkout.
 Logs: `.tools/printer-image-windows.log` and `.tools/printer-image-ubuntu.log`.
 No E2E run is needed for this filesystem-discovery change; renderer code is unchanged.
+
+## Bundled product images follow-up
+
+Added 35 unmodified upstream product images covering 38 of the 62 presets,
+including all 15 Bambu Lab presets. The remaining 24 presets retain the schematic
+fallback; no unsupported model is relabeled with a different model's photo.
+MINI+, MK3S+ and Artisan Premium use their base-model image as documented in the
+inventory. Sources, SHA-256 checksums and attribution accompany the resources in
+`photo-sources.json`, together with `PHOTO-LICENSE.txt` (AGPL-3.0).
+
+Automated Windows image decoding with System.Drawing succeeded for all 35 files.
+Windows `gradlew.bat spotlessApply :engine:test --tests '*PrinterCatalogTest'
+:util:test` and Ubuntu `./gradlew --no-daemon --max-workers=2 :engine:test --tests
+'*PrinterCatalogTest' :util:test` both passed. Ubuntu used the separate checkout
+`/tmp/voxelbrew-printers.gNbIsB`. Logs: `.tools/printer-photo-windows.log` and
+`.tools/printer-photo-ubuntu.log`. A1 and MK4S image files were visually inspected.
+No GUI gesture or E2E tests were run for this resource-only change.
+
+## WebP custom images follow-up
+
+Custom images now include WebP after PNG/JPG/JPEG and before GIF/BMP. The GUI
+uses TwelveMonkeys ImageIO 3.15.0 (pure Java, BSD-3-Clause) for WebP and transfers
+ARGB pixels to JavaFX without a native codec. The first frame is displayed;
+corrupt, missing or larger-than-16-million-pixel WebP images use the illustration.
+The existing 5 MiB discovery limit still applies.
+
+Windows `gradlew.bat spotlessApply :engine:test --tests '*PrinterCatalogTest'
+:gui:test --tests '*PrinterImagesTest' :util:test` passed. Ubuntu
+`./gradlew --no-daemon --max-workers=2 :engine:test --tests '*PrinterCatalogTest'
+:util:test :gui:test --tests '*PrinterImagesTest'` passed in the separate checkout.
+Tests decode actual lossy and lossless WebP fixtures, preserve transparency,
+handle uppercase extensions and invalid/missing files, and verify discovery
+precedence on reload. Logs: `.tools/printer-webp-windows.log` and
+`.tools/printer-webp-ubuntu.log`. No GUI gesture/E2E or packaged-app tests were run.

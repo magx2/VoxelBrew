@@ -29,7 +29,7 @@
   "firmware": "vendor",
   "outputFormat": "gcode",
   "genericGcode": false,
-  "image": "enclosed.png",
+  "image": "prusa-xl-5-tool.png",
   "sources": [
     "https://www.prusa3d.com/product/original-prusa-xl-semi-assembled-5-toolhead-3d-printer/"
   ],

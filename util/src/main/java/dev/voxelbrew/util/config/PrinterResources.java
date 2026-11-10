@@ -76,7 +76,7 @@ public final class PrinterResources {
         }
         if (!source.name().endsWith(".json")) return null;
         String stem = source.name().substring(0, source.name().length() - ".json".length());
-        var extensions = List.of("png", "jpg", "jpeg", "gif", "bmp");
+        var extensions = List.of("png", "jpg", "jpeg", "webp", "gif", "bmp");
         try (var files = Files.list(source.directory())) {
             var candidates = files.filter(path -> {
                         String filename = path.getFileName().toString();

@@ -4,7 +4,9 @@ Catalog snapshot: 2026-11-10. Presets describe stock FDM hardware and layout, no
 
 Dimensions are millimeters. Multi-nozzle entries use the shared area where documented. HT90 uses an inscribed 128-sided circle; all built-ins use a lower-left layout origin. Accessories, resin systems, sales bundles and automated farm systems are excluded. Stock-nozzle configurations are represented; optional nozzle changes are custom presets.
 
-The bundled illustrations are original schematic artwork, not product photographs. No manufacturer logos or photographs are redistributed.
+Bundled product images from OrcaSlicer, Bambu Studio and PrusaSlicer cover 38 presets (35 distinct images), including every Bambu Lab preset. MINI+, MK3S+ and Artisan Premium share their base-model image. Presets without a matching upstream image retain the original schematic artwork; the generic printer has no physical product photo. Images are packaged locally and require no network access.
+
+Per-image source URLs, SHA-256 checksums, attribution and preset mappings are recorded in `util/src/main/resources/dev/voxelbrew/util/printers/photo-sources.json`. The upstream AGPL-3.0 license accompanies the images in `PHOTO-LICENSE.txt`.
 
 | ID                                     | Manufacturer / model             | Height | Tools | Source                                                                                                                                                                       |
 | -------------------------------------- | -------------------------------- | ------ | ----- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |

@@ -29,7 +29,7 @@
   "firmware": "vendor",
   "outputFormat": "gcode",
   "genericGcode": false,
-  "image": "enclosed.png",
+  "image": "bambu-lab-x2d.png",
   "sources": [
     "https://www.prnewswire.com/news-releases/xcellence-made-simple-bambu-lab-launches-x2d-nextgen-flagship-3d-printer-featuring-dualextrusion-system-302745980.html"
   ],

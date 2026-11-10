@@ -97,3 +97,17 @@
 A narrow JNI bridge was selected to keep required operations, ownership and
 native loading auditable, and to compile the same kernel on both development
 platforms. No third-party Java binding has been accepted or bundled.
+
+- **Bundled printer product images**, AGPL-3.0, from OrcaSlicer contributors,
+  Bambu Studio contributors, and PrusaSlicer contributors / Prusa Research.
+  Unmodified image files, individual upstream source URLs, checksums and preset
+  mappings are in `util/src/main/resources/dev/voxelbrew/util/printers/`, with
+  `photo-sources.json` attribution and the accompanying `PHOTO-LICENSE.txt`.
+  Product names and depicted marks belong to their respective owners.
+
+- **TwelveMonkeys ImageIO 3.15.0**, BSD-3-Clause, provides pure Java WebP decoding
+  for GUI printer thumbnails. Copyright (c) 2008-2020 Harald Kuhr. Source:
+  https://github.com/haraldk/TwelveMonkeys/tree/twelvemonkeys-3.15.0.
+  License: `third_party/twelvemonkeys/LICENSE.txt`. The WebP unit-test fixtures
+  `small_1x1.webp` and `lossless.transparent.webp` are unmodified files from
+  that tag under `imageio/imageio-webp/src/test/resources/webp/`.

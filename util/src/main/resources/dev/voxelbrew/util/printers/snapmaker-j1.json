@@ -29,7 +29,7 @@
   "firmware": "vendor",
   "outputFormat": "gcode",
   "genericGcode": false,
-  "image": "enclosed.png",
+  "image": "snapmaker-j1.png",
   "sources": [
     "https://www.snapmaker.com/en/product-comparison"
   ],

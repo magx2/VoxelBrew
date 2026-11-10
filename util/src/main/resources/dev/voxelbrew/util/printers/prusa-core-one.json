@@ -29,7 +29,7 @@
   "firmware": "vendor",
   "outputFormat": "gcode",
   "genericGcode": false,
-  "image": "enclosed.png",
+  "image": "prusa-core-one.png",
   "sources": [
     "https://www.prusa3d.com/p/core-one/"
   ],

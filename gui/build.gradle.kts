@@ -22,6 +22,7 @@ dependencies {
     testImplementation(project(":impl:slicer"))
     implementation(project(":util"))
     implementation(project(":engine"))
+    runtimeOnly("com.twelvemonkeys.imageio:imageio-webp:3.15.0")
     testImplementation("org.apache.commons:commons-compress:1.28.0")
     testImplementation("com.google.protobuf:protobuf-java:4.30.2")
     for (module in listOf("base", "graphics", "controls")) {

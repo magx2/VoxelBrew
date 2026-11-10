@@ -29,7 +29,7 @@
   "firmware": "vendor",
   "outputFormat": "gcode",
   "genericGcode": false,
-  "image": "generic.png",
+  "image": "prusa-mk3-9.png",
   "sources": [
     "https://github.com/prusa3d/PrusaSlicer-settings/tree/master/live/PrusaResearch"
   ],

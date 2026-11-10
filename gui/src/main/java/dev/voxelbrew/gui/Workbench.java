@@ -580,7 +580,26 @@ public final class Workbench extends BorderPane implements AutoCloseable {
                         "slicer-settings",
                         false,
                         () -> slicerSettings.show(stage)));
-        var menuBar = new MenuBar(fileMenu, editMenu, viewMenu, slicerMenu, settingsMenu);
+        var printersMenu = menu("menu-printers");
+        printersMenu
+                .getItems()
+                .addAll(
+                        menuItem(
+                                translations.text("print.exportPrinters"),
+                                "printers-export-defaults",
+                                false,
+                                printing::exportDefaultPrinters),
+                        menuItem(
+                                translations.text("print.openPrinters"),
+                                "printers-open-folder",
+                                false,
+                                printing::openPrintersFolder),
+                        menuItem(
+                                translations.text("print.reloadPrinters"),
+                                "printers-reload",
+                                false,
+                                printing::reloadPrinters));
+        var menuBar = new MenuBar(fileMenu, editMenu, viewMenu, slicerMenu, printersMenu, settingsMenu);
         menuBar.setId("main-menu");
         menuBar.disableProperty().bind(disabledProperty());
         menuBar.setMinWidth(Region.USE_PREF_SIZE);

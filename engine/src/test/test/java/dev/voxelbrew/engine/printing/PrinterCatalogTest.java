@@ -19,6 +19,33 @@ class PrinterCatalogTest {
     }
 
     @Test
+    void exportsEditableDefaultsWithMatchingImagesWithoutOverwritingUserFiles() throws Exception {
+        assertEquals(62, catalog().exportDefaults());
+        var loaded = catalog().load();
+        assertTrue(loaded.diagnostics().isEmpty(), loaded.diagnostics().toString());
+        assertEquals(124, loaded.entries().size());
+        var copy = loaded.entries().stream()
+                .filter(entry -> entry.definition().printer().id().equals("custom-bambu-lab-a1-mini"))
+                .findFirst()
+                .orElseThrow();
+        assertFalse(copy.bundled());
+        assertEquals(directory.resolve("custom-bambu-lab-a1-mini.png").toUri().toString(), copy.image());
+        assertEquals(
+                loaded.require("bambu-lab-a1-mini").printer().bed(),
+                copy.definition().printer().bed());
+        var json = directory.resolve("custom-bambu-lab-a1-mini.json");
+        Files.writeString(json, Files.readString(json).replace("A1 mini", "My edited printer"));
+        var edited = Files.readAllBytes(json);
+        var picture = directory.resolve("custom-bambu-lab-a1-mini.png");
+        Files.write(picture, new byte[] {1, 2, 3});
+        assertEquals(0, catalog().exportDefaults());
+        assertArrayEquals(edited, Files.readAllBytes(json));
+        assertArrayEquals(new byte[] {1, 2, 3}, Files.readAllBytes(picture));
+        assertTrue(Files.exists(directory.resolve("PHOTO-LICENSE.txt")));
+        assertTrue(Files.exists(directory.resolve("photo-sources.txt")));
+    }
+
+    @Test
     void bundledCatalogIsCompleteAndHasImages() throws Exception {
         var result = catalog().load();
         assertEquals(List.of(), result.diagnostics());

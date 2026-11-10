@@ -38,6 +38,60 @@ public final class PrinterCatalog {
         return resources.directory();
     }
 
+    /** Creates editable copies without overwriting existing user presets or images. */
+    public int exportDefaults() throws java.io.IOException {
+        java.nio.file.Files.createDirectories(directory());
+        int exported = 0;
+        for (var source : resources.load().sources()) {
+            if (!source.bundled()) continue;
+            var json = JsonParser.parseString(source.json()).getAsJsonObject();
+            String stem = "custom-" + json.get("id").getAsString();
+            var target = directory().resolve(stem + ".json");
+            if (java.nio.file.Files.exists(target)) continue;
+            String image = json.has("image") ? json.get("image").getAsString() : null;
+            if (image != null) {
+                String resource = PrinterResources.image(source, image);
+                if (resource != null) {
+                    var destination = directory().resolve(stem + ".png");
+                    if (!java.nio.file.Files.exists(destination)) {
+                        try (var input = java.net.URI.create(resource).toURL().openStream()) {
+                            copyNew(input, destination);
+                        }
+                    }
+                }
+            }
+            json.addProperty("id", stem);
+            json.remove("image");
+            try (var input = new java.io.ByteArrayInputStream(
+                    (new GsonBuilder().setPrettyPrinting().create().toJson(json) + "\n")
+                            .getBytes(java.nio.charset.StandardCharsets.UTF_8))) {
+                if (copyNew(input, target)) exported++;
+            }
+        }
+        for (var name : List.of("PHOTO-LICENSE.txt", "photo-sources.json")) {
+            try (var input = PrinterResources.class.getResourceAsStream(PrinterResources.ROOT + name)) {
+                if (input != null) copyNew(input, directory().resolve(name.replace(".json", ".txt")));
+            }
+        }
+        return exported;
+    }
+
+    private static boolean copyNew(java.io.InputStream input, java.nio.file.Path target) throws java.io.IOException {
+        if (java.nio.file.Files.exists(target)) return false;
+        var temporary = java.nio.file.Files.createTempFile(target.getParent(), ".printer-export-", ".tmp");
+        try {
+            java.nio.file.Files.copy(input, temporary, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+            try {
+                java.nio.file.Files.move(temporary, target);
+                return true;
+            } catch (java.nio.file.FileAlreadyExistsException ex) {
+                return false;
+            }
+        } finally {
+            java.nio.file.Files.deleteIfExists(temporary);
+        }
+    }
+
     public Result load() {
         var loaded = resources.load();
         var errors = new ArrayList<>(loaded.diagnostics());

@@ -39,6 +39,18 @@ class WorkbenchUiTest {
     @Test
     void printerSelectionPersistsAndUndoRestoresBuildVolume() throws Exception {
         ready();
+        fx(() -> {
+            var menu = ((MenuBar) node("#main-menu"))
+                    .getMenus().stream()
+                            .filter(item -> "menu-printers".equals(item.getId()))
+                            .findFirst()
+                            .orElseThrow();
+            assertEquals(
+                    List.of("printers-export-defaults", "printers-open-folder", "printers-reload"),
+                    menu.getItems().stream().map(MenuItem::getId).toList());
+            menu.getItems().getLast().fire();
+            return null;
+        });
         openPrepared("plate-5mm.vxb");
         click("workspace-print");
         ready();

@@ -124,3 +124,21 @@ by missing native prerequisites in the separate checkout. Ubuntu passed
 :impl:slicer:test --tests '*CuraSlicerBackendTest' --console=plain`. Logs:
 `.tools/printer-slicing-ubuntu.log` and `.tools/printer-slicing-ubuntu-compile.log`.
 No Ubuntu E2E, full milestone gate, real Cura run or hardware test was performed.
+
+## Printer menu and editable default export
+
+Added a top-level Printers menu with export, folder-open and reload actions.
+Export creates `custom-` preset copies and same-stem PNGs under the configured
+application home's `printers/` directory, preserves existing user files, and
+copies photo attribution and license texts. Exported copies reload without
+duplicate-ID diagnostics and sort before built-ins.
+
+Windows passed `gradlew.bat spotlessApply :engine:test --tests '*PrinterCatalogTest'
+:util:test :gui:e2eTest --tests '*WorkbenchUiTest.printerSelectionPersistsAndUndoRestoresBuildVolume'`.
+The catalog test exports all 62 presets, reloads all 124 entries, checks matching
+image paths and verifies a second export preserves edited files. The focused GUI
+test checks all three top-level menu actions and invokes reload. Folder launching
+and the export completion dialog were not separately exercised through gestures.
+Ubuntu passed `./gradlew --no-daemon --max-workers=2 :engine:test --tests
+'*PrinterCatalogTest' :util:test :gui:compileJava --console=plain` in the separate
+checkout. Logs: `.tools/printer-export-windows.log`, `.tools/printer-export-ubuntu.log`.

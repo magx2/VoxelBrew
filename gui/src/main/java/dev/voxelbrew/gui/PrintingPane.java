@@ -402,15 +402,10 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
                                 translations.text("print.reloadPrinters"),
                                 "print-reload-printers",
                                 this::reloadPrinters),
-                        button(translations.text("print.openPrinters"), "print-open-printers", () -> {
-                            try {
-                                java.nio.file.Files.createDirectories(printers.directory());
-                                java.awt.Desktop.getDesktop()
-                                        .open(printers.directory().toFile());
-                            } catch (java.io.IOException ex) {
-                                throw new IllegalStateException(ex);
-                            }
-                        })));
+                        button(
+                                translations.text("print.openPrinters"),
+                                "print-open-printers",
+                                this::openPrintersFolder)));
         printerPanel.setPadding(new Insets(8));
         printerPanel.setMaxWidth(360);
         var sidebar = new VBox(6, printerPanel, tabs);
@@ -1795,7 +1790,36 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
         graphics.closePath();
     }
 
-    private void reloadPrinters() {
+    void openPrintersFolder() {
+        try {
+            java.nio.file.Files.createDirectories(printers.directory());
+            java.awt.Desktop.getDesktop().open(printers.directory().toFile());
+        } catch (java.io.IOException ex) {
+            throw new IllegalStateException(ex);
+        }
+    }
+
+    void exportDefaultPrinters() {
+        try {
+            int count = printers.exportDefaults();
+            reloadPrinters();
+            var alert = new Alert(
+                    Alert.AlertType.INFORMATION,
+                    translations.text(
+                            "print.exportedPrinters",
+                            count,
+                            printers.directory().toString()),
+                    ButtonType.OK);
+            alert.initOwner(getScene().getWindow());
+            alert.setTitle(translations.text("print.exportPrinters"));
+            alert.setHeaderText(null);
+            alert.showAndWait();
+        } catch (java.io.IOException ex) {
+            throw new IllegalStateException(ex);
+        }
+    }
+
+    void reloadPrinters() {
         printerCatalog = printers.load();
         updating = true;
         try {

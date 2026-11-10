@@ -30,15 +30,7 @@ public final class WorkbenchApplication extends Application {
         }
         if (open != null && args.contains("--smoke-test"))
             throw new IllegalArgumentException("--smoke-test creates an unsaved fixture; omit --open");
-        workbench = Workbench.create(stage, plugins);
-        var screen = Screen.getPrimary().getVisualBounds();
-        stage.setScene(
-                workbench.createScene(Math.min(1400, screen.getWidth() - 60), Math.min(900, screen.getHeight() - 80)));
-        stage.setMinWidth(Math.min(1100, screen.getWidth() - 60));
-        stage.setMinHeight(Math.min(700, screen.getHeight() - 80));
-        stage.show();
-        log.info("Workbench window opened with plugin directory {}", plugins);
-        if (open != null) workbench.controller().open(open).exceptionally(failure -> null);
+        workbench = openWindow(stage, plugins, open);
         if (args.contains("--smoke-test")) {
             var controller = workbench.controller();
             controller.add(new Feature.Sketch(
@@ -50,6 +42,20 @@ public final class WorkbenchApplication extends Application {
                     "cut", new Feature.ProfileRef("hole", "hole.profile"), new Feature.BodyRef("thickness", "body")));
             PackageSmoke.verify(workbench, stage, smokeOutput);
         }
+    }
+
+    static Workbench openWindow(Stage stage, Path plugins, Path open) throws java.io.IOException {
+        var workbench = Workbench.create(stage, plugins);
+        var screen = Screen.getPrimary().getVisualBounds();
+        stage.setScene(
+                workbench.createScene(Math.min(1400, screen.getWidth() - 60), Math.min(900, screen.getHeight() - 80)));
+        stage.setMinWidth(Math.min(1100, screen.getWidth() - 60));
+        stage.setMinHeight(Math.min(700, screen.getHeight() - 80));
+        stage.show();
+        log.info("Workbench window opened with plugin directory {}", plugins);
+        if (open != null) workbench.controller().open(open).exceptionally(failure -> null);
+        stage.setOnHidden(event -> workbench.close());
+        return workbench;
     }
 
     @Override

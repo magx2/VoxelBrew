@@ -453,17 +453,14 @@ public final class Workbench extends BorderPane implements AutoCloseable {
                 configuration, name -> name.equals("Default") ? translations.text("configuration.default") : name);
         var fileMenu = menu("menu-file");
         var newItem = menuItem(translations.text("action.new"), "new", true, this::newDocument);
-        var openItem = menuItem(translations.text("action.open"), "open", true, () -> requestChange(this::open));
+        var openItem = menuItem(translations.text("action.open"), "open", true, this::open);
         var recentMenu = menu("menu-open-recent");
         Runnable refreshRecent = () -> {
             recentMenu.getItems().clear();
             for (Path path : recentFiles.paths()) {
                 var item = new MenuItem(path.toString());
                 item.setMnemonicParsing(false);
-                item.setOnAction(event -> requestChange(() -> {
-                    cancelTool();
-                    controller.open(path).exceptionally(failure -> null);
-                }));
+                item.setOnAction(event -> openProject(path));
                 recentMenu.getItems().add(item);
             }
             if (recentMenu.getItems().isEmpty()) {
@@ -947,7 +944,7 @@ public final class Workbench extends BorderPane implements AutoCloseable {
     }
 
     private void newDocument() {
-        requestChange(() -> {
+        chooseProjectWindow(null, () -> {
             cancelTool();
             selectedFeature = null;
             selectedBody = null;
@@ -2113,10 +2110,39 @@ public final class Workbench extends BorderPane implements AutoCloseable {
                         translations,
                         configurationStore,
                         recentFiles.paths())
-                .ifPresent(path -> {
-                    cancelTool();
-                    controller.open(path).exceptionally(failure -> null);
-                });
+                .ifPresent(this::openProject);
+    }
+
+    private void openProject(Path path) {
+        chooseProjectWindow(path, () -> {
+            cancelTool();
+            controller.open(path).exceptionally(failure -> null);
+        });
+    }
+
+    private void chooseProjectWindow(Path path, Runnable currentWindow) {
+        var current = new ButtonType(translations.text("projectWindow.current"));
+        var separate = new ButtonType(translations.text("projectWindow.new"));
+        var dialog = new Alert(
+                Alert.AlertType.CONFIRMATION,
+                translations.text("projectWindow.question"),
+                current,
+                separate,
+                ButtonType.CANCEL);
+        dialog.setHeaderText(translations.text("projectWindow.title"));
+        dialog.getDialogPane().lookupButton(current).setId("project-window-current");
+        dialog.getDialogPane().lookupButton(separate).setId("project-window-new");
+        Dialogs.show(dialog, stage, translations).ifPresent(choice -> {
+            if (choice == current) requestChange(currentWindow);
+            else if (choice == separate) {
+                try {
+                    WorkbenchApplication.openWindow(new Stage(), pluginDirectory, path);
+                } catch (IOException failure) {
+                    Dialogs.show(
+                            new Alert(Alert.AlertType.ERROR, failure.getMessage(), ButtonType.OK), stage, translations);
+                }
+            }
+        });
     }
 
     private CompletableFuture<Void> save(boolean saveAs) {

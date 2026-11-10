@@ -1,13 +1,13 @@
-package dev.voxelbrew.util.config;
+package dev.voxelbrew.slicer;
 
 import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
 import java.util.*;
 
-/** Raw catalog resources only; manufacturing parsing belongs to engine. */
+/** Bundled and custom printer resources owned by the slicer runtime. */
 public final class PrinterResources {
-    public static final String ROOT = "/dev/voxelbrew/util/printers/";
+    public static final String ROOT = "/dev/voxelbrew/slicer/printers/";
 
     public record Source(String name, String json, Path directory, boolean bundled) {}
 

@@ -2,8 +2,8 @@ package dev.voxelbrew.gui;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-import dev.voxelbrew.engine.printing.PrinterCatalog;
-import dev.voxelbrew.util.config.PrinterResources;
+import dev.voxelbrew.slicer.api.PrinterCatalog;
+import dev.voxelbrew.slicer.api.SlicerRuntime;
 import dev.voxelbrew.util.config.UserConfiguration;
 import java.nio.file.Path;
 import java.util.*;
@@ -20,7 +20,7 @@ class PrinterVisibilityTest {
         var configuration = new UserConfiguration(directory.resolve("config.properties"));
         configuration.set("language", "pl");
         var visibility = new PrinterVisibility(configuration);
-        var catalog = new PrinterCatalog(new PrinterResources(directory.resolve("printers")));
+        var catalog = SlicerRuntime.load().printers(directory.resolve("printers"));
         catalog.exportDefaults(Set.of("bambu-lab-a1-mini"));
         var entries = catalog.load().entries();
         assertTrue(visibility.hidden().isEmpty());

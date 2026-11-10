@@ -7,6 +7,7 @@ import dev.voxelbrew.engine.parameters.*;
 import dev.voxelbrew.engine.persistence.DocumentCodec;
 import dev.voxelbrew.engine.printing.*;
 import dev.voxelbrew.exporter.api.ExporterCatalog;
+import dev.voxelbrew.slicer.api.PrinterCatalog;
 import dev.voxelbrew.slicer.api.SlicerBackend;
 import dev.voxelbrew.slicer.api.SlicerCatalog;
 import dev.voxelbrew.slicer.api.Slicing;
@@ -1921,17 +1922,13 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
                 + "\n" + translations.text("print.genericPrinter"));
         String image = entry == null ? null : entry.image();
         if (image == null) {
-            var fallback = dev.voxelbrew.util.config.PrinterResources.class.getResource(
-                    dev.voxelbrew.util.config.PrinterResources.ROOT + "generic.png");
-            if (fallback != null) image = fallback.toExternalForm();
+            var fallback = printers.fallbackImage();
+            if (fallback != null) image = fallback;
         }
         var loadedImage = image == null ? null : PrinterImages.load(image);
         if (loadedImage == null || loadedImage.isError()) {
-            var fallback = dev.voxelbrew.util.config.PrinterResources.class.getResource(
-                    dev.voxelbrew.util.config.PrinterResources.ROOT + "generic.png");
-            loadedImage = fallback == null
-                    ? null
-                    : new javafx.scene.image.Image(fallback.toExternalForm(), 96, 72, true, true);
+            var fallback = printers.fallbackImage();
+            loadedImage = fallback == null ? null : new javafx.scene.image.Image(fallback, 96, 72, true, true);
         }
         printerImage.setImage(loadedImage);
     }

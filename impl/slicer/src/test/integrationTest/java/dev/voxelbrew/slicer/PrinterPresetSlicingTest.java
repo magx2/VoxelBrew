@@ -5,8 +5,8 @@ import static org.junit.jupiter.api.Assertions.*;
 import dev.voxelbrew.engine.mesh.MeshOptions;
 import dev.voxelbrew.engine.printing.*;
 import dev.voxelbrew.exporter.printing.PrusaConfiguration;
+import dev.voxelbrew.slicer.api.SlicerRuntime;
 import dev.voxelbrew.slicer.prusa.PrusaSlicerBackend;
-import dev.voxelbrew.util.config.PrinterResources;
 import java.nio.file.*;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -17,7 +17,7 @@ class PrinterPresetSlicingTest {
 
     @Test
     void selectedHardwareControlsRealSliceIncludingVendorPresets() throws Exception {
-        var catalog = new PrinterCatalog(new PrinterResources(directory)).load();
+        var catalog = SlicerRuntime.load().printers(directory).load();
         var session = SlicerAcceptanceTest.cube();
         session.setPrintSetup(session.document()
                 .printSetup()

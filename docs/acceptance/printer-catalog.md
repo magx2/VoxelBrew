@@ -191,3 +191,36 @@ checks inversion of a mixed selection, and verifies that hiding all remains
 saveable. Ubuntu passed `./gradlew --no-daemon --max-workers=2 :gui:test --tests
 '*PrinterVisibilityTest' :util:test --console=plain`. Logs:
 `.tools/printer-visibility-bulk-windows.log`, `.tools/printer-visibility-bulk-ubuntu.log`.
+
+## Printer ownership migration to impl/slicer
+
+Moved printer JSON, images, attribution, resource discovery and catalog parsing
+into `impl/slicer`. CLI and GUI obtain the new slicer API `PrinterCatalog` through
+the existing `SlicerRuntime` ServiceLoader provider and their Dagger file-I/O
+modules. Custom paths, export behavior and saved printer snapshots are unchanged.
+The catalog tests now use runtime discovery and also read the fallback image.
+
+Windows passed:
+
+```powershell
+.\gradlew.bat spotlessApply :impl:slicer:test --tests '*PrinterCatalogTest' :cli:test :gui:test :util:test --console=plain
+.\gradlew.bat spotlessApply :impl:slicer:test --tests '*PrinterCatalogTest' :impl:slicer:integrationTest --tests '*PrinterPresetSlicingTest' :cli:installDist :gui:e2eTest --tests '*WorkbenchUiTest.printerSelectionPersistsAndUndoRestoresBuildVolume' --console=plain
+.\cli\build\install\cli\bin\cli.bat printers
+```
+
+The installed CLI listed all 62 presets. JAR inspection found the bundled printer
+resources in `slicer-impl` and none in `util`. Real PrusaSlicer integration and the
+focused GUI selection/export/reload/persistence workflow passed.
+
+Ubuntu passed against the same implementation snapshot in the separate checkout
+`/tmp/voxelbrew-printer-move.Xj7Nuy`:
+
+```bash
+./gradlew --no-daemon --max-workers=2 :impl:slicer:test --tests '*PrinterCatalogTest' :cli:test :gui:test :util:test :impl:slicer:compileIntegrationTestJava --console=plain
+```
+
+Logs: `.tools/printer-move-windows.log`, `.tools/printer-move-runtime-windows.log`,
+`.tools/printer-move-installed-cli.log`, `.tools/printer-move-ubuntu.log`.
+JUnit reports are under the affected modules' `build/reports/tests` directories.
+No full E2E suite, Ubuntu E2E, full milestone gate, installers or hardware tests
+were run for this module migration.

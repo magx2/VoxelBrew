@@ -7,6 +7,8 @@ base { archivesName.set("slicer-impl") }
 
 dependencies {
     api(project(":api:slicer"))
+    implementation("com.google.code.gson:gson:2.15.0")
+    testImplementation("com.google.protobuf:protobuf-java:4.30.2")
     implementation(project(":engine"))
     implementation(project(":impl:exporter"))
     implementation(project(":impl:importer"))

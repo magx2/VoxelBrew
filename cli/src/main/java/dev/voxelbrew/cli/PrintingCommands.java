@@ -5,6 +5,7 @@ import dev.voxelbrew.engine.model.*;
 import dev.voxelbrew.engine.printing.*;
 import dev.voxelbrew.exporter.DocumentOutput;
 import dev.voxelbrew.importer.api.DocumentSource;
+import dev.voxelbrew.slicer.api.PrinterCatalog;
 import dev.voxelbrew.slicer.api.SlicerCatalog;
 import dev.voxelbrew.slicer.api.Slicing;
 import java.nio.file.Path;

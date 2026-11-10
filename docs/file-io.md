@@ -416,3 +416,9 @@ explicit executable unless they implement `executable()`.
 
 Cura command syntax follows the upstream
 [command-line implementation](https://github.com/Ultimaker/CuraEngine/blob/5.0/src/Application.cpp).
+
+Printer catalogs are exposed by `dev.voxelbrew.slicer.api.PrinterCatalog` through
+`SlicerRuntime.printers(Path)`. The implementation, bundled presets, images and
+custom-resource loading live in `impl/slicer`; frontends use the existing
+`SlicerRuntime` ServiceLoader provider. The former engine `PrinterCatalog` and
+util `PrinterResources` implementation types have moved out of those modules.

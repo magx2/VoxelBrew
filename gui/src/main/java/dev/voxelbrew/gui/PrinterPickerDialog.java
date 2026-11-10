@@ -1,6 +1,6 @@
 package dev.voxelbrew.gui;
 
-import dev.voxelbrew.engine.printing.PrinterCatalog;
+import dev.voxelbrew.slicer.api.PrinterCatalog;
 import dev.voxelbrew.util.i18n.Translations;
 import java.util.*;
 import javafx.application.Platform;

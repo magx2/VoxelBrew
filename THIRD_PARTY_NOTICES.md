@@ -101,7 +101,7 @@ platforms. No third-party Java binding has been accepted or bundled.
 - **Bundled printer product images**, AGPL-3.0, from OrcaSlicer contributors,
   Bambu Studio contributors, and PrusaSlicer contributors / Prusa Research.
   Unmodified image files, individual upstream source URLs, checksums and preset
-  mappings are in `util/src/main/resources/dev/voxelbrew/util/printers/`, with
+  mappings are in `impl/slicer/src/main/resources/dev/voxelbrew/slicer/printers/`, with
   `photo-sources.json` attribution and the accompanying `PHOTO-LICENSE.txt`.
   Product names and depicted marks belong to their respective owners.
 

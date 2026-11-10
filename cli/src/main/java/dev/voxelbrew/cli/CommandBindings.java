@@ -10,12 +10,6 @@ import dev.voxelbrew.engine.feature.FeatureRegistry;
 /** Each command is unscoped: a new parser gets fresh mutable argument state. */
 @Module
 abstract class CommandBindings {
-    @Provides
-    static dev.voxelbrew.engine.printing.PrinterCatalog printers() {
-        return new dev.voxelbrew.engine.printing.PrinterCatalog(
-                new dev.voxelbrew.util.config.PrinterResources(dev.voxelbrew.util.config.ApplicationPaths.printers()));
-    }
-
     @Binds
     @IntoMap
     @ClassKey(PrintingCommands.Printers.class)

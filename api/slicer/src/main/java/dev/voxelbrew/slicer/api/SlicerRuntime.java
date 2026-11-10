@@ -8,6 +8,8 @@ public interface SlicerRuntime {
 
     Slicing slicing();
 
+    PrinterCatalog printers(Path directory);
+
     Path defaultSlicerExecutable();
 
     static SlicerRuntime load() {

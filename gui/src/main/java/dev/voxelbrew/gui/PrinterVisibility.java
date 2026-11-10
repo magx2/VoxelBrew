@@ -1,6 +1,6 @@
 package dev.voxelbrew.gui;
 
-import dev.voxelbrew.engine.printing.PrinterCatalog;
+import dev.voxelbrew.slicer.api.PrinterCatalog;
 import dev.voxelbrew.util.config.UserConfiguration;
 import java.io.IOException;
 import java.util.*;

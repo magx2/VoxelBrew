@@ -19,6 +19,11 @@ public final class DefaultSlicerRuntime implements SlicerRuntime {
     }
 
     @Override
+    public PrinterCatalog printers(Path directory) {
+        return new DefaultPrinterCatalog(new PrinterResources(directory));
+    }
+
+    @Override
     public Path defaultSlicerExecutable() {
         return PrusaSlicerBackend.defaultExecutable();
     }

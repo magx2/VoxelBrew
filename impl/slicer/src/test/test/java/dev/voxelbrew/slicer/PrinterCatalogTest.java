@@ -1,10 +1,12 @@
-package dev.voxelbrew.engine.printing;
+package dev.voxelbrew.slicer;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 import dev.voxelbrew.engine.model.*;
 import dev.voxelbrew.engine.persistence.DocumentCodec;
-import dev.voxelbrew.util.config.PrinterResources;
+import dev.voxelbrew.engine.printing.*;
+import dev.voxelbrew.slicer.api.PrinterCatalog;
+import dev.voxelbrew.slicer.api.SlicerRuntime;
 import java.nio.file.*;
 import java.util.*;
 import org.junit.jupiter.api.Test;
@@ -15,7 +17,7 @@ class PrinterCatalogTest {
     Path directory;
 
     private PrinterCatalog catalog() {
-        return new PrinterCatalog(new PrinterResources(directory));
+        return SlicerRuntime.load().printers(directory);
     }
 
     @Test
@@ -54,6 +56,9 @@ class PrinterCatalogTest {
 
     @Test
     void bundledCatalogIsCompleteAndHasImages() throws Exception {
+        try (var image = java.net.URI.create(catalog().fallbackImage()).toURL().openStream()) {
+            assertTrue(image.readAllBytes().length > 0);
+        }
         var result = catalog().load();
         assertEquals(List.of(), result.diagnostics());
         assertEquals(62, result.entries().size());

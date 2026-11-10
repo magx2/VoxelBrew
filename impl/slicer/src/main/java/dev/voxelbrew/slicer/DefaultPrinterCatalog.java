@@ -1,37 +1,22 @@
-package dev.voxelbrew.engine.printing;
+package dev.voxelbrew.slicer;
 
 import com.google.gson.*;
-import dev.voxelbrew.util.config.PrinterResources;
+import dev.voxelbrew.engine.printing.*;
+import dev.voxelbrew.slicer.api.PrinterCatalog;
 import java.util.*;
 
 /** Validated, reloadable catalog. Saved documents never depend on this service. */
-public final class PrinterCatalog {
-    public record Entry(PrinterDefinition definition, String image, String source, boolean bundled) {
-        @Override
-        public String toString() {
-            return definition.manufacturer() + " " + definition.printer().name();
-        }
-    }
-
-    public record Result(List<Entry> entries, List<String> diagnostics) {
-        public Result {
-            entries = List.copyOf(entries);
-            diagnostics = List.copyOf(diagnostics);
-        }
-
-        public PrinterDefinition require(String id) {
-            return entries.stream()
-                    .filter(e -> e.definition().printer().id().equals(id))
-                    .findFirst()
-                    .orElseThrow(() -> new IllegalArgumentException("Missing printer preset: " + id))
-                    .definition();
-        }
-    }
-
+public final class DefaultPrinterCatalog implements PrinterCatalog {
     private final PrinterResources resources;
 
-    public PrinterCatalog(PrinterResources resources) {
+    public DefaultPrinterCatalog(PrinterResources resources) {
         this.resources = resources;
+    }
+
+    @Override
+    public String fallbackImage() {
+        var url = PrinterResources.class.getResource(PrinterResources.ROOT + "generic.png");
+        return url == null ? null : url.toExternalForm();
     }
 
     public java.nio.file.Path directory() {

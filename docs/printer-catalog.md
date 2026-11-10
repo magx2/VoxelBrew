@@ -6,7 +6,7 @@ Dimensions are millimeters. Multi-nozzle entries use the shared area where docum
 
 Bundled product images from OrcaSlicer, Bambu Studio and PrusaSlicer cover 38 presets (35 distinct images), including every Bambu Lab preset. MINI+, MK3S+ and Artisan Premium share their base-model image. Presets without a matching upstream image retain the original schematic artwork; the generic printer has no physical product photo. Images are packaged locally and require no network access.
 
-Per-image source URLs, SHA-256 checksums, attribution and preset mappings are recorded in `util/src/main/resources/dev/voxelbrew/util/printers/photo-sources.json`. The upstream AGPL-3.0 license accompanies the images in `PHOTO-LICENSE.txt`.
+Per-image source URLs, SHA-256 checksums, attribution and preset mappings are recorded in `impl/slicer/src/main/resources/dev/voxelbrew/slicer/printers/photo-sources.json`. The upstream AGPL-3.0 license accompanies the images in `PHOTO-LICENSE.txt`.
 
 | ID                                     | Manufacturer / model             | Height | Tools | Source                                                                                                                                                                       |
 | -------------------------------------- | -------------------------------- | ------ | ----- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |

@@ -33,14 +33,16 @@ public final class UserConfiguration {
         return file;
     }
 
-    /** Separate provider settings beside this file, migrating legacy prefixed keys on first access. */
+    /** Provider settings in a namespace directory, migrating older layouts on first access. */
     public UserConfiguration section(String namespace, String id) throws IOException {
         if (namespace == null
                 || !namespace.matches("[a-z0-9][a-z0-9-]*")
                 || id == null
                 || !id.matches("[a-z0-9][a-z0-9.-]*"))
             throw new IllegalArgumentException("Invalid configuration section");
-        var target = new UserConfiguration(file.resolveSibling("config-" + namespace + "-" + id + ".properties"));
+        var target = new UserConfiguration(file.resolveSibling(namespace + "s").resolve(id + ".properties"));
+        var previous = new UserConfiguration(file.resolveSibling("config-" + namespace + "-" + id + ".properties"));
+        previous.migrateTo(target);
         String prefix = namespace + "." + id + ".";
         if (read().keySet().stream().anyMatch(key -> key.startsWith(prefix))) {
             try {
@@ -62,6 +64,21 @@ public final class UserConfiguration {
             }
         }
         return target;
+    }
+
+    @SuppressWarnings("try")
+    private void migrateTo(UserConfiguration target) throws IOException {
+        synchronized (LOCKS[Math.floorMod(file.hashCode(), LOCKS.length)]) {
+            if (!Files.exists(file)) return;
+            Path lockFile = file.resolveSibling(file.getFileName() + ".lock");
+            try (var channel = FileChannel.open(lockFile, StandardOpenOption.CREATE, StandardOpenOption.WRITE);
+                    var lock = channel.lock()) {
+                if (!Files.exists(file)) return;
+                var previous = load();
+                target.change(values -> previous.forEach(values::putIfAbsent));
+                Files.delete(file);
+            }
+        }
     }
 
     public Map<String, String> read() throws IOException {

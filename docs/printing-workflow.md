@@ -91,14 +91,16 @@ jobs without restarting. An explicit executable on the Job tab still overrides
 the saved path. Closing the dialog without saving discards its edits.
 
 Slicer options are stored separately beside the application configuration:
-`~/.voxelbrew/config-slicer-prusa-slicer.properties`,
-`~/.voxelbrew/config-slicer-cura.properties`, or `config-slicer-{id}.properties`
+`~/.voxelbrew/slicers/prusa-slicer.properties`,
+`~/.voxelbrew/slicers/cura.properties`, or `slicers/{id}.properties`
 for another provider. Each file uses plain option keys such as `executable`,
 `profile`, `definition`, and `settings`. GUI and CLI share these files.
 Existing `slicer.{id}.*` entries in `config.properties` migrate automatically
 when the provider is loaded; existing values in the separate file take precedence.
 Legacy entries are removed only after the separate file is saved successfully.
-With `-Dvoxelbrew.config=...`, the slicer files live beside that configuration file.
+Earlier `config-slicer-{id}.properties` files also migrate automatically into
+`slicers/{id}.properties`; the old file is removed after successful migration.
+With `-Dvoxelbrew.config=...`, the `slicers` directory lives beside that configuration file.
 
 ## CAD, placement and persistence
 

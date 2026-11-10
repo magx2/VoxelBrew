@@ -41,11 +41,10 @@ class SlicerSettingsTest {
             assertEquals(Map.of("external.setting", "preserved"), configuration.read());
             assertEquals(
                     "second-prusa",
-                    new UserConfiguration(directory.resolve("config-slicer-prusa-slicer.properties"))
-                            .get("executable", ""));
+                    new UserConfiguration(directory.resolve("slicers/prusa-slicer.properties")).get("executable", ""));
             assertEquals(
                     "cura-engine",
-                    new UserConfiguration(directory.resolve("config-slicer-cura.properties")).get("executable", ""));
+                    new UserConfiguration(directory.resolve("slicers/cura.properties")).get("executable", ""));
             assertEquals(settings.options("cura"), new SlicerSettings(catalog, configuration).options("cura"));
             var before = configuration.read();
             assertThrows(

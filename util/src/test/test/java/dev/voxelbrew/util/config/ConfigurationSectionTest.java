@@ -9,6 +9,32 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 class ConfigurationSectionTest {
+    @Test
+    void migratesPreviousFileWithDestinationTakingPrecedence() throws Exception {
+        var main = new UserConfiguration(directory.resolve("config.properties"));
+        main.set("slicer.cura.executable", "oldest");
+        var previous = new UserConfiguration(directory.resolve("config-slicer-cura.properties"));
+        previous.update(Map.of("executable", "previous", "definition", "machine.json"), java.util.Set.of());
+        var target = new UserConfiguration(directory.resolve("slicers/cura.properties"));
+        target.set("executable", "current");
+        assertEquals(
+                Map.of("executable", "current", "definition", "machine.json"),
+                main.section("slicer", "cura").read());
+        assertFalse(Files.exists(previous.path()));
+        assertTrue(main.read().isEmpty());
+        assertEquals(target.read(), main.section("slicer", "cura").read());
+    }
+
+    @Test
+    void failedFileMigrationKeepsPreviousFile() throws Exception {
+        var main = new UserConfiguration(directory.resolve("config.properties"));
+        var previous = new UserConfiguration(directory.resolve("config-slicer-cura.properties"));
+        previous.set("executable", "kept");
+        Files.createDirectories(directory.resolve("slicers/cura.properties"));
+        assertThrows(IOException.class, () -> main.section("slicer", "cura"));
+        assertEquals("kept", previous.get("executable", ""));
+    }
+
     @TempDir
     Path directory;
 
@@ -26,7 +52,7 @@ class ConfigurationSectionTest {
                         "appearance",
                         "dark"),
                 java.util.Set.of());
-        var separate = new UserConfiguration(directory.resolve("config-slicer-prusa-slicer.properties"));
+        var separate = new UserConfiguration(directory.resolve("slicers/prusa-slicer.properties"));
         separate.set("executable", "new");
         assertEquals(
                 Map.of("executable", "new", "custom", "kept"),
@@ -39,7 +65,7 @@ class ConfigurationSectionTest {
     void failedMigrationPreservesLegacyValues() throws Exception {
         var main = new UserConfiguration(directory.resolve("config.properties"));
         main.set("slicer.cura.executable", "kept");
-        Files.createDirectory(directory.resolve("config-slicer-cura.properties"));
+        Files.createDirectories(directory.resolve("slicers/cura.properties"));
         assertThrows(IOException.class, () -> main.section("slicer", "cura"));
         assertEquals("kept", main.get("slicer.cura.executable", ""));
     }
@@ -49,7 +75,7 @@ class ConfigurationSectionTest {
         var main = new UserConfiguration(directory.resolve("config.properties"));
         assertThrows(IllegalArgumentException.class, () -> main.section("slicer", "../outside"));
         assertTrue(main.section("slicer", "cura").read().isEmpty());
-        assertFalse(Files.exists(directory.resolve("config-slicer-cura.properties")));
+        assertFalse(Files.exists(directory.resolve("slicers/cura.properties")));
         assertFalse(Files.exists(main.path()));
     }
 }

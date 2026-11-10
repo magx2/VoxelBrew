@@ -22,6 +22,8 @@ class InjectedDocumentIoTest {
     void exportersKeepCancellationAndJsonSeparateFromSavingTheEditableDocument() throws Exception {
         var controller =
                 new DocumentController(callbacks::add, doc -> new DocumentController.Build(List.of(), List.of(), true));
+        var used = new ArrayList<Path>();
+        controller.onFileUsed(used::add);
         try {
             var cancelled = controller.saveAs(new dev.voxelbrew.exporter.api.ExportDialogs()
                     .register(dev.voxelbrew.exporter.api.FileExportDialog.class, request -> Optional.empty()));
@@ -36,12 +38,25 @@ class InjectedDocumentIoTest {
             json.join();
             assertNull(controller.path());
             assertTrue(Files.exists(directory.resolve("copy.json")));
+            assertTrue(used.isEmpty());
             Path saved = directory.resolve("saved.vxb");
             var vxb = controller.saveAs(dev.voxelbrew.exporter.api.FileExportDialog.destination(saved, false));
             await(vxb::isDone);
             vxb.join();
             assertEquals(saved, controller.path());
             assertFalse(controller.ioBusy());
+            assertEquals(List.of(saved), used);
+            Path second = directory.resolve("second.vxb");
+            var save = controller.save(second, false);
+            await(save::isDone);
+            save.join();
+            var open = controller.open(saved);
+            await(open::isDone);
+            open.join();
+            var failed = controller.open(directory.resolve("missing.vxb"));
+            await(failed::isDone);
+            assertTrue(failed.isCompletedExceptionally());
+            assertEquals(List.of(saved, second, saved), used);
         } finally {
             controller.close();
         }

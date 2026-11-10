@@ -2,6 +2,7 @@ package dev.voxelbrew.gui;
 
 import dev.voxelbrew.engine.parameters.ParameterSet;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.Optional;
 import javafx.event.ActionEvent;
 import javafx.scene.control.*;
@@ -25,6 +26,16 @@ final class FileDialog {
 
     static Optional<Path> choose(
             Window owner,
+            Path current,
+            ParameterSet parameters,
+            dev.voxelbrew.util.i18n.Translations translations,
+            dev.voxelbrew.util.config.UserConfiguration configuration,
+            List<Path> recentFiles) {
+        return choose(owner, false, current, parameters, translations, configuration, "vxb", null, recentFiles);
+    }
+
+    static Optional<Path> choose(
+            Window owner,
             boolean save,
             Path current,
             ParameterSet parameters,
@@ -32,6 +43,19 @@ final class FileDialog {
             dev.voxelbrew.util.config.UserConfiguration configuration,
             String extension,
             String title) {
+        return choose(owner, save, current, parameters, translations, configuration, extension, title, List.of());
+    }
+
+    private static Optional<Path> choose(
+            Window owner,
+            boolean save,
+            Path current,
+            ParameterSet parameters,
+            dev.voxelbrew.util.i18n.Translations translations,
+            dev.voxelbrew.util.config.UserConfiguration configuration,
+            String extension,
+            String title,
+            List<Path> recentFiles) {
         var dialog = new Dialog<Path>();
         dialog.setTitle(
                 save ? translations.text("gui.save_editable_design") : translations.text("gui.open_editable_design"));
@@ -83,6 +107,25 @@ final class FileDialog {
         dialog.getDialogPane().getButtonTypes().addAll(confirm, ButtonType.CANCEL);
         var button = dialog.getDialogPane().lookupButton(confirm);
         button.setId("file-confirm");
+        if (!save && !recentFiles.isEmpty()) {
+            var recent = new VBox(4, new Label(translations.text("menu-open-recent")));
+            recent.setId("file-recent-projects");
+            for (int i = 0; i < Math.min(3, recentFiles.size()); i++) {
+                Path project = recentFiles.get(i);
+                var link = new Hyperlink(project.toString());
+                link.setId("file-recent-" + i);
+                link.setMnemonicParsing(false);
+                link.setMinWidth(0);
+                link.setMaxWidth(Double.MAX_VALUE);
+                UiHelp.describe(link, project.toString());
+                link.setOnAction(event -> {
+                    path.setText(project.toString());
+                    ((Button) button).fire();
+                });
+                recent.getChildren().add(link);
+            }
+            box.getChildren().add(2, recent);
+        }
         button.addEventFilter(ActionEvent.ACTION, e -> {
             try {
                 if (path.evaluatedText().isBlank())

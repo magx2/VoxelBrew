@@ -172,6 +172,10 @@ public final class DocumentController implements AutoCloseable {
     @Accessors(fluent = true, chain = false)
     private Runnable onChanged = () -> {};
 
+    @Setter
+    @Accessors(fluent = true, chain = false)
+    private Consumer<Path> onFileUsed = ignored -> {};
+
     public DocumentController(Consumer<Runnable> dispatch) {
         this(dispatch, dev.voxelbrew.engine.feature.FeatureRegistry.defaultDirectory());
     }
@@ -460,6 +464,7 @@ public final class DocumentController implements AutoCloseable {
                     }
                     ioBusy = false;
                     replace(document, source.toAbsolutePath());
+                    onFileUsed.accept(source);
                     log.info("Opened document {} from {}", document.id(), source);
                     result.complete(null);
                 });
@@ -491,6 +496,7 @@ public final class DocumentController implements AutoCloseable {
                         unsavedImport = false;
                         path = destination.toAbsolutePath();
                     }
+                    onFileUsed.accept(destination);
                     onChanged.run();
                     result.complete(null);
                 });
@@ -548,6 +554,7 @@ public final class DocumentController implements AutoCloseable {
                         saved = captured;
                         unsavedImport = false;
                         path = savedPath;
+                        onFileUsed.accept(savedPath);
                     }
                     onChanged.run();
                     result.complete(null);

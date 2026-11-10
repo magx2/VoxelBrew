@@ -307,6 +307,7 @@ public final class Workbench extends BorderPane implements AutoCloseable {
     private final ExecutorService preferencesWorker;
     private final Translations translations;
     private final dev.voxelbrew.util.config.UserConfiguration configurationStore;
+    private final RecentFiles recentFiles;
     private final WindowResources resources;
     private final FeatureRegistry.Factory featureProviders;
     private final SketchController.Factory sketches;
@@ -391,6 +392,7 @@ public final class Workbench extends BorderPane implements AutoCloseable {
             @javax.inject.Named("appearance") ExecutorService preferencesWorker,
             Translations translations,
             dev.voxelbrew.util.config.UserConfiguration configurationStore,
+            RecentFiles recentFiles,
             UpdateDialog.Factory updates,
             javax.inject.Provider<AboutDialog> about,
             WindowResources resources,
@@ -407,6 +409,7 @@ public final class Workbench extends BorderPane implements AutoCloseable {
         this.preferencesWorker = preferencesWorker;
         this.translations = translations;
         this.configurationStore = configurationStore;
+        this.recentFiles = recentFiles;
         this.viewport = new Viewport(translations);
         this.viewport.setRendering(rendering.load());
         this.updates = updates;
@@ -451,6 +454,31 @@ public final class Workbench extends BorderPane implements AutoCloseable {
         var fileMenu = menu("menu-file");
         var newItem = menuItem(translations.text("action.new"), "new", true, this::newDocument);
         var openItem = menuItem(translations.text("action.open"), "open", true, () -> requestChange(this::open));
+        var recentMenu = menu("menu-open-recent");
+        Runnable refreshRecent = () -> {
+            recentMenu.getItems().clear();
+            for (Path path : recentFiles.paths()) {
+                var item = new MenuItem(path.toString());
+                item.setMnemonicParsing(false);
+                item.setOnAction(event -> requestChange(() -> {
+                    cancelTool();
+                    controller.open(path).exceptionally(failure -> null);
+                }));
+                recentMenu.getItems().add(item);
+            }
+            if (recentMenu.getItems().isEmpty()) {
+                var empty = new MenuItem(translations.text("recent.empty"));
+                empty.setDisable(true);
+                recentMenu.getItems().add(empty);
+            }
+        };
+        refreshRecent.run();
+        recentMenu.setOnShowing(event -> refreshRecent.run());
+        recentMenu.disableProperty().bind(disabledProperty().or(fileBusy));
+        controller.onFileUsed(path -> {
+            recentFiles.remember(path);
+            preferencesWorker.execute(recentFiles::save);
+        });
         var saveItem = menuItem(translations.text("action.save"), "save", true, () -> save(false));
         var importItem =
                 menuItem(translations.text("action.import"), "import", true, () -> requestChange(this::importFile));
@@ -462,6 +490,7 @@ public final class Workbench extends BorderPane implements AutoCloseable {
                 .addAll(
                         newItem,
                         openItem,
+                        recentMenu,
                         importItem,
                         new SeparatorMenuItem(),
                         saveItem,
@@ -2053,7 +2082,13 @@ public final class Workbench extends BorderPane implements AutoCloseable {
     }
 
     private void open() {
-        FileDialog.choose(stage, false, controller.path(), formulaParameters(), translations, configurationStore)
+        FileDialog.choose(
+                        stage,
+                        controller.path(),
+                        formulaParameters(),
+                        translations,
+                        configurationStore,
+                        recentFiles.paths())
                 .ifPresent(path -> {
                     cancelTool();
                     controller.open(path).exceptionally(failure -> null);

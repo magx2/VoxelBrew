@@ -1972,6 +1972,49 @@ class WorkbenchUiTest {
     }
 
     @Test
+    void recentMenuReopensSavedDocument() throws Exception {
+        ready();
+        openPrepared("plate-5mm.vxb");
+        Path saved = directory.resolve("recent design.vxb");
+        save(saved);
+        var savedDocument = document();
+        shortcut(KeyCode.N, false);
+        ready();
+        assertTrue(document().features().isEmpty());
+        click("menu-file");
+        fx(() -> {
+            var recent = (Menu) command(workbench, "menu-open-recent");
+            recent.show();
+            assertEquals(saved.toString(), recent.getItems().getFirst().getText());
+            recent.getItems().getFirst().fire();
+            recent.hide();
+            return null;
+        });
+        ready();
+        assertEquals(savedDocument, document());
+        assertEquals(saved, fx(() -> workbench.controller().path()));
+        Path second = directory.resolve("second recent.vxb");
+        Path third = directory.resolve("third recent.vxb");
+        save(second);
+        save(third);
+        shortcut(KeyCode.N, false);
+        ready();
+        click("open");
+        assertEquals(third.toString(), fx(() -> ((Hyperlink) node("#file-recent-0")).getText()));
+        assertEquals(second.toString(), fx(() -> ((Hyperlink) node("#file-recent-1")).getText()));
+        assertEquals(saved.toString(), fx(() -> ((Hyperlink) node("#file-recent-2")).getText()));
+        assertEquals(
+                4,
+                fx(() -> ((javafx.scene.layout.VBox) node("#file-recent-projects"))
+                        .getChildren()
+                        .size()));
+        click("file-recent-2");
+        ready();
+        assertEquals(savedDocument, document());
+        assertEquals(saved, fx(() -> workbench.controller().path()));
+    }
+
+    @Test
     void menusDescribeActionsAndProtectModalEditing() throws Exception {
         var artifacts = Path.of(System.getProperty("voxelbrew.ui.artifacts"));
         ready();

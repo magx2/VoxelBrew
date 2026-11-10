@@ -190,7 +190,7 @@ final class ParameterSuggestions {
     }
 
     static List<String> matches(ParameterSet parameters, String prefix) {
-        return parameters.parameters().stream()
+        return parameters.allParameters().stream()
                 .map(ParameterSet.Parameter::name)
                 .filter(name -> name.startsWith(prefix))
                 .sorted()

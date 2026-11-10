@@ -3774,7 +3774,11 @@ class WorkbenchUiTest {
         sketchReady();
         sketchType(SketchTools.Tool.RECTANGLE_TWO_POINT);
         text("sketch-point-x", "=$");
-        assertEquals(List.of("bar", "fooHeight", "fooWidth"), completionNames());
+        var allNames = completionNames();
+        assertEquals(
+                List.of("bar", "fooHeight", "fooWidth"),
+                allNames.stream().filter(name -> !name.startsWith("vb.")).toList());
+        assertTrue(allNames.contains("vb.project.version"));
         key(KeyCode.F);
         key(KeyCode.O);
         key(KeyCode.O);
@@ -3803,6 +3807,12 @@ class WorkbenchUiTest {
         assertEquals("=$fooHeight", fx(() -> ((TextField) node("#sketch-point-x")).getText()));
         assertTrue(fx(() -> node("#sketch-point-x").isFocused()));
         assertEquals(original, document());
+        text("sketch-point-x", "=$vb.project.ver");
+        assertEquals(List.of("vb.project.version"), completionNames());
+        key(KeyCode.ENTER);
+        assertNoCompletion();
+        assertEquals("=$vb.project.version", fx(() -> ((FormulaField) node("#sketch-point-x")).getText()));
+        assertEquals(0, fx(() -> ((FormulaField) node("#sketch-point-x")).value()));
         sketchNumericPoint(0, 0);
         sketchNumericPoint(60, 40);
         click("constraint-finish");
@@ -3836,6 +3846,11 @@ class WorkbenchUiTest {
         assertEquals("=\"Width: \" + $fooWidth", fx(() -> ((TextField) node("#parameter-comment")).getText()));
         assertEquals("Width: 60", fx(() -> ((FormulaField) node("#parameter-comment")).evaluatedText()));
         assertNotNull(fx(() -> node("#parameters-apply")), "Completing text does not apply or close a dialog");
+        text("parameter-comment", "=\"Version: \" + $vb.project.ver");
+        assertEquals(List.of("vb.project.version"), completionNames());
+        key(KeyCode.ENTER);
+        assertNoCompletion();
+        assertEquals("Version: 0", fx(() -> ((FormulaField) node("#parameter-comment")).evaluatedText()));
         text("parameter-comment", "=\"literal $foo\"");
         assertNoCompletion();
         parameter("fooLength", "5");

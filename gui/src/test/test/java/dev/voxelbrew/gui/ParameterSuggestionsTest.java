@@ -9,6 +9,37 @@ import org.junit.jupiter.api.Test;
 
 class ParameterSuggestionsTest {
     @Test
+    void completesNumericBuiltinInsideArithmetic() {
+        var parameters = ParameterSet.empty();
+        String formula = "=$vb.project.ver+1";
+        var reference = ParameterSuggestions.reference(formula, formula.indexOf('+'));
+        assertNotNull(reference);
+        assertEquals(List.of("vb.project.version"), ParameterSuggestions.matches(parameters, reference.prefix()));
+        String completed =
+                formula.substring(0, reference.start()) + "$vb.project.version" + formula.substring(reference.end());
+        assertEquals(1, parameters.value(completed, ParameterUnit.NUMBER));
+    }
+
+    @Test
+    void completesBuiltinsInStringFormulasWithoutUserParameters() {
+        var parameters = ParameterSet.empty();
+        String formula = "=\"D:\\repos\\VoxelBrew\\build\\Untitled-1\"+$vb.project.version";
+        var reference = ParameterSuggestions.reference(formula, formula.length());
+        assertNotNull(reference);
+        assertEquals(List.of("vb.project.version"), ParameterSuggestions.matches(parameters, reference.prefix()));
+        assertEquals(
+                List.of(
+                        "vb.project.filename",
+                        "vb.project.folder",
+                        "vb.project.name",
+                        "vb.project.path",
+                        "vb.project.version"),
+                ParameterSuggestions.matches(parameters, "vb.project."));
+        assertTrue(ParameterSuggestions.matches(parameters, "").contains("vb.version"));
+        assertEquals(List.of(), ParameterSuggestions.matches(parameters, "VB."));
+    }
+
+    @Test
     void dottedReferencesCompleteAndTableGroupsByFirstPrefix() {
         assertEquals(new ParameterSuggestions.Reference(1, 6, "x.f"), ParameterSuggestions.reference("=$x.fo", 5));
         var p = ParameterSet.empty()
@@ -73,7 +104,11 @@ class ParameterSuggestionsTest {
                 .put("Foo", ParameterUnit.MM, "10", "")
                 .put("afoo", ParameterUnit.MM, "30", "");
         assertEquals(List.of("foo", "food"), ParameterSuggestions.matches(parameters, "foo"));
-        assertEquals(List.of("Foo", "afoo", "foo", "food"), ParameterSuggestions.matches(parameters, ""));
+        var allMatches = ParameterSuggestions.matches(parameters, "");
+        assertEquals(
+                List.of("Foo", "afoo", "foo", "food"),
+                allMatches.stream().filter(name -> !name.startsWith("vb.")).toList());
+        assertTrue(allMatches.contains("vb.project.version"));
         assertEquals(List.of(), ParameterSuggestions.matches(parameters, "missing"));
         assertEquals(
                 List.of("foo", "food", "foot"),

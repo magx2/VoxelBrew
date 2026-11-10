@@ -14,6 +14,33 @@ ironing, variable layers, Z-hop, arc moves, binary G-code or multiple tools.
 Support threshold is **degrees from horizontal**. Contact gaps are millimeters;
 Prusa's independent support layers may have different heights from model layers.
 
+## Desktop plates and placement
+
+The Slicer workspace has a plate strip above the canvas. **Add plate** creates an
+empty plate; choose a plate to edit or slice it. **Move object** transfers the
+selected instance and its attached supports to another plate. Removing a populated
+plate asks for confirmation; undo restores it. The last plate cannot be removed.
+Printer, material and process settings are shared by all plates.
+
+Click and drag an object in either 2D or the isometric 3D view to move it along the
+bed. Shift snaps the movement to 1 mm steps. Release commits one undoable placement;
+Escape cancels. Numeric placement and rotation remain available in the sidebar.
+New instances start at the center of the bed. Placement validation reports objects
+outside the bed or overlapping other objects on the selected plate.
+
+**Slice selected plate** validates and slices only that plate. Each plate gets its
+own default G-code filename. Switching plates or editing a placement invalidates
+the previous preview. **Preview toolpaths** switches between the resulting job and
+object placement. Layer controls appear only in preview; the expandable toolpath
+legend groups color swatches and visibility filters. Property hints describe units
+and the effect of process settings.
+
+All plates, their instances/supports and the active plate survive `.vxb` save/reopen.
+Single-plate documents retain print-setup version 1; adding a plate upgrades that
+setup to version 2. Older versions of VoxelBrew reject version 2 rather than dropping
+its extra plates. CLI/build-space exporters use the saved active plate. Per-plate
+process overrides and batch slicing are not implemented.
+
 ## Installation and demo
 
 Keep Java 21 and the native prerequisites from the README. Bootstrap the slicer:

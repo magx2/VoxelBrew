@@ -668,3 +668,45 @@
 .sketch-editor .combo-box:active-tool .arrow {
   -fx-background-color: white;
 }
+
+.slicer-toolbar,
+.slicer-status-bar,
+.slicer-preview-controls {
+  -fx-padding: 10 12;
+  -fx-background-color: -fx-control-inner-background;
+  -fx-background-radius: 6;
+}
+.slicer-status-bar {
+  -fx-padding: 12 16;
+}
+.slicer-hint {
+  -fx-padding: 10 12;
+}
+.slicer-property-help {
+  -fx-font-size: 11px;
+}
+.light .slicer-property-help,
+.light .slicer-hint {
+  -fx-text-fill: #515e6b;
+}
+.dark .slicer-property-help,
+.dark .slicer-hint {
+  -fx-text-fill: #b5bfca;
+}
+.slicer-section-title {
+  -fx-font-weight: bold;
+  -fx-font-size: 13px;
+}
+.slicer-primary-action {
+  -fx-background-color: #2373c8;
+  -fx-text-fill: white;
+  -fx-font-weight: bold;
+  -fx-padding: 10 22;
+}
+#print-plates {
+  -fx-padding: 2;
+}
+#print-plates .toggle-button:selected {
+  -fx-background-color: -fx-selection-bar;
+  -fx-font-weight: bold;
+}

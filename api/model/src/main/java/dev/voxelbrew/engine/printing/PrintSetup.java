@@ -14,28 +14,134 @@ public record PrintSetup(
         String printerId,
         String materialId,
         @NonNull ProcessSettings process,
-        List<BodyInstance> instances,
-        List<SupportVolume> supports) {
+        List<PrintPlate> plates,
+        String activePlateId) {
+    public PrintSetup(
+            String id,
+            int version,
+            String backendId,
+            String printerId,
+            String materialId,
+            ProcessSettings process,
+            List<BodyInstance> instances,
+            List<SupportVolume> supports) {
+        this(
+                id,
+                version,
+                backendId,
+                printerId,
+                materialId,
+                process,
+                List.of(new PrintPlate("plate-1", instances, supports)),
+                "plate-1");
+    }
+
     public PrintSetup {
         CadDocument.identifier(id, "print setup ID");
-        if (version != 1) throw new IllegalArgumentException("unsupported print setup version " + version);
+        if (version != 1 && version != 2)
+            throw new IllegalArgumentException("unsupported print setup version " + version);
         CadDocument.identifier(backendId, "slicer backend ID");
         CadDocument.identifier(printerId, "printer profile ID");
         CadDocument.identifier(materialId, "material profile ID");
-
-        instances = List.copyOf(instances);
-        supports = List.copyOf(supports);
+        plates = List.copyOf(plates);
+        if (plates.isEmpty()) throw new IllegalArgumentException("At least one plate is required");
+        if (version == 1 && (plates.size() != 1 || !activePlateId.equals("plate-1")))
+            throw new IllegalArgumentException("Multiple plates require print setup version 2");
         var ids = new HashSet<String>();
-        for (var instance : instances) {
-            CadDocument.identifier(instance.id(), "instance ID");
-            CadDocument.identifier(instance.bodyId(), "instance body ID");
-            if (!ids.add(instance.id())) throw new IllegalArgumentException("duplicate instance " + instance.id());
-        }
-        ids.clear();
-        for (var support : supports)
-            if (!ids.add(support.id())) throw new IllegalArgumentException("duplicate support " + support.id());
-        // Missing bodies/instances are diagnosed by manufacturing validation, so definitions can be
-        // repaired.
+        for (var plate : plates)
+            if (!ids.add(plate.id())) throw new IllegalArgumentException("Duplicate plate " + plate.id());
+        if (!ids.contains(activePlateId)) throw new IllegalArgumentException("Missing active plate " + activePlateId);
+    }
+
+    public PrintPlate activePlate() {
+        return plates.stream()
+                .filter(p -> p.id().equals(activePlateId))
+                .findFirst()
+                .orElseThrow();
+    }
+
+    /** Only the selected plate is handed to existing validators, exporters and slicers. */
+    public List<BodyInstance> instances() {
+        return activePlate().instances();
+    }
+
+    public List<SupportVolume> supports() {
+        return activePlate().supports();
+    }
+
+    public PrintSetup selectPlate(String plateId) {
+        return new PrintSetup(id, version, backendId, printerId, materialId, process, plates, plateId);
+    }
+
+    public PrintSetup addPlate(String plateId) {
+        var next = new java.util.ArrayList<>(plates);
+        next.add(new PrintPlate(plateId, List.of(), List.of()));
+        return new PrintSetup(id, 2, backendId, printerId, materialId, process, next, plateId);
+    }
+
+    public PrintSetup moveInstance(String instanceId, String targetPlateId) {
+        if (targetPlateId.equals(activePlateId)) return this;
+        var target = plates.stream()
+                .filter(p -> p.id().equals(targetPlateId))
+                .findFirst()
+                .orElseThrow();
+        var instance = instances().stream()
+                .filter(i -> i.id().equals(instanceId))
+                .findFirst()
+                .orElseThrow();
+        var targetInstances = new java.util.ArrayList<>(target.instances());
+        targetInstances.add(instance);
+        var targetSupports = new java.util.ArrayList<>(target.supports());
+        targetSupports.addAll(supports().stream()
+                .filter(s -> s.instanceId().equals(instanceId))
+                .toList());
+        var destination = new PrintPlate(targetPlateId, targetInstances, targetSupports);
+        var source = new PrintPlate(
+                activePlateId,
+                instances().stream().filter(i -> !i.id().equals(instanceId)).toList(),
+                supports().stream()
+                        .filter(s -> !s.instanceId().equals(instanceId))
+                        .toList());
+        return new PrintSetup(
+                id,
+                version,
+                backendId,
+                printerId,
+                materialId,
+                process,
+                plates.stream()
+                        .map(p ->
+                                p.id().equals(targetPlateId) ? destination : p.id().equals(activePlateId) ? source : p)
+                        .toList(),
+                activePlateId);
+    }
+
+    public PrintSetup removeActivePlate() {
+        if (plates.size() == 1) throw new IllegalArgumentException("Cannot remove the last plate");
+        var next = plates.stream().filter(p -> !p.id().equals(activePlateId)).toList();
+        return new PrintSetup(
+                id,
+                version,
+                backendId,
+                printerId,
+                materialId,
+                process,
+                next,
+                next.getFirst().id());
+    }
+
+    private PrintSetup replaceActive(PrintPlate plate) {
+        return new PrintSetup(
+                id,
+                version,
+                backendId,
+                printerId,
+                materialId,
+                process,
+                plates.stream()
+                        .map(p -> p.id().equals(activePlateId) ? plate : p)
+                        .toList(),
+                activePlateId);
     }
 
     public static PrintSetup empty() {
@@ -51,14 +157,14 @@ public record PrintSetup(
     }
 
     public PrintSetup withInstances(List<BodyInstance> next) {
-        return new PrintSetup(id, version, backendId, printerId, materialId, process, next, supports);
+        return replaceActive(new PrintPlate(activePlateId, next, supports()));
     }
 
     public PrintSetup withSupports(List<SupportVolume> next) {
-        return new PrintSetup(id, version, backendId, printerId, materialId, process, instances, next);
+        return replaceActive(new PrintPlate(activePlateId, instances(), next));
     }
 
     public PrintSetup withProfile(String backend, String printer, String material, ProcessSettings settings) {
-        return new PrintSetup(id, version, backend, printer, material, settings, instances, supports);
+        return new PrintSetup(id, version, backend, printer, material, settings, plates, activePlateId);
     }
 }

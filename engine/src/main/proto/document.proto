@@ -268,6 +268,11 @@ message SupportVolume {
   double depth = 8;
   double height = 9;
 }
+message PrintPlate {
+  string id = 1;
+  repeated PrintInstance instances = 2;
+  repeated SupportVolume supports = 3;
+}
 message PrintSetup {
   string id = 1;
   uint32 version = 2;
@@ -278,6 +283,8 @@ message PrintSetup {
   repeated PrintInstance instances = 7;
   repeated SupportVolume supports = 8;
   reserved 9 to 15;
+  repeated PrintPlate plates = 16;
+  string active_plate_id = 17;
 }
 message CustomFeature {
   string provider_id = 1;

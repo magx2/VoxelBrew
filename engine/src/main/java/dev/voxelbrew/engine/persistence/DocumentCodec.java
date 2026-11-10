@@ -304,6 +304,36 @@ public final class DocumentCodec {
     }
 
     private static PrintSetup fromProto(DocumentProto.PrintSetup setup) {
+        if (setup.getVersion() == 2) {
+            var base = fromProto(setup.toBuilder()
+                    .setVersion(1)
+                    .clearPlates()
+                    .clearActivePlateId()
+                    .build());
+            var plates = setup.getPlatesList().stream()
+                    .map(plate -> {
+                        var contents = fromProto(setup.toBuilder()
+                                .setVersion(1)
+                                .clearPlates()
+                                .clearActivePlateId()
+                                .clearInstances()
+                                .addAllInstances(plate.getInstancesList())
+                                .clearSupports()
+                                .addAllSupports(plate.getSupportsList())
+                                .build());
+                        return new PrintPlate(plate.getId(), contents.instances(), contents.supports());
+                    })
+                    .toList();
+            return new PrintSetup(
+                    base.id(),
+                    2,
+                    base.backendId(),
+                    base.printerId(),
+                    base.materialId(),
+                    base.process(),
+                    plates,
+                    setup.getActivePlateId());
+        }
         var p = setup.getProcess();
         var process = new ProcessSettings(
                 p.getLayerHeight(),
@@ -392,6 +422,24 @@ public final class DocumentCodec {
                     .setWidth(s.width())
                     .setDepth(s.depth())
                     .setHeight(s.height()));
+        if (setup.version() == 2) {
+            out.setActivePlateId(setup.activePlateId());
+            for (var plate : setup.plates()) {
+                var contents = toProto(new PrintSetup(
+                        setup.id(),
+                        1,
+                        setup.backendId(),
+                        setup.printerId(),
+                        setup.materialId(),
+                        setup.process(),
+                        plate.instances(),
+                        plate.supports()));
+                out.addPlates(DocumentProto.PrintPlate.newBuilder()
+                        .setId(plate.id())
+                        .addAllInstances(contents.getInstancesList())
+                        .addAllSupports(contents.getSupportsList()));
+            }
+        }
         return out.build();
     }
 

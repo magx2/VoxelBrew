@@ -35,8 +35,18 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
     private final Label plateSize = new Label();
     private boolean threeDimensional;
     private Path outputProject;
+    private String outputPlate;
+    private final ToggleButton toolpathPreview = new ToggleButton();
     private double plateWidth = 200, plateDepth = 200;
     private final Canvas canvas = new Canvas();
+    private final HBox plateStrip = new HBox(6);
+    private final VBox previewControls = new VBox(10);
+    private final Label placementHint = new Label();
+    private double viewScale, viewOx, viewOy;
+    private double dragX, dragY;
+    private BodyInstance dragSource, dragPreview;
+    private String dragRevision;
+    private final ComboBox<String> targetPlate = new ComboBox<>();
     private final ComboBox<String> bodies = new ComboBox<>(),
             instances = new ComboBox<>(),
             materials = new ComboBox<>(),
@@ -90,6 +100,10 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
         this.slicerSettings = slicerSettings;
         this.validator = validator;
         setId("printing-workspace");
+        getStyleClass().add("slicer-workspace");
+        canvas.setId("print-canvas");
+        canvas.setFocusTraversable(true);
+        installDragging();
         setPadding(new Insets(8));
         bodies.setId("print-body");
         UiText.choices(bodies, this::bodyName);
@@ -158,8 +172,25 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
                         button(translations.text("gui.lay_face_on_bed"), "print-lay-face", this::layFace),
                         button(translations.text("gui.remove_instance"), "print-remove", this::removeInstance));
         instances.setOnAction(e -> {
-            if (!updating) loadPlacement();
+            if (!updating) {
+                loadPlacement();
+                draw();
+            }
         });
+        targetPlate.setId("print-target-plate");
+        targetPlate.setMaxWidth(Double.MAX_VALUE);
+        UiText.choices(targetPlate, this::plateName);
+        placement
+                .getChildren()
+                .addAll(
+                        new Separator(),
+                        new Label(translations.text("print.moveToPlate")),
+                        targetPlate,
+                        button(translations.text("print.moveObject"), "print-move-plate", () -> {
+                            String target = targetPlate.getValue();
+                            if (target != null)
+                                commit(setup().moveInstance(selected().id(), target));
+                        }));
 
         var process = new VBox(
                 7,
@@ -239,7 +270,6 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
                 row("print-executable", translations.text("gui.slicer_executable"), ""),
                 row("print-output", translations.text("gui.g_code_destination"), ""),
                 overwrite,
-                new HBox(8, slice, cancel),
                 button(
                         translations.text("gui.export_geometry_project"),
                         "print-export",
@@ -271,8 +301,8 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
         var tabs = new TabPane(
                 tab("Placement", placement), tab("Process", process), tab("Supports", supports), tab("Job", job));
         tabs.setId("print-controls");
-        tabs.setPrefWidth(330);
-        tabs.setMinWidth(285);
+        tabs.setPrefWidth(360);
+        tabs.setMinWidth(320);
         setRight(tabs);
         var center = new StackPane(canvas);
         center.setMinSize(150, 150);
@@ -309,18 +339,54 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
             }
         });
         var preview = new BorderPane(center);
-        preview.setTop(new HBox(12, topView, solidView, plateSize));
+        toolpathPreview.setText(translations.text("print.preview"));
+        toolpathPreview.setId("print-preview");
+        toolpathPreview.setTooltip(UiHelp.tooltip(translations.text("print.previewHelp")));
+        toolpathPreview.setOnAction(event -> {
+            updatePreviewControls();
+            draw();
+        });
+        var viewBar = new HBox(
+                12,
+                topView,
+                solidView,
+                new Separator(javafx.geometry.Orientation.VERTICAL),
+                plateSize,
+                toolpathPreview);
+        viewBar.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
+        viewBar.getStyleClass().add("slicer-toolbar");
+        plateStrip.setId("print-plates");
+        var plateScroll = new ScrollPane(plateStrip);
+        plateScroll.setFitToHeight(true);
+        plateScroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.AS_NEEDED);
+        plateScroll.setVbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
+        var plateBar = new BorderPane(plateScroll);
+        plateBar.setRight(button(
+                translations.text("print.addPlate"),
+                "print-add-plate",
+                () -> commit(setup().addPlate("plate-"
+                        + document.snapshot().document().uuidGenerator().next()))));
+        plateBar.getStyleClass().add("slicer-toolbar");
+        placementHint.setText(translations.text("print.dragHint"));
+        placementHint.setWrapText(true);
+        placementHint.getStyleClass().add("slicer-hint");
+        preview.setTop(new VBox(8, plateBar, viewBar));
+        preview.setBottom(placementHint);
         setCenter(preview);
         layer.setId("print-layer");
         layer.setBlockIncrement(1);
         layer.valueProperty().addListener((o, a, b) -> draw());
-        var filters = new FlowPane(6, 4);
+        var filters = new TilePane(12, 8);
+        filters.setPrefColumns(4);
         for (var role : GcodeJob.Role.values()) {
             var check = new CheckBox(translations.text("print.role." + role.name()));
             check.setId("print-role-" + role.name().toLowerCase(Locale.ROOT));
             UiHelp.install(check, translations);
             check.setSelected(role != GcodeJob.Role.TRAVEL);
             check.setOnAction(e -> draw());
+            var swatch = new javafx.scene.shape.Rectangle(10, 10, color(role));
+            check.setGraphic(swatch);
+            check.setMinWidth(155);
             roles.put(role, check);
             filters.getChildren().add(check);
         }
@@ -330,7 +396,26 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
         status.setWrapText(true);
         validationLabel.setId("print-validation");
         validationLabel.setWrapText(true);
-        setBottom(new VBox(5, layerLabel, layer, filters, validationLabel, new HBox(8, progress, status)));
+        var legend = new TitledPane(translations.text("print.toolpathLegend"), filters);
+        legend.setExpanded(false);
+        legend.setId("print-legend");
+        layerLabel.getStyleClass().add("slicer-section-title");
+        previewControls.getChildren().addAll(layerLabel, layer, legend);
+        previewControls.getStyleClass().add("slicer-preview-controls");
+        previewControls.managedProperty().bind(previewControls.visibleProperty());
+        var jobStatus = new VBox(4, status, validationLabel);
+        jobStatus.setMinWidth(0);
+        status.setMinWidth(0);
+        validationLabel.setMinWidth(0);
+        slice.setMinWidth(Region.USE_PREF_SIZE);
+        cancel.setMinWidth(Region.USE_PREF_SIZE);
+        HBox.setHgrow(jobStatus, Priority.ALWAYS);
+        var actions = new HBox(12, progress, jobStatus, cancel, slice);
+        actions.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
+        actions.getStyleClass().add("slicer-status-bar");
+        slice.getStyleClass().add("slicer-primary-action");
+        slice.setText(translations.text("print.slicePlate"));
+        setBottom(new VBox(8, previewControls, actions));
         BorderPane.setMargin(tabs, new Insets(0, 0, 0, 8));
         jobs.onChanged(this::updateJob);
         updateJob();
@@ -366,7 +451,23 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
         fields.put(id, field);
         var caption = new Label(label);
         caption.setWrapText(true);
-        return new VBox(3, caption, field);
+        String helpKey = id.startsWith("print-rotate-")
+                ? "rotation"
+                : Set.of("print-x", "print-y", "print-z").contains(id)
+                        ? "position"
+                        : id.startsWith("print-support-") ? "support" : id.substring(6);
+        String help = translations.textOrDefault("print.property." + helpKey, "");
+        var row = new VBox(4, caption, field);
+        if (!help.isBlank()) {
+            caption.setTooltip(UiHelp.tooltip(help));
+            var hint = new Label(help);
+            hint.setWrapText(true);
+            hint.getStyleClass().add("slicer-property-help");
+            if (!Set.of("print-y", "print-z", "print-rotate-y", "print-rotate-z")
+                    .contains(id)) row.getChildren().add(hint);
+            field.setAccessibleHelp(help);
+        }
+        return row;
     }
 
     private Button button(String title, String id, Runnable action) {
@@ -430,7 +531,10 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
         all.add(new BodyInstance(
                 id,
                 body,
-                Transform.translation(10 + 70 * all.size() - bounds.minX(), 10 - bounds.minY(), -bounds.minZ())));
+                Transform.translation(
+                        (plateWidth - (bounds.maxX() - bounds.minX())) / 2 - bounds.minX(),
+                        (plateDepth - (bounds.maxY() - bounds.minY())) / 2 - bounds.minY(),
+                        -bounds.minZ())));
         commit(setup().withInstances(all));
         instances.setValue(id);
     }
@@ -479,8 +583,11 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
     private void removeInstance() {
         var id = selected().id();
         commit(setup().withInstances(setup().instances().stream()
-                .filter(i -> !i.id().equals(id))
-                .toList()));
+                        .filter(i -> !i.id().equals(id))
+                        .toList())
+                .withSupports(setup().supports().stream()
+                        .filter(support -> !support.instanceId().equals(id))
+                        .toList()));
     }
 
     private void layFace() {
@@ -524,7 +631,12 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
             dev.voxelbrew.engine.units.Measurements.degrees(ry),
             dev.voxelbrew.engine.units.Measurements.degrees(rz)
         };
-        for (int i = 0; i < names.length; i++) fields.get("print-" + names[i]).setText(Double.toString(values[i]));
+        for (int i = 0; i < names.length; i++)
+            fields.get("print-" + names[i])
+                    .setText(java.math.BigDecimal.valueOf(values[i])
+                            .setScale(4, java.math.RoundingMode.HALF_UP)
+                            .stripTrailingZeros()
+                            .toPlainString());
     }
 
     private void applyProcess() {
@@ -585,7 +697,11 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
                     String[] names = {"x", "y", "z", "width", "depth", "height"};
                     double[] values = {s.x(), s.y(), s.z(), s.width(), s.depth(), s.height()};
                     for (int i = 0; i < names.length; i++)
-                        fields.get("print-support-" + names[i]).setText(Double.toString(values[i]));
+                        fields.get("print-support-" + names[i])
+                                .setText(java.math.BigDecimal.valueOf(values[i])
+                                        .setScale(4, java.math.RoundingMode.HALF_UP)
+                                        .stripTrailingZeros()
+                                        .toPlainString());
                 });
     }
 
@@ -613,14 +729,17 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
     void documentChanged() {
         if (closed) return;
         var snapshot = document.snapshot().document();
+        if (dragSource != null && !DocumentCodec.fingerprint(snapshot).equals(dragRevision)) cancelDrag();
         if (!Objects.equals(outputProject, document.path())) {
             outputProject = document.path();
+            outputPlate = null;
             fields.get("print-output")
                     .setText(
                             outputProject == null
                                     ? ""
                                     : jobDestination(outputProject).toString());
         }
+        updateOutputDestination();
         var printer = PrintProfile.resolve(setup()).printer();
         plateWidth = printer.bed().get(2).x();
         plateDepth = printer.bed().get(2).y();
@@ -642,6 +761,7 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
                 lastBuild = document.build();
             }
             if (!setup().equals(lastSetup)) {
+                rebuildPlateStrip();
                 String selected = instances.getValue();
                 instances
                         .getItems()
@@ -681,7 +801,11 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
                     p.raftLayers()
                 };
                 for (int i = 0; i < names.length; i++)
-                    fields.get("print-" + names[i]).setText(Double.toString(values[i]));
+                    fields.get("print-" + names[i])
+                            .setText(java.math.BigDecimal.valueOf(values[i])
+                                    .setScale(4, java.math.RoundingMode.HALF_UP)
+                                    .stripTrailingZeros()
+                                    .toPlainString());
                 autoSupports.setSelected(p.automaticSupports());
                 bedOnly.setSelected(p.supportsOnBedOnly());
                 lastSetup = setup();
@@ -731,18 +855,26 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
     }
 
     private void updateJob() {
+        updatePreviewControls();
         slice.setDisable(!document.canExport() || jobs.running() || validation == null || !validation.valid());
         cancel.setDisable(!jobs.running());
+        cancel.setVisible(jobs.running());
+        cancel.setManaged(jobs.running());
         progress.setVisible(jobs.running());
         status.setText(translations.text("print.state." + jobs.state().name())
                 + ": "
                 + (jobs.state() == PrintController.State.IDLE
                         ? translations.text("gui.ready_to_slice")
-                        : jobs.message()));
+                        : jobs.state() == PrintController.State.SUCCEEDED
+                                ? translations.text("print.jobReady")
+                                : jobs.message()));
+        status.setTooltip(UiHelp.tooltip(jobs.message()));
         diagnostics.setText(String.join("\n", jobs.diagnostics()));
         var result = jobs.result();
         if (result != displayed) {
             displayed = result;
+            toolpathPreview.setSelected(result != null);
+            updatePreviewControls();
             if (result == null) {
                 previewLayers = List.of();
                 summary.setText("");
@@ -797,6 +929,9 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
         double scale = Math.max(0.001, Math.min((w - 48) / extentX, (h - 48) / extentY));
         double ox = threeDimensional ? (w - (plateWidth - plateDepth) * scale) / 2 : (w - plateWidth * scale) / 2;
         double oy = threeDimensional ? h - 30 : (h + plateDepth * scale) / 2;
+        viewScale = scale;
+        viewOx = ox;
+        viewOy = oy;
         graphics.setStroke(dark ? Color.web("#3b4651") : Color.web("#bac4cc"));
         graphics.setLineWidth(1);
         double grid = Math.max(10, Math.ceil(Math.max(plateWidth, plateDepth) / 100 / 10) * 10);
@@ -806,7 +941,7 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
         line(ox, oy, scale, 0, plateDepth, 0, plateWidth, plateDepth, 0);
         graphics.setFill(dark ? Color.LIGHTGRAY : Color.DARKSLATEGRAY);
         graphics.fillText("0,0", ox, oy + 16);
-        if (displayed != null && !previewLayers.isEmpty()) {
+        if (toolpathPreview.isSelected() && displayed != null && !previewLayers.isEmpty()) {
             int index = Math.min(previewLayers.size() - 1, (int) Math.round(layer.getValue()));
             double z = previewLayers.get(index);
             layerLabel.setText(translations.text(
@@ -833,8 +968,13 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
             int index = 0;
             for (var instance : model.instances()) {
                 if (!model.meshes().containsKey(instance.bodyId())) continue;
-                var mesh = model.placedMesh(instance);
-                graphics.setFill(Color.hsb(195 + (index++ * 48) % 160, 0.6, 0.8, 0.3));
+                var shown = dragPreview != null && dragPreview.id().equals(instance.id()) ? dragPreview : instance;
+                var mesh = model.placedMesh(shown);
+                boolean selected = instance.id().equals(instances.getValue());
+                graphics.setFill(
+                        selected
+                                ? Color.web("#4299c7", 0.85)
+                                : Color.hsb(195 + (index++ * 48) % 160, 0.35, 0.72, 0.75));
                 for (int t = 0; t < mesh.triangleCount(); t++) {
                     double[] x = new double[3], y = new double[3];
                     for (int c = 0; c < 3; c++) {
@@ -845,6 +985,16 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
                     }
                     graphics.fillPolygon(x, y, 3);
                 }
+                if (selected) {
+                    var bounds = MeshGeometry.bounds(mesh);
+                    graphics.setStroke(dark ? Color.web("#9bdcff") : Color.web("#075b91"));
+                    graphics.setLineWidth(2);
+                    double x = bounds.minX(), y = bounds.minY(), xx = bounds.maxX(), yy = bounds.maxY();
+                    line(ox, oy, scale, x, y, 0, xx, y, 0);
+                    line(ox, oy, scale, xx, y, 0, xx, yy, 0);
+                    line(ox, oy, scale, xx, yy, 0, x, yy, 0);
+                    line(ox, oy, scale, x, yy, 0, x, y, 0);
+                }
             }
             for (var support : model.setup().supports()) {
                 var owner = model.instances().stream()
@@ -852,7 +1002,11 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
                         .findFirst();
                 if (owner.isEmpty()) continue;
                 var box = MeshGeometry.transform(
-                        MeshGeometry.box(support), owner.get().transform());
+                        MeshGeometry.box(support),
+                        dragPreview != null
+                                        && dragPreview.id().equals(owner.get().id())
+                                ? dragPreview.transform()
+                                : owner.get().transform());
                 graphics.setStroke(
                         support.role() == SupportVolume.Role.BLOCKER
                                 ? Color.CRIMSON
@@ -874,6 +1028,151 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
                     }
             }
         }
+    }
+
+    private void updatePreviewControls() {
+        boolean preview = jobs.result() != null && toolpathPreview.isSelected();
+        toolpathPreview.setDisable(jobs.result() == null);
+        previewControls.setVisible(preview);
+        placementHint.setVisible(!preview);
+        placementHint.setManaged(!preview);
+    }
+
+    private String plateName(String id) {
+        for (int i = 0; i < setup().plates().size(); i++)
+            if (setup().plates().get(i).id().equals(id)) return translations.text("print.plate", i + 1);
+        return id;
+    }
+
+    private void rebuildPlateStrip() {
+        plateStrip.getChildren().clear();
+        var group = new ToggleGroup();
+        for (var plate : setup().plates()) {
+            var tab = new ToggleButton(
+                    plateName(plate.id()) + "  \u00b7  " + plate.instances().size());
+            tab.setId("print-plate-" + plate.id());
+            tab.setToggleGroup(group);
+            tab.setSelected(plate.id().equals(setup().activePlateId()));
+            tab.setOnAction(event -> {
+                if (!plate.id().equals(setup().activePlateId())) {
+                    cancelDrag();
+                    commit(setup().selectPlate(plate.id()));
+                } else tab.setSelected(true);
+            });
+            plateStrip.getChildren().add(tab);
+        }
+        var remove = button(translations.text("print.removePlate"), "print-remove-plate", () -> {
+            if (!setup().instances().isEmpty() || !setup().supports().isEmpty()) {
+                var confirm = new Alert(
+                        Alert.AlertType.CONFIRMATION,
+                        translations.text("print.removePlateConfirm"),
+                        ButtonType.OK,
+                        ButtonType.CANCEL);
+                confirm.initOwner(getScene().getWindow());
+                if (confirm.showAndWait().orElse(ButtonType.CANCEL) != ButtonType.OK) return;
+            }
+            commit(setup().removeActivePlate());
+        });
+        remove.setDisable(setup().plates().size() == 1);
+        plateStrip.getChildren().add(remove);
+        targetPlate
+                .getItems()
+                .setAll(setup().plates().stream()
+                        .map(PrintPlate::id)
+                        .filter(id -> !id.equals(setup().activePlateId()))
+                        .toList());
+        targetPlate.getSelectionModel().selectFirst();
+        targetPlate.setDisable(targetPlate.getItems().isEmpty());
+    }
+
+    private void updateOutputDestination() {
+        if (outputProject != null && !Objects.equals(outputPlate, setup().activePlateId())) {
+            outputPlate = setup().activePlateId();
+            Path standard = jobDestination(outputProject);
+            fields.get("print-output")
+                    .setText(
+                            setup().plates().size() == 1
+                                    ? standard.toString()
+                                    : standard.resolveSibling(standard.getFileName()
+                                                    .toString()
+                                                    .replace(".gcode", "-" + setup().activePlateId() + ".gcode"))
+                                            .toString());
+        }
+    }
+
+    boolean cancelDrag() {
+        if (dragSource == null) return false;
+        dragSource = null;
+        dragPreview = null;
+        canvas.setCursor(javafx.scene.Cursor.OPEN_HAND);
+        draw();
+        return true;
+    }
+
+    private void installDragging() {
+        canvas.setCursor(javafx.scene.Cursor.OPEN_HAND);
+        canvas.focusedProperty().addListener((o, a, focused) -> {
+            if (!focused) cancelDrag();
+        });
+        canvas.setOnMousePressed(event -> {
+            if (event.getButton() != javafx.scene.input.MouseButton.PRIMARY
+                    || toolpathPreview.isSelected()
+                    || model == null
+                    || !document.canExport()
+                    || jobs.running()) return;
+            canvas.requestFocus();
+            var all = model.instances();
+            for (int i = all.size() - 1; i >= 0; i--) {
+                var instance = all.get(i);
+                if (!model.meshes().containsKey(instance.bodyId())) continue;
+                var mesh = model.placedMesh(instance);
+                boolean hit = false;
+                for (int t = 0; t < mesh.triangleCount() && !hit; t++) {
+                    double[] x = new double[3], y = new double[3];
+                    for (int c = 0; c < 3; c++) {
+                        int v = mesh.vertexIndex(t, c);
+                        x[c] = viewOx + projectX(mesh.coordinate(v, 0), mesh.coordinate(v, 1)) * viewScale;
+                        y[c] = viewOy
+                                - projectY(mesh.coordinate(v, 0), mesh.coordinate(v, 1), mesh.coordinate(v, 2))
+                                        * viewScale;
+                    }
+                    hit = PrintPlacement.contains(event.getX(), event.getY(), x, y);
+                }
+                if (hit) {
+                    instances.setValue(instance.id());
+                    dragSource = instance;
+                    dragPreview = instance;
+                    dragRevision = DocumentCodec.fingerprint(document.snapshot().document());
+                    dragX = event.getX();
+                    dragY = event.getY();
+                    canvas.setCursor(javafx.scene.Cursor.CLOSED_HAND);
+                    draw();
+                    event.consume();
+                    return;
+                }
+            }
+        });
+        canvas.setOnMouseDragged(event -> {
+            if (dragSource == null) return;
+            dragPreview = PrintPlacement.move(
+                    dragSource,
+                    (event.getX() - dragX) / viewScale,
+                    -(event.getY() - dragY) / viewScale,
+                    threeDimensional,
+                    event.isShiftDown());
+            draw();
+            event.consume();
+        });
+        canvas.setOnMouseReleased(event -> {
+            if (dragSource == null) return;
+            var before = dragSource;
+            var after = dragPreview;
+            boolean current = dragRevision.equals(
+                    DocumentCodec.fingerprint(document.snapshot().document()));
+            cancelDrag();
+            if (current && after != null && !before.equals(after)) replace(after);
+            event.consume();
+        });
     }
 
     static Path jobDestination(Path project) {

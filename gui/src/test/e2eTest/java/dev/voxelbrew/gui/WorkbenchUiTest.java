@@ -37,6 +37,110 @@ import org.junit.jupiter.api.io.TempDir;
 @ExtendWith(UiTestShard.class)
 class WorkbenchUiTest {
     @Test
+    void slicerPlateDraggingAndMultiplePlatesPersist() throws Exception {
+        ready();
+        openPrepared("plate-5mm.vxb");
+        click("workspace-print");
+        ready();
+        click("print-add");
+        ready();
+        var before = document().printSetup().instances().getFirst();
+        var center = centerOf("print-canvas");
+        fx(() -> {
+            robot.mouseMove(center);
+            robot.mousePress(MouseButton.PRIMARY);
+            return null;
+        });
+        Thread.sleep(120);
+        fx(() -> {
+            robot.mouseMove(center.add(35, -20));
+            return null;
+        });
+        Thread.sleep(120);
+        assertEquals(before, document().printSetup().instances().getFirst(), "Drag stays transient");
+        fx(() -> {
+            robot.mouseRelease(MouseButton.PRIMARY);
+            return null;
+        });
+        ready();
+        var moved = document().printSetup().instances().getFirst();
+        assertTrue(moved.transform().matrix()[3] > before.transform().matrix()[3]);
+        assertTrue(moved.transform().matrix()[7] > before.transform().matrix()[7]);
+        shortcut(KeyCode.Z, false);
+        ready();
+        assertEquals(before, document().printSetup().instances().getFirst(), "One undo restores placement");
+        final var dragCenter = centerOf("print-canvas");
+        fx(() -> {
+            robot.mouseMove(dragCenter);
+            robot.mousePress(MouseButton.PRIMARY);
+            return null;
+        });
+        fx(() -> {
+            robot.mouseMove(dragCenter.add(25, 20));
+            return null;
+        });
+        key(KeyCode.ESCAPE);
+        fx(() -> {
+            robot.mouseRelease(MouseButton.PRIMARY);
+            return null;
+        });
+        assertEquals(before, document().printSetup().instances().getFirst(), "Escape discards placement");
+        click("print-add-plate");
+        ready();
+        assertEquals(2, document().printSetup().plates().size());
+        assertTrue(document().printSetup().instances().isEmpty());
+        click("print-add");
+        ready();
+        assertEquals(1, document().printSetup().instances().size());
+        click("print-plate-plate-1");
+        ready();
+        assertEquals(before, document().printSetup().instances().getFirst());
+        Path saved = directory.resolve("multiple-plates.vxb");
+        save(saved);
+        assertEquals(document().printSetup(), DocumentReader.load(saved).printSetup());
+        for (int palette : List.of(1, 2)) {
+            choice("appearance", palette);
+            fx(() -> {
+                Screenshot.save(
+                        stage.getScene(),
+                        Path.of(System.getProperty("voxelbrew.ui.artifacts"))
+                                .resolve("slicer-plates-" + palette + ".png"));
+                return null;
+            });
+        }
+        click("print-tab-process");
+        fx(() -> {
+            Screenshot.save(
+                    stage.getScene(),
+                    Path.of(System.getProperty("voxelbrew.ui.artifacts")).resolve("slicer-process-help.png"));
+            return null;
+        });
+        long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(20);
+        while (fx(() -> node("#print-slice").isDisabled()) && System.nanoTime() < deadline) Thread.sleep(25);
+        click("print-slice");
+        deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(45);
+        while (fx(() -> ((PrintingPane) node("#printing-workspace")).jobs().running()) && System.nanoTime() < deadline)
+            Thread.sleep(25);
+        assertEquals(
+                PrintController.State.SUCCEEDED,
+                fx(() -> ((PrintingPane) node("#printing-workspace")).jobs().state()));
+        assertTrue(Files.exists(saved.resolveSibling("multiple-plates-plate-1.gcode")));
+        click("print-legend");
+        for (int palette : List.of(1, 2)) {
+            choice("appearance", palette);
+            fx(() -> {
+                Screenshot.save(
+                        stage.getScene(),
+                        Path.of(System.getProperty("voxelbrew.ui.artifacts"))
+                                .resolve("slicer-preview-" + palette + ".png"));
+                return null;
+            });
+        }
+        click("print-preview");
+        assertFalse(fx(() -> node("#print-layer").getParent().isVisible()));
+    }
+
+    @Test
     void slicerMenuPersistsSeparateProviderSettingsAndDiscardsUnsavedEdits() throws Exception {
         ready();
         click("menu-slicer");
@@ -4962,6 +5066,7 @@ class WorkbenchUiTest {
         assertEquals("PETG", actual.report().get("material"));
         click("print-layer");
         key(KeyCode.END);
+        click("print-legend");
         click("print-role-travel");
         click("print-role-perimeter");
         Path evidence = Path.of(System.getProperty("voxelbrew.ui.artifacts"));

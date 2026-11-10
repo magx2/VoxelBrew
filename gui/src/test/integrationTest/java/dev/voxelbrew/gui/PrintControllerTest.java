@@ -67,6 +67,34 @@ class PrintControllerTest {
     }
 
     @Test
+    void realSliceUsesOnlySelectedPlateAndSwitchingInvalidatesPreview() throws Exception {
+        var session = document();
+        session.setPrintSetup(session.document()
+                .printSetup()
+                .addPlate("off-bed")
+                .withInstances(List.of(new BodyInstance("outside", "height.body", Transform.translation(500, 500, 0))))
+                .selectPlate("plate-1"));
+        try (var controller = new PrintController(callbacks::add, session::document)) {
+            var future = controller.start(
+                    session.document(),
+                    new PrusaSlicerBackend(),
+                    PrusaSlicerBackend.defaultExecutable(),
+                    directory.resolve("selected-plate.gcode"),
+                    false);
+            await(() -> !controller.running());
+            assertEquals(PrintController.State.SUCCEEDED, controller.state(), controller.message());
+            assertFalse(future.get().job().segments().isEmpty());
+            assertTrue(future.get().job().segments().stream()
+                    .filter(GcodeJob.Segment::deposits)
+                    .allMatch(segment -> segment.x1() < 200 && segment.y1() < 200));
+            session.setPrintSetup(session.document().printSetup().selectPlate("off-bed"));
+            controller.documentChanged(session.document());
+            assertEquals(PrintController.State.OUTDATED, controller.state());
+            assertNull(controller.result());
+        }
+    }
+
+    @Test
     void editProfileOrCancelInvalidatesRunningJobAndFailureRemainsDistinct() throws Exception {
         var session = document();
         Path output = directory.resolve("existing.gcode");

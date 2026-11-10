@@ -4261,6 +4261,61 @@ class WorkbenchUiTest {
     }
 
     @Test
+    void numericFormulaFieldsSupportMiddleButtonDragging() throws Exception {
+        fx(() -> {
+            var field = FormulaField.number("1.25", ParameterSet::empty, ParameterUnit.CM);
+            java.util.function.BiConsumer<javafx.event.EventType<MouseEvent>, Double> middle =
+                    (type, x) -> field.fireEvent(new MouseEvent(
+                            type,
+                            x,
+                            0,
+                            x,
+                            0,
+                            MouseButton.MIDDLE,
+                            1,
+                            false,
+                            false,
+                            false,
+                            false,
+                            false,
+                            type != MouseEvent.MOUSE_RELEASED,
+                            false,
+                            false,
+                            false,
+                            false,
+                            null));
+            middle.accept(MouseEvent.MOUSE_PRESSED, 100.0);
+            middle.accept(MouseEvent.MOUSE_DRAGGED, 120.0);
+            assertEquals("3.25", field.getText());
+            assertEquals(32.5, field.value(), 1e-9);
+            middle.accept(MouseEvent.MOUSE_DRAGGED, 80.0);
+            assertEquals("-0.75", field.getText());
+            field.fireEvent(new KeyEvent(KeyEvent.KEY_PRESSED, "", "", KeyCode.ESCAPE, false, false, false, false));
+            assertEquals("1.25", field.getText());
+            middle.accept(MouseEvent.MOUSE_DRAGGED, 140.0);
+            assertEquals("1.25", field.getText());
+            middle.accept(MouseEvent.MOUSE_PRESSED, 100.0);
+            middle.accept(MouseEvent.MOUSE_DRAGGED, 110.0);
+            middle.accept(MouseEvent.MOUSE_RELEASED, 110.0);
+            middle.accept(MouseEvent.MOUSE_DRAGGED, 150.0);
+            assertEquals("2.25", field.getText());
+            for (String unchanged : List.of("=5", "  =5", "$width", "", "NaN", "1e999", "2 mm")) {
+                field.setText(unchanged);
+                middle.accept(MouseEvent.MOUSE_PRESSED, 100.0);
+                middle.accept(MouseEvent.MOUSE_DRAGGED, 120.0);
+                middle.accept(MouseEvent.MOUSE_RELEASED, 120.0);
+                assertEquals(unchanged, field.getText());
+            }
+            field.setText("5");
+            field.setEditable(false);
+            middle.accept(MouseEvent.MOUSE_PRESSED, 100.0);
+            middle.accept(MouseEvent.MOUSE_DRAGGED, 120.0);
+            assertEquals("5", field.getText());
+            return null;
+        });
+    }
+
+    @Test
     void formulaFieldsPreserveNumbersTextParametersHistoryAndFiles() throws Exception {
         Path artifacts = Path.of(System.getProperty("voxelbrew.ui.artifacts"));
         choice("appearance", 1);

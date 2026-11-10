@@ -47,6 +47,7 @@ final class FormulaField extends TextField {
         });
         preview.setOnShowing(e -> refreshFormula());
         new ParameterSuggestions(this, parameters, () -> translations);
+        if (expressionType == ExpressionType.NUMBER) new NumericFieldDrag(this);
     }
 
     static FormulaField number(String text, Supplier<ParameterSet> parameters, ParameterUnit unit) {

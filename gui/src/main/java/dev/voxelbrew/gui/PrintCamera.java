@@ -32,6 +32,11 @@ final class PrintCamera {
         return orientation;
     }
 
+    void orient(ViewOrientation value) {
+        orientation = spatial ? value : ViewOrientation.named("Top");
+        updateProjection();
+    }
+
     void pan(double dx, double dy) {
         panX += dx;
         panY += dy;

@@ -53,6 +53,7 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
     private final ToggleButton toolpathPreview = new ToggleButton();
     private double plateWidth = 200, plateDepth = 200, plateMinX, plateMinY;
     private final Canvas canvas = new Canvas();
+    private ViewCube viewCube;
     private final HBox plateStrip = new HBox(6);
     private TextField plateNameEditor;
     private final VBox previewControls = new VBox(10);
@@ -453,6 +454,36 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
             threeDimensional = b == solidView;
             draw();
         });
+        viewCube = new ViewCube(
+                orientation -> {
+                    cancelDrag();
+                    boolean top = orientation.equals(ViewOrientation.named("Top"));
+                    if (!top) spatialCamera.orient(orientation);
+                    viewMode.selectToggle(top ? topView : solidView);
+                    draw();
+                },
+                (dx, dy) -> {
+                    cancelDrag();
+                    if (!threeDimensional) spatialCamera.orient(topCamera.orientation());
+                    spatialCamera.orbit(dx, dy);
+                    viewMode.selectToggle(solidView);
+                    draw();
+                },
+                () -> {
+                    cancelDrag();
+                    camera().orient(threeDimensional ? ViewOrientation.HOME : ViewOrientation.named("Top"));
+                    camera().fit();
+                    draw();
+                },
+                () -> {
+                    camera().fit();
+                    draw();
+                },
+                translations);
+        viewCube.setId("print-view-cube");
+        StackPane.setAlignment(viewCube, javafx.geometry.Pos.TOP_RIGHT);
+        StackPane.setMargin(viewCube, new Insets(12));
+        center.getChildren().add(viewCube);
         plateSize.setId("print-plate-size");
         plateSize.setTooltip(new Tooltip(translations.text("print.editPlate")));
         plateSize.setOnMouseClicked(e -> {
@@ -1192,10 +1223,12 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
 
     void setDark(boolean value) {
         dark = value;
+        if (viewCube != null) viewCube.setDark(value);
         draw();
     }
 
     private void draw() {
+        if (viewCube != null) viewCube.setOrientation(camera().orientation());
         selectedObjectTooltip.hide();
         selectedObjectName.setVisible(false);
         placementRaster = null;

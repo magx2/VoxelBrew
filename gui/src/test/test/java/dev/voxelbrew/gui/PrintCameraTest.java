@@ -6,6 +6,20 @@ import org.junit.jupiter.api.Test;
 
 class PrintCameraTest {
     @Test
+    void standardViewNavigationUpdatesProjectionAndKeepsTopViewPlanar() {
+        var camera = new PrintCamera(true);
+        camera.orient(ViewOrientation.named("Front"));
+        assertEquals(ViewOrientation.named("Front"), camera.orientation());
+        assertEquals(0, camera.y(0, 1, 0), 1e-9);
+        assertEquals(1, camera.y(0, 0, 1), 1e-9);
+        camera.orient(ViewOrientation.named("Right"));
+        assertEquals(1, camera.x(0, 1), 1e-9);
+        var top = new PrintCamera(false);
+        top.orient(ViewOrientation.HOME);
+        assertEquals(ViewOrientation.named("Top"), top.orientation());
+    }
+
+    @Test
     void threeDimensionalOrbitUsesDesignerOrientationAndBedMovementInvertsProjection() {
         var camera = new PrintCamera(true);
         camera.orbit(34, 18);

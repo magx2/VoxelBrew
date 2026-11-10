@@ -894,6 +894,45 @@ class WorkbenchUiTest {
     }
 
     @Test
+    void slicerViewCubeNavigatesBothModesWithoutEditingPlacement() throws Exception {
+        ready();
+        openPrepared("plate-5mm.vxb");
+        click("workspace-print");
+        ready();
+        click("print-add");
+        ready();
+        var initial = document();
+        assertTrue(fx(() -> node("#print-view-cube").isVisible()));
+        click("print-view-3d");
+        var top = fx(() -> {
+            var face = node("#print-view-cube").lookup("#view-cube-top");
+            var bounds = face.localToScreen(face.getBoundsInLocal());
+            return new javafx.geometry.Point2D(bounds.getCenterX(), bounds.getCenterY());
+        });
+        fx(() -> {
+            robot.mouseMove(top);
+            robot.mouseClick(MouseButton.PRIMARY);
+            return null;
+        });
+        Thread.sleep(150);
+        assertTrue(fx(() -> ((RadioButton) node("#print-view-2d")).isSelected()));
+        click("print-view-3d");
+        var home =
+                fx(() -> (javafx.scene.control.Button) node("#print-view-cube").lookup("#view-cube-home"));
+        fx(() -> {
+            home.fire();
+            return null;
+        });
+        assertTrue(fx(() -> ((RadioButton) node("#print-view-3d")).isSelected()));
+        assertEquals(initial, document(), "View navigation must not edit placement");
+        fx(() -> {
+            Screenshot.save(
+                    stage.getScene(), Path.of(System.getProperty("voxelbrew.ui.artifacts"), "slicer-view-cube.png"));
+            return null;
+        });
+    }
+
+    @Test
     void slicerCameraMatchesDesignerGesturesWithoutEditingPlacement() throws Exception {
         ready();
         openPrepared("plate-5mm.vxb");

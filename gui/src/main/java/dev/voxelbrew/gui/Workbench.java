@@ -775,7 +775,7 @@ public final class Workbench extends BorderPane implements AutoCloseable {
             var focus = getScene().getFocusOwner();
             if (KeyboardShortcuts.textUndo(e, focus)) return;
             if (e.getCode() == KeyCode.ESCAPE) {
-                if (printing.cancelDrag()) {
+                if (printing.cancelPlateRename() || printing.cancelDrag()) {
                     e.consume();
                     return;
                 }

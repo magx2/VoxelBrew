@@ -17,7 +17,9 @@ Prusa's independent support layers may have different heights from model layers.
 ## Desktop plates and placement
 
 The Slicer workspace has a plate strip above the canvas. **Add plate** creates an
-empty plate; choose a plate to edit or slice it. **Move object** transfers the
+empty plate; choose a plate to edit or slice it. Double-click a plate name to rename
+it inline. Enter saves; Escape or clicking elsewhere cancels. Names accept 1–128
+characters and are saved with the design; renaming is undoable. **Move object** transfers the
 selected instance and its attached supports to another plate. Removing a populated
 plate asks for confirmation; undo restores it. The last plate cannot be removed.
 Printer, material and process settings are shared by all plates.
@@ -42,7 +44,8 @@ and the effect of process settings.
 All plates, their instances/supports and the active plate survive `.vxb` save/reopen.
 Single-plate documents retain print-setup version 1; adding a plate upgrades that
 setup to version 2. Older versions of VoxelBrew reject version 2 rather than dropping
-its extra plates. CLI/build-space exporters use the saved active plate. Per-plate
+its extra plates. Naming a plate upgrades the setup to version 3 so older readers
+cannot silently discard its name. CLI/build-space exporters use the saved active plate. Per-plate
 process overrides and batch slicing are not implemented.
 
 ## Installation and demo

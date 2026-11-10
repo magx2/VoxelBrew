@@ -9,6 +9,45 @@ import org.junit.jupiter.api.Test;
 
 class PrintPlatesTest {
     @Test
+    void namedPlatesPersistRemainUndoableAndSurvivePlacementEdits() throws Exception {
+        var instance = new BodyInstance("part", "body", Transform.translation(10, 20, 0));
+        var initial = PrintSetup.empty().withInstances(List.of(instance));
+        var session = new ModelSession(new CadDocument("doc", List.of(), 0, initial));
+        session.setPrintSetup(initial.renamePlate("plate-1", "  Zażółć / Assembly  "));
+        var named = session.document().printSetup();
+        assertEquals("Zażółć / Assembly", named.activePlate().name());
+        assertEquals(3, named.version());
+        assertEquals(initial.instances(), named.instances());
+        assertEquals("plate-1", named.activePlateId());
+        assertEquals(session.document(), DocumentCodec.decode(DocumentCodec.encode(session.document())));
+        assertEquals(session.document(), DocumentCodec.decodeJson(DocumentCodec.encodeJson(session.document())));
+        assertSame(named, named.renamePlate("plate-1", "Zażółć / Assembly"));
+        session.undo();
+        assertEquals(initial, session.document().printSetup());
+        assertFalse(session.canUndo());
+        session.redo();
+        assertEquals(named, session.document().printSetup());
+        var edited = named.withInstances(List.of(instance))
+                .withSupports(List.of())
+                .withProfile(named.backendId(), named.printerId(), "PETG", named.process())
+                .addPlate("second")
+                .renamePlate("second", "Spare parts")
+                .selectPlate("plate-1")
+                .moveInstance("part", "second");
+        assertEquals("Zażółć / Assembly", edited.activePlate().name());
+        assertEquals("Spare parts", edited.selectPlate("second").activePlate().name());
+        assertEquals(
+                "Zażółć / Assembly",
+                edited.selectPlate("second").removeActivePlate().activePlate().name());
+        assertEquals(List.of(instance), edited.selectPlate("second").instances());
+        var multi = new CadDocument("doc", List.of(), 0, edited);
+        assertEquals(multi, DocumentCodec.decode(DocumentCodec.encode(multi)));
+        for (String invalid : List.of("", "  ", "x".repeat(129), "bad\nname"))
+            assertThrows(IllegalArgumentException.class, () -> named.renamePlate("plate-1", invalid));
+        assertThrows(IllegalArgumentException.class, () -> named.renamePlate("missing", "Name"));
+    }
+
+    @Test
     void platesRoundTripAndExposeOnlySelectedContents() throws Exception {
         var first = new BodyInstance("first", "body", Transform.translation(10, 20, 0));
         var support = new SupportVolume("support", "first", SupportVolume.Role.SOLID_SUPPORT, 0, 0, 0, 2, 2, 5);

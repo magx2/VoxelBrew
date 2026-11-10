@@ -40,6 +40,7 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
     private double plateWidth = 200, plateDepth = 200;
     private final Canvas canvas = new Canvas();
     private final HBox plateStrip = new HBox(6);
+    private TextField plateNameEditor;
     private final VBox previewControls = new VBox(10);
     private final Label placementHint = new Label();
     private double viewScale, viewOx, viewOy;
@@ -1053,20 +1054,35 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
 
     private String plateName(String id) {
         for (int i = 0; i < setup().plates().size(); i++)
-            if (setup().plates().get(i).id().equals(id)) return translations.text("print.plate", i + 1);
+            if (setup().plates().get(i).id().equals(id)) {
+                String name = setup().plates().get(i).name();
+                return name.isEmpty() ? translations.text("print.plate", i + 1) : name;
+            }
         return id;
     }
 
     private void rebuildPlateStrip() {
+        plateNameEditor = null;
         plateStrip.getChildren().clear();
         var group = new ToggleGroup();
         for (var plate : setup().plates()) {
             var tab = new ToggleButton(
                     plateName(plate.id()) + "  \u00b7  " + plate.instances().size());
             tab.setId("print-plate-" + plate.id());
+            tab.setMaxWidth(220);
+            tab.setTooltip(UiHelp.tooltip(plateName(plate.id()) + "\n" + translations.text("print.renameHint")));
+            tab.addEventFilter(javafx.scene.input.MouseEvent.MOUSE_PRESSED, event -> {
+                if (event.getButton() == javafx.scene.input.MouseButton.PRIMARY
+                        && event.getClickCount() >= 2
+                        && event.getClickCount() % 2 == 0) {
+                    renamePlate(plate.id(), tab);
+                    event.consume();
+                }
+            });
             tab.setToggleGroup(group);
             tab.setSelected(plate.id().equals(setup().activePlateId()));
             tab.setOnAction(event -> {
+                if (plateNameEditor != null) return;
                 if (!plate.id().equals(setup().activePlateId())) {
                     cancelDrag();
                     commit(setup().selectPlate(plate.id()));
@@ -1096,6 +1112,50 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
                         .toList());
         targetPlate.getSelectionModel().selectFirst();
         targetPlate.setDisable(targetPlate.getItems().isEmpty());
+    }
+
+    private void renamePlate(String plateId, ToggleButton tab) {
+        int index = plateStrip.getChildren().indexOf(tab);
+        if (index < 0 || plateNameEditor != null) return;
+        var editor = new TextField(plateName(plateId));
+        editor.setId("print-plate-name");
+        editor.setPrefColumnCount(14);
+        editor.setMaxWidth(220);
+        editor.setTooltip(UiHelp.tooltip(translations.text("print.renameHint")));
+        plateNameEditor = editor;
+        plateStrip.getChildren().set(index, editor);
+        editor.setOnAction(event -> {
+            try {
+                if (editor.getText().strip().equals(plateName(plateId))) {
+                    cancelPlateRename();
+                    return;
+                }
+                var next = setup().renamePlate(plateId, editor.getText());
+                if (next.equals(setup())) {
+                    cancelPlateRename();
+                    return;
+                }
+                plateNameEditor = null;
+                commit(next);
+            } catch (IllegalArgumentException failure) {
+                editor.setStyle("-fx-border-color: #d04a3c;");
+                status.setText(translations.text("print.invalidPlateName"));
+                editor.setTooltip(UiHelp.tooltip(translations.text("print.invalidPlateName")));
+            }
+        });
+        editor.focusedProperty().addListener((o, a, focused) -> {
+            if (!focused && plateNameEditor == editor) cancelPlateRename();
+        });
+        editor.requestFocus();
+        editor.selectAll();
+    }
+
+    boolean cancelPlateRename() {
+        if (plateNameEditor == null) return false;
+        plateNameEditor = null;
+        rebuildPlateStrip();
+        updateJob();
+        return true;
     }
 
     private void updateOutputDestination() {

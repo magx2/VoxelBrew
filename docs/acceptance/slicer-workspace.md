@@ -78,3 +78,25 @@ Logs: `.tools/slicer-camera-isolated-final.log` and
 `.tools/slicer-camera-ubuntu.log`. Screenshots:
 `.tools/slicer-camera-validation/gui/build/ui-artifacts/slicer-camera-print-view-{2d,3d}.png`.
 No Linux E2E or full-suite run is claimed.
+
+## Plate-name follow-up
+
+Double-click a plate caption to edit its display name inline. Enter saves one
+undoable change; Escape or losing focus cancels. Empty/control-character names and
+names longer than 128 characters are rejected. Unchanged captions do not edit the
+design. Names are independent of stable plate IDs and output filenames, persist in
+binary/JSON documents, and survive placement/profile/support edits and transfers.
+Named setups use print-setup version 3; older readers reject this version rather
+than silently dropping names. Versions 1 and 2 remain readable.
+
+Focused Windows validation:
+
+```powershell
+.\gradlew.bat --no-daemon :engine:test --tests dev.voxelbrew.engine.printing.PrintPlatesTest :gui:e2eTest --tests dev.voxelbrew.gui.WorkbenchUiTest.plateNamesEditInlineCancelUndoAndPersist --console=plain
+```
+
+Passed: inline editing of active/inactive plates, Enter, Escape, focus-loss
+cancellation, invalid input, undo, unchanged captions, and save/reopen. Ubuntu
+validation runs the same `PrintPlatesTest` and GUI compilation in a separate Linux
+checkout. Logs: `.tools/plate-names-*.log`. Only the focused native-platform GUI
+test is included; no full E2E or new milestone gate is claimed.

@@ -304,7 +304,7 @@ public final class DocumentCodec {
     }
 
     private static PrintSetup fromProto(DocumentProto.PrintSetup setup) {
-        if (setup.getVersion() == 2) {
+        if (setup.getVersion() == 2 || setup.getVersion() == 3) {
             var base = fromProto(setup.toBuilder()
                     .setVersion(1)
                     .clearPlates()
@@ -321,12 +321,13 @@ public final class DocumentCodec {
                                 .clearSupports()
                                 .addAllSupports(plate.getSupportsList())
                                 .build());
-                        return new PrintPlate(plate.getId(), contents.instances(), contents.supports());
+                        return new PrintPlate(
+                                plate.getId(), plate.getName(), contents.instances(), contents.supports());
                     })
                     .toList();
             return new PrintSetup(
                     base.id(),
-                    2,
+                    setup.getVersion(),
                     base.backendId(),
                     base.printerId(),
                     base.materialId(),
@@ -422,7 +423,7 @@ public final class DocumentCodec {
                     .setWidth(s.width())
                     .setDepth(s.depth())
                     .setHeight(s.height()));
-        if (setup.version() == 2) {
+        if (setup.version() >= 2) {
             out.setActivePlateId(setup.activePlateId());
             for (var plate : setup.plates()) {
                 var contents = toProto(new PrintSetup(
@@ -436,6 +437,7 @@ public final class DocumentCodec {
                         plate.supports()));
                 out.addPlates(DocumentProto.PrintPlate.newBuilder()
                         .setId(plate.id())
+                        .setName(plate.name())
                         .addAllInstances(contents.getInstancesList())
                         .addAllSupports(contents.getSupportsList()));
             }

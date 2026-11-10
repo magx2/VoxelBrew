@@ -38,7 +38,7 @@ public record PrintSetup(
 
     public PrintSetup {
         CadDocument.identifier(id, "print setup ID");
-        if (version != 1 && version != 2)
+        if (version != 1 && version != 2 && version != 3)
             throw new IllegalArgumentException("unsupported print setup version " + version);
         CadDocument.identifier(backendId, "slicer backend ID");
         CadDocument.identifier(printerId, "printer profile ID");
@@ -47,6 +47,8 @@ public record PrintSetup(
         if (plates.isEmpty()) throw new IllegalArgumentException("At least one plate is required");
         if (version == 1 && (plates.size() != 1 || !activePlateId.equals("plate-1")))
             throw new IllegalArgumentException("Multiple plates require print setup version 2");
+        if (version < 3 && plates.stream().anyMatch(p -> !p.name().isEmpty()))
+            throw new IllegalArgumentException("Named plates require print setup version 3");
         var ids = new HashSet<String>();
         for (var plate : plates)
             if (!ids.add(plate.id())) throw new IllegalArgumentException("Duplicate plate " + plate.id());
@@ -76,7 +78,25 @@ public record PrintSetup(
     public PrintSetup addPlate(String plateId) {
         var next = new java.util.ArrayList<>(plates);
         next.add(new PrintPlate(plateId, List.of(), List.of()));
-        return new PrintSetup(id, 2, backendId, printerId, materialId, process, next, plateId);
+        return new PrintSetup(id, Math.max(2, version), backendId, printerId, materialId, process, next, plateId);
+    }
+
+    public PrintSetup renamePlate(String plateId, String name) {
+        var plate = plates.stream()
+                .filter(p -> p.id().equals(plateId))
+                .findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("Missing plate " + plateId));
+        var renamed = plate.withName(name);
+        if (plate.equals(renamed)) return this;
+        return new PrintSetup(
+                id,
+                3,
+                backendId,
+                printerId,
+                materialId,
+                process,
+                plates.stream().map(p -> p.id().equals(plateId) ? renamed : p).toList(),
+                activePlateId);
     }
 
     public PrintSetup moveInstance(String instanceId, String targetPlateId) {
@@ -95,9 +115,10 @@ public record PrintSetup(
         targetSupports.addAll(supports().stream()
                 .filter(s -> s.instanceId().equals(instanceId))
                 .toList());
-        var destination = new PrintPlate(targetPlateId, targetInstances, targetSupports);
+        var destination = new PrintPlate(targetPlateId, target.name(), targetInstances, targetSupports);
         var source = new PrintPlate(
                 activePlateId,
+                activePlate().name(),
                 instances().stream().filter(i -> !i.id().equals(instanceId)).toList(),
                 supports().stream()
                         .filter(s -> !s.instanceId().equals(instanceId))
@@ -157,11 +178,11 @@ public record PrintSetup(
     }
 
     public PrintSetup withInstances(List<BodyInstance> next) {
-        return replaceActive(new PrintPlate(activePlateId, next, supports()));
+        return replaceActive(new PrintPlate(activePlateId, activePlate().name(), next, supports()));
     }
 
     public PrintSetup withSupports(List<SupportVolume> next) {
-        return replaceActive(new PrintPlate(activePlateId, instances(), next));
+        return replaceActive(new PrintPlate(activePlateId, activePlate().name(), instances(), next));
     }
 
     public PrintSetup withProfile(String backend, String printer, String material, ProcessSettings settings) {

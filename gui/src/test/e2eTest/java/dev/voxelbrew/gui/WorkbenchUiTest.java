@@ -37,6 +37,77 @@ import org.junit.jupiter.api.io.TempDir;
 @ExtendWith(UiTestShard.class)
 class WorkbenchUiTest {
     @Test
+    void plateNamesEditInlineCancelUndoAndPersist() throws Exception {
+        ready();
+        openPrepared("plate-5mm.vxb");
+        click("workspace-print");
+        ready();
+        click("print-add");
+        ready();
+        var original = document().printSetup();
+        doubleClickPlate("plate-1");
+        key(KeyCode.ENTER);
+        assertEquals(original, document().printSetup(), "Unchanged names do not modify the design");
+        doubleClickPlate("plate-1");
+        text("print-plate-name", "Assembly");
+        key(KeyCode.ENTER);
+        ready();
+        assertEquals("Assembly", document().printSetup().activePlate().name());
+        assertEquals(original.instances(), document().printSetup().instances());
+        assertTrue(
+                fx(() -> ((ToggleButton) node("#print-plate-plate-1")).getText().startsWith("Assembly")));
+        shortcut(KeyCode.Z, false);
+        ready();
+        assertEquals(original, document().printSetup());
+        doubleClickPlate("plate-1");
+        text("print-plate-name", "Discarded");
+        key(KeyCode.ESCAPE);
+        assertEquals(original, document().printSetup());
+        assertNull(fx(() -> workbench.lookup("#print-plate-name")));
+        doubleClickPlate("plate-1");
+        text("print-plate-name", "");
+        key(KeyCode.ENTER);
+        assertNotNull(fx(() -> node("#print-plate-name")));
+        assertEquals(original, document().printSetup());
+        click("print-view-2d");
+        assertNull(fx(() -> workbench.lookup("#print-plate-name")));
+        click("print-add-plate");
+        ready();
+        doubleClickPlate("plate-1");
+        text("print-plate-name", "Assembly");
+        key(KeyCode.ENTER);
+        ready();
+        assertEquals(
+                "Assembly",
+                document().printSetup().selectPlate("plate-1").activePlate().name());
+        Path saved = directory.resolve("named-plates.vxb");
+        save(saved);
+        var expected = document().printSetup();
+        assertEquals(expected, DocumentReader.load(saved).printSetup());
+        open(saved);
+        ready();
+        assertEquals(expected, document().printSetup());
+        assertTrue(
+                fx(() -> ((ToggleButton) node("#print-plate-plate-1")).getText().startsWith("Assembly")));
+    }
+
+    private void doubleClickPlate(String id) throws Exception {
+        var point = centerOf("print-plate-" + id);
+        fx(() -> {
+            robot.mouseMove(point);
+            robot.mouseClick(MouseButton.PRIMARY);
+            return null;
+        });
+        Thread.sleep(90);
+        fx(() -> {
+            robot.mouseClick(MouseButton.PRIMARY);
+            return null;
+        });
+        Thread.sleep(180);
+        assertNotNull(fx(() -> node("#print-plate-name")));
+    }
+
+    @Test
     void slicerCameraMatchesDesignerGesturesWithoutEditingPlacement() throws Exception {
         ready();
         openPrepared("plate-5mm.vxb");

@@ -6,9 +6,21 @@ import java.util.HashSet;
 import java.util.List;
 
 /** One independent build plate in the shared printer/process setup. */
-public record PrintPlate(String id, List<BodyInstance> instances, List<SupportVolume> supports) {
+public record PrintPlate(String id, String name, List<BodyInstance> instances, List<SupportVolume> supports) {
+    public PrintPlate(String id, List<BodyInstance> instances, List<SupportVolume> supports) {
+        this(id, "", instances, supports);
+    }
+
+    public PrintPlate withName(String value) {
+        String normalized = java.util.Objects.requireNonNull(value).strip();
+        CadDocument.requireBodyName(normalized);
+        return new PrintPlate(id, normalized, instances, supports);
+    }
+
     public PrintPlate {
         CadDocument.identifier(id, "plate ID");
+        java.util.Objects.requireNonNull(name, "plate name");
+        if (!name.isEmpty()) CadDocument.requireBodyName(name);
         instances = List.copyOf(instances);
         supports = List.copyOf(supports);
         var ids = new HashSet<String>();

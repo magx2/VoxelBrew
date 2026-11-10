@@ -272,6 +272,7 @@ message PrintPlate {
   string id = 1;
   repeated PrintInstance instances = 2;
   repeated SupportVolume supports = 3;
+  string name = 4;
 }
 message PrintSetup {
   string id = 1;

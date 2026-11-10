@@ -27,9 +27,8 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
     private final PrinterCatalog printers;
     private final PrinterVisibility printerVisibility;
     private Set<String> hiddenPrinters = Set.of();
-    private final TextField printerSearch = new TextField();
     private PrinterCatalog.Result printerCatalog;
-    private final ComboBox<PrinterCatalog.Entry> printerChoice = new ComboBox<>();
+    private final Button printerChoice = new Button();
     private final Label printerDetails = new Label();
     private final javafx.scene.image.ImageView printerImage = new javafx.scene.image.ImageView();
     private final DocumentController document;
@@ -366,31 +365,15 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
         tabs.setPrefWidth(360);
         tabs.setMinWidth(320);
         printerChoice.setId("print-printer");
-        UiText.choices(
-                printerChoice,
-                entry -> entry + (entry.bundled() ? " (" + translations.text("print.builtInPrinter") + ")" : ""));
         printerChoice.setMaxWidth(Double.MAX_VALUE);
-        printerChoice.setOnAction(event -> {
-            if (!updating && printerChoice.getValue() != null)
-                commit(setup().withPrinter(printerChoice.getValue().definition()));
-        });
-
-        printerSearch.setId("print-printer-search");
-        printerSearch.setPromptText(translations.text("print.searchPrinters"));
-        printerSearch.textProperty().addListener((o, a, b) -> {
-            updating = true;
-            try {
-                printerChoice
-                        .getItems()
-                        .setAll(printerCatalog.entries().stream()
+        printerChoice.setOnAction(event -> PrinterPickerDialog.choose(
+                        getScene().getWindow(),
+                        translations,
+                        printerCatalog.entries().stream()
                                 .filter(this::printerVisible)
-                                .filter(e ->
-                                        e.toString().toLowerCase(Locale.ROOT).contains(b.toLowerCase(Locale.ROOT)))
-                                .toList());
-            } finally {
-                updating = false;
-            }
-        });
+                                .toList(),
+                        setup().printerId())
+                .ifPresent(chosen -> commit(setup().withPrinter(chosen.definition()))));
         printerDetails.setWrapText(true);
         printerDetails.setId("print-printer-details");
         printerImage.setFitWidth(96);
@@ -399,7 +382,6 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
         var printerPanel = new VBox(
                 6,
                 new Label(translations.text("print.printerSelector")),
-                printerSearch,
                 printerChoice,
                 new HBox(8, printerImage, printerDetails),
                 new HBox(
@@ -1853,16 +1835,6 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
             throw new IllegalStateException(ex);
         }
         printerCatalog = printers.load();
-        updating = true;
-        try {
-            printerChoice
-                    .getItems()
-                    .setAll(printerCatalog.entries().stream()
-                            .filter(this::printerVisible)
-                            .toList());
-        } finally {
-            updating = false;
-        }
         if (!printerCatalog.diagnostics().isEmpty())
             diagnostics.setText(String.join("\n", printerCatalog.diagnostics()));
         updatePrinterDetails();
@@ -1876,30 +1848,14 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
                 .filter(e -> e.definition().printer().id().equals(p.id()))
                 .findFirst()
                 .orElse(null);
-        updating = true;
-        try {
-            printerChoice
-                    .getItems()
-                    .setAll(printerCatalog.entries().stream()
-                            .filter(this::printerVisible)
-                            .filter(e -> e.toString()
-                                    .toLowerCase(Locale.ROOT)
-                                    .contains(printerSearch.getText().toLowerCase(Locale.ROOT)))
-                            .toList());
-            var selected = saved == null || (entry != null && entry.definition().equals(saved))
-                    ? entry
-                    : new PrinterCatalog.Entry(saved, entry == null ? null : entry.image(), "project", false);
-            if (selected != null && !printerChoice.getItems().contains(selected))
-                printerChoice.getItems().addFirst(selected);
-            printerChoice.setValue(selected);
-        } finally {
-            updating = false;
-        }
-        printerChoice.setPromptText(p.name());
+        var selected = saved == null || (entry != null && entry.definition().equals(saved))
+                ? entry
+                : new PrinterCatalog.Entry(saved, entry == null ? null : entry.image(), "project", false);
+        printerChoice.setText((selected == null ? p.name() : selected.toString())
+                + (selected != null && selected.bundled() ? " (" + translations.text("print.builtInPrinter") + ")" : "")
+                + "...");
         printerDetails.setText(p.name()
-                + (printerChoice.getValue() != null && printerChoice.getValue().bundled()
-                        ? " (" + translations.text("print.builtInPrinter") + ")"
-                        : "")
+                + (selected != null && selected.bundled() ? " (" + translations.text("print.builtInPrinter") + ")" : "")
                 + (saved != null && saved.modified() ? " (" + translations.text("print.modifiedPrinter") + ")" : "")
                 + String.format(
                         Locale.ROOT,

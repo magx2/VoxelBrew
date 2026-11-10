@@ -293,3 +293,8 @@ printer remains displayed even when hidden, until another printer is selected.
 The visibility dialog also provides **Select all**, **Deselect all**, and
 **Invert selection**. These affect all default printers, including entries
 filtered out by search. Changes take effect only after saving visibility.
+
+Click the current printer in the Slicer tab to open a searchable picker, matching
+More sketch types. Search is focused immediately; results filter as you type.
+Use Up/Down to navigate, Enter or a double-click to choose, and Escape to cancel.
+Custom presets remain first, built-ins are marked, and hidden defaults are omitted.

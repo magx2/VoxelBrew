@@ -4,7 +4,6 @@ import dev.voxelbrew.engine.printing.PrinterCatalog;
 import dev.voxelbrew.util.i18n.Translations;
 import java.util.*;
 import javafx.scene.control.*;
-import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import javafx.stage.Window;
 
@@ -33,8 +32,9 @@ final class PrinterExportDialog {
         var dialog = new Dialog<Set<String>>();
         dialog.initOwner(owner);
         dialog.setTitle(translations.text(visibility ? "print.visiblePrinters" : "print.exportPrinters"));
-        dialog.setHeaderText(
-                translations.text(visibility ? "print.chooseVisiblePrinters" : "print.chooseExportPrinters"));
+        dialog.setHeaderText(translations
+                .text(visibility ? "print.visiblePrinters" : "print.exportPrinters")
+                .replace("...", ""));
         var export = new ButtonType(
                 translations.text(visibility ? "print.saveVisiblePrinters" : "print.exportSelectedPrinters"),
                 ButtonBar.ButtonData.OK_DONE);
@@ -43,8 +43,14 @@ final class PrinterExportDialog {
         var exportButton = dialog.getDialogPane().lookupButton(export);
         exportButton.setId("printer-export-confirm");
         exportButton.setDisable(!visibility);
+        exportButton.getStyleClass().add("printer-dialog-primary");
+        dialog.getDialogPane().lookupButton(ButtonType.CANCEL).setId("printer-dialog-cancel");
         Set<String> selected = new LinkedHashSet<>(initial);
-        var list = new VBox(6);
+        long total = entries.stream().filter(PrinterCatalog.Entry::bundled).count();
+        var count = new Label(translations.text("print.printerSelectionCount", selected.size(), total));
+        count.getStyleClass().add("printer-selection-count");
+        var list = new VBox(2);
+        list.getStyleClass().add("printer-checklist");
         list.setId("printer-options");
         for (var entry : entries) {
             if (!entry.bundled()) continue;
@@ -52,10 +58,13 @@ final class PrinterExportDialog {
             var choice = new CheckBox(entry.toString());
             choice.setId("printer-export-" + id);
             choice.setSelected(initial.contains(id));
+            choice.setMaxWidth(Double.MAX_VALUE);
+            choice.getStyleClass().add("printer-choice-row");
             choice.selectedProperty().addListener((o, a, checked) -> {
                 if (checked) selected.add(id);
                 else selected.remove(id);
                 exportButton.setDisable(!visibility && selected.isEmpty());
+                count.setText(translations.text("print.printerSelectionCount", selected.size(), total));
             });
             list.getChildren().add(choice);
         }
@@ -72,8 +81,17 @@ final class PrinterExportDialog {
         });
         var scroll = new ScrollPane(list);
         scroll.setFitToWidth(true);
-        scroll.setPrefViewportHeight(320);
-        var content = new VBox(10, search);
+        scroll.setPrefViewportHeight(
+                Math.max(140, Math.min(320, owner.getScene().getHeight() - 330)));
+        scroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
+        scroll.getStyleClass().add("printer-checklist-scroll");
+        var description =
+                new Label(translations.text(visibility ? "print.chooseVisiblePrinters" : "print.chooseExportPrinters"));
+        description.setWrapText(true);
+        description.getStyleClass().add("printer-dialog-description");
+        var content = new VBox(12, description, search);
+        content.setId(visibility ? "printer-visibility-dialog" : "printer-export-dialog");
+        content.getStyleClass().add("printer-dialog-content");
         if (visibility) {
             var selectAll = new Button(translations.text("print.selectAllPrinters"));
             selectAll.setId("printer-select-all");
@@ -87,12 +105,14 @@ final class PrinterExportDialog {
                 var choice = (CheckBox) node;
                 choice.setSelected(!choice.isSelected());
             }));
-            content.getChildren().add(new HBox(8, selectAll, deselectAll, invert));
+            var toolbar = new javafx.scene.layout.FlowPane(8, 6, selectAll, deselectAll, invert);
+            toolbar.getStyleClass().add("printer-selection-toolbar");
+            content.getChildren().add(toolbar);
         }
-        content.getChildren().add(scroll);
+        content.getChildren().addAll(scroll, count);
         dialog.getDialogPane().setContent(content);
         dialog.getDialogPane().setPrefWidth(480);
         dialog.setResultConverter(button -> button == export ? Set.copyOf(selected) : null);
-        return dialog.showAndWait();
+        return Dialogs.show(dialog, owner, translations);
     }
 }

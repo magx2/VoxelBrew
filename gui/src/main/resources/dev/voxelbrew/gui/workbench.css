@@ -751,3 +751,55 @@
 #print-plates {
   -fx-padding: 2;
 }
+
+.printer-dialog-description,
+.printer-selection-count {
+  -fx-text-fill: derive(-fx-text-background-color, 25%);
+}
+.printer-selection-count {
+  -fx-font-size: 11px;
+}
+.printer-selection-toolbar .button {
+  -fx-background-color: -fx-base;
+  -fx-background-radius: 6;
+  -fx-padding: 6 12;
+  -fx-cursor: hand;
+}
+.printer-selection-toolbar .button:hover {
+  -fx-background-color: -fx-selection-bar;
+}
+.printer-checklist-scroll {
+  -fx-background-color: -fx-control-inner-background;
+  -fx-background-insets: 0;
+  -fx-border-color: derive(-fx-base, -12%);
+  -fx-border-radius: 6;
+  -fx-background-radius: 6;
+  -fx-padding: 4;
+}
+.printer-checklist-scroll > .viewport {
+  -fx-background-color: -fx-control-inner-background;
+}
+.printer-checklist {
+  -fx-padding: 2;
+}
+.printer-choice-row {
+  -fx-padding: 9 10;
+  -fx-background-radius: 5;
+  -fx-cursor: hand;
+}
+.printer-choice-row:hover {
+  -fx-background-color: -fx-base;
+}
+.printer-choice-row:selected {
+  -fx-background-color: -fx-selection-bar;
+}
+.printer-dialog-primary {
+  -fx-background-color: #6555ce;
+  -fx-background-radius: 6;
+  -fx-text-fill: white;
+  -fx-font-weight: bold;
+  -fx-padding: 8 16;
+}
+.printer-dialog-primary:hover {
+  -fx-background-color: #7866de;
+}

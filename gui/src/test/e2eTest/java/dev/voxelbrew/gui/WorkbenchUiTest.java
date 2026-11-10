@@ -53,10 +53,10 @@ class WorkbenchUiTest {
                     .filter(Window::isShowing)
                     .map(window -> window.getScene().lookup("#printer-export-dialog"))
                     .filter(Objects::nonNull)
-                    .map(DialogPane.class::cast)
+                    .map(Parent.class::cast)
                     .findFirst()
                     .orElseThrow();
-            var confirm = pane.lookup("#printer-export-confirm");
+            var confirm = stage.getScene().lookup("#printer-export-confirm");
             assertTrue(confirm.isDisabled(), "Export requires an explicit selection");
             var choice = (CheckBox) pane.lookup("#printer-export-bambu-lab-a1-mini");
             choice.setSelected(true);
@@ -64,7 +64,7 @@ class WorkbenchUiTest {
             ((TextField) pane.lookup("#printer-export-search")).setText("Prusa");
             assertFalse(choice.isVisible());
             assertTrue(choice.isSelected(), "Filtering retains explicit selections");
-            ((Button) pane.lookupButton(ButtonType.CANCEL)).fire();
+            ((Button) stage.getScene().lookup("#printer-dialog-cancel")).fire();
             return null;
         });
         ready();
@@ -105,7 +105,7 @@ class WorkbenchUiTest {
                     .filter(Window::isShowing)
                     .map(window -> window.getScene().lookup("#printer-visibility-dialog"))
                     .filter(Objects::nonNull)
-                    .map(DialogPane.class::cast)
+                    .map(Parent.class::cast)
                     .findFirst()
                     .orElseThrow();
             var choices = ((javafx.scene.layout.VBox) pane.lookup("#printer-options"))
@@ -114,14 +114,21 @@ class WorkbenchUiTest {
             ((TextField) pane.lookup("#printer-export-search")).setText("Prusa");
             ((Button) pane.lookup("#printer-deselect-all")).fire();
             assertTrue(choices.stream().noneMatch(CheckBox::isSelected));
-            assertFalse(pane.lookup("#printer-export-confirm").isDisabled(), "Hiding all defaults is allowed");
+            assertFalse(
+                    stage.getScene().lookup("#printer-export-confirm").isDisabled(), "Hiding all defaults is allowed");
             choices.getFirst().setSelected(true);
             ((Button) pane.lookup("#printer-invert-selection")).fire();
             assertFalse(choices.getFirst().isSelected());
             assertEquals(61, choices.stream().filter(CheckBox::isSelected).count());
             ((Button) pane.lookup("#printer-select-all")).fire();
             assertTrue(choices.stream().allMatch(CheckBox::isSelected), "Bulk actions include filtered-out printers");
-            ((Button) pane.lookupButton(ButtonType.CANCEL)).fire();
+            ((TextField) pane.lookup("#printer-export-search")).clear();
+            stage.getScene().getRoot().applyCss();
+            stage.getScene().getRoot().layout();
+            Screenshot.save(
+                    stage.getScene(),
+                    Path.of(System.getProperty("voxelbrew.ui.artifacts"), "printer-visibility-dialog.png"));
+            ((Button) stage.getScene().lookup("#printer-dialog-cancel")).fire();
             return null;
         });
         ready();
@@ -129,9 +136,43 @@ class WorkbenchUiTest {
         click("workspace-print");
         ready();
         var original = document().printSetup();
-        text("print-printer-search", "A1 mini");
         click("print-printer");
+        ready();
+        assertTrue(fx(() -> node("#print-printer-search").isFocused()));
+        text("print-printer-search", "no matching printer xyz");
+        assertTrue(fx(
+                () -> ((ListView<?>) node("#print-printer-results")).getItems().isEmpty()));
+        assertTrue(fx(() -> node("#print-printer-confirm").isDisabled()));
+        key(KeyCode.ESCAPE);
+        ready();
+        assertEquals(original, document().printSetup(), "Cancel leaves project printer unchanged");
+        click("print-printer");
+        ready();
+        text("print-printer-search", "Bambu");
         key(KeyCode.DOWN);
+        assertEquals(
+                1,
+                fx(() -> ((ListView<?>) node("#print-printer-results"))
+                        .getSelectionModel()
+                        .getSelectedIndex()));
+        key(KeyCode.UP);
+        assertEquals(
+                0,
+                fx(() -> ((ListView<?>) node("#print-printer-results"))
+                        .getSelectionModel()
+                        .getSelectedIndex()));
+        text("print-printer-search", "  a1 MINI  ");
+        assertEquals(
+                1,
+                fx(() -> ((ListView<?>) node("#print-printer-results"))
+                        .getItems()
+                        .size()));
+        fx(() -> {
+            Screenshot.save(
+                    stage.getScene(),
+                    Path.of(System.getProperty("voxelbrew.ui.artifacts"), "printer-search-dialog.png"));
+            return null;
+        });
         key(KeyCode.ENTER);
         ready();
         assertEquals("bambu-lab-a1-mini", document().printSetup().printerId());

@@ -58,6 +58,7 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
     private final VBox previewControls = new VBox(10);
     private final Label placementHint = new Label();
     private double viewScale, viewOx, viewOy;
+    private PrintDepthBuffer placementRaster;
     private final PrintCamera topCamera = new PrintCamera(false), spatialCamera = new PrintCamera(true);
     private boolean navigating, primaryNavigation;
     private double navigationX, navigationY;
@@ -1173,6 +1174,7 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
     private void draw() {
         selectedObjectTooltip.hide();
         selectedObjectName.setVisible(false);
+        placementRaster = null;
         var graphics = canvas.getGraphicsContext2D();
         localGizmoAxes.setVisible(false);
         double w = canvas.getWidth(), h = canvas.getHeight();
@@ -1234,40 +1236,12 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
         } else {
             layerLabel.setText(translations.text("gui.build_placement_slice_to_preview_actual_toolpaths"));
             if (model == null) return;
-            int index = 0;
+            renderPlacement(ox, oy, scale, (int) Math.ceil(w), (int) Math.ceil(h));
             for (var instance : model.instances()) {
                 if (!model.meshes().containsKey(instance.bodyId())) continue;
                 var shown = dragPreview != null && dragPreview.id().equals(instance.id()) ? dragPreview : instance;
                 var mesh = model.placedMesh(shown);
                 boolean selected = instance.id().equals(instances.getValue());
-                graphics.setFill(
-                        selected
-                                ? Color.web("#4299c7", 0.85)
-                                : Color.hsb(195 + (index++ * 48) % 160, 0.35, 0.72, 0.75));
-                for (int t = 0; t < mesh.triangleCount(); t++) {
-                    double[] x = new double[3], y = new double[3];
-                    for (int c = 0; c < 3; c++) {
-                        int v = mesh.vertexIndex(t, c);
-                        x[c] = ox + projectX(mesh.coordinate(v, 0), mesh.coordinate(v, 1)) * scale;
-                        y[c] = oy
-                                - projectY(mesh.coordinate(v, 0), mesh.coordinate(v, 1), mesh.coordinate(v, 2)) * scale;
-                    }
-                    graphics.fillPolygon(x, y, 3);
-                }
-                graphics.setStroke(Color.BLACK);
-                graphics.setLineWidth(1);
-                var body = document.build().bodies().stream()
-                        .filter(b -> b.id().equals(instance.bodyId()))
-                        .findFirst();
-                if (body.isPresent())
-                    for (var edge : body.get().edges().edges()) {
-                        if (!edge.boundary()) continue;
-                        var a = shown.transform()
-                                .apply(edge.a().x(), edge.a().y(), edge.a().z());
-                        var b = shown.transform()
-                                .apply(edge.b().x(), edge.b().y(), edge.b().z());
-                        line(ox, oy, scale, a[0], a[1], a[2], b[0], b[1], b[2]);
-                    }
                 if (selected) {
                     selectedObjectName.setText(instanceName(instance.id()));
                     selectedObjectName.setMaxWidth(Math.max(0, w - 16));
@@ -1300,14 +1274,6 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
                                                 top - selectedObjectName.getHeight() - 8)));
                         selectedObjectName.setVisible(true);
                     }
-                    var bounds = MeshGeometry.bounds(mesh);
-                    graphics.setStroke(dark ? Color.web("#9bdcff") : Color.web("#075b91"));
-                    graphics.setLineWidth(2);
-                    double x = bounds.minX(), y = bounds.minY(), xx = bounds.maxX(), yy = bounds.maxY();
-                    line(ox, oy, scale, x, y, 0, xx, y, 0);
-                    line(ox, oy, scale, xx, y, 0, xx, yy, 0);
-                    line(ox, oy, scale, xx, yy, 0, x, yy, 0);
-                    line(ox, oy, scale, x, yy, 0, x, y, 0);
                 }
             }
             for (var support : model.setup().supports()) {
@@ -1343,6 +1309,85 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
             }
             drawRotationGizmo();
         }
+    }
+
+    private PrintDepthBuffer.Point projected(double x, double y, double z, double ox, double oy, double scale) {
+        return new PrintDepthBuffer.Point(
+                ox + projectX(x, y) * scale, oy - projectY(x, y, z) * scale, camera().depth(x, y, z));
+    }
+
+    private void renderPlacement(double ox, double oy, double scale, int width, int height) {
+        var raster = new PrintDepthBuffer(width, height);
+        int palette = 0;
+        var all = model.instances();
+        for (int owner = 0; owner < all.size(); owner++) {
+            var instance = all.get(owner);
+            if (!model.meshes().containsKey(instance.bodyId())) continue;
+            var shown = dragPreview != null && dragPreview.id().equals(instance.id()) ? dragPreview : instance;
+            var mesh = model.placedMesh(shown);
+            var color = instance.id().equals(instances.getValue())
+                    ? Color.web("#4299c7")
+                    : Color.hsb(195 + (palette++ * 48) % 160, 0.35, 0.72);
+            int rgb = 0xff000000
+                    | ((int) Math.round(color.getRed() * 255) << 16)
+                    | ((int) Math.round(color.getGreen() * 255) << 8)
+                    | (int) Math.round(color.getBlue() * 255);
+            var points = new PrintDepthBuffer.Point[mesh.vertexCount()];
+            for (int v = 0; v < points.length; v++)
+                points[v] =
+                        projected(mesh.coordinate(v, 0), mesh.coordinate(v, 1), mesh.coordinate(v, 2), ox, oy, scale);
+            for (int t = 0; t < mesh.triangleCount(); t++)
+                raster.triangle(
+                        points[mesh.vertexIndex(t, 0)],
+                        points[mesh.vertexIndex(t, 1)],
+                        points[mesh.vertexIndex(t, 2)],
+                        rgb,
+                        owner);
+        }
+        // Draw edges only after every surface has contributed to the shared depth buffer.
+        for (var instance : all) {
+            var body = document.build().bodies().stream()
+                    .filter(b -> b.id().equals(instance.bodyId()))
+                    .findFirst();
+            if (body.isEmpty()) continue;
+            var shown = dragPreview != null && dragPreview.id().equals(instance.id()) ? dragPreview : instance;
+            for (var edge : body.get().edges().edges()) {
+                if (!edge.boundary()) continue;
+                var a = shown.transform()
+                        .apply(edge.a().x(), edge.a().y(), edge.a().z());
+                var b = shown.transform()
+                        .apply(edge.b().x(), edge.b().y(), edge.b().z());
+                raster.edge(
+                        projected(a[0], a[1], a[2], ox, oy, scale),
+                        projected(b[0], b[1], b[2], ox, oy, scale),
+                        0xff000000);
+            }
+            if (instance.id().equals(instances.getValue())) {
+                var bounds = MeshGeometry.bounds(model.placedMesh(shown));
+                var a = projected(bounds.minX(), bounds.minY(), 0, ox, oy, scale);
+                var b = projected(bounds.maxX(), bounds.minY(), 0, ox, oy, scale);
+                var c = projected(bounds.maxX(), bounds.maxY(), 0, ox, oy, scale);
+                var d = projected(bounds.minX(), bounds.maxY(), 0, ox, oy, scale);
+                int color = dark ? 0xff9bdcff : 0xff075b91;
+                raster.edge(a, b, color);
+                raster.edge(b, c, color);
+                raster.edge(c, d, color);
+                raster.edge(d, a, color);
+            }
+        }
+        var image = new javafx.scene.image.WritableImage(width, height);
+        image.getPixelWriter()
+                .setPixels(
+                        0,
+                        0,
+                        width,
+                        height,
+                        javafx.scene.image.PixelFormat.getIntArgbInstance(),
+                        raster.pixels(),
+                        0,
+                        width);
+        canvas.getGraphicsContext2D().drawImage(image, 0, 0);
+        placementRaster = raster;
     }
 
     private void drawRotationGizmo() {
@@ -1407,6 +1452,13 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
         }
         graphics.restore();
         if (!rotationRings.isEmpty()) {
+            double top = rotationRings.stream()
+                    .mapToDouble(ring -> ring.center().getY()
+                            - Math.hypot(ring.u().getY(), ring.v().getY()))
+                    .min()
+                    .orElse(0);
+            selectedObjectName.setLayoutY(
+                    Math.max(8, Math.min(selectedObjectName.getLayoutY(), top - selectedObjectName.getHeight() - 12)));
             double bottom = rotationRings.stream()
                     .mapToDouble(ring -> ring.center().getY()
                             + Math.hypot(ring.u().getY(), ring.v().getY()))
@@ -1684,24 +1736,11 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
     }
 
     private BodyInstance objectAt(double pointerX, double pointerY) {
-        if (model == null || toolpathPreview.isSelected()) return null;
-        var all = model.instances();
-        for (int i = all.size() - 1; i >= 0; i--) {
-            var instance = all.get(i);
-            if (!model.meshes().containsKey(instance.bodyId())) continue;
-            var mesh = model.placedMesh(instance);
-            for (int t = 0; t < mesh.triangleCount(); t++) {
-                double[] x = new double[3], y = new double[3];
-                for (int c = 0; c < 3; c++) {
-                    int v = mesh.vertexIndex(t, c);
-                    x[c] = viewOx + projectX(mesh.coordinate(v, 0), mesh.coordinate(v, 1)) * viewScale;
-                    y[c] = viewOy
-                            - projectY(mesh.coordinate(v, 0), mesh.coordinate(v, 1), mesh.coordinate(v, 2)) * viewScale;
-                }
-                if (PrintPlacement.contains(pointerX, pointerY, x, y)) return instance;
-            }
-        }
-        return null;
+        if (model == null || placementRaster == null || toolpathPreview.isSelected()) return null;
+        int index = placementRaster.owner(pointerX, pointerY);
+        return index < 0 || index >= model.instances().size()
+                ? null
+                : model.instances().get(index);
     }
 
     private void installDragging() {
@@ -1772,37 +1811,19 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
                 draw();
                 return;
             }
-            var all = model.instances();
-            for (int i = all.size() - 1; i >= 0; i--) {
-                var instance = all.get(i);
-                if (!model.meshes().containsKey(instance.bodyId())) continue;
-                var mesh = model.placedMesh(instance);
-                boolean hit = false;
-                for (int t = 0; t < mesh.triangleCount() && !hit; t++) {
-                    double[] x = new double[3], y = new double[3];
-                    for (int c = 0; c < 3; c++) {
-                        int v = mesh.vertexIndex(t, c);
-                        x[c] = viewOx + projectX(mesh.coordinate(v, 0), mesh.coordinate(v, 1)) * viewScale;
-                        y[c] = viewOy
-                                - projectY(mesh.coordinate(v, 0), mesh.coordinate(v, 1), mesh.coordinate(v, 2))
-                                        * viewScale;
-                    }
-                    hit = PrintPlacement.contains(event.getX(), event.getY(), x, y);
-                }
-                if (hit) {
-                    navigating = false;
-                    primaryNavigation = false;
-                    instances.setValue(instance.id());
-                    dragSource = instance;
-                    dragPreview = instance;
-                    dragRevision = DocumentCodec.fingerprint(document.snapshot().document());
-                    dragX = event.getX();
-                    dragY = event.getY();
-                    canvas.setCursor(javafx.scene.Cursor.CLOSED_HAND);
-                    draw();
-                    event.consume();
-                    return;
-                }
+            var instance = objectAt(event.getX(), event.getY());
+            if (instance != null) {
+                navigating = false;
+                primaryNavigation = false;
+                instances.setValue(instance.id());
+                dragSource = instance;
+                dragPreview = instance;
+                dragRevision = DocumentCodec.fingerprint(document.snapshot().document());
+                dragX = event.getX();
+                dragY = event.getY();
+                canvas.setCursor(javafx.scene.Cursor.CLOSED_HAND);
+                draw();
+                event.consume();
             }
         });
         canvas.setOnMouseDragged(event -> {

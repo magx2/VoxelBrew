@@ -8,7 +8,7 @@ final class PrintCamera {
     private final boolean spatial;
     private ViewOrientation orientation;
     private double panX, panY, zoom = 1;
-    private double xx, xy, yx, yy, yz;
+    private double xx, xy, yx, yy, yz, zx, zy, zz;
 
     PrintCamera(boolean spatial) {
         this.spatial = spatial;
@@ -62,6 +62,11 @@ final class PrintCamera {
         return yx * x + yy * y + yz * z;
     }
 
+    /** Smaller depth is closer to the viewer. */
+    double depth(double x, double y, double z) {
+        return zx * x + zy * y + zz * z;
+    }
+
     private void updateProjection() {
         var x = orientation.project(new Point3D(1, 0, 0));
         var y = orientation.project(new Point3D(0, 1, 0));
@@ -70,6 +75,9 @@ final class PrintCamera {
         yx = -x.getY();
         yy = -y.getY();
         yz = -orientation.project(new Point3D(0, 0, 1)).getY();
+        zx = x.getZ();
+        zy = y.getZ();
+        zz = orientation.project(new Point3D(0, 0, 1)).getZ();
     }
 
     /** Invert projected movement on the bed; an edge-on bed has no unique inverse. */

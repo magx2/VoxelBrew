@@ -37,6 +37,63 @@ import org.junit.jupiter.api.io.TempDir;
 @ExtendWith(UiTestShard.class)
 class WorkbenchUiTest {
     @Test
+    @SuppressWarnings("unchecked")
+    void slicerDepthIsIndependentOfObjectOrderAndPickingUsesVisibleSurface() throws Exception {
+        Path input = PreparedDocuments.copy("plate-5mm.vxb", directory);
+        fx(() -> workbench.controller().open(input)).get(20, TimeUnit.SECONDS);
+        ready();
+        click("workspace-print");
+        String body =
+                fx(() -> workbench.controller().build().bodies().getFirst().id());
+        var front = new BodyInstance("front", body, Transform.translation(70, 80, 20));
+        var rear = new BodyInstance("rear", body, Transform.translation(70, 80, 0));
+        fx(() -> {
+            workbench.controller().printSetup(document().printSetup().withInstances(List.of(front, rear)));
+            return null;
+        });
+        ready();
+        click("print-view-3d");
+        var before = fx(() -> node("#print-canvas").snapshot(null, null));
+        fx(() -> {
+            workbench.controller().printSetup(document().printSetup().withInstances(List.of(rear, front)));
+            return null;
+        });
+        ready();
+        var after = fx(() -> node("#print-canvas").snapshot(null, null));
+        assertEquals(before.getWidth(), after.getWidth());
+        assertEquals(before.getHeight(), after.getHeight());
+        for (int y = 0; y < (int) before.getHeight(); y++)
+            for (int x = 0; x < (int) before.getWidth(); x++)
+                assertEquals(
+                        before.getPixelReader().getArgb(x, y),
+                        after.getPixelReader().getArgb(x, y),
+                        "Object list order must not change visibility at " + x + "," + y);
+        fx(() -> {
+            Screenshot.save(
+                    stage.getScene(), Path.of(System.getProperty("voxelbrew.ui.artifacts"), "slicer-depth-3d.png"));
+            return null;
+        });
+        click("print-view-2d");
+        fx(() -> {
+            ((ComboBox<String>) node("#print-instance")).setValue("rear");
+            var canvas = (javafx.scene.canvas.Canvas) node("#print-canvas");
+            robot.mouseMove(canvas.localToScreen(canvas.getWidth() / 2, canvas.getHeight() / 2));
+            return null;
+        });
+        Thread.sleep(150);
+        fx(() -> {
+            robot.mousePress(MouseButton.PRIMARY);
+            return null;
+        });
+        Thread.sleep(100);
+        fx(() -> {
+            robot.mouseRelease(MouseButton.PRIMARY);
+            return null;
+        });
+        assertEquals("front", fx(() -> ((ComboBox<?>) node("#print-instance")).getValue()));
+    }
+
+    @Test
     void orientAllPlacesEveryObjectAndUndoesAsOneEdit() throws Exception {
         Path input = PreparedDocuments.copy("plate-5mm.vxb", directory);
         fx(() -> workbench.controller().open(input)).get(20, TimeUnit.SECONDS);
@@ -614,6 +671,10 @@ class WorkbenchUiTest {
             for (boolean cancel : List.of(false, true)) {
                 fx(() -> {
                     robot.mouseMove(start);
+                    return null;
+                });
+                Thread.sleep(150);
+                fx(() -> {
                     robot.keyPress(KeyCode.SHIFT);
                     robot.mousePress(MouseButton.PRIMARY);
                     return null;

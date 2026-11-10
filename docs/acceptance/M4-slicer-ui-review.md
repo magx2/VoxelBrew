@@ -138,3 +138,8 @@ qualifies this workflow change and the Ubuntu gesture synchronization.
 
 Logs: `.tools/ci-failed.log`, `.tools/ci-slow-ubuntu.log`,
 `.tools/ci-window-regression.log`, `.tools/ci-window-linux-compile.log`.
+
+The next run's completed Ubuntu log revealed that current hosted images select
+the mirror through `/etc/apt/apt-mirrors.txt`. The workflow now updates that list
+as well as the deb822 source file; modifying only the latter did not change the
+selected mirror. Both locations are checked for existence for image compatibility.

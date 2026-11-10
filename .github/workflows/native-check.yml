@@ -93,7 +93,12 @@ jobs:
         run: |
           # The runner's Azure mirror can stall individual package downloads for minutes.
           # Use Ubuntu's main mirror and bound stalled requests without changing packages.
-          sudo sed -i 's|http://azure.archive.ubuntu.com/ubuntu|https://archive.ubuntu.com/ubuntu|g' /etc/apt/sources.list.d/ubuntu.sources
+          # New runner images reference a mirror list from the deb822 source file.
+          for source in /etc/apt/sources.list.d/ubuntu.sources /etc/apt/apt-mirrors.txt; do
+            if [ -f "$source" ]; then
+              sudo sed -i 's|http://azure.archive.ubuntu.com/ubuntu|https://archive.ubuntu.com/ubuntu|g' "$source"
+            fi
+          done
           printf 'Acquire::http::Timeout "20";\nAcquire::https::Timeout "20";\nAcquire::Retries "3";\n' | sudo tee /etc/apt/apt.conf.d/80voxelbrew-downloads
           bash scripts/bootstrap-slicer.sh
       - name: Install pinned slicer (Windows)

@@ -193,6 +193,12 @@ class WorkbenchUiTest {
         assertEquals(
                 PrintController.State.SUCCEEDED,
                 fx(() -> ((PrintingPane) node("#printing-workspace")).jobs().state()));
+        fx(() -> {
+            var slider = (Slider) node("#print-layer");
+            assertTrue(slider.getMax() > 0);
+            assertEquals(slider.getMax(), slider.getValue(), "New slice opens at the final layer");
+            return null;
+        });
         assertEquals(original, document().printSetup());
         assertTrue(Files.exists(directory.resolve("all-plates-1-Plate 1.gcode")));
         assertTrue(Files.exists(directory.resolve("all-plates-2-Plate 2.gcode")));

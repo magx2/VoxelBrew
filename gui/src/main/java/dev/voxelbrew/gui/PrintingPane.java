@@ -1061,7 +1061,7 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
                     entry.getValue().setDisable(job.segments().stream().noneMatch(s -> s.role() == entry.getKey()));
             }
             layer.setMax(Math.max(0, previewLayers.size() - 1));
-            layer.setValue(0);
+            layer.setValue(layer.getMax());
             layer.setDisable(previewLayers.isEmpty());
         }
         draw();

@@ -308,8 +308,17 @@ val workflowTest by
 val testCleanupTest by
     tasks.registering(Exec::class) {
         group = "verification"
-        description = "Verify best-effort test workspace cleanup and failure preservation."
-        commandLine(if (formatterWindows) "python" else "python3", "scripts/test_workspace_test.py")
+        description = "Verify test workspace cleanup and updater status polling."
+        commandLine(
+            if (formatterWindows) "python" else "python3",
+            "-m",
+            "unittest",
+            "discover",
+            "-s",
+            "scripts",
+            "-p",
+            "*_test.py",
+        )
     }
 
 tasks.named("test") { dependsOn(workflowTest, testCleanupTest) }

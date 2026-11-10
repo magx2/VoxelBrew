@@ -15,6 +15,7 @@ import zipfile
 
 sys.dont_write_bytecode = True
 from test_workspace import temporary_workspace
+from update_status import terminal_status
 
 kind, image_arg, root_arg, artifacts_arg, archive_arg = sys.argv[1:]
 image, root, artifacts = map(Path, (image_arg, root_arg, artifacts_arg))
@@ -198,7 +199,7 @@ try:
     assert "state=READY" in status_path.read_text()
     (workspace / "release-holder").touch()
     assert holder.wait(timeout=15) == 0
-    wait_for(lambda: "state=SUCCESS" in status_path.read_text() or "state=FAILED" in status_path.read_text(), 60)
+    wait_for(lambda: terminal_status(status_path), 60)
     assert "state=SUCCESS" in status_path.read_text(), status_path.read_text()
     backups = list(install.parent.glob("." + image.name + "-backup-*"))
     assert len(backups) == 1

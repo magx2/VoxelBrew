@@ -375,6 +375,7 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
         tabs.setPrefWidth(360);
         tabs.setMinWidth(320);
         printerChoice.setId("print-printer");
+        UiHelp.install(printerChoice, translations);
         printerChoice.setMaxWidth(Double.MAX_VALUE);
         printerChoice.setOnAction(event -> PrinterPickerDialog.choose(
                         getScene().getWindow(),
@@ -426,7 +427,7 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
         removeObject.setGraphic(closeIcon);
         removeObject.getStyleClass().add("object-close-button");
         removeObject.setAccessibleText(translations.text("gui.remove_instance"));
-        removeObject.setTooltip(UiHelp.tooltip(translations.text("gui.remove_instance")));
+        UiHelp.describe(removeObject, translations.text("gui.remove_instance"));
         selectedObjectName.setGraphic(removeObject);
         selectedObjectName.setContentDisplay(ContentDisplay.RIGHT);
         selectedObjectName.setVisible(false);
@@ -500,7 +501,7 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
         var preview = new BorderPane(center);
         toolpathPreview.setText(translations.text("print.preview"));
         toolpathPreview.setId("print-preview");
-        toolpathPreview.setTooltip(UiHelp.tooltip(translations.text("print.previewHelp")));
+        UiHelp.describe(toolpathPreview, translations.text("print.previewHelp"));
         toolpathPreview.setOnAction(event -> {
             updatePreviewControls();
             draw();
@@ -515,7 +516,7 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
                 toolpathPreview);
         var fitView = new Button(translations.text("print.fitView"));
         fitView.setId("print-fit-view");
-        fitView.setTooltip(UiHelp.tooltip(translations.text("print.cameraHelp")));
+        UiHelp.describe(fitView, translations.text("print.cameraHelp"));
         fitView.setOnAction(event -> {
             cancelDrag();
             camera().fit();
@@ -1599,7 +1600,7 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
                     plateName(plate.id()) + "  \u00b7  " + plate.instances().size());
             tab.setId("print-plate-" + plate.id());
             tab.setMaxWidth(220);
-            tab.setTooltip(UiHelp.tooltip(plateName(plate.id()) + "\n" + translations.text("print.renameHint")));
+            UiHelp.describe(tab, plateName(plate.id()) + "\n" + translations.text("print.renameHint"));
             tab.addEventFilter(javafx.scene.input.MouseEvent.MOUSE_PRESSED, event -> {
                 if (event.getButton() == javafx.scene.input.MouseButton.PRIMARY
                         && event.getClickCount() >= 2

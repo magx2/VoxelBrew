@@ -1078,6 +1078,7 @@ class WorkbenchUiTest {
         open(saved);
         ready();
         assertEquals(expected, document().printSetup());
+        click("workspace-print");
         assertTrue(
                 fx(() -> ((ToggleButton) node("#print-plate-plate-1")).getText().startsWith("Assembly")));
     }
@@ -1366,7 +1367,7 @@ class WorkbenchUiTest {
             });
         }
         click("print-preview");
-        assertFalse(fx(() -> node("#print-layer").getParent().isVisible()));
+        assertFalse(fx(() -> workbench.lookup("#print-layer").getParent().isVisible()));
     }
 
     @Test
@@ -1402,8 +1403,8 @@ class WorkbenchUiTest {
                     1.0);
             return null;
         });
-        assertTrue(fx(() -> node("#print-slice").isDisabled()));
-        assertTrue(fx(() -> node("#print-slice-all").isDisabled()));
+        assertTrue(fx(() -> workbench.lookup("#print-slice").isDisabled()));
+        assertTrue(fx(() -> workbench.lookup("#print-slice-all").isDisabled()));
         assertEquals(
                 "C:/Slicers/prusa.exe",
                 configuration.section("slicer", "prusa-slicer").get("executable", ""));
@@ -3052,7 +3053,7 @@ class WorkbenchUiTest {
         click("choose-plane-xy");
         sketchReady();
         sketchType(SketchTools.Tool.RECTANGLE_TWO_POINT);
-        text("sketch-point-x", "=$");
+        text("sketch-point-x", "=$missing");
         assertEquals(List.of(), completionNames());
         assertEquals(
                 "Brak pasujących parametrów",
@@ -3339,6 +3340,7 @@ class WorkbenchUiTest {
         sketchReady();
         assertButtonDescriptions();
         click("constraint-cancel");
+        openPrepared("plate-5mm.vxb");
         save(directory.resolve("help-workspace.vxb"));
         click("workspace-print");
         for (String tab : List.of("placement", "process", "supports", "job")) {
@@ -3392,10 +3394,26 @@ class WorkbenchUiTest {
         Collections.reverse(windows);
         for (var window : windows)
             if (window.isShowing() && window.getScene() != null) {
-                var node = window.getScene().lookup(selector);
-                if (node != null && node.isVisible()) return node;
+                for (var node : window.getScene().getRoot().lookupAll(selector)) if (treeVisible(node)) return node;
             }
         throw new AssertionError("Missing control " + selector);
+    }
+
+    private static boolean treeVisible(Node node) {
+        for (Node current = node; current != null; current = current.getParent())
+            if (!current.isVisible()) return false;
+        return true;
+    }
+
+    private void chooseCurrentProjectWindow() throws Exception {
+        if (fx(() -> {
+            try {
+                node("#project-window-current");
+                return true;
+            } catch (AssertionError missing) {
+                return false;
+            }
+        })) click("project-window-current");
     }
 
     private void click(String id) throws Exception {
@@ -3432,6 +3450,7 @@ class WorkbenchUiTest {
             assertTrue(fx(item::isFocused), "Native menu selection reached " + id);
             key(KeyCode.ENTER);
             Thread.sleep(180);
+            if (id.equals("new")) chooseCurrentProjectWindow();
             return;
         }
         if (!(window instanceof javafx.stage.PopupWindow)) focus(window);
@@ -3441,7 +3460,8 @@ class WorkbenchUiTest {
             window.getScene().getRoot().layout();
             var node = node("#" + id);
             assertFalse(node.isDisabled(), id + " is disabled");
-            var bounds = node.localToScreen(node.getBoundsInLocal());
+            var hitTarget = node instanceof CheckBox ? node.lookup(".box") : node;
+            var bounds = hitTarget.localToScreen(hitTarget.getBoundsInLocal());
             assertNotNull(bounds);
             assertTrue(bounds.getCenterY() < window.getY() + window.getHeight(), "Control outside window: " + id);
             robot.mouseMove(bounds.getCenterX(), bounds.getCenterY());
@@ -3466,6 +3486,9 @@ class WorkbenchUiTest {
             // Robot queues native input. Wait for delivery rather than assuming the OS and
             // renderer will process each event within a fixed delay; never replay a click.
             fx(() -> {
+                var hitTarget = target instanceof CheckBox ? target.lookup(".box") : target;
+                var bounds = hitTarget.localToScreen(hitTarget.getBoundsInLocal());
+                robot.mouseMove(bounds.getCenterX(), bounds.getCenterY());
                 robot.mousePress(MouseButton.PRIMARY);
                 return null;
             });
@@ -3486,6 +3509,7 @@ class WorkbenchUiTest {
             });
         }
         Thread.sleep(180);
+        if (id.equals("file-confirm") || id.equals("new")) chooseCurrentProjectWindow();
     }
 
     private void hoverHelp(String id) throws Exception {
@@ -3612,6 +3636,7 @@ class WorkbenchUiTest {
             return null;
         });
         Thread.sleep(250);
+        if (code == KeyCode.N) chooseCurrentProjectWindow();
     }
 
     private void text(String id, String value) throws Exception {
@@ -3708,18 +3733,23 @@ class WorkbenchUiTest {
                             rendered.getText(),
                             "The full translated button label must be displayed: " + button.getId());
                     var textBounds = rendered.localToScene(rendered.getLayoutBounds());
-                    assertTrue(
-                            panel.localToScene(panel.getLayoutBounds()).contains(textBounds),
-                            "Button label must stay visible inside the dialog");
+                    boolean scrollable = false;
                     for (var parent = button.getParent(); parent != panel; parent = parent.getParent()) {
                         if (parent instanceof ScrollPane scroll) {
+                            scrollable = true;
                             var viewport = scroll.lookup(".viewport");
+                            var viewportBounds = viewport.localToScene(viewport.getLayoutBounds());
+                            // Forms may scroll vertically; labels must still fit horizontally.
                             assertTrue(
-                                    viewport.localToScene(viewport.getLayoutBounds())
-                                            .contains(textBounds),
-                                    "Button label must not be clipped by the scroll viewport");
+                                    textBounds.getMinX() >= viewportBounds.getMinX()
+                                            && textBounds.getMaxX() <= viewportBounds.getMaxX(),
+                                    "Button label must not be clipped horizontally: " + button.getId());
                         }
                     }
+                    if (!scrollable)
+                        assertTrue(
+                                panel.localToScene(panel.getLayoutBounds()).contains(textBounds),
+                                "Button label must stay visible inside the dialog: " + button.getId());
                 }
             }
             Screenshot.save(
@@ -3980,14 +4010,14 @@ class WorkbenchUiTest {
         for (var source : List.of(original, json)) {
             var before = document();
             click("import");
-            choice("import-format", source.equals(json) ? 1 : 3);
+            chooseImporter(source.equals(json) ? "json" : "vxb");
             click("import-confirm");
             key(KeyCode.ESCAPE);
             ready();
             assertEquals(before, document());
             assertFalse(fx(() -> workbench.controller().dirty()));
             click("import");
-            choice("import-format", source.equals(json) ? 1 : 3);
+            chooseImporter(source.equals(json) ? "json" : "vxb");
             click("import-confirm");
             text("import-path", source.toString());
             click("import-confirm");
@@ -4009,7 +4039,7 @@ class WorkbenchUiTest {
         ready();
         choice("appearance", 1);
         shortcut(KeyCode.I, false);
-        choice("import-format", 2); // failing, json, plate, vxb; toolpaths are excluded.
+        chooseImporter("plate");
         click("import-confirm");
         text("import-path", source.toString());
         text("import-option-scale", "2");
@@ -4038,6 +4068,18 @@ class WorkbenchUiTest {
         assertTrue(fx(() -> workbench.controller().error().contains("Deliberate importer failure")));
         assertEquals("60,40,4", Files.readString(source));
         assertEquals(before, DocumentReader.load(saved));
+    }
+
+    @SuppressWarnings("unchecked")
+    private void chooseImporter(String id) throws Exception {
+        int index = fx(() -> {
+            var choices = (ComboBox<dev.voxelbrew.importer.api.ImporterDescriptor>) node("#import-format");
+            return java.util.stream.IntStream.range(0, choices.getItems().size())
+                    .filter(i -> choices.getItems().get(i).id().equals(id))
+                    .findFirst()
+                    .orElseThrow();
+        });
+        choice("import-format", index);
     }
 
     private void waitForUpdate(String message) throws Exception {
@@ -6365,9 +6407,12 @@ class WorkbenchUiTest {
         Thread.sleep(500);
         assertTrue(fx(() -> ((Label) node("#context-help-content")).getText().contains("Create a sketch")));
         key(KeyCode.ESCAPE);
-        click("workspace-print");
-        assertNotNull(fx(() -> node("#file-path")));
-        key(KeyCode.ESCAPE);
+        assertTrue(fx(() -> ((TabPane) node("#workspaces"))
+                .getTabs().stream()
+                        .filter(tab -> tab.getId().equals("workspace-print"))
+                        .findFirst()
+                        .orElseThrow()
+                        .isDisable()));
         assertTrue(fx(() -> ((TabPane) node("#workspaces"))
                 .getSelectionModel()
                 .getSelectedItem()
@@ -6397,8 +6442,8 @@ class WorkbenchUiTest {
         ready();
         assertFalse(fx(() -> workbench.controller().dirty()));
         assertTrue(fx(() -> node("#print-instance").isDisabled()));
-        assertTrue(fx(() -> node("#print-support-instance").isDisabled()));
-        assertTrue(fx(() -> node("#print-support-id").isDisabled()));
+        assertTrue(fx(() -> workbench.lookup("#print-support-instance").isDisabled()));
+        assertTrue(fx(() -> workbench.lookup("#print-support-id").isDisabled()));
         assertEquals("Body 1", fx(() -> {
             var choice = (ComboBox<String>) node("#print-body");
             return choice.getConverter().toString(choice.getValue());
@@ -6475,6 +6520,7 @@ class WorkbenchUiTest {
         click("file-confirm");
         ready();
         assertEquals(DocumentReader.load(file), document());
+        click("workspace-print");
         click("print-tab-job");
         assertEquals(
                 250,
@@ -6508,6 +6554,7 @@ class WorkbenchUiTest {
         click("print-layer");
         key(KeyCode.END);
         click("print-legend");
+        Thread.sleep(500); // Let the TitledPane expansion finish before targeting its last row.
         click("print-role-travel");
         click("print-role-perimeter");
         Path evidence = Path.of(System.getProperty("voxelbrew.ui.artifacts"));
@@ -6534,12 +6581,13 @@ class WorkbenchUiTest {
         assertEquals(actual.segments(), GcodeReader.read(cliJob).segments());
         Files.copy(file, evidence.resolve("GUI print setup.vxb"), StandardCopyOption.REPLACE_EXISTING);
         Files.copy(job, evidence.resolve("GUI printer job.gcode"), StandardCopyOption.REPLACE_EXISTING);
+        click("print-clean-slicing");
         click("print-tab-process");
         text("print-layer-height", "0.3");
         click("print-tab-job");
         ready();
         assertEquals(
-                PrintController.State.OUTDATED,
+                PrintController.State.IDLE,
                 fx(() -> ((PrintingPane) node("#printing-workspace")).jobs().state()));
         assertNull(fx(() -> ((PrintingPane) node("#printing-workspace")).jobs().result()));
     }

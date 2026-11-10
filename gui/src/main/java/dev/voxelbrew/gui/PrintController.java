@@ -36,6 +36,7 @@ public final class PrintController implements AutoCloseable {
     private final Slicing slicing;
     private final dev.voxelbrew.importer.api.GcodeSource gcodeReader;
     private Map<String, List<String>> completedGcode = Map.of();
+    private String restoredRevision = "";
     private List<String> restoredLines = List.of();
 
     public Map<String, List<String>> completedGcode() {
@@ -130,6 +131,7 @@ public final class PrintController implements AutoCloseable {
         generation++;
         result = null;
         completedGcode = Map.of();
+        restoredRevision = "";
         restoredLines = List.of();
         revision = "";
         diagnostics.clear();
@@ -145,7 +147,7 @@ public final class PrintController implements AutoCloseable {
 
     /** A provider reload can change evaluated geometry without changing persistent bytes. */
     public void invalidateGeometry() {
-        if (revision.isEmpty() || state == State.OUTDATED) return;
+        if ((revision.isEmpty() && restoredRevision.isEmpty()) || state == State.OUTDATED) return;
         outdated("Geometry is being rebuilt. Slice again to update the job.");
     }
 
@@ -153,6 +155,7 @@ public final class PrintController implements AutoCloseable {
         if (cancellation != null) cancellation.cancel();
         result = null;
         completedGcode = Map.of();
+        restoredRevision = "";
         restoredLines = List.of();
         state = State.OUTDATED;
         message = reason;
@@ -201,14 +204,19 @@ public final class PrintController implements AutoCloseable {
 
     public void restoreEmbedded(CadDocument document) {
         var lines = document.activeGcode();
-        if (running || lines.isEmpty() || lines.equals(restoredLines)) return;
-        restoredLines = lines;
+        if (closed || running || lines.isEmpty()) return;
         String captured = DocumentCodec.fingerprint(document);
+        if (captured.equals(restoredRevision) && lines.equals(restoredLines)) return;
+        restoredRevision = captured;
+        restoredLines = lines;
+        long ticket = ++generation;
         worker.execute(() -> {
             try {
                 var job = gcodeReader.readLines(lines);
                 dispatch.accept(() -> {
                     if (closed
+                            || ticket != generation
+                            || !captured.equals(restoredRevision)
                             || running
                             || !captured.equals(DocumentCodec.fingerprint(current.get()))
                             || !lines.equals(current.get().activeGcode())) return;
@@ -220,7 +228,13 @@ public final class PrintController implements AutoCloseable {
                 });
             } catch (IOException failure) {
                 dispatch.accept(() -> {
-                    if (closed || !lines.equals(current.get().activeGcode())) return;
+                    if (closed
+                            || ticket != generation
+                            || !captured.equals(restoredRevision)
+                            || running
+                            || !captured.equals(DocumentCodec.fingerprint(current.get()))
+                            || !lines.equals(current.get().activeGcode())) return;
+                    restoredRevision = "";
                     message = "Cannot preview stored G-code: " + failure.getMessage();
                     onChanged.run();
                 });

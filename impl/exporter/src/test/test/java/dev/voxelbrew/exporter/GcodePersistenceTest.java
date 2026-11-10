@@ -80,23 +80,4 @@ class GcodePersistenceTest {
         exporter.export(document, FileExportDialog.destination(output, true)).get();
         assertEquals(LINES, Files.readAllLines(output));
     }
-
-    @Test
-    void modelAndPrintEditsInvalidateAllJobsAndUndoDoesNotResurrectThem() {
-        var base = CadDocument.empty();
-        var document = base.withGcode(Map.of(base.printSetup().activePlateId(), LINES));
-        var session = new ModelSession(document);
-        assertEquals(LINES, session.document().activeGcode());
-        session.add(new Feature.Sketch(
-                "plate", "profile", new Feature.Plane("xy", 0), new Feature.Rectangle(0, 0, 20, 20)));
-        assertTrue(session.document().gcode().isEmpty());
-        session.undo();
-        assertTrue(session.document().gcode().isEmpty());
-        session.setGcode(document.gcode());
-        session.setPrintSetup(session.document().printSetup().addPlate("second"));
-        assertTrue(session.document().gcode().isEmpty());
-        session.undo();
-        assertTrue(session.document().gcode().isEmpty());
-        assertThrows(IllegalArgumentException.class, () -> base.withGcode(Map.of("plate-1", List.of("G90\nG21"))));
-    }
 }

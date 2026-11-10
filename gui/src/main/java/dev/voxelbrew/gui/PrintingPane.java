@@ -708,6 +708,7 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
                 ? FormulaField.text(initial, parameters)
                 : FormulaField.number(initial, parameters, unit);
         field.localized(translations);
+        if (id.equals("print-infill")) field.displayUnit("%");
         var bounds = PrintFieldBounds.forField(id);
         if (bounds != null) {
             field.bounds(bounds.min(), true, bounds.max(), true);

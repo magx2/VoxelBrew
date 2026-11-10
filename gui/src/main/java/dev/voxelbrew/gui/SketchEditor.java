@@ -493,6 +493,7 @@ final class SketchEditor extends BorderPane implements AutoCloseable {
                 .getItems()
                 .setAll(Arrays.stream(Type.values()).filter(Type::dimension).toList());
         dimension.setValue(Type.LENGTH);
+        dimension.valueProperty().addListener(o -> dimensionValue.refreshFormula());
         dimension.setMaxWidth(Double.MAX_VALUE);
         dimensionValue.setId("sketch-dimension-value");
         dimensionValue.setOnAction(e -> dimension());
@@ -520,6 +521,7 @@ final class SketchEditor extends BorderPane implements AutoCloseable {
             }
         });
         constraints.getSelectionModel().selectedItemProperty().addListener((o, a, b) -> {
+            dimensionValue.refreshFormula();
             if (refreshing || b == null) return;
             activeConstraint = null;
             selection.clear();

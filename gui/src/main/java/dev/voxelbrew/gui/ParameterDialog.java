@@ -204,6 +204,7 @@ final class ParameterDialog {
             comment.setText(Expressions.literalText(p.comment()));
         });
         unit.setId("parameter-unit");
+        unit.valueProperty().addListener(o -> expression.refreshFormula());
         unit.getItems().setAll(ParameterUnit.values());
         unit.setValue(ParameterUnit.MM);
         stringExpression.setEditable(false);
@@ -270,6 +271,7 @@ final class ParameterDialog {
         overrideParameter.setPrefWidth(145);
         overrideParameter.valueProperty().addListener((o, a, p) -> {
             if (!refreshing) updateOverride();
+            override.refreshFormula();
         });
         var configButtons = new FlowPane(
                 6,
@@ -338,6 +340,7 @@ final class ParameterDialog {
                         .toList());
         dimensions.getSelectionModel().selectedItemProperty().addListener((o, a, d) -> {
             if (d != null) binding.setText(draft.binding(d.target()));
+            binding.refreshFormula();
         });
         var dimensionsPane = new VBox(
                 7,

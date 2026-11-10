@@ -7,6 +7,8 @@ import java.util.function.Supplier;
 import javafx.beans.binding.Bindings;
 import javafx.beans.property.ObjectProperty;
 import javafx.beans.property.SimpleObjectProperty;
+import javafx.beans.property.SimpleStringProperty;
+import javafx.beans.property.StringProperty;
 import javafx.css.PseudoClass;
 import javafx.scene.control.*;
 import javafx.scene.control.skin.TextFieldSkin;
@@ -31,6 +33,8 @@ final class FormulaField extends TextField {
     private final Supplier<ParameterUnit> unit;
     private java.util.function.DoubleConsumer validation = value -> {};
     private final ObjectProperty<NumericFieldBounds> bounds = new SimpleObjectProperty<>(NumericFieldBounds.UNBOUNDED);
+    private final StringProperty unitSuffix = new SimpleStringProperty("");
+    private String displayUnit;
     private final Tooltip preview = UiHelp.tooltip("");
     private final Tooltip syntax = UiHelp.tooltip("");
     private dev.voxelbrew.util.i18n.Translations translations =
@@ -118,6 +122,14 @@ final class FormulaField extends TextField {
         return bounds.get();
     }
 
+    /** Display-only unit for quantities such as percentages whose stored values are unitless. */
+    FormulaField displayUnit(String label) {
+        if (unit == null) throw new IllegalStateException("This is a text field");
+        displayUnit = Objects.requireNonNull(label);
+        refreshFormula();
+        return this;
+    }
+
     void validateWith(java.util.function.DoubleConsumer validation) {
         this.validation = Objects.requireNonNull(validation);
         refreshFormula();
@@ -149,6 +161,16 @@ final class FormulaField extends TextField {
                 || (unit != null && !getText().isBlank() && !Expressions.isNumber(getText()));
         pseudoClassStateChanged(FORMULA, formula);
         try {
+            var selected = unit == null ? null : unit.get();
+            String label = displayUnit != null
+                    ? displayUnit
+                    : selected == null || selected == ParameterUnit.NUMBER
+                            ? ""
+                            : selected == ParameterUnit.DEG ? "°" : selected.toString();
+            if (!unitSuffix.get().equals(label)) {
+                unitSuffix.set(label);
+                requestLayout();
+            }
             String result = getText().isBlank() ? "" : evaluatedText();
             String suffix = unit == null || unit.get() == ParameterUnit.NUMBER
                     ? ""
@@ -172,6 +194,7 @@ final class FormulaField extends TextField {
             private final Button help = new Button("?");
             private final Label minimum = new Label();
             private final Label maximum = new Label();
+            private final Label unitLabel = new Label();
             private final javafx.scene.text.Text textMeasure = new javafx.scene.text.Text();
 
             {
@@ -184,7 +207,9 @@ final class FormulaField extends TextField {
                         .bind(Bindings.createStringBinding(() -> bounds.get().maximumHint(), bounds));
                 minimum.getStyleClass().add("formula-minimum");
                 maximum.getStyleClass().add("formula-maximum");
-                for (var hint : java.util.List.of(minimum, maximum)) {
+                unitLabel.getStyleClass().add("formula-unit");
+                unitLabel.textProperty().bind(unitSuffix);
+                for (var hint : java.util.List.of(minimum, maximum, unitLabel)) {
                     hint.getStyleClass().add("formula-bound");
                     hint.setManaged(false);
                     hint.setMouseTransparent(true);
@@ -204,7 +229,7 @@ final class FormulaField extends TextField {
                     }
                     event.consume();
                 });
-                getChildren().addAll(mark, minimum, maximum, help);
+                getChildren().addAll(mark, minimum, unitLabel, maximum, help);
             }
 
             private double hintWidth(Label hint) {
@@ -216,6 +241,7 @@ final class FormulaField extends TextField {
                     double height, double topInset, double rightInset, double bottomInset, double leftInset) {
                 return super.computePrefWidth(height, topInset, rightInset, bottomInset, leftInset)
                         + hintWidth(minimum)
+                        + hintWidth(unitLabel)
                         + hintWidth(maximum);
             }
 
@@ -223,8 +249,9 @@ final class FormulaField extends TextField {
             protected void layoutChildren(double x, double y, double width, double height) {
                 double left = hintWidth(minimum);
                 double right = hintWidth(maximum);
-                double editorWidth = Math.max(0, width - left - right);
-                if (right > 0) {
+                double unitWidth = hintWidth(unitLabel);
+                double editorWidth = Math.max(0, width - left - unitWidth - right);
+                if (right > 0 || unitWidth > 0) {
                     textMeasure.setFont(getFont());
                     textMeasure.setText(getText());
                     editorWidth = Math.min(
@@ -232,7 +259,8 @@ final class FormulaField extends TextField {
                 }
                 super.layoutChildren(x + left, y, editorWidth, height);
                 minimum.resizeRelocate(x, y, Math.max(0, left - 6), height);
-                maximum.resizeRelocate(x + left + editorWidth + 6, y, Math.max(0, right - 6), height);
+                unitLabel.resizeRelocate(x + left + editorWidth + 6, y, Math.max(0, unitWidth - 6), height);
+                maximum.resizeRelocate(x + left + editorWidth + unitWidth + 6, y, Math.max(0, right - 6), height);
                 mark.resizeRelocate(7, y, 18, height);
                 help.resizeRelocate(getWidth() - 25, y + (height - 18) / 2, 18, 18);
             }

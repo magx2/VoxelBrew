@@ -55,9 +55,14 @@ class WorkbenchUiTest {
             var field = (FormulaField) node("#print-infill");
             var minimum = (Label) field.lookup(".formula-minimum");
             var maximum = (Label) field.lookup(".formula-maximum");
+            var unitLabel = (Label) field.lookup(".formula-unit");
+            assertEquals("%", unitLabel.getText());
+            assertTrue(unitLabel.isMouseTransparent());
             assertEquals("0 <=", minimum.getText());
             assertEquals("<= 100", maximum.getText());
             var layer = (FormulaField) node("#print-layer-height");
+            assertEquals("mm", ((Label) layer.lookup(".formula-unit")).getText());
+            assertEquals("", ((Label) node("#print-walls").lookup(".formula-unit")).getText());
             assertEquals("0.05 <=", ((Label) layer.lookup(".formula-minimum")).getText());
             assertEquals("<= 0.3", ((Label) layer.lookup(".formula-maximum")).getText());
             var invalid = javafx.css.PseudoClass.getPseudoClass("formula-invalid");
@@ -70,6 +75,9 @@ class WorkbenchUiTest {
                     boolean outside = !value.equals("50");
                     assertEquals(outside, field.getPseudoClassStates().contains(invalid));
                     var text = (javafx.scene.text.Text) field.lookup(".text");
+                    field.selectAll();
+                    assertEquals(value, field.getSelectedText(), "Unit is not part of editable or copied text");
+                    field.deselect();
                     if (outside) assertEquals(javafx.scene.paint.Color.web("#d65c46"), text.getFill());
                     else assertNotEquals(javafx.scene.paint.Color.web("#d65c46"), text.getFill());
                     assertEquals(
@@ -78,9 +86,15 @@ class WorkbenchUiTest {
                     assertTrue(minimum.localToScene(minimum.getBoundsInLocal()).getMaxX()
                             < maximum.localToScene(maximum.getBoundsInLocal()).getMinX());
                     double suffixGap =
-                            maximum.localToScene(maximum.getBoundsInLocal()).getMinX()
+                            unitLabel.localToScene(unitLabel.getBoundsInLocal()).getMinX()
                                     - text.localToScene(text.getLayoutBounds()).getMaxX();
-                    assertTrue(suffixGap >= 4 && suffixGap <= 12, "Maximum follows the text: " + suffixGap);
+                    assertTrue(suffixGap >= 4 && suffixGap <= 12, "Unit follows the text: " + suffixGap);
+                    double maximumGap =
+                            maximum.localToScene(maximum.getBoundsInLocal()).getMinX()
+                                    - unitLabel
+                                            .localToScene(unitLabel.getBoundsInLocal())
+                                            .getMaxX();
+                    assertEquals(6, maximumGap, 1, "Maximum follows the unit");
                     Screenshot.save(
                             stage.getScene(),
                             Path.of(
@@ -89,6 +103,36 @@ class WorkbenchUiTest {
                                             + ".png"));
                 }
             }
+            return null;
+        });
+    }
+
+    @Test
+    void formulaUnitSuffixesFollowDeclaredUnitsWithoutChangingInput() throws Exception {
+        fx(() -> {
+            var selected = new javafx.beans.property.SimpleObjectProperty<>(ParameterUnit.MM);
+            var field = FormulaField.number("5", ParameterSet::empty, selected::get);
+            selected.addListener(o -> field.refreshFormula());
+            field.setSkin(field.createDefaultSkin());
+            field.refreshFormula();
+            var label = (Label) field.lookup(".formula-unit");
+            for (var unit : ParameterUnit.values()) {
+                selected.set(unit);
+                assertEquals(
+                        unit == ParameterUnit.NUMBER ? "" : unit == ParameterUnit.DEG ? "°" : unit.toString(),
+                        label.getText());
+                assertEquals("5", field.getText());
+            }
+            field.displayUnit("%");
+            field.selectAll();
+            field.replaceSelection("25");
+            assertEquals("%", label.getText());
+            assertEquals("25", field.getText());
+            assertEquals(25, field.value(), 1e-9);
+            var text = FormulaField.text("name", ParameterSet::empty);
+            text.setSkin(text.createDefaultSkin());
+            text.refreshFormula();
+            assertEquals("", ((Label) text.lookup(".formula-unit")).getText());
             return null;
         });
     }

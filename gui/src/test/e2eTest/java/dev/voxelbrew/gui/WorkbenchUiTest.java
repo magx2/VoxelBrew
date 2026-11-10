@@ -37,6 +37,83 @@ import org.junit.jupiter.api.io.TempDir;
 @ExtendWith(UiTestShard.class)
 class WorkbenchUiTest {
     @Test
+    void slicerBoundsRenderGreyHintsAndRedInvalidValues() throws Exception {
+        Path input = PreparedDocuments.copy("plate-5mm.vxb", directory);
+        fx(() -> workbench.controller().open(input)).get(20, TimeUnit.SECONDS);
+        ready();
+        fx(() -> {
+            ((TabPane) node("#workspaces")).getSelectionModel().select(1);
+            var tabs = (TabPane) node("#print-controls");
+            tabs.getSelectionModel()
+                    .select(tabs.getTabs().stream()
+                            .filter(tab -> "print-tab-process".equals(tab.getId()))
+                            .findFirst()
+                            .orElseThrow());
+            workbench.applyCss();
+            workbench.layout();
+            ((ScrollPane) tabs.getSelectionModel().getSelectedItem().getContent()).setVvalue(0.3);
+            var field = (FormulaField) node("#print-infill");
+            var minimum = (Label) field.lookup(".formula-minimum");
+            var maximum = (Label) field.lookup(".formula-maximum");
+            assertEquals("0 <=", minimum.getText());
+            assertEquals("<= 100", maximum.getText());
+            var layer = (FormulaField) node("#print-layer-height");
+            assertEquals("0.05 <=", ((Label) layer.lookup(".formula-minimum")).getText());
+            assertEquals("<= 0.3", ((Label) layer.lookup(".formula-maximum")).getText());
+            var invalid = javafx.css.PseudoClass.getPseudoClass("formula-invalid");
+            for (String palette : List.of("light", "dark")) {
+                command(workbench, "appearance-" + palette).fire();
+                for (String value : List.of("101", "=50*3", "50")) {
+                    field.setText(value);
+                    workbench.applyCss();
+                    workbench.layout();
+                    boolean outside = !value.equals("50");
+                    assertEquals(outside, field.getPseudoClassStates().contains(invalid));
+                    var text = (javafx.scene.text.Text) field.lookup(".text");
+                    if (outside) assertEquals(javafx.scene.paint.Color.web("#d65c46"), text.getFill());
+                    else assertNotEquals(javafx.scene.paint.Color.web("#d65c46"), text.getFill());
+                    assertEquals(
+                            javafx.scene.paint.Color.web(palette.equals("light") ? "#777777" : "#aaaaaa"),
+                            minimum.getTextFill());
+                    assertTrue(minimum.localToScene(minimum.getBoundsInLocal()).getMaxX()
+                            < maximum.localToScene(maximum.getBoundsInLocal()).getMinX());
+                    Screenshot.save(
+                            stage.getScene(),
+                            Path.of(
+                                    System.getProperty("voxelbrew.ui.artifacts"),
+                                    "slicer-inline-bounds-" + palette + "-" + (outside ? "invalid" : "valid")
+                                            + ".png"));
+                }
+            }
+            return null;
+        });
+    }
+
+    @Test
+    void formulaBoundsValidateDisplayedUnitsAndStrictEndpoints() throws Exception {
+        fx(() -> {
+            var invalid = javafx.css.PseudoClass.getPseudoClass("formula-invalid");
+            var field = FormulaField.number("1", ParameterSet::empty, ParameterUnit.CM)
+                    .bounds(1, false, 2, true);
+            assertTrue(field.getPseudoClassStates().contains(invalid));
+            field.setText("=15 mm");
+            assertEquals(15, field.value(), 1e-9);
+            assertFalse(field.getPseudoClassStates().contains(invalid));
+            field.setText("2");
+            assertEquals(20, field.value(), 1e-9);
+            field.bounds(1, true, 2, false);
+            assertTrue(field.getPseudoClassStates().contains(invalid));
+            assertThrows(IllegalArgumentException.class, field::value);
+            field.setText("1");
+            assertFalse(field.getPseudoClassStates().contains(invalid));
+            field.bounds(Double.NEGATIVE_INFINITY, false, Double.POSITIVE_INFINITY, false);
+            field.setText("-1000");
+            assertFalse(field.getPseudoClassStates().contains(invalid));
+            return null;
+        });
+    }
+
+    @Test
     void slicerProcessBoundsValidateLiteralsAndFormulasBeforeSaving() throws Exception {
         ready();
         openPrepared("plate-5mm.vxb");

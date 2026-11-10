@@ -709,11 +709,13 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
                 : FormulaField.number(initial, parameters, unit);
         field.localized(translations);
         var bounds = PrintFieldBounds.forField(id);
-        if (bounds != null)
+        if (bounds != null) {
+            field.bounds(bounds.min(), true, bounds.max(), true);
             field.validateWith(value -> {
                 if (!bounds.accepts(value))
                     throw new IllegalArgumentException(translations.text(bounds.helpKey(), bounds.min(), bounds.max()));
             });
+        }
         field.setId(id);
         fields.put(id, field);
         var caption = new Label(label);
@@ -2125,11 +2127,13 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
                         () -> document.snapshot().document().parameters(),
                         ParameterUnit.MM)
                 .localized(translations);
-        for (var field : List.of(width, depth, height))
+        for (var field : List.of(width, depth, height)) {
+            field.bounds(0, false, 10000, true);
             field.validateWith(value -> {
                 if (!Double.isFinite(value) || value <= 0 || value > 10000)
                     throw new IllegalArgumentException(translations.text("print.buildRange"));
             });
+        }
         width.setId("print-bed-width");
         depth.setId("print-bed-depth");
         height.setId("print-bed-height");

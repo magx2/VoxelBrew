@@ -284,6 +284,12 @@
   -fx-font-style: italic;
   -fx-text-fill: #416e92;
 }
+.formula-field .formula-bound {
+  -fx-text-fill: #777777;
+}
+.dark .formula-field .formula-bound {
+  -fx-text-fill: #aaaaaa;
+}
 .text-field.formula-field:formula {
   -fx-control-inner-background: #edf5ff;
   -fx-border-color: #3475aa;
@@ -310,6 +316,7 @@
 .dark .text-field.formula-field:formula-invalid,
 .dark .text-field.formula-field.invalid {
   -fx-border-color: #d65c46;
+  -fx-text-fill: #d65c46;
 }
 .formula-field:formula-invalid .formula-mark,
 .dark .formula-field:formula-invalid .formula-mark {

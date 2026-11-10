@@ -4,6 +4,9 @@ import dev.voxelbrew.engine.parameters.*;
 import dev.voxelbrew.engine.units.Measurements;
 import java.util.Objects;
 import java.util.function.Supplier;
+import javafx.beans.binding.Bindings;
+import javafx.beans.property.ObjectProperty;
+import javafx.beans.property.SimpleObjectProperty;
 import javafx.css.PseudoClass;
 import javafx.scene.control.*;
 import javafx.scene.control.skin.TextFieldSkin;
@@ -27,6 +30,7 @@ final class FormulaField extends TextField {
     private final Supplier<ParameterSet> parameters;
     private final Supplier<ParameterUnit> unit;
     private java.util.function.DoubleConsumer validation = value -> {};
+    private final ObjectProperty<NumericFieldBounds> bounds = new SimpleObjectProperty<>(NumericFieldBounds.UNBOUNDED);
     private final Tooltip preview = UiHelp.tooltip("");
     private final Tooltip syntax = UiHelp.tooltip("");
     private dev.voxelbrew.util.i18n.Translations translations =
@@ -89,9 +93,22 @@ final class FormulaField extends TextField {
 
     double value() {
         if (unit == null) throw new IllegalStateException("This is a text field");
-        double result = parameters.get().value(getText(), Objects.requireNonNull(unit.get()));
+        var selected = Objects.requireNonNull(unit.get());
+        double result = parameters.get().value(getText(), selected);
+        double displayed = selected.displayValue(Measurements.quantity(result, selected.canonicalUnit()));
+        if (!bounds.get().accepts(displayed))
+            throw new IllegalArgumentException(translations.text(
+                    "formula.bounds", bounds.get().minimumHint(), bounds.get().maximumHint()));
         validation.accept(result);
         return result;
+    }
+
+    FormulaField bounds(double min, boolean minInclusive, double max, boolean maxInclusive) {
+        if (unit == null) throw new IllegalStateException("This is a text field");
+        bounds.set(new NumericFieldBounds(min, minInclusive, max, maxInclusive));
+        requestLayout();
+        refreshFormula();
+        return this;
     }
 
     void validateWith(java.util.function.DoubleConsumer validation) {
@@ -146,11 +163,24 @@ final class FormulaField extends TextField {
         return new TextFieldSkin(this) {
             private final Label mark = new Label(expressionType.mark);
             private final Button help = new Button("?");
+            private final Label minimum = new Label();
+            private final Label maximum = new Label();
 
             {
                 mark.getStyleClass().add("formula-mark");
                 mark.setManaged(false);
                 mark.setMouseTransparent(true);
+                minimum.textProperty()
+                        .bind(Bindings.createStringBinding(() -> bounds.get().minimumHint(), bounds));
+                maximum.textProperty()
+                        .bind(Bindings.createStringBinding(() -> bounds.get().maximumHint(), bounds));
+                minimum.getStyleClass().add("formula-minimum");
+                maximum.getStyleClass().add("formula-maximum");
+                for (var hint : java.util.List.of(minimum, maximum)) {
+                    hint.getStyleClass().add("formula-bound");
+                    hint.setManaged(false);
+                    hint.setMouseTransparent(true);
+                }
                 help.getStyleClass().add("formula-help");
                 help.setManaged(false);
                 help.setTooltip(syntax);
@@ -166,12 +196,28 @@ final class FormulaField extends TextField {
                     }
                     event.consume();
                 });
-                getChildren().addAll(mark, help);
+                getChildren().addAll(mark, minimum, maximum, help);
+            }
+
+            private double hintWidth(Label hint) {
+                return hint.getText().isEmpty() ? 0 : snapSizeX(hint.prefWidth(-1)) + 6;
+            }
+
+            @Override
+            protected double computePrefWidth(
+                    double height, double topInset, double rightInset, double bottomInset, double leftInset) {
+                return super.computePrefWidth(height, topInset, rightInset, bottomInset, leftInset)
+                        + hintWidth(minimum)
+                        + hintWidth(maximum);
             }
 
             @Override
             protected void layoutChildren(double x, double y, double width, double height) {
-                super.layoutChildren(x, y, width, height);
+                double left = hintWidth(minimum);
+                double right = hintWidth(maximum);
+                super.layoutChildren(x + left, y, Math.max(0, width - left - right), height);
+                minimum.resizeRelocate(x, y, Math.max(0, left - 6), height);
+                maximum.resizeRelocate(x + width - right + 6, y, Math.max(0, right - 6), height);
                 mark.resizeRelocate(7, y, 18, height);
                 help.resizeRelocate(getWidth() - 25, y + (height - 18) / 2, 18, 18);
             }

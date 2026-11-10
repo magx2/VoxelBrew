@@ -7,17 +7,21 @@ final class PrintDepthBuffer {
     record Point(double x, double y, double depth) {}
 
     private final int width, height;
-    private final int[] pixels, owners;
+    private final int[] pixels, owners, surfaces, edgeColors;
     private final double[] depths, tolerances, edgeDepths;
+    private final double[] edgeCoverage;
 
     PrintDepthBuffer(int width, int height) {
         this.width = width;
         this.height = height;
         pixels = new int[Math.multiplyExact(width, height)];
         owners = new int[pixels.length];
+        surfaces = new int[pixels.length];
+        edgeColors = new int[pixels.length];
         depths = new double[pixels.length];
         tolerances = new double[pixels.length];
         edgeDepths = new double[pixels.length];
+        edgeCoverage = new double[pixels.length];
         Arrays.fill(owners, -1);
         Arrays.fill(depths, Double.POSITIVE_INFINITY);
         Arrays.fill(edgeDepths, Double.POSITIVE_INFINITY);
@@ -53,6 +57,7 @@ final class PrintDepthBuffer {
                 depths[index] = depth;
                 tolerances[index] = tolerance;
                 pixels[index] = color;
+                surfaces[index] = color;
                 owners[index] = owner;
             }
         }
@@ -70,17 +75,38 @@ final class PrintDepthBuffer {
             for (int x = minX; x <= maxX; x++) {
                 double t = Math.clamp(((x + 0.5 - a.x) * dx + (y + 0.5 - a.y) * dy) / lengthSquared, 0, 1);
                 double ex = x + 0.5 - a.x - t * dx, ey = y + 0.5 - a.y - t * dy;
-                if (ex * ex + ey * ey > 0.55) continue;
+                // One-pixel antialiased stroke, rather than a solid ~1.5-pixel band.
+                double coverage = Math.max(0, 1 - Math.hypot(ex, ey));
+                if (coverage == 0) continue;
                 int index = y * width + x;
                 double depth = a.depth + t * (b.depth - a.depth);
                 if (depth <= depths[index] + tolerances[index]
                         && (depth < edgeDepths[index] - 1e-6
-                                || Math.abs(depth - edgeDepths[index]) <= 1e-6 && color < pixels[index])) {
+                                || Math.abs(depth - edgeDepths[index]) <= 1e-6
+                                        && (color < edgeColors[index]
+                                                || color == edgeColors[index] && coverage > edgeCoverage[index]))) {
                     edgeDepths[index] = depth;
-                    pixels[index] = color;
+                    edgeColors[index] = color;
+                    edgeCoverage[index] = coverage;
+                    pixels[index] = blend(color, surfaces[index], coverage);
                 }
             }
         }
+    }
+
+    private static int blend(int foreground, int background, double coverage) {
+        double foregroundAlpha = (foreground >>> 24) / 255.0 * coverage;
+        double backgroundAlpha = (background >>> 24) / 255.0 * (1 - foregroundAlpha);
+        double alpha = foregroundAlpha + backgroundAlpha;
+        if (alpha == 0) return 0;
+        int result = (int) Math.round(alpha * 255) << 24;
+        for (int shift : new int[] {16, 8, 0}) {
+            int channel = (int) Math.round((((foreground >>> shift) & 255) * foregroundAlpha
+                            + ((background >>> shift) & 255) * backgroundAlpha)
+                    / alpha);
+            result |= channel << shift;
+        }
+        return result;
     }
 
     private static double cross(Point a, Point b, double x, double y) {

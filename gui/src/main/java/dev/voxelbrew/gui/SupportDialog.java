@@ -5,6 +5,8 @@ import java.awt.Desktop;
 import java.net.URI;
 import javafx.geometry.Pos;
 import javafx.scene.control.*;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
 import javafx.scene.layout.*;
 import javafx.stage.Window;
 import lombok.extern.slf4j.Slf4j;
@@ -28,19 +30,22 @@ final class SupportDialog {
     static VBox banners() {
         var banners = new VBox(
                 10,
-                banner("☕  Support on buycoffee.to", "support-buycoffee", "#00a862", "https://buycoffee.to/magx2"),
-                banner("☕  Support on Ko-fi", "support-kofi", "#29abe0", "https://ko-fi.com/magx2"));
+                banner("buycoffee.png", "Support on buycoffee.to", "support-buycoffee", "https://buycoffee.to/magx2"),
+                banner("kofi.png", "Support on Ko-fi", "support-kofi", "https://ko-fi.com/magx2"));
         banners.setAlignment(Pos.CENTER);
         return banners;
     }
 
-    private static Button banner(String text, String id, String color, String address) {
-        var button = new Button(text);
+    private static Button banner(String image, String description, String id, String address) {
+        var graphic = new ImageView(
+                new Image(SupportDialog.class.getResource("support/" + image).toExternalForm()));
+        graphic.setFitWidth(260);
+        graphic.setPreserveRatio(true);
+        var button = new Button();
         button.setId(id);
-        button.setMaxWidth(Double.MAX_VALUE);
-        button.setMinHeight(46);
-        button.setStyle("-fx-background-color: " + color + "; -fx-text-fill: white;"
-                + " -fx-font-size: 15px; -fx-font-weight: bold; -fx-background-radius: 8;");
+        button.setGraphic(graphic);
+        button.setAccessibleText(description);
+        button.setStyle("-fx-background-color: transparent; -fx-padding: 0; -fx-cursor: hand;");
         button.setOnAction(event -> {
             try {
                 Desktop.getDesktop().browse(URI.create(address));

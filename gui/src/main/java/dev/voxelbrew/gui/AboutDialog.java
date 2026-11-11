@@ -74,6 +74,8 @@ final class AboutDialog {
                 check,
                 updates,
                 new Separator(),
+                SupportDialog.banners(),
+                new Separator(),
                 license,
                 notices);
         var scroll = new ScrollPane(content);

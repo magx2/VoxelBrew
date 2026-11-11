@@ -95,6 +95,7 @@ class UiTextTest {
         }
         assertTrue(ids.size() > 50, "Audit the actual production action factories");
         ids.addAll(List.of(
+                "support",
                 "timeline-first",
                 "timeline-previous",
                 "timeline-play",

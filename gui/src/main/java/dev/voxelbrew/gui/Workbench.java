@@ -564,6 +564,11 @@ public final class Workbench extends BorderPane implements AutoCloseable {
                                 () -> LanguageDialog.show(stage, translations, configurationStore, preferencesWorker)),
                         menuItem(translations.text("saveFolder.title"), "save-folder", false, this::saveFolder),
                         menuItem(translations.text("action.updates"), "updates", false, this::updates),
+                        menuItem(
+                                translations.text("support.title"),
+                                "support",
+                                false,
+                                () -> SupportDialog.show(stage, translations)),
                         menuItem(translations.text("about.title"), "about", false, () -> {
                             if (about.get().show(stage)) updates();
                         }),

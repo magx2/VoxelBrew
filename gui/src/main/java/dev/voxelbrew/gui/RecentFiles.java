@@ -2,6 +2,7 @@ package dev.voxelbrew.gui;
 
 import dev.voxelbrew.util.config.UserConfiguration;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -28,7 +29,7 @@ final class RecentFiles {
                 if (value.isBlank()) continue;
                 try {
                     Path path = Path.of(value).toAbsolutePath().normalize();
-                    if (!paths.contains(path)) paths.add(path);
+                    if (Files.isRegularFile(path) && !paths.contains(path)) paths.add(path);
                 } catch (InvalidPathException invalid) {
                     log.warn("Ignoring invalid recent file path", invalid);
                 }

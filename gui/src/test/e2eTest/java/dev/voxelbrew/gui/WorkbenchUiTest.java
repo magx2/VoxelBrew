@@ -481,6 +481,15 @@ class WorkbenchUiTest {
         click("print-remove");
         ready();
         assertTrue(document().printSetup().instances().isEmpty());
+        click("print-add");
+        ready();
+        fx(() -> {
+            node("#print-canvas").requestFocus();
+            return null;
+        });
+        key(KeyCode.DELETE);
+        ready();
+        assertTrue(document().printSetup().instances().isEmpty());
         click("print-add-plate");
         ready();
         String second = document().printSetup().activePlateId();

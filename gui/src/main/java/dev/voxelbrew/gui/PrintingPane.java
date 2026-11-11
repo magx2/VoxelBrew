@@ -18,6 +18,8 @@ import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.scene.canvas.Canvas;
 import javafx.scene.control.*;
+import javafx.scene.input.KeyCode;
+import javafx.scene.input.KeyEvent;
 import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
 import javafx.util.StringConverter;
@@ -140,6 +142,14 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
         this.validator = validator;
         setId("printing-workspace");
         getStyleClass().add("slicer-workspace");
+        addEventFilter(KeyEvent.KEY_PRESSED, event -> {
+            if (event.getCode() == KeyCode.DELETE
+                    && !(getScene().getFocusOwner() instanceof TextInputControl)
+                    && instances.getValue() != null) {
+                removeInstance();
+                event.consume();
+            }
+        });
         canvas.setId("print-canvas");
         canvas.setFocusTraversable(true);
         installDragging();

@@ -12,6 +12,7 @@ import dev.voxelbrew.engine.sketch.Sketches;
 import dev.voxelbrew.exporter.DocumentWriter;
 import dev.voxelbrew.importer.DocumentReader;
 import dev.voxelbrew.importer.GcodeReader;
+import dev.voxelbrew.printer.api.PrinterDevice;
 import dev.voxelbrew.slicer.prusa.PrusaSlicerBackend;
 import dev.voxelbrew.util.Version;
 import java.nio.ByteBuffer;
@@ -36,6 +37,82 @@ import org.junit.jupiter.api.io.TempDir;
 /** Actual JavaFX windows, rendering, picking, keyboard input and mouse gestures on both OSes. */
 @ExtendWith(UiTestShard.class)
 class WorkbenchUiTest {
+    @Test
+    void printerDeviceFieldsFollowConnectionType() throws Exception {
+        ready();
+        Platform.runLater(() -> ((MenuBar) node("#main-menu"))
+                .getMenus().stream()
+                        .filter(menu -> "menu-printers".equals(menu.getId()))
+                        .findFirst()
+                        .orElseThrow()
+                        .getItems()
+                        .stream()
+                        .filter(item -> "printers-configure-devices".equals(item.getId()))
+                        .findFirst()
+                        .orElseThrow()
+                        .fire());
+        double moonrakerHeight = fx(() -> {
+            var kind = (ComboBox<?>) node("#device-config-kind");
+            var dialog = (DialogPane) node("#device-config-dialog");
+            assertEquals(PrinterDevice.Kind.MOONRAKER, kind.getValue());
+            assertNull(dialog.lookup("#device-config-serial"));
+            assertEquals("Moonraker server URL", ((Label) node("#device-config-address-label")).getText());
+            assertEquals("Slicer preset ID (optional)", ((Label) node("#device-config-model-label")).getText());
+            assertEquals("API key (optional)", ((Label) node("#device-config-secret-label")).getText());
+            Screenshot.save(
+                    dialog.getScene(), Path.of(System.getProperty("voxelbrew.ui.artifacts"), "device-moonraker.png"));
+            ((TextField) node("#device-config-address")).setText("http://moonraker.local");
+            ((TextField) node("#device-config-model")).setText("klipper-preset");
+            ((TextField) node("#device-config-secret")).setText("moon-key");
+            return kind.getScene().getWindow().getHeight();
+        });
+        fx(() -> {
+            var kind = (ComboBox<?>) node("#device-config-kind");
+            kind.getSelectionModel().select(kind.getItems().indexOf(PrinterDevice.Kind.BAMBU));
+            return null;
+        });
+        double bambuHeight = fx(() -> {
+            var kind = (ComboBox<?>) node("#device-config-kind");
+            var dialog = (DialogPane) node("#device-config-dialog");
+            assertNotNull(dialog.lookup("#device-config-serial"));
+            assertEquals("Printer IP / host", ((Label) node("#device-config-address-label")).getText());
+            assertEquals("Printer model", ((Label) node("#device-config-model-label")).getText());
+            assertEquals("Access code", ((Label) node("#device-config-secret-label")).getText());
+            assertEquals("", ((TextField) node("#device-config-address")).getText());
+            assertEquals("", ((TextField) node("#device-config-secret")).getText());
+            Screenshot.save(
+                    dialog.getScene(), Path.of(System.getProperty("voxelbrew.ui.artifacts"), "device-bambu.png"));
+            ((TextField) node("#device-config-address")).setText("192.0.2.2");
+            ((TextField) node("#device-config-serial")).setText("BAMBU123");
+            ((TextField) node("#device-config-model")).setText("Bambu Lab A1");
+            ((TextField) node("#device-config-secret")).setText("bambu-code");
+            return kind.getScene().getWindow().getHeight();
+        });
+        assertTrue(bambuHeight > moonrakerHeight + 20, "Bambu fields should expand the dialog");
+        fx(() -> {
+            var kind = (ComboBox<?>) node("#device-config-kind");
+            kind.getSelectionModel().select(kind.getItems().indexOf(PrinterDevice.Kind.MOONRAKER));
+            return null;
+        });
+        fx(() -> {
+            var kind = (ComboBox<?>) node("#device-config-kind");
+            var dialog = (DialogPane) node("#device-config-dialog");
+            assertNull(dialog.lookup("#device-config-serial"));
+            assertEquals("Moonraker server URL", ((Label) node("#device-config-address-label")).getText());
+            assertEquals(moonrakerHeight, kind.getScene().getWindow().getHeight(), 2);
+            assertEquals("http://moonraker.local", ((TextField) node("#device-config-address")).getText());
+            assertEquals("klipper-preset", ((TextField) node("#device-config-model")).getText());
+            assertEquals("moon-key", ((TextField) node("#device-config-secret")).getText());
+            kind.getSelectionModel().select(kind.getItems().indexOf(PrinterDevice.Kind.BAMBU));
+            assertEquals("192.0.2.2", ((TextField) node("#device-config-address")).getText());
+            assertEquals("BAMBU123", ((TextField) node("#device-config-serial")).getText());
+            assertEquals("Bambu Lab A1", ((TextField) node("#device-config-model")).getText());
+            assertEquals("bambu-code", ((TextField) node("#device-config-secret")).getText());
+            ((Button) dialog.lookupButton(ButtonType.CANCEL)).fire();
+            return null;
+        });
+    }
+
     @Test
     void printerWorkspaceShortcutsFollowEnabledTabOrder() throws Exception {
         ready();

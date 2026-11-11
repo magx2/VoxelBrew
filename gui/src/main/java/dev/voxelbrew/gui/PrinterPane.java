@@ -13,6 +13,7 @@ import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
+import javafx.stage.Stage;
 import javafx.util.Duration;
 
 /** Device workspace. All transport work is serialized away from JavaFX. */
@@ -24,6 +25,8 @@ final class PrinterPane extends VBox implements AutoCloseable {
             return name;
         }
     }
+
+    private record ConnectionDraft(String address, String serial, String model, String secret) {}
 
     private final PrinterRuntime runtime;
     private final Translations text;
@@ -445,46 +448,98 @@ final class PrinterPane extends VBox implements AutoCloseable {
         var secret = new PasswordField();
         var nozzle = new TextField("0.4");
         var kind = new ComboBox<PrinterDevice.Kind>();
+        kind.setId("device-config-kind");
+        address.setId("device-config-address");
+        serial.setId("device-config-serial");
+        model.setId("device-config-model");
+        secret.setId("device-config-secret");
         kind.getItems().setAll(PrinterDevice.Kind.values());
         kind.setValue(PrinterDevice.Kind.MOONRAKER);
+        var drafts = new EnumMap<PrinterDevice.Kind, ConnectionDraft>(PrinterDevice.Kind.class);
+        var loading = new boolean[1];
         list.valueProperty().addListener((o, a, d) -> {
             if (d != null) {
-                name.setText(d.name());
-                address.setText(d.address());
-                serial.setText(d.serial());
-                model.setText(d.model());
-                secret.setText(d.secret());
-                kind.setValue(d.kind());
-                nozzle.setText(Double.toString(d.nozzleMm()));
+                loading[0] = true;
+                try {
+                    drafts.clear();
+                    kind.setValue(d.kind());
+                    name.setText(d.name());
+                    address.setText(d.address());
+                    serial.setText(d.serial());
+                    model.setText(d.model());
+                    secret.setText(d.secret());
+                    nozzle.setText(Double.toString(d.nozzleMm()));
+                } finally {
+                    loading[0] = false;
+                }
             }
         });
         var add = new Button(t("new"));
         add.setOnAction(e -> {
-            list.setValue(null);
-            name.clear();
-            address.clear();
-            serial.clear();
-            model.clear();
-            secret.clear();
+            loading[0] = true;
+            try {
+                list.setValue(null);
+                drafts.clear();
+                kind.setValue(PrinterDevice.Kind.MOONRAKER);
+                name.clear();
+                address.clear();
+                serial.clear();
+                model.clear();
+                secret.clear();
+                nozzle.setText("0.4");
+            } finally {
+                loading[0] = false;
+            }
         });
         var grid = new GridPane();
         grid.setHgap(12);
         grid.setVgap(10);
-        grid.addRow(0, list, add);
-        grid.addRow(1, new Label(t("name")), name);
-        grid.addRow(2, new Label(t("type")), kind);
-        grid.addRow(3, new Label(t("address")), address);
-        grid.addRow(4, new Label(t("serial")), serial);
-        grid.addRow(5, new Label(t("model")), model);
-        grid.addRow(6, new Label(t("secret")), secret);
-        grid.addRow(7, new Label(t("nozzle") + " (mm)"), nozzle);
         var error = new Label();
         error.setWrapText(true);
-        grid.add(error, 0, 8, 2, 1);
+        var addressLabel = new Label();
+        addressLabel.setId("device-config-address-label");
+        var modelLabel = new Label();
+        modelLabel.setId("device-config-model-label");
+        var secretLabel = new Label();
+        secretLabel.setId("device-config-secret-label");
+        var fields = (java.util.function.Consumer<PrinterDevice.Kind>) selected -> {
+            boolean bambu = selected == PrinterDevice.Kind.BAMBU;
+            addressLabel.setText(t(bambu ? "bambuAddress" : "moonrakerAddress"));
+            modelLabel.setText(t(bambu ? "bambuModel" : "moonrakerModel"));
+            secretLabel.setText(t(bambu ? "bambuSecret" : "moonrakerSecret"));
+            grid.getChildren().clear();
+            grid.addRow(0, list, add);
+            grid.addRow(1, new Label(t("name")), name);
+            grid.addRow(2, new Label(t("type")), kind);
+            grid.addRow(3, addressLabel, address);
+            int row = 4;
+            if (bambu) grid.addRow(row++, new Label(t("serial")), serial);
+            grid.addRow(row++, modelLabel, model);
+            grid.addRow(row++, secretLabel, secret);
+            grid.addRow(row++, new Label(t("nozzle") + " (mm)"), nozzle);
+            grid.add(error, 0, row, 2, 1);
+            if (grid.getScene() != null && grid.getScene().getWindow() instanceof Stage stage)
+                Platform.runLater(stage::sizeToScene);
+        };
+        kind.valueProperty().addListener((o, previous, selected) -> {
+            if (!loading[0] && previous != null) {
+                drafts.put(
+                        previous,
+                        new ConnectionDraft(address.getText(), serial.getText(), model.getText(), secret.getText()));
+                var draft = drafts.get(selected);
+                address.setText(draft == null ? "" : draft.address());
+                serial.setText(draft == null ? "" : draft.serial());
+                model.setText(draft == null ? "" : draft.model());
+                secret.setText(draft == null ? "" : draft.secret());
+            }
+            fields.accept(selected);
+        });
+        fields.accept(kind.getValue());
         var save = new ButtonType(t("save"), ButtonBar.ButtonData.OK_DONE);
         var remove = new ButtonType(t("remove"), ButtonBar.ButtonData.OTHER);
         var test = new ButtonType(t("test"), ButtonBar.ButtonData.OTHER);
         dialog.getDialogPane().getButtonTypes().addAll(save, remove, test, ButtonType.CANCEL);
+        dialog.getDialogPane().setId("device-config-dialog");
         dialog.getDialogPane().setContent(grid);
         for (var action : List.of(save, remove, test))
             dialog.getDialogPane().lookupButton(action).addEventFilter(javafx.event.ActionEvent.ACTION, e -> {
@@ -500,7 +555,7 @@ final class PrinterPane extends VBox implements AutoCloseable {
                                     name.getText(),
                                     kind.getValue(),
                                     address.getText(),
-                                    serial.getText(),
+                                    kind.getValue() == PrinterDevice.Kind.BAMBU ? serial.getText() : "",
                                     model.getText(),
                                     secret.getText(),
                                     Double.parseDouble(nozzle.getText()));

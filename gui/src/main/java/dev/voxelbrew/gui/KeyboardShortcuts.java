@@ -27,6 +27,7 @@ final class KeyboardShortcuts {
         }
 
         String display() {
+            if (id.equals("workspace-number")) return keys.getFirst().getDisplayText() + "–9";
             return keys.stream().map(KeyCombination::getDisplayText).collect(Collectors.joining(" / "));
         }
     }
@@ -51,8 +52,15 @@ final class KeyboardShortcuts {
             binding(Scope.DOCUMENT, "undo", false, "Shortcut+Z"),
             binding(Scope.DOCUMENT, "redo", false, "Shortcut+Shift+Z", "Shortcut+Y"),
             binding(Scope.DOCUMENT, "parameters", true, "Shortcut+Shift+P"),
-            binding(Scope.DOCUMENT, "workspace-design", false, "Shortcut+1", "Shortcut+Left"),
-            binding(Scope.DOCUMENT, "workspace-print", false, "Shortcut+2", "Shortcut+Right"),
+            binding(
+                    Scope.DOCUMENT,
+                    "workspace-number",
+                    false,
+                    java.util.stream.IntStream.rangeClosed(1, 9)
+                            .mapToObj(number -> "Shortcut+" + number)
+                            .toArray(String[]::new)),
+            binding(Scope.DOCUMENT, "workspace-previous", false, "Shortcut+Left"),
+            binding(Scope.DOCUMENT, "workspace-next", false, "Shortcut+Right"),
             binding(Scope.DOCUMENT, "context-help", true, "F1"),
             binding(Scope.DESIGN, "constrained-sketch", false, "K"),
             binding(Scope.DESIGN, "operations-menu", false, "O"),

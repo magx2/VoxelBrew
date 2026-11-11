@@ -763,10 +763,14 @@ public final class Workbench extends BorderPane implements AutoCloseable {
         printerTab.setId("workspace-printer");
         printerTab.setClosable(false);
         printerTab.setDisable(true);
-        printerTab.setTooltip(UiHelp.tooltip(translations.text("help.workspace-printer")));
         workspaces = new TabPane(designTab, printTab, printerTab);
-        designTab.setTooltip(UiHelp.tooltip(UiHelp.description(translations, "workspace-design")));
-        printTab.setTooltip(UiHelp.tooltip(UiHelp.description(translations, "workspace-print")));
+        for (int index = 0; index < workspaces.getTabs().size(); index++) {
+            var tab = workspaces.getTabs().get(index);
+            var key = KeyCombination.keyCombination("Shortcut+" + (index + 1)).getDisplayText();
+            tab.setTooltip(UiHelp.tooltip(UiHelp.baseDescription(translations, tab.getId())
+                    + "\n"
+                    + translations.text("shortcuts.hint", key)));
+        }
         workspaces.setId("workspaces");
         workspaces.getSelectionModel().selectedItemProperty().addListener((o, a, b) -> {
             if (b == printTab && printTab.isDisable()) {
@@ -865,11 +869,9 @@ public final class Workbench extends BorderPane implements AutoCloseable {
                     case "undo" -> undo.fire();
                     case "redo" -> redo.fire();
                     case "parameters" -> parameters.fire();
-                    case "workspace-design" -> workspaces.getSelectionModel().select(designTab);
-                    case "workspace-print" -> {
-                        if (!printTab.isDisable())
-                            workspaces.getSelectionModel().select(printTab);
-                    }
+                    case "workspace-number" -> selectWorkspaceNumber(e);
+                    case "workspace-previous" -> moveWorkspace(-1);
+                    case "workspace-next" -> moveWorkspace(1);
                     case "context-help" -> {
                         var help = new Alert(Alert.AlertType.INFORMATION);
                         help.initOwner(stage);
@@ -1044,6 +1046,24 @@ public final class Workbench extends BorderPane implements AutoCloseable {
         var result = new LinkedHashMap<String, MeshData>();
         controller.build().bodies().forEach(b -> result.put(b.id(), b.mesh()));
         return result;
+    }
+
+    private void moveWorkspace(int direction) {
+        var tabs = workspaces.getTabs();
+        for (int index = workspaces.getSelectionModel().getSelectedIndex() + direction;
+                index >= 0 && index < tabs.size();
+                index += direction) {
+            if (tabs.get(index).isDisable()) continue;
+            workspaces.getSelectionModel().select(index);
+            return;
+        }
+    }
+
+    private void selectWorkspaceNumber(KeyEvent event) {
+        int index = event.getCode().getCode() - KeyCode.DIGIT1.getCode();
+        if (index < 0 || index >= workspaces.getTabs().size()) return;
+        if (!workspaces.getTabs().get(index).isDisable())
+            workspaces.getSelectionModel().select(index);
     }
 
     private void refresh() {

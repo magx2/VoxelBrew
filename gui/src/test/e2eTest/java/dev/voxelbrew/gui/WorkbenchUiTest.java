@@ -37,6 +37,60 @@ import org.junit.jupiter.api.io.TempDir;
 @ExtendWith(UiTestShard.class)
 class WorkbenchUiTest {
     @Test
+    void printerWorkspaceShortcutsFollowEnabledTabOrder() throws Exception {
+        ready();
+        openPrepared("plate-5mm.vxb");
+        shortcut(KeyCode.DIGIT3, false);
+        assertEquals("workspace-design", selectedWorkspace());
+        shortcut(KeyCode.RIGHT, false);
+        assertEquals("workspace-print", selectedWorkspace());
+        shortcut(KeyCode.RIGHT, false);
+        assertEquals("workspace-print", selectedWorkspace());
+        shortcut(KeyCode.LEFT, false);
+        assertEquals("workspace-design", selectedWorkspace());
+        fx(() -> {
+            var plate =
+                    workbench.controller().snapshot().document().printSetup().activePlateId();
+            workbench.controller().gcode(Map.of(plate, List.of("G28", "G1 X10")));
+            ((TabPane) node("#workspaces")).requestFocus();
+            return null;
+        });
+        shortcut(KeyCode.DIGIT3, false);
+        assertEquals("workspace-printer", selectedWorkspace());
+        shortcut(KeyCode.LEFT, false);
+        ready();
+        assertEquals("workspace-print", selectedWorkspace());
+        shortcut(KeyCode.RIGHT, false);
+        assertEquals("workspace-printer", selectedWorkspace());
+        shortcut(KeyCode.DIGIT1, false);
+        assertEquals("workspace-design", selectedWorkspace());
+        shortcut(KeyCode.RIGHT, false);
+        ready();
+        assertEquals("workspace-print", selectedWorkspace());
+        shortcut(KeyCode.RIGHT, false);
+        assertEquals("workspace-printer", selectedWorkspace());
+        fx(() -> {
+            var extra = new Tab("Future workspace");
+            extra.setId("workspace-future");
+            ((TabPane) node("#workspaces")).getTabs().add(extra);
+            return null;
+        });
+        shortcut(KeyCode.DIGIT4, false);
+        assertEquals("workspace-future", selectedWorkspace());
+        shortcut(KeyCode.LEFT, false);
+        assertEquals("workspace-printer", selectedWorkspace());
+        shortcut(KeyCode.RIGHT, false);
+        assertEquals("workspace-future", selectedWorkspace());
+    }
+
+    private String selectedWorkspace() throws Exception {
+        return fx(() -> ((TabPane) node("#workspaces"))
+                .getSelectionModel()
+                .getSelectedItem()
+                .getId());
+    }
+
+    @Test
     void printerWorkspaceFollowsStoredPlateJobs() throws Exception {
         ready();
         openPrepared("plate-5mm.vxb");

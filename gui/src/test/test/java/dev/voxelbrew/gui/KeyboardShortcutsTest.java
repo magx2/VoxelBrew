@@ -74,6 +74,15 @@ class KeyboardShortcutsTest {
     }
 
     @Test
+    void workspaceNumberBindingCoversFutureTabs() {
+        boolean mac = System.getProperty("os.name").startsWith("Mac");
+        for (var code : List.of(KeyCode.DIGIT1, KeyCode.DIGIT3, KeyCode.DIGIT4, KeyCode.DIGIT9)) {
+            var event = new KeyEvent(KeyEvent.KEY_PRESSED, "", "", code, false, !mac, false, mac);
+            assertEquals("workspace-number", KeyboardShortcuts.match(KeyboardShortcuts.Scope.DOCUMENT, event, null));
+        }
+    }
+
+    @Test
     void rectangleAndCircleShortcutsExistOnlyInsideTheSketchEditor() {
         for (var entry : java.util.Map.of(KeyCode.R, "sketch-tool-rectangle", KeyCode.C, "sketch-tool-circle")
                 .entrySet())

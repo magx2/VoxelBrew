@@ -45,7 +45,9 @@ final class SupportDialog {
         button.setId(id);
         button.setGraphic(graphic);
         button.setAccessibleText(description);
-        button.setStyle("-fx-background-color: transparent; -fx-padding: 0; -fx-cursor: hand;");
+        button.setStyle("-fx-background-color: transparent; -fx-background-insets: 0;"
+                + " -fx-border-color: transparent; -fx-border-width: 0;"
+                + " -fx-padding: 0; -fx-cursor: hand;");
         button.setOnAction(event -> {
             try {
                 Desktop.getDesktop().browse(URI.create(address));

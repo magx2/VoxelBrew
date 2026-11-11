@@ -859,3 +859,124 @@
 .printer-dialog-primary:hover {
   -fx-background-color: #7866de;
 }
+
+.printer-workspace,
+.printer-scroll,
+.printer-scroll > .viewport {
+  -fx-background-color: transparent;
+  -fx-background-insets: 0;
+}
+.printer-content {
+  -fx-padding: 0 0 12 0;
+}
+.printer-title {
+  -fx-font-size: 25px;
+  -fx-font-weight: bold;
+}
+.printer-subtitle,
+.printer-field-hint,
+.printer-metric-label {
+  -fx-text-fill: derive(-fx-text-background-color, 38%);
+}
+.printer-subtitle {
+  -fx-font-size: 13px;
+}
+.printer-card {
+  -fx-padding: 24;
+  -fx-background-radius: 12;
+  -fx-border-radius: 12;
+  -fx-border-width: 1;
+}
+.light .printer-card {
+  -fx-background-color: white;
+  -fx-border-color: #e2e4eb;
+}
+.dark .printer-card {
+  -fx-background-color: #282a30;
+  -fx-border-color: #41444d;
+}
+.printer-step-number {
+  -fx-background-color: #e8e5fc;
+  -fx-background-radius: 16;
+  -fx-text-fill: #5c4bc5;
+  -fx-font-weight: bold;
+  -fx-min-width: 32;
+  -fx-min-height: 32;
+  -fx-alignment: center;
+}
+.dark .printer-step-number {
+  -fx-background-color: #393351;
+  -fx-text-fill: #c1b5ff;
+}
+.printer-field-title,
+.printer-section-title {
+  -fx-font-size: 15px;
+  -fx-font-weight: bold;
+}
+.printer-field-hint {
+  -fx-font-size: 11px;
+}
+.printer-card .combo-box {
+  -fx-pref-height: 40;
+  -fx-background-radius: 6;
+}
+.printer-configure {
+  -fx-background-color: transparent;
+  -fx-text-fill: #5c4bc5;
+  -fx-font-weight: bold;
+  -fx-cursor: hand;
+}
+.dark .printer-configure {
+  -fx-text-fill: #b9acff;
+}
+.printer-configure:hover {
+  -fx-underline: true;
+}
+.printer-guidance {
+  -fx-text-fill: derive(-fx-text-background-color, 25%);
+}
+.printer-card .button {
+  -fx-padding: 8 15;
+  -fx-background-radius: 6;
+}
+.printer-card .printer-primary {
+  -fx-background-color: #6555ce;
+  -fx-text-fill: white;
+  -fx-font-weight: bold;
+}
+.printer-card .printer-primary:hover {
+  -fx-background-color: #7866de;
+}
+.printer-card .printer-primary:disabled {
+  -fx-background-color: #aaa4cf;
+}
+.printer-card .printer-danger {
+  -fx-text-fill: #b03b3b;
+}
+.printer-state {
+  -fx-background-color: #eceef2;
+  -fx-background-radius: 12;
+  -fx-padding: 4 9;
+  -fx-font-size: 10px;
+  -fx-font-weight: bold;
+}
+.dark .printer-state {
+  -fx-background-color: #41444d;
+}
+.printer-metric {
+  -fx-padding: 12;
+  -fx-background-radius: 8;
+}
+.light .printer-metric {
+  -fx-background-color: #f6f7fa;
+}
+.dark .printer-metric {
+  -fx-background-color: #30333a;
+}
+.printer-metric-value {
+  -fx-font-size: 16px;
+  -fx-font-weight: bold;
+}
+.printer-message {
+  -fx-text-fill: #5c4bc5;
+}

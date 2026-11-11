@@ -9,6 +9,8 @@ import java.util.*;
 import java.util.concurrent.*;
 import javafx.animation.*;
 import javafx.application.Platform;
+import javafx.geometry.Insets;
+import javafx.geometry.Pos;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
 import javafx.util.Duration;
@@ -30,7 +32,13 @@ final class PrinterPane extends VBox implements AutoCloseable {
     private final ComboBox<Plate> plates = new ComboBox<>();
     private final ComboBox<PrinterDevice> devices = new ComboBox<>();
     private final Label status = new Label(), details = new Label(), message = new Label();
+    private final Label connectionDetail = new Label();
+    private final Label progressValue = new Label(),
+            nozzleValue = new Label(),
+            bedValue = new Label(),
+            remainingValue = new Label();
     private final ProgressBar transfer = new ProgressBar(0);
+    private final VBox monitor = new VBox(16);
     private final Button upload, print, pause, resume, cancel;
     private final Timeline polling;
     private CadDocument document;
@@ -52,39 +60,90 @@ final class PrinterPane extends VBox implements AutoCloseable {
         this.text = text;
         this.worker = worker;
         directory = configuration.path().resolveSibling("devices");
-        setSpacing(12);
-        setPadding(new javafx.geometry.Insets(20));
         setId("printer-workspace");
+        getStyleClass().add("printer-workspace");
         plates.setId("printer-plate");
         devices.setId("printer-device");
         plates.setMaxWidth(Double.MAX_VALUE);
         devices.setMaxWidth(Double.MAX_VALUE);
+        plates.setPromptText(t("platePrompt"));
+        devices.setPromptText(t("devicePrompt"));
+        plates.setButtonCell(new ListCell<>() {
+            @Override
+            protected void updateItem(Plate item, boolean empty) {
+                super.updateItem(item, empty);
+                setText(empty || item == null ? null : item.name());
+            }
+        });
         var configure = button("configure", this::configure);
+        configure.getStyleClass().add("printer-configure");
         upload = button("upload", () -> submit(false));
         print = button("print", () -> submit(true));
+        print.getStyleClass().add("printer-primary");
         pause = button("pause", () -> command(PrinterSession.Command.PAUSE));
         resume = button("resume", () -> command(PrinterSession.Command.RESUME));
         cancel = button("cancel", () -> command(PrinterSession.Command.CANCEL));
+        cancel.getStyleClass().add("printer-danger");
         status.setId("printer-status");
         details.setId("printer-details");
         message.setId("printer-message");
         message.setWrapText(true);
         details.setWrapText(true);
-        getChildren()
-                .addAll(
-                        new Label(t("plate")),
-                        plates,
-                        new Label(t("device")),
-                        devices,
-                        configure,
-                        details,
-                        new HBox(10, upload, print),
-                        transfer,
-                        status,
-                        new HBox(10, pause, resume, cancel),
-                        message);
+        message.getStyleClass().add("printer-message");
+        details.getStyleClass().add("printer-guidance");
+        var heading = new Label(t("workspaceTitle"));
+        heading.getStyleClass().add("printer-title");
+        var subtitle = new Label(t("workspaceSubtitle"));
+        subtitle.getStyleClass().add("printer-subtitle");
+        var introduction = new VBox(5, heading, subtitle);
+        var plateStep = step("01", t("plate"), t("plateHint"), plates);
+        var deviceStep = step("02", t("device"), t("deviceHint"), devices);
+        var configureRow = new HBox(configure);
+        configureRow.setAlignment(Pos.CENTER_RIGHT);
+        var setup = new VBox(22, plateStep, deviceStep, configureRow);
+        setup.getStyleClass().add("printer-card");
+        var sendTitle = new Label(t("sendTitle"));
+        sendTitle.getStyleClass().add("printer-section-title");
+        var actions = new HBox(10, upload, print);
+        actions.setAlignment(Pos.CENTER_LEFT);
+        var send = new VBox(12, sendTitle, details, actions, transfer, message);
+        send.getStyleClass().add("printer-card");
+        var monitorTitle = new Label(t("monitorTitle"));
+        monitorTitle.getStyleClass().add("printer-section-title");
+        status.getStyleClass().add("printer-state");
+        var statusRow = new HBox(12, monitorTitle, status);
+        statusRow.setAlignment(Pos.CENTER_LEFT);
+        connectionDetail.getStyleClass().add("printer-guidance");
+        connectionDetail.setWrapText(true);
+        var metrics = new HBox(
+                10,
+                metric(t("progress"), progressValue),
+                metric(t("nozzle"), nozzleValue),
+                metric(t("bed"), bedValue),
+                metric(t("remaining"), remainingValue));
+        metrics.getStyleClass().add("printer-metrics");
+        var controls = new HBox(10, pause, resume, cancel);
+        monitor.getChildren().addAll(statusRow, connectionDetail, metrics, controls);
+        monitor.getStyleClass().add("printer-card");
+        var content = new VBox(18, introduction, setup, send, monitor);
+        content.getStyleClass().add("printer-content");
+        content.setMaxWidth(820);
+        var canvas = new StackPane(content);
+        canvas.setAlignment(Pos.TOP_CENTER);
+        canvas.setPadding(new Insets(32, 28, 48, 28));
+        var scroll = new ScrollPane(canvas);
+        scroll.setFitToWidth(true);
+        scroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
+        scroll.getStyleClass().add("printer-scroll");
+        getChildren().add(scroll);
+        VBox.setVgrow(scroll, Priority.ALWAYS);
         transfer.setId("printer-transfer");
         transfer.setMaxWidth(Double.MAX_VALUE);
+        transfer.setVisible(false);
+        transfer.managedProperty().bind(transfer.visibleProperty());
+        message.setVisible(false);
+        message.managedProperty().bind(message.visibleProperty());
+        message.textProperty().addListener((o, old, value) -> message.setVisible(value != null && !value.isBlank()));
         plates.valueProperty().addListener((o, a, b) -> update());
         devices.valueProperty().addListener((o, a, b) -> connect());
         polling = new Timeline(new KeyFrame(Duration.seconds(2), event -> poll()));
@@ -105,6 +164,29 @@ final class PrinterPane extends VBox implements AutoCloseable {
         return button;
     }
 
+    private VBox step(String number, String title, String hint, ComboBox<?> selector) {
+        var index = new Label(number);
+        index.getStyleClass().add("printer-step-number");
+        var label = new Label(title);
+        label.getStyleClass().add("printer-field-title");
+        var description = new Label(hint);
+        description.getStyleClass().add("printer-field-hint");
+        var heading = new HBox(12, index, new VBox(2, label, description));
+        heading.setAlignment(Pos.CENTER_LEFT);
+        return new VBox(10, heading, selector);
+    }
+
+    private VBox metric(String name, Label value) {
+        var label = new Label(name);
+        label.getStyleClass().add("printer-metric-label");
+        value.getStyleClass().add("printer-metric-value");
+        var box = new VBox(5, label, value);
+        box.getStyleClass().add("printer-metric");
+        HBox.setHgrow(box, Priority.ALWAYS);
+        box.setMaxWidth(Double.MAX_VALUE);
+        return box;
+    }
+
     void documentChanged(CadDocument value) {
         if (document == null
                 || !document.gcode().equals(value.gcode())
@@ -113,17 +195,24 @@ final class PrinterPane extends VBox implements AutoCloseable {
         String selected = plates.getValue() == null
                 ? value.printSetup().activePlateId()
                 : plates.getValue().id();
-        var choices = value.printSetup().plates().stream()
+        var allPlates = value.printSetup().plates();
+        var choices = java.util.stream.IntStream.range(0, allPlates.size())
+                .mapToObj(i -> {
+                    var plate = allPlates.get(i);
+                    return new Plate(
+                            plate.id(), plate.name().isBlank() ? t("unnamedPlate") + " " + (i + 1) : plate.name());
+                })
                 .filter(p -> !value.gcode().getOrDefault(p.id(), List.of()).isEmpty())
-                .map(p -> new Plate(p.id(), p.name()))
                 .toList();
         if (!plates.getItems().equals(choices)) {
             plates.getItems().setAll(choices);
-            plates.setValue(choices.stream()
-                    .filter(p -> p.id().equals(selected))
-                    .findFirst()
-                    .orElse(choices.isEmpty() ? null : choices.getFirst()));
         }
+        var choice = choices.stream()
+                .filter(p -> p.id().equals(selected))
+                .findFirst()
+                .orElse(choices.isEmpty() ? null : choices.getFirst());
+        if (!Objects.equals(plates.getSelectionModel().getSelectedItem(), choice))
+            plates.getSelectionModel().select(choice);
         update();
     }
 
@@ -147,12 +236,14 @@ final class PrinterPane extends VBox implements AutoCloseable {
         plates.setDisable(busy);
         devices.setDisable(busy);
         details.setText(!selected ? t("choose") : compatible ? t("ready") : incompatible.orElse(t("bambuPackage")));
-        status.setText(current.state() + "  " + current.filename() + "\n" + t("progress") + ": "
-                + number(current.progress(), 100, "%")
-                + "   " + t("nozzle") + ": " + number(current.nozzle(), 1, " °C") + "   " + t("bed") + ": "
-                + number(current.bed(), 1, " °C")
-                + "   " + t("remaining") + ": " + number(current.remainingSeconds(), 1.0 / 60, " min") + "\n"
-                + current.detail());
+        monitor.setVisible(devices.getValue() != null);
+        monitor.setManaged(monitor.isVisible());
+        status.setText(t("state." + current.state().name().toLowerCase(Locale.ROOT)));
+        connectionDetail.setText(!current.filename().isBlank() ? current.filename() : current.detail());
+        progressValue.setText(number(current.progress(), 100, "%"));
+        nozzleValue.setText(number(current.nozzle(), 1, " °C"));
+        bedValue.setText(number(current.bed(), 1, " °C"));
+        remainingValue.setText(number(current.remainingSeconds(), 1.0 / 60, " min"));
     }
 
     private String number(OptionalDouble value, double scale, String unit) {
@@ -261,6 +352,8 @@ final class PrinterPane extends VBox implements AutoCloseable {
         var connected = session;
         busy = true;
         message.setText(t("uploading"));
+        transfer.setProgress(0);
+        transfer.setVisible(true);
         update();
         worker.submit(() -> {
             Path temporary = null;
@@ -299,6 +392,7 @@ final class PrinterPane extends VBox implements AutoCloseable {
                 Platform.runLater(() -> {
                     if (!closed) {
                         busy = false;
+                        transfer.setVisible(false);
                         update();
                         poll();
                     }

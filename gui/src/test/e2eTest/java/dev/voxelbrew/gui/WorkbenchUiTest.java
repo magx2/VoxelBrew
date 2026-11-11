@@ -105,6 +105,39 @@ class WorkbenchUiTest {
             tabs.getSelectionModel().select(2);
             assertEquals(1, ((ComboBox<?>) node("#printer-plate")).getItems().size());
             assertTrue(((Button) node("#printer-print")).isDisable());
+            workbench.applyCss();
+            workbench.layout();
+            var selector = (ComboBox<?>) node("#printer-plate");
+            assertNotNull(selector.getValue(), "Sliced plate is selected when the workspace opens");
+            assertTrue(selector.getWidth() <= 820, "Printer form stays readable at wide window sizes");
+            assertTrue(selector.getWidth() >= 400, "Printer form has room for device names");
+            return null;
+        });
+        ready();
+        fx(() -> {
+            var selectedPlate = (ComboBox<?>) node("#printer-plate");
+            assertEquals(
+                    selectedPlate.getValue().toString(),
+                    selectedPlate.getButtonCell().getText());
+            assertFalse(selectedPlate.getButtonCell().getText().isBlank(), "Selected plate needs a readable name");
+            assertEquals("Plate 1", selectedPlate.getButtonCell().getText());
+            assertEquals(
+                    selectedPlate.getValue(), selectedPlate.getSelectionModel().getSelectedItem());
+            assertTrue(
+                    selectedPlate.getButtonCell().isVisible()
+                            && selectedPlate.getButtonCell().getWidth() > 50,
+                    "Selected plate label must have visible layout space");
+            Screenshot.save(
+                    stage.getScene(), Path.of(System.getProperty("voxelbrew.ui.artifacts"), "printer-workspace.png"));
+            return null;
+        });
+        var savedPrinterJob = directory.resolve("printer-reopen.vxb");
+        fx(() -> workbench.controller().save(savedPrinterJob, false)).get(20, TimeUnit.SECONDS);
+        fx(() -> workbench.controller().open(savedPrinterJob)).get(20, TimeUnit.SECONDS);
+        ready();
+        fx(() -> {
+            var tabs = (TabPane) node("#workspaces");
+            assertFalse(tabs.getTabs().get(2).isDisable(), "Saved sliced plate enables Printer after reopen");
             workbench.controller().invalidateGcode();
             assertTrue(tabs.getTabs().get(2).isDisable());
             assertNotEquals(2, tabs.getSelectionModel().getSelectedIndex());

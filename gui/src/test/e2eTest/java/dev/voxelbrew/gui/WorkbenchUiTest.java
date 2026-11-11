@@ -27,6 +27,7 @@ import javafx.geometry.Point3D;
 import javafx.scene.*;
 import javafx.scene.control.*;
 import javafx.scene.input.*;
+import javafx.scene.layout.VBox;
 import javafx.scene.robot.Robot;
 import javafx.scene.shape.Polygon;
 import javafx.stage.*;
@@ -51,9 +52,9 @@ class WorkbenchUiTest {
                         .findFirst()
                         .orElseThrow()
                         .fire());
-        double moonrakerHeight = fx(() -> {
+        fx(() -> {
             var kind = (ComboBox<?>) node("#device-config-kind");
-            var dialog = (DialogPane) node("#device-config-dialog");
+            var dialog = (VBox) node("#device-config-content");
             assertEquals(PrinterDevice.Kind.MOONRAKER, kind.getValue());
             assertNull(dialog.lookup("#device-config-serial"));
             assertTrue(dialog.lookupAll(".label").stream()
@@ -68,16 +69,16 @@ class WorkbenchUiTest {
             ((TextField) node("#device-config-address")).setText("http://moonraker.local");
             ((TextField) node("#device-config-model")).setText("klipper-preset");
             ((TextField) node("#device-config-secret")).setText("moon-key");
-            return kind.getScene().getWindow().getHeight();
+            return null;
         });
         fx(() -> {
             var kind = (ComboBox<?>) node("#device-config-kind");
             kind.getSelectionModel().select(kind.getItems().indexOf(PrinterDevice.Kind.BAMBU));
             return null;
         });
-        double bambuHeight = fx(() -> {
+        fx(() -> {
             var kind = (ComboBox<?>) node("#device-config-kind");
-            var dialog = (DialogPane) node("#device-config-dialog");
+            var dialog = (VBox) node("#device-config-content");
             assertNotNull(dialog.lookup("#device-config-serial"));
             assertEquals("Printer IP / host", ((Label) node("#device-config-address-label")).getText());
             assertEquals("Printer model", ((Label) node("#device-config-model-label")).getText());
@@ -90,9 +91,8 @@ class WorkbenchUiTest {
             ((TextField) node("#device-config-serial")).setText("BAMBU123");
             ((TextField) node("#device-config-model")).setText("Bambu Lab A1");
             ((TextField) node("#device-config-secret")).setText("bambu-code");
-            return kind.getScene().getWindow().getHeight();
+            return null;
         });
-        assertTrue(bambuHeight > moonrakerHeight + 20, "Bambu fields should expand the dialog");
         fx(() -> {
             var kind = (ComboBox<?>) node("#device-config-kind");
             kind.getSelectionModel().select(kind.getItems().indexOf(PrinterDevice.Kind.MOONRAKER));
@@ -100,10 +100,9 @@ class WorkbenchUiTest {
         });
         fx(() -> {
             var kind = (ComboBox<?>) node("#device-config-kind");
-            var dialog = (DialogPane) node("#device-config-dialog");
+            var dialog = (VBox) node("#device-config-content");
             assertNull(dialog.lookup("#device-config-serial"));
             assertEquals("Moonraker server URL", ((Label) node("#device-config-address-label")).getText());
-            assertEquals(moonrakerHeight, kind.getScene().getWindow().getHeight(), 2);
             assertEquals("http://moonraker.local", ((TextField) node("#device-config-address")).getText());
             assertEquals("klipper-preset", ((TextField) node("#device-config-model")).getText());
             assertEquals("moon-key", ((TextField) node("#device-config-secret")).getText());
@@ -112,9 +111,39 @@ class WorkbenchUiTest {
             assertEquals("BAMBU123", ((TextField) node("#device-config-serial")).getText());
             assertEquals("Bambu Lab A1", ((TextField) node("#device-config-model")).getText());
             assertEquals("bambu-code", ((TextField) node("#device-config-secret")).getText());
-            ((Button) dialog.lookupButton(ButtonType.CANCEL)).fire();
+            ((Button) node("#device-config-cancel")).fire();
             return null;
         });
+        Platform.runLater(() -> ((MenuBar) node("#main-menu"))
+                .getMenus().stream()
+                        .filter(menu -> "menu-printers".equals(menu.getId()))
+                        .findFirst()
+                        .orElseThrow()
+                        .getItems()
+                        .stream()
+                        .filter(item -> "printers-configure-devices".equals(item.getId()))
+                        .findFirst()
+                        .orElseThrow()
+                        .fire());
+        fx(() -> {
+            ((TextField) node("#device-config-name")).setText("Lab Klipper");
+            ((TextField) node("#device-config-address")).setText("http://moonraker.local");
+            ((Button) node("#device-config-save")).fire();
+            return null;
+        });
+        long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
+        var devices = directory.resolve("devices");
+        while (System.nanoTime() < deadline && !Files.isDirectory(devices)) Thread.sleep(25);
+        assertTrue(Files.isDirectory(devices), "Saving should create the device directory");
+        try (var files = Files.list(devices)) {
+            var saved = files.findFirst().orElseThrow();
+            var properties = new Properties();
+            try (var input = Files.newInputStream(saved)) {
+                properties.load(input);
+            }
+            assertEquals("Lab Klipper", properties.getProperty("name"));
+        }
+        assertNull(fx(() -> stage.getScene().getRoot().lookup("#device-config-content")));
     }
 
     @Test

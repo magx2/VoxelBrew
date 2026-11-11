@@ -860,6 +860,40 @@
   -fx-background-color: #7866de;
 }
 
+#device-config-content {
+  -fx-padding: 2 0 4 0;
+}
+.device-config-selection .combo-box {
+  -fx-pref-height: 38;
+}
+.device-config-selection .button {
+  -fx-padding: 8 14;
+}
+.device-config-form {
+  -fx-padding: 4 0 0 0;
+}
+.device-config-field {
+  -fx-min-width: 0;
+}
+.device-config-field .text-field,
+.device-config-field .combo-box {
+  -fx-pref-height: 38;
+  -fx-background-radius: 6;
+}
+.device-config-label {
+  -fx-font-size: 12px;
+  -fx-font-weight: bold;
+}
+.device-config-message {
+  -fx-text-fill: #b03b3b;
+}
+.device-config-message.device-config-success {
+  -fx-text-fill: #27805b;
+}
+.device-config-remove {
+  -fx-text-fill: #b03b3b;
+}
+
 .printer-workspace,
 .printer-scroll,
 .printer-scroll > .viewport {

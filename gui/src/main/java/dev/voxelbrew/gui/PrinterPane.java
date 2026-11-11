@@ -13,7 +13,6 @@ import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
-import javafx.stage.Stage;
 import javafx.util.Duration;
 
 /** Device workspace. All transport work is serialized away from JavaFX. */
@@ -442,6 +441,7 @@ final class PrinterPane extends VBox implements AutoCloseable {
         list.getItems().setAll(devices.getItems());
         list.setPromptText(t("new"));
         var name = new TextField();
+        name.setId("device-config-name");
         var address = new TextField();
         var serial = new TextField();
         var model = new TextField();
@@ -488,11 +488,18 @@ final class PrinterPane extends VBox implements AutoCloseable {
                 loading[0] = false;
             }
         });
-        var grid = new GridPane();
-        grid.setHgap(12);
-        grid.setVgap(10);
+        var form = new VBox(14);
+        form.setId("device-config-form");
+        form.getStyleClass().add("device-config-form");
+        var selection = new HBox(10, list, add);
+        selection.getStyleClass().add("device-config-selection");
+        HBox.setHgrow(list, Priority.ALWAYS);
+        list.setMaxWidth(Double.MAX_VALUE);
         var error = new Label();
         error.setWrapText(true);
+        error.getStyleClass().add("device-config-message");
+        error.visibleProperty().bind(error.textProperty().isNotEmpty());
+        error.managedProperty().bind(error.visibleProperty());
         var addressLabel = new Label();
         addressLabel.setId("device-config-address-label");
         var modelLabel = new Label();
@@ -504,18 +511,20 @@ final class PrinterPane extends VBox implements AutoCloseable {
             addressLabel.setText(t(bambu ? "bambuAddress" : "moonrakerAddress"));
             modelLabel.setText(t(bambu ? "bambuModel" : "moonrakerModel"));
             secretLabel.setText(t(bambu ? "bambuSecret" : "moonrakerSecret"));
-            grid.getChildren().clear();
-            grid.addRow(0, list, add);
-            grid.addRow(1, new Label(t("name")), name);
-            grid.addRow(2, new Label(t("type")), kind);
-            grid.addRow(3, addressLabel, address);
-            int row = 4;
-            if (bambu) grid.addRow(row++, new Label(t("serial")), serial);
-            grid.addRow(row++, modelLabel, model);
-            grid.addRow(row++, secretLabel, secret);
-            grid.add(error, 0, row, 2, 1);
-            if (grid.getScene() != null && grid.getScene().getWindow() instanceof Stage stage)
-                Platform.runLater(stage::sizeToScene);
+            var identity =
+                    new HBox(12, deviceField(new Label(t("name")), name), deviceField(new Label(t("type")), kind));
+            for (var field : identity.getChildren()) HBox.setHgrow(field, Priority.ALWAYS);
+            var details = new HBox(12);
+            if (bambu) details.getChildren().add(deviceField(new Label(t("serial")), serial));
+            details.getChildren().add(deviceField(modelLabel, model));
+            for (var field : details.getChildren()) HBox.setHgrow(field, Priority.ALWAYS);
+            form.getChildren()
+                    .setAll(
+                            identity,
+                            deviceField(addressLabel, address),
+                            details,
+                            deviceField(secretLabel, secret),
+                            error);
         };
         kind.valueProperty().addListener((o, previous, selected) -> {
             if (!loading[0] && previous != null) {
@@ -534,9 +543,22 @@ final class PrinterPane extends VBox implements AutoCloseable {
         var save = new ButtonType(t("save"), ButtonBar.ButtonData.OK_DONE);
         var remove = new ButtonType(t("remove"), ButtonBar.ButtonData.OTHER);
         var test = new ButtonType(t("test"), ButtonBar.ButtonData.OTHER);
-        dialog.getDialogPane().getButtonTypes().addAll(save, remove, test, ButtonType.CANCEL);
+        dialog.getDialogPane().getButtonTypes().addAll(remove, test, ButtonType.CANCEL, save);
         dialog.getDialogPane().setId("device-config-dialog");
-        dialog.getDialogPane().setContent(grid);
+        var content = new VBox(18, selection, new Separator(), form);
+        content.setId("device-config-content");
+        dialog.getDialogPane().setContent(content);
+        var saveButton = (Button) dialog.getDialogPane().lookupButton(save);
+        saveButton.setId("device-config-save");
+        var removeButton = (Button) dialog.getDialogPane().lookupButton(remove);
+        var testButton = (Button) dialog.getDialogPane().lookupButton(test);
+        var cancelButton = (Button) dialog.getDialogPane().lookupButton(ButtonType.CANCEL);
+        cancelButton.setId("device-config-cancel");
+        saveButton.getStyleClass().add("printer-dialog-primary");
+        removeButton.getStyleClass().add("device-config-remove");
+        removeButton.setDisable(list.getValue() == null);
+        list.valueProperty().addListener((o, before, selected) -> removeButton.setDisable(selected == null));
+        var actions = List.of(saveButton, removeButton, testButton, cancelButton);
         for (var action : List.of(save, remove, test))
             dialog.getDialogPane().lookupButton(action).addEventFilter(javafx.event.ActionEvent.ACTION, e -> {
                 e.consume();
@@ -554,7 +576,8 @@ final class PrinterPane extends VBox implements AutoCloseable {
                                     kind.getValue() == PrinterDevice.Kind.BAMBU ? serial.getText() : "",
                                     model.getText(),
                                     secret.getText());
-                    dialog.getDialogPane().setDisable(true);
+                    content.setDisable(true);
+                    actions.forEach(button -> button.setDisable(true));
                     worker.submit(() -> {
                         try {
                             if (action == test) {
@@ -564,25 +587,42 @@ final class PrinterPane extends VBox implements AutoCloseable {
                             } else if (action == remove) runtime.remove(directory, value.id());
                             else runtime.save(directory, value);
                             Platform.runLater(() -> {
-                                dialog.getDialogPane().setDisable(false);
-                                if (action == test) error.setText(t("tested"));
-                                else {
-                                    dialog.close();
+                                content.setDisable(false);
+                                actions.forEach(button -> button.setDisable(false));
+                                removeButton.setDisable(list.getValue() == null);
+                                if (action == test) {
+                                    error.getStyleClass().add("device-config-success");
+                                    error.setText(t("tested"));
+                                } else {
                                     reload();
+                                    cancelButton.fire();
                                 }
                             });
                         } catch (Exception failure) {
                             Platform.runLater(() -> {
-                                dialog.getDialogPane().setDisable(false);
+                                content.setDisable(false);
+                                actions.forEach(button -> button.setDisable(false));
+                                removeButton.setDisable(list.getValue() == null);
+                                error.getStyleClass().remove("device-config-success");
                                 error.setText(failure.getMessage());
                             });
                         }
                     });
                 } catch (IllegalArgumentException failure) {
+                    error.getStyleClass().remove("device-config-success");
                     error.setText(failure.getMessage());
                 }
             });
-        dialog.showAndWait();
+        Dialogs.show(dialog, getScene().getWindow(), text);
+    }
+
+    private static VBox deviceField(Label label, Control input) {
+        label.getStyleClass().add("device-config-label");
+        input.setMaxWidth(Double.MAX_VALUE);
+        var field = new VBox(6, label, input);
+        field.getStyleClass().add("device-config-field");
+        field.setMaxWidth(Double.MAX_VALUE);
+        return field;
     }
 
     @Override

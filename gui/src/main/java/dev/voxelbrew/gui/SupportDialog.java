@@ -27,8 +27,8 @@ final class SupportDialog {
         Dialogs.show(dialog, owner, translations);
     }
 
-    static VBox banners() {
-        var banners = new VBox(
+    static HBox banners() {
+        var banners = new HBox(
                 10,
                 banner("buycoffee.png", "Support on buycoffee.to", "support-buycoffee", "https://buycoffee.to/magx2"),
                 banner("kofi.png", "Support on Ko-fi", "support-kofi", "https://ko-fi.com/magx2"));
@@ -39,7 +39,7 @@ final class SupportDialog {
     private static Button banner(String image, String description, String id, String address) {
         var graphic = new ImageView(
                 new Image(SupportDialog.class.getResource("support/" + image).toExternalForm()));
-        graphic.setFitWidth(260);
+        graphic.setFitWidth(180);
         graphic.setPreserveRatio(true);
         var button = new Button();
         button.setId(id);

@@ -4,7 +4,8 @@ VoxelBrew checks the public GitHub release, selects the matching platform asset,
 downloads it directly over HTTPS, verifies it, and replaces the installed application
 after exit. Both CLI and GUI use Java's built-in HTTP client. **No `gh` executable,
 GitHub account, login, token or external Java installation is required by a released
-app image.** There are no network checks at application startup.
+app image.** The GUI checks for a newer release in the background at startup.
+Lookup failures are logged without interrupting the application.
 
 Shared update services and the standalone helper live in `dev.voxelbrew.util.update`.
 CLI commands and the JavaFX dialog stay in their respective frontend modules.
@@ -53,6 +54,9 @@ blank for latest stable, or enter a specific `A.B.C`. Use **Download** to prepar
 the verified image, then **Install and quit**. Unsaved work uses the existing
 Save / Discard / Cancel prompt. Cancelling either the update dialog or unsaved
 prompt keeps the document open; cancelling the update removes its staging files.
+
+When a newer installable release is found at startup, a prompt offers to open
+this download workflow. No download starts until the user chooses it.
 
 Network lookup, downloads, verification, extraction and helper startup run away
 from the JavaFX thread. Closing the dialog cancels pending work and ignores its
@@ -130,8 +134,8 @@ GitHub release remains a separate check once an updater-capable release exists.
 Open **Settings → About** (**Ustawienia → O programie**) to see the version from
 `Version.version()` (`0.0.0` for IDE/class-directory runs), the latest release status,
 and offline copies of the GNU AGPL v3 license and third-party notices. Opening About
-starts a cancellable background lookup; application startup does not contact the
-release service. **Check again** retries a failed or completed lookup.
+starts a cancellable background lookup; application startup also checks for newer
+installable releases. **Check again** retries a failed or completed lookup.
 **Open updater…** closes About and opens the existing explicit update workflow,
 including its save/discard guard before installation. No download or installation
 starts from About. Closing the dialog cancels its lookup and ignores late results.

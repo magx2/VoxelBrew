@@ -2264,6 +2264,10 @@ public final class Workbench extends BorderPane implements AutoCloseable {
         }
     }
 
+    void openUpdates() {
+        updates();
+    }
+
     private void updates() {
         if (UpdateDialog.show(stage, updates, this::requestChange)) {
             close();

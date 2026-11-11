@@ -1,10 +1,16 @@
 package dev.voxelbrew.gui;
 
 import dev.voxelbrew.engine.model.Feature;
+import dev.voxelbrew.util.i18n.Translations;
+import dev.voxelbrew.util.update.ApplicationImage;
+import dev.voxelbrew.util.update.UpdateCancellation;
+import dev.voxelbrew.util.update.UpdateService;
 import java.nio.file.Path;
 import javafx.application.Application;
 import javafx.application.ConditionalFeature;
 import javafx.application.Platform;
+import javafx.scene.control.Alert;
+import javafx.scene.control.ButtonType;
 import javafx.stage.Screen;
 import javafx.stage.Stage;
 
@@ -31,6 +37,7 @@ public final class WorkbenchApplication extends Application {
         if (open != null && args.contains("--smoke-test"))
             throw new IllegalArgumentException("--smoke-test creates an unsaved fixture; omit --open");
         workbench = openWindow(stage, plugins, open);
+        checkForUpdates(stage, workbench);
         if (args.contains("--smoke-test")) {
             var controller = workbench.controller();
             controller.add(new Feature.Sketch(
@@ -42,6 +49,28 @@ public final class WorkbenchApplication extends Application {
                     "cut", new Feature.ProfileRef("hole", "hole.profile"), new Feature.BodyRef("thickness", "body")));
             PackageSmoke.verify(workbench, stage, smokeOutput);
         }
+    }
+
+    private static void checkForUpdates(Stage stage, Workbench workbench) {
+        Thread.ofVirtual().name("voxelbrew-startup-update").start(() -> {
+            try {
+                var result = UpdateService.system(ApplicationImage.Component.GUI)
+                        .check(new UpdateService.Request(null, false), new UpdateCancellation());
+                if (!result.available() || !result.installable()) return;
+                Platform.runLater(() -> {
+                    if (!stage.isShowing()) return;
+                    var translations = Translations.current();
+                    var download = new ButtonType(translations.text("update.download"));
+                    var prompt = new Alert(Alert.AlertType.INFORMATION, result.message(), download, ButtonType.CANCEL);
+                    prompt.setTitle(translations.text("update.title"));
+                    prompt.setHeaderText(translations.text("update.heading"));
+                    if (prompt.showAndWait().filter(download::equals).isPresent() && stage.isShowing())
+                        workbench.openUpdates();
+                });
+            } catch (Exception failure) {
+                log.warn("Startup update check failed", failure);
+            }
+        });
     }
 
     static Workbench openWindow(Stage stage, Path plugins, Path open) throws java.io.IOException {

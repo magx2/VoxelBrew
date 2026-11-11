@@ -476,6 +476,26 @@ public final class Workbench extends BorderPane implements AutoCloseable {
         refreshRecent.run();
         recentMenu.setOnShowing(event -> refreshRecent.run());
         recentMenu.disableProperty().bind(disabledProperty().or(fileBusy));
+        var titleRecentMenu = new ContextMenu();
+        UiHelp.menu(titleRecentMenu);
+        documentTitle.setOnMouseClicked(event -> {
+            if (event.getButton() != MouseButton.PRIMARY || !event.isStillSincePress()) return;
+            titleRecentMenu.getItems().clear();
+            for (Path path : recentFiles.paths()) {
+                var item = new MenuItem(path.toString());
+                item.setMnemonicParsing(false);
+                item.setOnAction(action -> openProject(path));
+                titleRecentMenu.getItems().add(item);
+            }
+            if (titleRecentMenu.getItems().isEmpty()) {
+                var empty = new MenuItem(translations.text("recent.empty"));
+                empty.setDisable(true);
+                titleRecentMenu.getItems().add(empty);
+            }
+            if (!isDisabled() && !fileBusy.get())
+                titleRecentMenu.show(documentTitle, javafx.geometry.Side.BOTTOM, 0, 0);
+            event.consume();
+        });
         controller.onFileUsed(path -> {
             recentFiles.remember(path);
             preferencesWorker.execute(recentFiles::save);

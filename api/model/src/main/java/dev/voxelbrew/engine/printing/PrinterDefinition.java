@@ -66,4 +66,25 @@ public record PrinterDefinition(
                 genericGcode,
                 true);
     }
+
+    public PrinterDefinition withNozzle(double diameterMm) {
+        if (!Double.isFinite(diameterMm) || diameterMm <= 0 || diameterMm > 5)
+            throw new IllegalArgumentException("Nozzle diameter must be greater than 0 and at most 5 mm");
+        if (Double.compare(printer.nozzleMm(), diameterMm) == 0) return this;
+        return new PrinterDefinition(
+                new PrintProfile.Printer(
+                        printer.id(),
+                        printer.name(),
+                        diameterMm,
+                        printer.bed(),
+                        printer.excludedZones(),
+                        printer.usableHeight(),
+                        printer.firmware(),
+                        printer.outputFormat()),
+                manufacturer,
+                filamentDiameter,
+                toolCount,
+                genericGcode,
+                true);
+    }
 }

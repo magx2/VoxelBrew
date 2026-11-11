@@ -56,6 +56,10 @@ class WorkbenchUiTest {
             var dialog = (DialogPane) node("#device-config-dialog");
             assertEquals(PrinterDevice.Kind.MOONRAKER, kind.getValue());
             assertNull(dialog.lookup("#device-config-serial"));
+            assertTrue(dialog.lookupAll(".label").stream()
+                    .filter(Label.class::isInstance)
+                    .map(Label.class::cast)
+                    .noneMatch(label -> label.getText().contains("Nozzle")));
             assertEquals("Moonraker server URL", ((Label) node("#device-config-address-label")).getText());
             assertEquals("Slicer preset ID (optional)", ((Label) node("#device-config-model-label")).getText());
             assertEquals("API key (optional)", ((Label) node("#device-config-secret-label")).getText());
@@ -111,6 +115,41 @@ class WorkbenchUiTest {
             ((Button) dialog.lookupButton(ButtonType.CANCEL)).fire();
             return null;
         });
+    }
+
+    @Test
+    void slicerNozzleIsSavedWithThePrintProfile() throws Exception {
+        ready();
+        openPrepared("plate-5mm.vxb");
+        fx(() -> {
+            ((TabPane) node("#workspaces")).getSelectionModel().select(1);
+            var nozzle = (FormulaField) node("#print-nozzle");
+            assertEquals("0.4", nozzle.getText());
+            var plate =
+                    workbench.controller().snapshot().document().printSetup().activePlateId();
+            workbench.controller().gcode(Map.of(plate, List.of("G28")));
+            nozzle.setText("0.6");
+            nozzle.fireEvent(new javafx.event.ActionEvent());
+            return null;
+        });
+        ready();
+        assertEquals(0.6, document().printSetup().printerSnapshot().printer().nozzleMm(), 0.0001);
+        assertTrue(document().gcode().isEmpty(), "Changing the slicing nozzle invalidates stored jobs");
+        fx(() -> {
+            Screenshot.save(
+                    stage.getScene(), Path.of(System.getProperty("voxelbrew.ui.artifacts"), "slicer-nozzle.png"));
+            return null;
+        });
+        var saved = directory.resolve("nozzle-in-slicer.vxb");
+        fx(() -> workbench.controller().save(saved, false)).get(20, TimeUnit.SECONDS);
+        fx(() -> workbench.controller().open(saved)).get(20, TimeUnit.SECONDS);
+        ready();
+        assertEquals(0.6, document().printSetup().printerSnapshot().printer().nozzleMm(), 0.0001);
+        fx(() -> {
+            ((TabPane) node("#workspaces")).getSelectionModel().select(1);
+            return null;
+        });
+        assertEquals("0.6", fx(() -> ((FormulaField) node("#print-nozzle")).getText()));
     }
 
     @Test

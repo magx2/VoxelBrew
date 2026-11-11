@@ -446,7 +446,6 @@ final class PrinterPane extends VBox implements AutoCloseable {
         var serial = new TextField();
         var model = new TextField();
         var secret = new PasswordField();
-        var nozzle = new TextField("0.4");
         var kind = new ComboBox<PrinterDevice.Kind>();
         kind.setId("device-config-kind");
         address.setId("device-config-address");
@@ -468,7 +467,6 @@ final class PrinterPane extends VBox implements AutoCloseable {
                     serial.setText(d.serial());
                     model.setText(d.model());
                     secret.setText(d.secret());
-                    nozzle.setText(Double.toString(d.nozzleMm()));
                 } finally {
                     loading[0] = false;
                 }
@@ -486,7 +484,6 @@ final class PrinterPane extends VBox implements AutoCloseable {
                 serial.clear();
                 model.clear();
                 secret.clear();
-                nozzle.setText("0.4");
             } finally {
                 loading[0] = false;
             }
@@ -516,7 +513,6 @@ final class PrinterPane extends VBox implements AutoCloseable {
             if (bambu) grid.addRow(row++, new Label(t("serial")), serial);
             grid.addRow(row++, modelLabel, model);
             grid.addRow(row++, secretLabel, secret);
-            grid.addRow(row++, new Label(t("nozzle") + " (mm)"), nozzle);
             grid.add(error, 0, row, 2, 1);
             if (grid.getScene() != null && grid.getScene().getWindow() instanceof Stage stage)
                 Platform.runLater(stage::sizeToScene);
@@ -557,8 +553,7 @@ final class PrinterPane extends VBox implements AutoCloseable {
                                     address.getText(),
                                     kind.getValue() == PrinterDevice.Kind.BAMBU ? serial.getText() : "",
                                     model.getText(),
-                                    secret.getText(),
-                                    Double.parseDouble(nozzle.getText()));
+                                    secret.getText());
                     dialog.getDialogPane().setDisable(true);
                     worker.submit(() -> {
                         try {

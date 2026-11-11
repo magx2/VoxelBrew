@@ -29,6 +29,7 @@ class ManufacturingTest {
         var session = PrintingTest.reference();
         session.setPrintSetup(session.document()
                 .printSetup()
+                .withNozzle(0.6)
                 .withSupports(List.of(
                         new SupportVolume("block", "part", SupportVolume.Role.BLOCKER, 0, 0, 0, 4, 4, 4),
                         new SupportVolume("pillar", "part", SupportVolume.Role.SOLID_SUPPORT, 15, 5, 0, 4, 4, 7.8))));
@@ -72,7 +73,7 @@ class ManufacturingTest {
                                     .readAllBytes(),
                             java.nio.charset.StandardCharsets.UTF_8);
                     assertTrue(config.contains("; filament_type = PLA\n"));
-                    assertTrue(config.contains("; nozzle_diameter = 0.4\n"));
+                    assertTrue(config.contains("; nozzle_diameter = 0.6\n"));
                 }
             }
         }

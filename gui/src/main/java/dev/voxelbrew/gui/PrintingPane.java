@@ -34,6 +34,7 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
     private PrinterCatalog.Result printerCatalog;
     private final Button printerChoice = new Button();
     private final Label printerDetails = new Label();
+    private final FormulaField nozzle;
     private final javafx.scene.image.ImageView printerImage = new javafx.scene.image.ImageView();
     private final DocumentController document;
     private final PrintController jobs;
@@ -134,6 +135,22 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
         validationLabel.setText(translations.text("gui.add_a_build_instance"));
         status.setText(translations.text("gui.ready_to_slice"));
         this.document = document;
+        nozzle = FormulaField.number("0.4", () -> document.snapshot().document().parameters(), ParameterUnit.MM)
+                .localized(translations);
+        nozzle.setId("print-nozzle");
+        nozzle.bounds(0, false, 5, true);
+        nozzle.dragStep(0.05);
+        nozzle.setPrefColumnCount(5);
+        nozzle.setPrefWidth(170);
+        nozzle.setMaxWidth(170);
+        nozzle.validateWith(value -> {
+            if (!Double.isFinite(value) || value <= 0 || value > 5)
+                throw new IllegalArgumentException(translations.text("print.nozzleRange"));
+        });
+        nozzle.setOnAction(event -> saveNozzle());
+        nozzle.focusedProperty().addListener((o, before, focused) -> {
+            if (!focused) saveNozzle();
+        });
         this.jobs = jobs;
         this.slicers = slicers;
         this.slicerSettings = slicerSettings;
@@ -400,11 +417,14 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
         printerImage.setFitWidth(96);
         printerImage.setFitHeight(72);
         printerImage.setPreserveRatio(true);
+        var nozzleRow = new HBox(8, new Label(translations.text("print.nozzleDiameter")), nozzle);
+        nozzleRow.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
         var printerPanel = new VBox(
                 6,
                 new Label(translations.text("print.printerSelector")),
                 printerChoice,
                 new HBox(8, printerImage, printerDetails),
+                nozzleRow,
                 equalRow(
                         button(
                                 translations.text("print.reloadPrinters"),
@@ -1007,6 +1027,7 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
         } catch (java.io.IOException failure) {
             throw new IllegalStateException(translations.text("slicer.settings.failed", failure.getMessage()), failure);
         }
+        applyNozzle();
         applyProcess();
         tabs.getSelectionModel().select(3);
         document.captureSlicerWorkspace();
@@ -1712,6 +1733,20 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
         }
     }
 
+    private void applyNozzle() {
+        var next = setup().withNozzle(nozzle.value());
+        if (!next.equals(setup())) commit(next);
+    }
+
+    private void saveNozzle() {
+        if (updating) return;
+        try {
+            applyNozzle();
+        } catch (IllegalArgumentException failure) {
+            status.setText(failure.getMessage());
+        }
+    }
+
     private void autoOrient() {
         autoOrient(false);
     }
@@ -2089,6 +2124,7 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
         if (printerCatalog == null) return;
         var saved = setup().printerSnapshot();
         var p = PrintProfile.resolve(setup()).printer();
+        if (!nozzle.isFocused()) nozzle.setText(Double.toString(p.nozzleMm()));
         var entry = printerCatalog.entries().stream()
                 .filter(e -> e.definition().printer().id().equals(p.id()))
                 .findFirst()

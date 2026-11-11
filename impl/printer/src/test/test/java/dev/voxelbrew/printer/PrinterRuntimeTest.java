@@ -18,6 +18,10 @@ class PrinterRuntimeTest {
                 "test", "Workshop", PrinterDevice.Kind.MOONRAKER, "http://localhost:7125", "", "", "secret-key");
         runtime.save(directory, device);
         assertEquals(device, runtime.devices(directory).getFirst());
+        var file = directory.resolve("test.properties");
+        assertFalse(Files.readString(file).contains("nozzle_mm"));
+        Files.writeString(file, "nozzle_mm=0.6\n", StandardOpenOption.APPEND);
+        assertEquals(device, runtime.devices(directory).getFirst(), "Older device files remain readable");
         assertFalse(device.toString().contains("secret-key"));
         runtime.remove(directory, device.id());
         assertTrue(runtime.devices(directory).isEmpty());

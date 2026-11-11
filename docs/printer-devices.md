@@ -12,7 +12,7 @@ These are physical devices, separate from the slicer's hardware presets:
 - Klipper / Moonraker uses an HTTP(S) URL and optional API key. The optional model
   field can constrain the device to a slicer preset ID.
 - Bambu LAN uses a host, serial number, model and access code. Enter the model
-  such as `Bambu Lab A1`, and the installed nozzle diameter. LAN Only and Developer
+  such as `Bambu Lab A1`. LAN Only and Developer
   Mode may be required by the device firmware. Cloud accounts are not supported.
 
 Credentials are remembered in user-local `devices/{id}.properties` beside
@@ -31,7 +31,13 @@ and tool 0; AMS mapping and multi-material assignments are not implemented.
 The adapter preserves Orca's sliced `.gcode.3mf` package and extracts plate 1 G-code
 for preview. It does not wrap generic Marlin output in a ZIP. Explicit support volumes
 are rejected; automatic supports, brim and raft are passed to Orca.
-Device model and nozzle must match before sending a Bambu package.
+Set the installed nozzle diameter in the **Slicer** workspace's printer panel
+before slicing. The diameter is stored with the document's slicer printer snapshot
+and used to generate the job; it is not part of the physical device connection.
+For OrcaSlicer, the selected diameter must match the machine preset's nozzle.
+The Bambu device model must match the sliced package before sending it.
+Confirm that the physical printer has the nozzle selected for the slice before
+starting the job.
 
 Packages survive VXB/JSON save and reopen and are invalidated alongside G-code.
 Files with packages use schema 11; existing text-only files retain schema 10.

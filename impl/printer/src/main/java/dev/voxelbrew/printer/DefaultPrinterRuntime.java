@@ -27,8 +27,7 @@ public final class DefaultPrinterRuntime implements PrinterRuntime {
                             p.getProperty("address"),
                             p.getProperty("serial"),
                             p.getProperty("model"),
-                            p.getProperty("secret"),
-                            Double.parseDouble(p.getProperty("nozzle_mm", "0.4"))));
+                            p.getProperty("secret")));
                 } catch (RuntimeException failure) {
                     throw new IOException("Invalid device configuration: " + file.getFileName());
                 }
@@ -52,7 +51,6 @@ public final class DefaultPrinterRuntime implements PrinterRuntime {
             p.setProperty("serial", device.serial());
             p.setProperty("model", device.model());
             p.setProperty("secret", device.secret());
-            p.setProperty("nozzle_mm", Double.toString(device.nozzleMm()));
             try (var writer = Files.newBufferedWriter(temporary)) {
                 p.store(writer, "VoxelBrew device; contains credentials");
             }

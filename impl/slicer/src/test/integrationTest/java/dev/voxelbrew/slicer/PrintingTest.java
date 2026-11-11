@@ -113,6 +113,27 @@ class PrintingTest {
     }
 
     @Test
+    void selectedNozzleIsUsedByRealSlicer() throws Exception {
+        var session = reference();
+        session.setPrintSetup(session.document().printSetup().withNozzle(0.6));
+        var model = ManufacturingModels.evaluate(session.document(), MeshOptions.DEFAULT);
+        var output = directory.resolve("0.6-mm-nozzle.gcode");
+        var result = SliceService.slice(
+                new PrusaSlicerBackend(),
+                session.document(),
+                model,
+                PrusaSlicerBackend.defaultExecutable(),
+                output,
+                false,
+                new Cancellation(),
+                System.out::println,
+                dev.voxelbrew.slicer.api.Slicing.DIRECT);
+        assertEquals("0.6", result.job().report().get("nozzle_mm"));
+        assertFalse(result.job().modelLayers().isEmpty());
+        assertTrue(Files.size(output) > 0);
+    }
+
+    @Test
     void placementsAndModifiersPersistAndTrackEditsWithoutChangingCadCoordinates() throws Exception {
         var session = reference();
         var first = session.document().printSetup().instances().getFirst();

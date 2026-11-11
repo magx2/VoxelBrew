@@ -25,6 +25,18 @@ class PrinterApiTest {
                 Map.of("backend", "orca", "model", "Bambu Lab A1", "tool", "0", "nozzle_mm", "0.4"));
         doc = doc.withPrintArtifacts(Map.of("plate", artifact));
         assertTrue(PrinterJobs.incompatibility(doc, "plate", device).isEmpty());
+        var widerNozzle = new CadDocument("test", List.of(), 0, doc.printSetup().withNozzle(0.6))
+                .withGcode(Map.of("plate", List.of("G1 X1")))
+                .withPrintArtifacts(Map.of(
+                        "plate",
+                        PrintArtifact.of(
+                                "gcode.3mf",
+                                new byte[] {1, 2, 3},
+                                Map.of("backend", "orca", "model", "Bambu Lab A1", "tool", "0", "nozzle_mm", "0.6"))));
+        assertTrue(PrinterJobs.incompatibility(widerNozzle, "plate", device).isEmpty());
+        assertTrue(
+                PrinterJobs.incompatibility(widerNozzle.withPrintArtifacts(Map.of("plate", artifact)), "plate", device)
+                        .isPresent());
         assertTrue(PrinterJobs.incompatibility(
                         doc,
                         "plate",

@@ -132,6 +132,33 @@ public record PrintSetup(
                 supportsDisabled);
     }
 
+    /** Select the nozzle used to produce this document's sliced jobs. */
+    public PrintSetup withNozzle(double diameterMm) {
+        var current = PrintProfile.resolve(this).printer();
+        if (Double.compare(current.nozzleMm(), diameterMm) == 0) return this;
+        var definition = printerSnapshot;
+        if (definition == null) {
+            var resolved = PrintProfile.resolve(this);
+            var legacy = resolved.printer();
+            definition = new PrinterDefinition(
+                    new PrintProfile.Printer(
+                            legacy.id(),
+                            legacy.name().replace("Generic Marlin", "Marlin").replace(" / 0.4 mm", ""),
+                            legacy.nozzleMm(),
+                            legacy.bed(),
+                            legacy.excludedZones(),
+                            legacy.usableHeight(),
+                            legacy.firmware(),
+                            legacy.outputFormat()),
+                    "Generic",
+                    resolved.material().filamentDiameter(),
+                    1,
+                    true,
+                    false);
+        }
+        return withPrinter(definition.withNozzle(diameterMm));
+    }
+
     public PrintSetup(
             String id,
             int version,

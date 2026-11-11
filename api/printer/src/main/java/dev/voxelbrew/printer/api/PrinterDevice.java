@@ -5,18 +5,7 @@ import java.util.Objects;
 
 /** A physical device, independent of a slicer preset. Secrets are intentionally redacted. */
 public record PrinterDevice(
-        String id,
-        String name,
-        Kind kind,
-        String address,
-        String serial,
-        String model,
-        String secret,
-        double nozzleMm) {
-    public PrinterDevice(
-            String id, String name, Kind kind, String address, String serial, String model, String secret) {
-        this(id, name, kind, address, serial, model, secret, 0.4);
-    }
+        String id, String name, Kind kind, String address, String serial, String model, String secret) {
 
     public enum Kind {
         MOONRAKER,
@@ -24,8 +13,6 @@ public record PrinterDevice(
     }
 
     public PrinterDevice {
-        if (!Double.isFinite(nozzleMm) || nozzleMm <= 0 || nozzleMm > 5)
-            throw new IllegalArgumentException("Invalid nozzle diameter");
         if (id == null || !id.matches("[a-zA-Z0-9-]{1,64}")) throw new IllegalArgumentException("Invalid device ID");
         if (name == null || name.isBlank()) throw new IllegalArgumentException("Device name is required");
         Objects.requireNonNull(kind);

@@ -78,11 +78,9 @@ final class AboutDialog {
                 new Separator(),
                 license,
                 notices);
-        var scroll = new ScrollPane(content);
         content.getStyleClass().add("about-content");
-        scroll.setFitToWidth(true);
-        scroll.setPrefViewportHeight(340);
-        dialog.getDialogPane().setContent(scroll);
+        content.setPrefWidth(380);
+        dialog.getDialogPane().setContent(content);
         worker = workers.get();
     }
 

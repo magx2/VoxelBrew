@@ -24,7 +24,7 @@ public final class FileExportDialog extends ExportDialog<FileExportDialog.Destin
     /**
      * Suggested filename extension and host filter, without a leading dot.
      *
-     * @return nonempty ASCII alphanumeric extension; original case is preserved
+     * @return nonempty ASCII alphanumeric extension, optionally compound; original case is preserved
      */
     private final String extension;
 
@@ -32,13 +32,13 @@ public final class FileExportDialog extends ExportDialog<FileExportDialog.Destin
      * Creates a file request; no filesystem access or dialog interaction occurs here.
      *
      * @param title title for the host's file interaction
-     * @param extension suggested extension without a dot, such as {@code vxb} or {@code stl}
+     * @param extension suggested extension without a leading dot, such as {@code vxb} or {@code gcode.3mf}
      * @throws NullPointerException if the title is null
-     * @throws IllegalArgumentException if the extension is null, empty or not ASCII alphanumeric
+     * @throws IllegalArgumentException if the extension is null, empty or contains invalid segments
      */
     public FileExportDialog(String title, String extension) {
         this.title = Objects.requireNonNull(title, "title");
-        if (extension == null || !extension.matches("[a-zA-Z0-9]+"))
+        if (extension == null || !extension.matches("[a-zA-Z0-9]+(?:\\.[a-zA-Z0-9]+)*"))
             throw new IllegalArgumentException("Invalid extension");
         this.extension = extension;
     }

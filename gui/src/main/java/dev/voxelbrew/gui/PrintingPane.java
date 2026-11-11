@@ -1007,6 +1007,10 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
                         var stored = new LinkedHashMap<>(snapshot.gcode());
                         stored.putAll(jobs.completedGcode());
                         document.gcode(stored);
+                        var artifacts = new LinkedHashMap<>(snapshot.printArtifacts());
+                        jobs.completedGcode().keySet().forEach(artifacts::remove);
+                        artifacts.putAll(jobs.completedArtifacts());
+                        document.printArtifacts(artifacts);
                     })
                     .exceptionally(failure -> null);
         } catch (java.io.IOException failure) {

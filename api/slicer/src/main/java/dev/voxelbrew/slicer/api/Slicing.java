@@ -32,7 +32,11 @@ public interface Slicing {
         }
     }
 
-    public record Result(Path output, GcodeJob job, String backendVersion) {}
+    public record Result(Path output, GcodeJob job, String backendVersion, PrintArtifact artifact) {
+        public Result(Path output, GcodeJob job, String backendVersion) {
+            this(output, job, backendVersion, null);
+        }
+    }
 
     Result slice(
             SlicerBackend backend,

@@ -15,7 +15,26 @@ public record CadDocument(
         Map<String, BodyStyle> bodyStyles,
         Map<String, String> bodyNames,
         Map<String, String> featureNames,
-        Map<String, List<String>> gcode) {
+        Map<String, List<String>> gcode,
+        Map<String, dev.voxelbrew.engine.printing.PrintArtifact> printArtifacts) {
+    public CadDocument(
+            String id,
+            List<Feature> features,
+            int cursor,
+            dev.voxelbrew.engine.printing.PrintSetup printSetup,
+            dev.voxelbrew.engine.parameters.ParameterSet parameters,
+            Map<String, BodyStyle> bodyStyles,
+            Map<String, String> bodyNames,
+            Map<String, String> featureNames,
+            Map<String, List<String>> gcode) {
+        this(id, features, cursor, printSetup, parameters, bodyStyles, bodyNames, featureNames, gcode, Map.of());
+    }
+
+    public CadDocument withPrintArtifacts(Map<String, dev.voxelbrew.engine.printing.PrintArtifact> artifacts) {
+        return new CadDocument(
+                id, features, cursor, printSetup, parameters, bodyStyles, bodyNames, featureNames, gcode, artifacts);
+    }
+
     public CadDocument(
             String id,
             List<Feature> features,
@@ -77,6 +96,8 @@ public record CadDocument(
     }
 
     public CadDocument {
+        printArtifacts = Map.copyOf(printArtifacts);
+        printArtifacts.keySet().forEach(plate -> identifier(plate, "Print artifact plate ID"));
         var jobs = new java.util.TreeMap<String, List<String>>();
         gcode.forEach((plate, lines) -> {
             identifier(plate, "G-code plate ID");

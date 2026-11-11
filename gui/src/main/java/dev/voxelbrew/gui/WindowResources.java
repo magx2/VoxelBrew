@@ -16,7 +16,7 @@ import lombok.extern.slf4j.Slf4j;
 final class WindowResources implements AutoCloseable {
     final ExporterCatalog exporters;
     final SlicerCatalog slicers;
-    final ExecutorService rebuild, files, slicing, validation, appearance;
+    final ExecutorService rebuild, files, slicing, validation, appearance, printer;
     private boolean closed;
     private final CompletableFuture<Void> disposal = new CompletableFuture<>();
 
@@ -46,6 +46,7 @@ final class WindowResources implements AutoCloseable {
         slicing = worker("slicer");
         validation = worker("print-validation");
         appearance = worker("appearance");
+        printer = worker("printer");
     }
 
     static ExecutorService worker(String role) {
@@ -58,7 +59,7 @@ final class WindowResources implements AutoCloseable {
         if (closed) return;
         closed = true;
         // Drain captured file writes and cancelled native/slicer work on their owning threads.
-        var workers = List.of(rebuild, files, slicing, validation, appearance);
+        var workers = List.of(rebuild, files, slicing, validation, appearance, printer);
         for (var worker : workers) worker.shutdown();
         if (workers.stream().allMatch(ExecutorService::isTerminated)) closeLoaders();
         else

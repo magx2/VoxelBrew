@@ -2,13 +2,14 @@
 
 The main VoxelBrew project is licensed under [AGPL-3.0](../LICENSE).
 The developers want users to be able to extend the program with private or
-proprietary code whose source is not public. The four shared API modules are
+proprietary code whose source is not public. The five shared API modules are
 therefore separately licensed under the MIT License:
 
 - `model` (`:api:model`): shared domain values, [MIT license](model/LICENSE).
 - `import` (`:api:import`): importer contracts, [MIT license](import/LICENSE).
 - `export` (`:api:export`): exporter contracts, [MIT license](export/LICENSE).
 - `slicer` (`:api:slicer`): slicing contracts, [MIT license](slicer/LICENSE).
+- `printer` (`:api:printer`): physical-device contracts, [MIT license](printer/LICENSE).
 
 The import and export APIs depend only on the model API. The slicer API depends on the model and export APIs. None of these modules
 has a compile or runtime dependency on the AGPL engine, util, or frontends.
@@ -19,7 +20,7 @@ their classes are supplied by `model-api`, not by the engine JAR.
 These licenses apply to the code in their respective module directories.
 Both binary and source JARs include `META-INF/LICENSE`; Maven POMs declare MIT.
 Published coordinates are `dev.voxelbrew:model-api`, `dev.voxelbrew:import-api`
-`dev.voxelbrew:export-api` and `dev.voxelbrew:slicer-api`, with matching `-api` JAR names.
+`dev.voxelbrew:export-api`, `dev.voxelbrew:slicer-api` and `dev.voxelbrew:printer-api`, with matching `-api` JAR names.
 
 MIT permits proprietary use of these API modules, subject to retaining its
 copyright and permission notice. This does not relicense the AGPL application

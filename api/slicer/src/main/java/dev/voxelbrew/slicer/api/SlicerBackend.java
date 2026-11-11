@@ -53,7 +53,11 @@ public interface SlicerBackend {
             Cancellation cancellation,
             Consumer<String> diagnostics) {}
 
-    record RunResult(Map<String, String> resolvedSettings) {
+    record RunResult(Map<String, String> resolvedSettings, dev.voxelbrew.engine.printing.PrintArtifact artifact) {
+        public RunResult(Map<String, String> resolvedSettings) {
+            this(resolvedSettings, null);
+        }
+
         public RunResult {
             resolvedSettings = Map.copyOf(resolvedSettings);
         }

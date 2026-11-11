@@ -14,6 +14,36 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 class GcodePersistenceTest {
+    @Test
+    void packagedJobRoundTripsAndExportsExactBytes() throws Exception {
+        byte[] bytes = {0x50, 0x4b, 1, 2, 3};
+        var base = CadDocument.empty();
+        var plate = base.printSetup().activePlateId();
+        var artifact =
+                dev.voxelbrew.engine.printing.PrintArtifact.of("gcode.3mf", bytes, Map.of("model", "Bambu Lab A1"));
+        var document = base.withGcode(Map.of(plate, LINES)).withPrintArtifacts(Map.of(plate, artifact));
+        try (var exports = new ExporterRegistry(directory);
+                var imports = new ImporterRegistry(directory)) {
+            for (String format : List.of("vxb", "json")) {
+                Path file = directory.resolve("packaged." + format);
+                exports.require(format)
+                        .provider()
+                        .create(Runnable::run)
+                        .export(document, FileExportDialog.destination(file, false))
+                        .get();
+                var loaded = ((ImportResult.Document) ImportService.read(imports, format, file, Map.of())).document();
+                assertEquals(document.printArtifacts(), loaded.printArtifacts());
+                Path output = directory.resolve(format + ".gcode.3mf");
+                exports.require("gcode-package")
+                        .provider()
+                        .create(Runnable::run)
+                        .export(loaded, FileExportDialog.destination(output, false))
+                        .get();
+                assertArrayEquals(bytes, Files.readAllBytes(output));
+            }
+        }
+    }
+
     @TempDir
     Path directory;
 

@@ -40,6 +40,7 @@ public final class ExporterRegistry implements dev.voxelbrew.exporter.api.Export
                         new VoxelBrewExporterProvider(),
                         new JsonExporterProvider(),
                         new GcodeExporterProvider(),
+                        new PrintPackageExporterProvider(),
                         new StepExporterProvider(),
                         new GeometryExporterProvider(
                                 new ExporterDescriptor("stl", "Binary STL"), BinaryStlExporter::new),

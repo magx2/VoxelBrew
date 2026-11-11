@@ -13,6 +13,18 @@ import javax.inject.Named;
 @Module
 final class GuiModule {
     @Provides
+    @javax.inject.Singleton
+    static dev.voxelbrew.printer.api.PrinterRuntime printersRuntime() {
+        return dev.voxelbrew.printer.api.PrinterRuntime.load();
+    }
+
+    @Provides
+    @Named("printer")
+    static ExecutorService printerWorker(WindowResources resources) {
+        return resources.printer;
+    }
+
+    @Provides
     static dev.voxelbrew.engine.feature.FeatureRegistry.Factory features() {
         return dev.voxelbrew.engine.feature.FeatureRegistry::new;
     }

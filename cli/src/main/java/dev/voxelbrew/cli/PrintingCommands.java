@@ -574,7 +574,11 @@ final class PrintingCommands {
                 describe(result.job(), spec.commandLine().getOut());
                 var jobs = new java.util.HashMap<>(document.gcode());
                 jobs.put(document.printSetup().activePlateId(), result.job().lines());
-                documentWriter.save(document.withGcode(jobs), file, true);
+                var artifacts = new java.util.HashMap<>(document.printArtifacts());
+                artifacts.remove(document.printSetup().activePlateId());
+                if (result.artifact() != null)
+                    artifacts.put(document.printSetup().activePlateId(), result.artifact());
+                documentWriter.save(document.withGcode(jobs).withPrintArtifacts(artifacts), file, true);
                 spec.commandLine().getOut().println("Job: " + result.output());
                 return 0;
             } finally {

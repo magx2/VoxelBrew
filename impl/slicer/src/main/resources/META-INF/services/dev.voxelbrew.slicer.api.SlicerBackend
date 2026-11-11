@@ -1,3 +1,4 @@
 dev.voxelbrew.slicer.prusa.PrusaSlicerBackend
 
 dev.voxelbrew.slicer.cura.CuraSlicerBackend
+dev.voxelbrew.slicer.orca.OrcaSlicerBackend

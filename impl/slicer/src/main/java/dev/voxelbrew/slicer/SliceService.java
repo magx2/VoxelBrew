@@ -181,7 +181,13 @@ public final class SliceService {
                     "Published sliced job {} with {} model layers",
                     target,
                     job.modelLayers().size());
-            return new Result(target, job, probe.actualVersion());
+            var artifact = run.artifact();
+            if (artifact != null) {
+                var metadata = new LinkedHashMap<>(artifact.metadata());
+                metadata.put("backend_version", probe.actualVersion());
+                artifact = new PrintArtifact(artifact.format(), artifact.base64(), artifact.sha256(), metadata);
+            }
+            return new Result(target, job, probe.actualVersion(), artifact);
         } catch (java.util.concurrent.CancellationException cancelled) {
             log.info("Slicing cancelled for document {}", model.documentId());
             throw cancelled;
@@ -192,9 +198,11 @@ public final class SliceService {
             log.error("Slicing failed for document {}", model.documentId(), failure);
             throw failure;
         } finally {
+            List<Path> cleanup;
             try (var files = Files.walk(work)) {
-                for (var path : files.sorted(Comparator.reverseOrder()).toList()) Files.deleteIfExists(path);
+                cleanup = files.sorted(Comparator.reverseOrder()).toList();
             }
+            for (var path : cleanup) Files.deleteIfExists(path);
         }
     }
 }

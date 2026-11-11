@@ -37,6 +37,28 @@ import org.junit.jupiter.api.io.TempDir;
 @ExtendWith(UiTestShard.class)
 class WorkbenchUiTest {
     @Test
+    void printerWorkspaceFollowsStoredPlateJobs() throws Exception {
+        ready();
+        openPrepared("plate-5mm.vxb");
+        fx(() -> {
+            var tabs = (TabPane) node("#workspaces");
+            assertEquals(3, tabs.getTabs().size());
+            assertTrue(tabs.getTabs().get(2).isDisable());
+            var plate =
+                    workbench.controller().snapshot().document().printSetup().activePlateId();
+            workbench.controller().gcode(Map.of(plate, List.of("G28", "G1 X10")));
+            assertFalse(tabs.getTabs().get(2).isDisable());
+            tabs.getSelectionModel().select(2);
+            assertEquals(1, ((ComboBox<?>) node("#printer-plate")).getItems().size());
+            assertTrue(((Button) node("#printer-print")).isDisable());
+            workbench.controller().invalidateGcode();
+            assertTrue(tabs.getTabs().get(2).isDisable());
+            assertNotEquals(2, tabs.getSelectionModel().getSelectedIndex());
+            return null;
+        });
+    }
+
+    @Test
     void slicerBoundsRenderGreyHintsAndRedInvalidValues() throws Exception {
         Path input = PreparedDocuments.copy("plate-5mm.vxb", directory);
         fx(() -> workbench.controller().open(input)).get(20, TimeUnit.SECONDS);

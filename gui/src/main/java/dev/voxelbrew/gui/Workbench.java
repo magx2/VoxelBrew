@@ -275,6 +275,8 @@ public final class Workbench extends BorderPane implements AutoCloseable {
     private final Viewport viewport;
 
     private final PrintingPane printing;
+    private final PrinterPane printer;
+    private final Tab printerTab;
     private final Tab designTab;
     private final Tab printTab;
     private final TabPane workspaces;
@@ -386,6 +388,7 @@ public final class Workbench extends BorderPane implements AutoCloseable {
             ExporterCatalog registry,
             dev.voxelbrew.importer.api.ImporterCatalog.Factory importers,
             PrintingPane printing,
+            PrinterPane printer,
             SlicerSettingsDialog slicerSettings,
             Appearance appearance,
             Rendering rendering,
@@ -405,6 +408,7 @@ public final class Workbench extends BorderPane implements AutoCloseable {
         this.registry = registry;
         this.importers = importers;
         this.printing = printing;
+        this.printer = printer;
         this.appearance = appearance;
         this.preferencesWorker = preferencesWorker;
         this.translations = translations;
@@ -580,6 +584,13 @@ public final class Workbench extends BorderPane implements AutoCloseable {
         var printersMenu = menu("menu-printers");
         printersMenu
                 .getItems()
+                .add(menuItem(
+                        translations.text("device.configure"),
+                        "printers-configure-devices",
+                        false,
+                        printer::configure));
+        printersMenu
+                .getItems()
                 .addAll(
                         menuItem(
                                 translations.text("print.exportPrinters"),
@@ -723,7 +734,12 @@ public final class Workbench extends BorderPane implements AutoCloseable {
         printTab = new Tab(translations.text("tab.Slicer"), printing);
         printTab.setId("workspace-print");
         printTab.setClosable(false);
-        workspaces = new TabPane(designTab, printTab);
+        printerTab = new Tab(translations.text("tab.Printer"), printer);
+        printerTab.setId("workspace-printer");
+        printerTab.setClosable(false);
+        printerTab.setDisable(true);
+        printerTab.setTooltip(UiHelp.tooltip(translations.text("help.workspace-printer")));
+        workspaces = new TabPane(designTab, printTab, printerTab);
         designTab.setTooltip(UiHelp.tooltip(UiHelp.description(translations, "workspace-design")));
         printTab.setTooltip(UiHelp.tooltip(UiHelp.description(translations, "workspace-print")));
         workspaces.setId("workspaces");
@@ -832,11 +848,15 @@ public final class Workbench extends BorderPane implements AutoCloseable {
                     case "context-help" -> {
                         var help = new Alert(Alert.AlertType.INFORMATION);
                         help.initOwner(stage);
-                        help.setTitle(
-                                translations.text(printTab.isSelected() ? "help.slicer.title" : "help.designer.title"));
+                        help.setTitle(translations.text(
+                                printerTab.isSelected()
+                                        ? "help.printer.title"
+                                        : printTab.isSelected() ? "help.slicer.title" : "help.designer.title"));
                         help.setHeaderText(null);
                         help.setContentText(translations.text(
-                                printTab.isSelected() ? "help.slicer.content" : "help.designer.content"));
+                                printerTab.isSelected()
+                                        ? "help.printer.content"
+                                        : printTab.isSelected() ? "help.slicer.content" : "help.designer.content"));
                         help.getDialogPane().setPrefWidth(600);
                         help.getDialogPane().getButtonTypes().setAll(ButtonType.CLOSE);
                         help.getDialogPane().lookupButton(ButtonType.CLOSE).setId("context-help-close");
@@ -1017,6 +1037,10 @@ public final class Workbench extends BorderPane implements AutoCloseable {
                 inspect();
             }
             var document = snapshot.document();
+            printer.documentChanged(document);
+            printerTab.setDisable(!printer.hasJobs());
+            if (printerTab.isDisable() && printerTab.isSelected())
+                workspaces.getSelectionModel().select(printTab.isDisable() ? designTab : printTab);
             var effective = controller.effectiveFeatures();
             boolean buildStateChanged = lastBuild != controller.build()
                     || lastRebuilding != controller.rebuilding()
@@ -2309,6 +2333,7 @@ public final class Workbench extends BorderPane implements AutoCloseable {
         window.close();
         stage.focusedProperty().removeListener(windowFocus);
         printing.close();
+        printer.close();
         controller.close();
         preferencesWorker.shutdown();
         resources.close();

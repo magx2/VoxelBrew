@@ -430,3 +430,10 @@ Printer catalogs are exposed by `dev.voxelbrew.slicer.api.PrinterCatalog` throug
 custom-resource loading live in `impl/slicer`; frontends use the existing
 `SlicerRuntime` ServiceLoader provider. The former engine `PrinterCatalog` and
 util `PrinterResources` implementation types have moved out of those modules.
+
+# Printer job packages
+
+`FileExportDialog` accepts compound extensions such as `gcode.3mf` (each segment
+must be ASCII alphanumeric). The `gcode-package` exporter writes the active plate's
+original sliced package. `:api:printer` owns physical-device contracts and depends
+only on `:api:model`; `:impl:printer` supplies the ServiceLoader runtime.

@@ -13,7 +13,7 @@ public final class GcodeReader {
     private GcodeReader() {}
 
     private static final Pattern PARAMETER =
-            Pattern.compile("(?:^|\\s)([XYZEF])([-+]?(?:[0-9]+(?:\\.[0-9]*)?|\\.[0-9]+)(?:[eE][-+]?[0-9]+)?)");
+            Pattern.compile("(?:^|\\s)([XYZEFIJR])([-+]?(?:[0-9]+(?:\\.[0-9]*)?|\\.[0-9]+)(?:[eE][-+]?[0-9]+)?)");
 
     public static GcodeJob read(Path path) throws IOException {
         try (var input = Files.newInputStream(path)) {
@@ -37,6 +37,10 @@ public final class GcodeReader {
             while ((line = reader.readLine()) != null) {
                 lines.add(line);
                 if (line.startsWith(";TYPE:")) role = role(line.substring(6).strip());
+                else if (line.startsWith("; FEATURE: "))
+                    role = role(line.substring(11).strip());
+                else if (line.startsWith("; LINE_WIDTH: ")) width = number(line.substring(14));
+                else if (line.startsWith("; LAYER_HEIGHT: ")) height = number(line.substring(16));
                 else if (line.startsWith(";WIDTH:")) width = number(line.substring(7));
                 else if (line.startsWith(";HEIGHT:")) height = number(line.substring(8));
                 else if (line.startsWith("; filament used [mm] = "))
@@ -72,9 +76,10 @@ public final class GcodeReader {
                     absoluteE = false;
                     continue;
                 }
-                if (code.equals("G2") || code.equals("G3"))
-                    throw new IOException("Arc G-code is unsupported by this job inspector");
-                if (!code.equals("G0") && !code.equals("G1") && !code.equals("G92")) continue;
+                if (code.equals("G18") || code.equals("G19") || code.equals("G90.1"))
+                    throw new IOException("Only XY arcs with relative I/J centers are supported");
+                boolean arc = code.equals("G2") || code.equals("G3");
+                if (!arc && !code.equals("G0") && !code.equals("G1") && !code.equals("G92")) continue;
                 var values = new HashMap<String, Double>();
                 var matcher = PARAMETER.matcher(command);
                 while (matcher.find()) values.put(matcher.group(1), number(matcher.group(2)));
@@ -90,7 +95,44 @@ public final class GcodeReader {
                 double nz = values.containsKey("Z") ? values.get("Z") + (absolute ? 0 : z) : z;
                 double ne = values.containsKey("E") ? values.get("E") + (absoluteE ? 0 : e) : e;
                 double extrusion = ne - e;
-                if (Math.hypot(nx - x, ny - y) > 1e-8) {
+                if (arc) {
+                    if (values.containsKey("R") || (!values.containsKey("I") && !values.containsKey("J")))
+                        throw new IOException("Arc requires relative I/J center");
+                    double cx = x + values.getOrDefault("I", 0.0), cy = y + values.getOrDefault("J", 0.0);
+                    double radius = Math.hypot(x - cx, y - cy);
+                    if (radius < 1e-8 || Math.abs(Math.hypot(nx - cx, ny - cy) - radius) > 0.1)
+                        throw new IOException("Invalid arc radius");
+                    double from = Math.atan2(y - cy, x - cx), angle = Math.atan2(ny - cy, nx - cx) - from;
+                    if (code.equals("G2")) {
+                        if (angle >= -1e-10) angle -= 2 * Math.PI;
+                    } else if (angle <= 1e-10) angle += 2 * Math.PI;
+                    int count = Math.max(1, (int) Math.ceil(Math.abs(angle)
+                            / Math.min(Math.PI / 18, 2 * Math.acos(Math.max(-1, 1 - 0.01 / radius)))));
+                    if (count > 50000) throw new IOException("Arc exceeds preview subdivision limit");
+                    double px = x, py = y, pz = z;
+                    for (int step = 1; step <= count; step++) {
+                        double fraction = (double) step / count;
+                        double qx = step == count ? nx : cx + radius * Math.cos(from + angle * fraction);
+                        double qy = step == count ? ny : cy + radius * Math.sin(from + angle * fraction);
+                        double qz = z + (nz - z) * fraction;
+                        var segment = new Segment(
+                                px,
+                                py,
+                                pz,
+                                qx,
+                                qy,
+                                qz,
+                                extrusion / count,
+                                width,
+                                height,
+                                extrusion > 1e-8 ? role : Role.TRAVEL);
+                        segments.add(segment);
+                        if (segment.deposits() && segment.role().model()) layers.add(Math.rint(qz * 1e6) / 1e6);
+                        px = qx;
+                        py = qy;
+                        pz = qz;
+                    }
+                } else if (Math.hypot(nx - x, ny - y) > 1e-8) {
                     var segment = new Segment(
                             x, y, z, nx, ny, nz, extrusion, width, height, extrusion > 1e-8 ? role : Role.TRAVEL);
                     segments.add(segment);
@@ -118,14 +160,15 @@ public final class GcodeReader {
 
     private static Role role(String value) {
         return switch (value) {
-            case "Perimeter", "WALL-INNER" -> Role.PERIMETER;
-            case "External perimeter", "WALL-OUTER" -> Role.EXTERNAL_PERIMETER;
-            case "Internal infill", "FILL" -> Role.INFILL;
-            case "Solid infill", "Top solid infill", "SKIN" -> Role.SOLID_INFILL;
+            case "Perimeter", "WALL-INNER", "Inner wall" -> Role.PERIMETER;
+            case "External perimeter", "WALL-OUTER", "Outer wall" -> Role.EXTERNAL_PERIMETER;
+            case "Internal infill", "FILL", "Sparse infill" -> Role.INFILL;
+            case "Solid infill", "Top solid infill", "SKIN", "Internal solid infill", "Top surface", "Bottom surface" ->
+                Role.SOLID_INFILL;
             case "Bridge infill", "Overhang perimeter" -> Role.BRIDGE;
             case "Gap fill" -> Role.GAP_FILL;
-            case "Support material", "SUPPORT" -> Role.SUPPORT;
-            case "Support material interface", "SUPPORT-INTERFACE" -> Role.INTERFACE;
+            case "Support material", "SUPPORT", "Support" -> Role.SUPPORT;
+            case "Support material interface", "SUPPORT-INTERFACE", "Support interface" -> Role.INTERFACE;
             case "Skirt/Brim", "SKIRT" -> Role.SKIRT_BRIM;
             case "Ironing", "IRONING" -> Role.IRONING;
             default -> Role.UNKNOWN;

@@ -18,9 +18,11 @@ val sourceProjects =
         "api/import",
         "api/export",
         "api/slicer",
+        "api/printer",
         "impl/importer",
         "impl/exporter",
         "impl/slicer",
+        "impl/printer",
         "cli",
         "gui",
         "fixtures/exporter-plugin",
@@ -352,7 +354,7 @@ tasks.wrapper {
     distributionSha256Sum = "a17ddd85a26b6a7f5ddb71ff8b05fc5104c0202c6e64782429790c933686c806"
 }
 
-for (module in listOf(":api:model", ":api:import", ":api:export", ":api:slicer")) {
+for (module in listOf(":api:model", ":api:import", ":api:export", ":api:slicer", ":api:printer")) {
     project(module) {
         tasks.register("verifyApiDependencies") {
             group = "verification"
@@ -382,6 +384,7 @@ tasks.register("verifyApiDependencies") {
         ":api:import:verifyApiDependencies",
         ":api:export:verifyApiDependencies",
         ":api:slicer:verifyApiDependencies",
+        ":api:printer:verifyApiDependencies",
     )
 }
 
@@ -413,7 +416,14 @@ for (module in listOf(":cli", ":gui")) {
                 }
                 check(
                     compile
-                        .intersect(setOf(":impl:importer", ":impl:exporter", ":impl:slicer"))
+                        .intersect(
+                            setOf(
+                                ":impl:importer",
+                                ":impl:exporter",
+                                ":impl:slicer",
+                                ":impl:printer",
+                            )
+                        )
                         .isEmpty()
                 ) {
                     "$module compiles against file-I/O implementations"

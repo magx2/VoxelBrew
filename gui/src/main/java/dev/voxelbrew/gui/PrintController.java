@@ -36,6 +36,12 @@ public final class PrintController implements AutoCloseable {
     private final Slicing slicing;
     private final dev.voxelbrew.importer.api.GcodeSource gcodeReader;
     private Map<String, List<String>> completedGcode = Map.of();
+    private Map<String, dev.voxelbrew.engine.printing.PrintArtifact> completedArtifacts = Map.of();
+
+    Map<String, dev.voxelbrew.engine.printing.PrintArtifact> completedArtifacts() {
+        return completedArtifacts;
+    }
+
     private String restoredRevision = "";
     private List<String> restoredLines = List.of();
 
@@ -305,6 +311,7 @@ public final class PrintController implements AutoCloseable {
                 Slicing.Result selectedResult = null;
                 Slicing.Result lastResult = null;
                 var jobs = new LinkedHashMap<String, List<String>>();
+                var artifacts = new LinkedHashMap<String, dev.voxelbrew.engine.printing.PrintArtifact>();
                 for (int i = 0; i < requests.size(); i++) {
                     token.check();
                     var request = requests.get(i);
@@ -339,6 +346,8 @@ public final class PrintController implements AutoCloseable {
                         unlink.run();
                     }
                     lastResult = completed;
+                    if (completed.artifact() != null)
+                        artifacts.put(request.document().printSetup().activePlateId(), completed.artifact());
                     jobs.put(
                             request.document().printSetup().activePlateId(),
                             completed.job().lines());
@@ -369,6 +378,7 @@ public final class PrintController implements AutoCloseable {
                     } else {
                         state = State.SUCCEEDED;
                         completedGcode = Map.copyOf(jobs);
+                        completedArtifacts = Map.copyOf(artifacts);
                         result = preview;
                         message = "Sliced " + requests.size() + " plate(s). G-code ready to export.";
                         future.complete(completed);

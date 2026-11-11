@@ -24,7 +24,7 @@ public final class DocumentCodec {
     public static final int SCHEMA_VERSION = 10;
     private static final byte[] MAGIC = {'J', 'C', 'A', 'D', 13, 37, 13, 37};
     private static final int HEADER = 44;
-    private static final int MAX_PAYLOAD = 16 * 1024 * 1024;
+    private static final int MAX_PAYLOAD = 128 * 1024 * 1024;
 
     public static final int MAX_ENCODED_BYTES = MAX_PAYLOAD + HEADER;
 
@@ -34,7 +34,7 @@ public final class DocumentCodec {
         int size = bytes.length;
         if (size < HEADER || size > MAX_PAYLOAD + HEADER) {
             throw new DocumentFormatException(
-                    "Invalid or truncated .vxb file: expected a complete header and <=16 MiB payload");
+                    "Invalid or truncated .vxb file: expected a complete header and <=128 MiB payload");
         }
         bytes = bytes.clone();
         if (!Arrays.equals(MAGIC, Arrays.copyOf(bytes, MAGIC.length))) {
@@ -55,7 +55,7 @@ public final class DocumentCodec {
         }
         try {
             DocumentProto.Document message = DocumentProto.Document.parseFrom(payload);
-            if (message.getSchemaVersion() != SCHEMA_VERSION) {
+            if (message.getSchemaVersion() != SCHEMA_VERSION && message.getSchemaVersion() != 11) {
                 throw new DocumentFormatException("Unsupported .vxb schema "
                         + message.getSchemaVersion()
                         + "; supported version is "
@@ -96,6 +96,16 @@ public final class DocumentCodec {
                             .collect(java.util.stream.Collectors.toMap(
                                     java.util.Map.Entry::getKey,
                                     e -> e.getValue().getLinesList())));
+            document = document.withPrintArtifacts(message.getPrintArtifactsMap().entrySet().stream()
+                    .collect(java.util.stream.Collectors.toMap(
+                            java.util.Map.Entry::getKey,
+                            e -> new dev.voxelbrew.engine.printing.PrintArtifact(
+                                    e.getValue().getFormat(),
+                                            java.util.Base64.getEncoder()
+                                                    .encodeToString(e.getValue()
+                                                            .getPayload()
+                                                            .toByteArray()),
+                                    e.getValue().getSha256(), e.getValue().getMetadataMap()))));
             document.parameters().builtins().fileVersion(message.getFileVersion());
             return document;
         } catch (DocumentFormatException failure) {
@@ -111,7 +121,7 @@ public final class DocumentCodec {
         try {
             com.google.protobuf.util.JsonFormat.parser().merge(json, message);
             byte[] payload = message.build().toByteArray();
-            if (payload.length > MAX_PAYLOAD) throw new DocumentFormatException("Document exceeds 16 MiB limit");
+            if (payload.length > MAX_PAYLOAD) throw new DocumentFormatException("Document exceeds 128 MiB limit");
             return decode(ByteBuffer.allocate(HEADER + payload.length)
                     .put(MAGIC)
                     .putInt(payload.length)
@@ -147,7 +157,7 @@ public final class DocumentCodec {
                 .build()
                 .toByteArray();
         if (payload.length > MAX_PAYLOAD) {
-            throw new IOException("Document exceeds 16 MiB limit");
+            throw new IOException("Document exceeds 128 MiB limit");
         }
         ByteBuffer bytes = ByteBuffer.allocate(HEADER + payload.length)
                 .put(MAGIC)
@@ -274,14 +284,16 @@ public final class DocumentCodec {
 
     /** Includes CAD definitions and print setup, excluding writer version and derived output. */
     public static String fingerprint(CadDocument document) {
-        var definition = toProto(document).toBuilder().clearGcode().clearFileVersion();
+        var definition = toProto(document.withGcode(java.util.Map.of())).toBuilder()
+                .clearFileVersion()
+                .setSchemaVersion(SCHEMA_VERSION);
         definition.setPrintSetup(definition.getPrintSetup().toBuilder().clearWorkspaceSettings());
         return java.util.HexFormat.of().formatHex(sha256(definition.build().toByteArray()));
     }
 
     private static DocumentProto.Document toProto(CadDocument document) {
         var message = DocumentProto.Document.newBuilder()
-                .setSchemaVersion(SCHEMA_VERSION)
+                .setSchemaVersion(document.printArtifacts().isEmpty() ? SCHEMA_VERSION : 11)
                 .setFileVersion(document.parameters().builtins().fileVersion())
                 .setNextUuid(document.uuidGenerator().nextValue())
                 .setDocumentId(document.id())
@@ -290,6 +302,19 @@ public final class DocumentCodec {
                 .setPrintSetup(toProto(document.printSetup()))
                 .setParameters(ParameterCodec.toProto(document.parameters()));
         document.features().forEach(feature -> message.addFeatures(toProto(feature)));
+        document.printArtifacts().entrySet().stream()
+                .sorted(java.util.Map.Entry.comparingByKey())
+                .forEach(entry -> {
+                    var artifact = entry.getValue();
+                    message.putPrintArtifacts(
+                            entry.getKey(),
+                            DocumentProto.PrintArtifact.newBuilder()
+                                    .setFormat(artifact.format())
+                                    .setPayload(com.google.protobuf.ByteString.copyFrom(artifact.bytes()))
+                                    .setSha256(artifact.sha256())
+                                    .putAllMetadata(artifact.metadata())
+                                    .build());
+                });
         document.gcode().entrySet().stream()
                 .sorted(java.util.Map.Entry.comparingByKey())
                 .forEach(entry -> message.putGcode(

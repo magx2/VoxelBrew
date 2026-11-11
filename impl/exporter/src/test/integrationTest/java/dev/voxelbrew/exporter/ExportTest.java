@@ -181,6 +181,7 @@ class ExportTest {
                             "document-probe",
                             "failing",
                             "gcode",
+                            "gcode-package",
                             "json",
                             "obj",
                             "prusa-project",

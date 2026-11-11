@@ -14,7 +14,8 @@
 ## Architecture
 
 - Use Java 21, the committed Gradle wrapper, and `dev.voxelbrew` packages.
-- Keep eleven first-party subprojects: `util`, `engine`, `:api:model`, `:api:import`, `:api:export`, `:api:slicer`, `:impl:importer`, `:impl:exporter`, `:impl:slicer`, `cli`, and `gui`.
+- Keep thirteen first-party subprojects: `util`, `engine`, `:api:model`, `:api:import`, `:api:export`, `:api:slicer`, `:api:printer`, `:impl:importer`, `:impl:exporter`, `:impl:slicer`, `:impl:printer`, `cli`, and `gui`.
+  api/printer owns physical-device contracts; impl/printer owns device configuration and network transport.
   Engine owns native CAD evaluation, persistence codecs and feature execution.
   api/model owns shared domain values and validation helpers under MIT.
   api/import and api/export own only public file-I/O and provider contracts; they depend only on api/model.

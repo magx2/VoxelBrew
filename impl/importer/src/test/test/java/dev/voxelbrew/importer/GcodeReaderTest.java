@@ -9,6 +9,26 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 class GcodeReaderTest {
+    @Test
+    void orcaFeatureMarkersAndQuarterCircleRetainExtrusionAndLayer() throws Exception {
+        var input =
+                new java.io.ByteArrayInputStream(("G90\nM83\nG1 Z0.2\n; FEATURE: Outer wall\n" + "G2 X1 Y1 I1 J0 E2\n")
+                        .getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        var job = GcodeReader.read(input);
+        assertEquals(List.of(0.2), job.modelLayers());
+        assertEquals(
+                2,
+                job.segments().stream().mapToDouble(GcodeJob.Segment::extrusion).sum(),
+                1e-9);
+        assertEquals(
+                Math.PI / 2,
+                job.segments().stream().mapToDouble(GcodeJob.Segment::length).sum(),
+                0.01);
+        assertTrue(job.segments().stream().allMatch(s -> s.role() == GcodeJob.Role.EXTERNAL_PERIMETER));
+        assertEquals(1, job.segments().getLast().x1());
+        assertEquals(1, job.segments().getLast().y1());
+    }
+
     @TempDir
     Path directory;
 
@@ -43,7 +63,7 @@ class GcodeReaderTest {
                 3, job.segments().stream().filter(GcodeJob.Segment::deposits).count());
         Files.writeString(file, "G20\nG1 X1 E1\n");
         assertThrows(java.io.IOException.class, () -> GcodeReader.read(file));
-        Files.writeString(file, "G3 X1 Y1 I1 E1\n");
+        Files.writeString(file, "G3 X1 Y1 R0 E1\n");
         assertThrows(java.io.IOException.class, () -> GcodeReader.read(file));
     }
 }

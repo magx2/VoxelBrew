@@ -331,3 +331,8 @@ Click the current printer in the Slicer tab to open a searchable picker, matchin
 More sketch types. Search is focused immediately; results filter as you type.
 Use Up/Down to navigate, Enter or a double-click to choose, and Escape to cancel.
 Custom presets remain first, built-ins are marked, and hidden defaults are omitted.
+
+# Device handoff
+
+The **Printer** workspace sends a stored plate job to a physical printer.
+See [device configuration, Bambu packages and verification limits](printer-devices.md).

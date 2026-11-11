@@ -32,7 +32,7 @@ Once the check passes, review and stage the milestone changes and create a Git c
 | gui            | JavaFX desktop, sketch tools, viewport, properties, timeline, file and print dialogs                 | engine, api:import, api:export, api:slicer, util; impl:importer/impl:exporter/impl:slicer at runtime |
 | cli            | Headless modeling, editing, file operations, inspection, export, plugin listing and slicing commands | engine, api:import, api:export, api:slicer, util; impl:importer/impl:exporter/impl:slicer at runtime |
 
-Keep these eleven first-party subprojects. The user-requested utility and file-I/O
+Keep thirteen first-party subprojects, including `:api:printer` and `:impl:printer` for physical devices. The user-requested utility and file-I/O
 extractions supersede the original three-project boundary. Example plugins belong
 in test fixtures or a separate consumer build. Publish the versioned plugin
 feature contracts from engine and file-I/O contracts from api/import and api/export, with slicing contracts in api/slicer. Keep JavaFX, CLI parsing, generated Protobuf classes and
@@ -343,3 +343,11 @@ Use a shelf fixture with a 20 mm projecting roof and two labeled, equal undersid
 ## First instruction to execute
 
 Implement M0 now. Run the real JNI-to-kernel integration test before adding persistence or UI. Return the exact command that reproduces it and the measured volume. Then use that working path for M1.
+
+# Printer device maintenance
+
+Extend M4's stored per-plate jobs with a Printer workspace, Moonraker/Klipper and
+Bambu LAN devices, a printer API/implementation pair, and OrcaSlicer packages.
+Keep device configuration separate from slicer presets. Gate dispatch on a current
+slice and compatible target. Qualify persisted package bytes and protocol behavior
+separately from physical hardware; see [printer devices](printer-devices.md).

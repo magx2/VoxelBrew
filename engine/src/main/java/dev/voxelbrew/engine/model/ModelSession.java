@@ -19,6 +19,7 @@ public final class ModelSession {
     private int cursor;
     private long revision;
     private java.util.Map<String, List<String>> gcode;
+    private java.util.Map<String, dev.voxelbrew.engine.printing.PrintArtifact> printArtifacts;
 
     private record State(
             List<Feature> features,
@@ -42,19 +43,36 @@ public final class ModelSession {
         featureNames = document.featureNames();
         cursor = document.cursor();
         gcode = document.gcode();
+        printArtifacts = document.printArtifacts();
     }
 
     public synchronized CadDocument document() {
         return new CadDocument(
-                id, features, cursor, printSetup, parameters, bodyStyles, bodyNames, featureNames, gcode);
+                id,
+                features,
+                cursor,
+                printSetup,
+                parameters,
+                bodyStyles,
+                bodyNames,
+                featureNames,
+                gcode,
+                printArtifacts);
     }
 
     public synchronized void setGcode(java.util.Map<String, List<String>> jobs) {
         gcode = document().withGcode(jobs).gcode();
+        printArtifacts = java.util.Map.of();
+    }
+
+    public synchronized void setPrintArtifacts(
+            java.util.Map<String, dev.voxelbrew.engine.printing.PrintArtifact> artifacts) {
+        printArtifacts = java.util.Map.copyOf(artifacts);
     }
 
     public synchronized void invalidateGcode() {
         gcode = java.util.Map.of();
+        printArtifacts = java.util.Map.of();
     }
 
     public synchronized long revision() {
@@ -306,11 +324,15 @@ public final class ModelSession {
 
     public synchronized void setPrintSetup(dev.voxelbrew.engine.printing.PrintSetup setup) {
         var retained = gcode;
+        var retainedArtifacts = printArtifacts;
         boolean selectionOnly =
                 printSetup.plates().stream().anyMatch(plate -> plate.id().equals(setup.activePlateId()))
                         && printSetup.selectPlate(setup.activePlateId()).equals(setup);
         commit(features, setup);
-        if (selectionOnly) gcode = retained;
+        if (selectionOnly) {
+            gcode = retained;
+            printArtifacts = retainedArtifacts;
+        }
     }
 
     private void commit(List<Feature> next, dev.voxelbrew.engine.printing.PrintSetup setup) {

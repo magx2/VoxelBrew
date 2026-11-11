@@ -14,6 +14,8 @@ dependencies {
     implementation(project(":api:import"))
     implementation(project(":api:export"))
     implementation(project(":api:slicer"))
+    implementation(project(":api:printer"))
+    runtimeOnly(project(":impl:printer"))
     runtimeOnly(project(":impl:importer"))
     runtimeOnly(project(":impl:exporter"))
     runtimeOnly(project(":impl:slicer"))

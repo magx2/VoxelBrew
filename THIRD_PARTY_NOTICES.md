@@ -111,3 +111,13 @@ platforms. No third-party Java binding has been accepted or bundled.
   License: `third_party/twelvemonkeys/LICENSE.txt`. The WebP unit-test fixtures
   `small_1x1.webp` and `lossless.transparent.webp` are unmodified files from
   that tag under `imageio/imageio-webp/src/test/resources/webp/`.
+
+# Printer transport dependencies
+
+Physical Bambu connections use [JBambuAPI 1.7.0](https://github.com/magx2/JBambuAPI)
+under LGPL-2.1, as an unmodified separate JAR. Its source and license are available
+from the linked project. It uses Eclipse Paho MQTT 1.2.5 (EPL-1.0 / EDL-1.0)
+and Jackson 2.18.2 (Apache-2.0).
+FTPS transfer uses Apache Commons Net 3.12.0 and Commons IO 2.20.0 (Apache-2.0).
+Their distributions retain embedded license and notice files. Users may replace
+the separately shipped library JARs with compatible modified versions.

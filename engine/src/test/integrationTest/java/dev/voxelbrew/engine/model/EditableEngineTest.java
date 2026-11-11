@@ -261,7 +261,7 @@ class EditableEngineTest {
             byte[] bytes = Files.readAllBytes(file);
             var message = DocumentProto.Document.parseFrom(Arrays.copyOfRange(bytes, 44, bytes.length)).toBuilder();
             if (newerVersion) {
-                message.setSchemaVersion(DocumentCodec.SCHEMA_VERSION + 1);
+                message.setSchemaVersion(DocumentCodec.LATEST_SCHEMA_VERSION + 1);
             } else {
                 message.setUnknownFields(com.google.protobuf.UnknownFieldSet.newBuilder()
                         .addField(

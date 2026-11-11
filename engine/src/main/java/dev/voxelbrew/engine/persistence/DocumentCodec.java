@@ -22,6 +22,7 @@ import java.util.List;
  */
 public final class DocumentCodec {
     public static final int SCHEMA_VERSION = 10;
+    public static final int LATEST_SCHEMA_VERSION = 11;
     private static final byte[] MAGIC = {'J', 'C', 'A', 'D', 13, 37, 13, 37};
     private static final int HEADER = 44;
     private static final int MAX_PAYLOAD = 128 * 1024 * 1024;
@@ -55,11 +56,11 @@ public final class DocumentCodec {
         }
         try {
             DocumentProto.Document message = DocumentProto.Document.parseFrom(payload);
-            if (message.getSchemaVersion() != SCHEMA_VERSION && message.getSchemaVersion() != 11) {
+            if (message.getSchemaVersion() != SCHEMA_VERSION && message.getSchemaVersion() != LATEST_SCHEMA_VERSION) {
                 throw new DocumentFormatException("Unsupported .vxb schema "
                         + message.getSchemaVersion()
                         + "; supported version is "
-                        + SCHEMA_VERSION
+                        + LATEST_SCHEMA_VERSION
                         + ". File is read-only; no write performed.");
             }
             requireSupportedApplicationVersion(message.getApplicationVersion());
@@ -293,7 +294,7 @@ public final class DocumentCodec {
 
     private static DocumentProto.Document toProto(CadDocument document) {
         var message = DocumentProto.Document.newBuilder()
-                .setSchemaVersion(document.printArtifacts().isEmpty() ? SCHEMA_VERSION : 11)
+                .setSchemaVersion(document.printArtifacts().isEmpty() ? SCHEMA_VERSION : LATEST_SCHEMA_VERSION)
                 .setFileVersion(document.parameters().builtins().fileVersion())
                 .setNextUuid(document.uuidGenerator().nextValue())
                 .setDocumentId(document.id())

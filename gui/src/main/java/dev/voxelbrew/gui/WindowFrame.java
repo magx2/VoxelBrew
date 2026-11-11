@@ -64,7 +64,7 @@ final class WindowFrame extends BorderPane {
         header.addEventHandler(MouseEvent.MOUSE_PRESSED, this::beginMove);
         header.addEventHandler(MouseEvent.MOUSE_DRAGGED, this::move);
         header.addEventHandler(MouseEvent.MOUSE_RELEASED, e -> moving = false);
-        header.addEventHandler(MouseEvent.MOUSE_CLICKED, e -> {
+        header.addEventFilter(MouseEvent.MOUSE_CLICKED, e -> {
             if (e.getButton() == MouseButton.PRIMARY
                     && e.getClickCount() == 2
                     && e.isStillSincePress()

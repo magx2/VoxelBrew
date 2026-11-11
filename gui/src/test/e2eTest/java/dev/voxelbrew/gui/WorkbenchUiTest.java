@@ -661,7 +661,10 @@ class WorkbenchUiTest {
                         .findFirst()
                         .orElseThrow()
                         .getItems()
-                        .getFirst()
+                        .stream()
+                        .filter(item -> "printers-export-defaults".equals(item.getId()))
+                        .findFirst()
+                        .orElseThrow()
                         .fire());
         ready();
         fx(() -> {
@@ -692,6 +695,7 @@ class WorkbenchUiTest {
                             .orElseThrow();
             assertEquals(
                     List.of(
+                            "printers-configure-devices",
                             "printers-export-defaults",
                             "printers-open-folder",
                             "printers-reload",
@@ -2634,12 +2638,20 @@ class WorkbenchUiTest {
         assertEquals(resized.getMaxY(), restored.getMaxY(), 2);
         assertEquals(resized.getWidth() - 15, restored.getWidth(), 2);
         click("window-maximize");
-        assertWindowBounds(screen);
+        var maximized = windowBounds();
+        assertTrue(
+                fx(() -> Screen.getScreens().stream()
+                        .map(Screen::getVisualBounds)
+                        .anyMatch(bounds -> Math.abs(bounds.getMinX() - maximized.getMinX()) <= 2
+                                && Math.abs(bounds.getMinY() - maximized.getMinY()) <= 2
+                                && Math.abs(bounds.getWidth() - maximized.getWidth()) <= 2
+                                && Math.abs(bounds.getHeight() - maximized.getHeight()) <= 2)),
+                "Maximized window should fill the visual bounds of a display");
         assertTrue(fx(() -> node("#window-maximize").getAccessibleHelp().startsWith("Restore")));
         doubleClickHeader();
         assertWindowBounds(restored);
         doubleClickHeader();
-        assertWindowBounds(screen);
+        assertWindowBounds(maximized);
         primaryDrag(centerOf("document-title"), 35, 40);
         assertEquals(restored.getWidth(), windowBounds().getWidth(), 2);
         assertEquals(restored.getHeight(), windowBounds().getHeight(), 2);

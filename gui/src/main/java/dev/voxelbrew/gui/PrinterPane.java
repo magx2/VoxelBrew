@@ -160,6 +160,8 @@ final class PrinterPane extends VBox implements AutoCloseable {
     private Button button(String key, Runnable action) {
         var button = new Button(t(key));
         button.setId("printer-" + key);
+        button.setAccessibleHelp(t(key));
+        button.setTooltip(new Tooltip(t(key)));
         button.setOnAction(e -> action.run());
         return button;
     }

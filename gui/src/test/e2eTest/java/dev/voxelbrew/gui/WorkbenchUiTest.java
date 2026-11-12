@@ -189,6 +189,16 @@ class WorkbenchUiTest {
     @Test
     void printerDeviceFieldsFollowConnectionType() throws Exception {
         ready();
+        var prepared = PreparedDocuments.copy("plate-5mm.vxb", directory);
+        fx(() -> workbench.controller().open(prepared)).get(20, TimeUnit.SECONDS);
+        ready();
+        var activeProfile = document().printSetup().printerId();
+        fx(() -> {
+            ((TabPane) node("#workspaces")).getSelectionModel().select(1);
+            var target = (ComboBox<?>) node("#print-target");
+            assertEquals("No connection (save G-code)", target.getButtonCell().getText());
+            return null;
+        });
         Platform.runLater(() -> ((MenuBar) node("#main-menu"))
                 .getMenus().stream()
                         .filter(menu -> "menu-printers".equals(menu.getId()))
@@ -285,7 +295,15 @@ class WorkbenchUiTest {
         fx(() -> {
             ((TextField) node("#device-config-name")).setText("Lab Klipper");
             ((TextField) node("#device-config-address")).setText("http://moonraker.local");
-            ((ComboBox<?>) node("#device-config-profile")).getSelectionModel().selectFirst();
+            var profile = (ComboBox<?>) node("#device-config-profile");
+            var matchingProfile = java.util.stream.IntStream.range(
+                            0, profile.getItems().size())
+                    .filter(index -> profile.getItems().get(index)
+                                    instanceof dev.voxelbrew.slicer.api.PrinterProfileCatalog.Entry entry
+                            && entry.definition().printer().id().equals(activeProfile))
+                    .findFirst()
+                    .orElseThrow();
+            profile.getSelectionModel().select(matchingProfile);
             ((Button) node("#device-config-save")).fire();
             return null;
         });
@@ -308,6 +326,23 @@ class WorkbenchUiTest {
             assertEquals("Lab Klipper", properties.getProperty("name"));
         }
         assertNull(fx(() -> stage.getScene().getRoot().lookup("#device-config-content")));
+        fx(() -> {
+            ((Button) node("#print-reload-printers")).fire();
+            return null;
+        });
+        var selectedDevice = fx(() -> {
+            var target = (ComboBox<?>) node("#print-target");
+            assertEquals(2, target.getItems().size());
+            target.getSelectionModel().select(1);
+            assertEquals("Lab Klipper", target.getButtonCell().getText());
+            return (String) target.getValue();
+        });
+        ready();
+        assertEquals(selectedDevice, document().printSetup().workspaceSettings().get(PrintTarget.PRINTER_ID));
+        assertEquals(selectedDevice, fx(() -> ((ComboBox<?>) node("#print-target")).getValue()));
+        assertEquals(
+                "Lab Klipper",
+                fx(() -> ((ComboBox<?>) node("#print-target")).getButtonCell().getText()));
     }
 
     @Test

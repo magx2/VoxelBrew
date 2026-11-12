@@ -457,6 +457,7 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
         printerChoice.setId("print-printer");
         printTarget.setId("print-target");
         printTarget.setMaxWidth(Double.MAX_VALUE);
+        printTarget.setPromptText(translations.text("print.profileOnly"));
         printTarget.setConverter(new javafx.util.StringConverter<>() {
             @Override
             public String toString(String value) {
@@ -468,6 +469,20 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
             @Override
             public String fromString(String value) {
                 return value;
+            }
+        });
+        printTarget.setCellFactory(list -> new javafx.scene.control.ListCell<>() {
+            @Override
+            protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                setText(empty ? null : printTarget.getConverter().toString(item));
+            }
+        });
+        printTarget.setButtonCell(new javafx.scene.control.ListCell<>() {
+            @Override
+            protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                setText(printTarget.getConverter().toString(printTarget.getValue()));
             }
         });
         printTarget.valueProperty().addListener((observed, before, selected) -> {
@@ -494,10 +509,10 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
                 6,
                 new Label(translations.text("print.printerSelector")),
                 printerChoice,
-                new Label(translations.text("print.sliceTarget")),
-                printTarget,
                 new HBox(8, printerImage, printerDetails),
                 nozzleRow,
+                new Label(translations.text("print.sliceTarget")),
+                printTarget,
                 equalRow(
                         button(
                                 translations.text("print.reloadPrinters"),
@@ -2259,6 +2274,7 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
                             .map(dev.voxelbrew.printer.api.Printer::id)
                             .toList());
             printTarget.setValue(selectedTarget == null ? "" : selectedTarget);
+            printTarget.getButtonCell().setText(printTarget.getConverter().toString(printTarget.getValue()));
             updating = oldUpdating;
         } catch (java.io.IOException failure) {
             diagnostics.setText(failure.getMessage());

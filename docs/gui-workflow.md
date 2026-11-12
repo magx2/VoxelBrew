@@ -97,7 +97,7 @@ evaluated revision; sketches continue to use stable XY-parallel plane references
 | ------------------------------- | ------------------------------------------------------ |
 | Left click                      | Select a sketch profile, body or rendered face         |
 | Left drag on empty grid space   | Orbit the model                                        |
-| Middle drag                     | Orbit                                                  |
+| Middle drag                     | Pan the whole design view                              |
 | Shift + middle drag             | Pan                                                    |
 | Right drag                      | Pan the whole design view                              |
 | Mouse wheel                     | Zoom                                                   |
@@ -151,11 +151,11 @@ the X (red), Y (green), and Z (blue) axes. Hover over a face, beveled edge, or
 corner to highlight its snap target. Its menu also provides hidden faces and
 Fit model; focused cube targets activate with Enter or Space. Navigation never creates a feature or undo entry.
 The cube replaces the separate view selector and Fit strip above the viewport.
-Dragging the cube, dragging empty grid space with the left mouse button, and
-middle-dragging all rotate the scene in the direction of the pointer. Left drags
+Dragging the cube or empty grid space with the left mouse button rotates the
+scene in the direction of the pointer. Left drags
 starting on a body or sketch keep selection behavior; drawing tools and extrusion
 handles retain their own input. Release ends grid rotation, including when the
-pointer has moved over a body. Shift + middle-drag continues to pan.
+pointer has moved over a body. Middle-drag pans the view, like right-drag.
 
 ## Appearance and exporters
 

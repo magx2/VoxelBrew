@@ -133,7 +133,7 @@ public final class Viewport extends StackPane {
         setDark(false);
         grid();
         scene.addEventFilter(MouseEvent.MOUSE_PRESSED, e -> {
-            if (e.getButton() != MouseButton.SECONDARY) return;
+            if (e.getButton() != MouseButton.SECONDARY && e.getButton() != MouseButton.MIDDLE) return;
             lastX = e.getSceneX();
             lastY = e.getSceneY();
             primaryOrbit = false;
@@ -143,7 +143,7 @@ public final class Viewport extends StackPane {
             e.consume();
         });
         scene.addEventFilter(MouseEvent.MOUSE_DRAGGED, e -> {
-            if (!e.isSecondaryButtonDown()) return;
+            if (!e.isSecondaryButtonDown() && !e.isMiddleButtonDown()) return;
             pan.setX(pan.getX() + (e.getSceneX() - lastX) * distance / 700);
             pan.setY(pan.getY() + (e.getSceneY() - lastY) * distance / 700);
             lastX = e.getSceneX();
@@ -151,7 +151,7 @@ public final class Viewport extends StackPane {
             e.consume();
         });
         scene.addEventFilter(MouseEvent.MOUSE_RELEASED, e -> {
-            if (e.getButton() != MouseButton.SECONDARY) return;
+            if (e.getButton() != MouseButton.SECONDARY && e.getButton() != MouseButton.MIDDLE) return;
             scene.setCursor(Cursor.DEFAULT);
             e.consume();
         });
@@ -170,14 +170,7 @@ public final class Viewport extends StackPane {
             double dx = e.getSceneX() - lastX, dy = e.getSceneY() - lastY;
             lastX = e.getSceneX();
             lastY = e.getSceneY();
-            if (e.isMiddleButtonDown()) {
-                if (e.isShiftDown()) {
-                    pan.setX(pan.getX() + dx * distance / 700);
-                    pan.setY(pan.getY() + dy * distance / 700);
-                } else {
-                    orbitBy(dx, dy);
-                }
-            } else if (primaryOrbit && e.isPrimaryButtonDown() && planeClick == null && !e.isStillSincePress()) {
+            if (primaryOrbit && e.isPrimaryButtonDown() && planeClick == null && !e.isStillSincePress()) {
                 scene.setCursor(Cursor.CLOSED_HAND);
                 orbitBy(dx, dy);
                 e.consume();

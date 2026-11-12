@@ -5912,11 +5912,13 @@ class WorkbenchUiTest {
         cubeClick("front", ViewOrientation.named("Front"));
         cubeClick("top-front-right", ViewOrientation.lookingFrom(1, -1, 1));
         var beforeOrbit = fx(() -> List.copyOf(((Polygon) node("#view-cube-top")).getPoints()));
+        var beforePan = fx(() -> workbench.viewport().modelToScreen(point));
         navigate(false);
-        assertNotEquals(
+        assertEquals(
                 beforeOrbit,
                 fx(() -> List.copyOf(((Polygon) node("#view-cube-top")).getPoints())),
-                "Cube follows main viewport orbit");
+                "Middle drag does not rotate the cube");
+        assertTrue(beforePan.distance(fx(() -> workbench.viewport().modelToScreen(point))) > 2);
         var orientation = fx(() -> workbench.viewport().orientationProperty().get());
         navigate(true);
         fx(() -> {
@@ -6090,13 +6092,18 @@ class WorkbenchUiTest {
         assertEquals("Body 1", selectedTree);
         var navigationDocument = document();
         var point = new Point3D(60, 40, 8);
-        var beforeOrbit = fx(() -> workbench.viewport().modelToScreen(point));
+        var beforeOrientation =
+                fx(() -> workbench.viewport().orientationProperty().get());
+        var beforePan = fx(() -> workbench.viewport().modelToScreen(point));
         navigate(false);
-        var afterOrbit = fx(() -> workbench.viewport().modelToScreen(point));
-        assertTrue(beforeOrbit.distance(afterOrbit) > 2, "Orbit changes projection");
+        var afterMiddlePan = fx(() -> workbench.viewport().modelToScreen(point));
+        assertEquals(
+                beforeOrientation,
+                fx(() -> workbench.viewport().orientationProperty().get()));
+        assertTrue(beforePan.distance(afterMiddlePan) > 2, "Middle drag pans the view");
         navigate(true);
         var afterPan = fx(() -> workbench.viewport().modelToScreen(point));
-        assertTrue(afterOrbit.distance(afterPan) > 2, "Pan changes projection");
+        assertTrue(afterMiddlePan.distance(afterPan) > 2, "Right drag pans the view");
         fx(() -> {
             robot.mouseWheel(4);
             return null;
@@ -6245,8 +6252,7 @@ class WorkbenchUiTest {
         fx(() -> {
             var bounds = workbench.viewport().localToScreen(workbench.viewport().getBoundsInLocal());
             robot.mouseMove(bounds.getCenterX(), bounds.getCenterY());
-            if (pan) robot.keyPress(KeyCode.SHIFT);
-            robot.mousePress(MouseButton.MIDDLE);
+            robot.mousePress(pan ? MouseButton.SECONDARY : MouseButton.MIDDLE);
             return null;
         });
         Thread.sleep(100);
@@ -6256,8 +6262,7 @@ class WorkbenchUiTest {
         });
         Thread.sleep(150);
         fx(() -> {
-            robot.mouseRelease(MouseButton.MIDDLE);
-            if (pan) robot.keyRelease(KeyCode.SHIFT);
+            robot.mouseRelease(pan ? MouseButton.SECONDARY : MouseButton.MIDDLE);
             return null;
         });
         Thread.sleep(150);

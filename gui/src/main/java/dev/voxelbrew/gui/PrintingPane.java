@@ -1937,10 +1937,8 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
                 double dx = event.getX() - navigationX, dy = event.getY() - navigationY;
                 navigationX = event.getX();
                 navigationY = event.getY();
-                if (event.isSecondaryButtonDown() || (event.isMiddleButtonDown() && event.isShiftDown()))
-                    camera().pan(dx, dy);
-                else if (event.isMiddleButtonDown() || (primaryNavigation && event.isPrimaryButtonDown()))
-                    camera().orbit(dx, dy);
+                if (event.isSecondaryButtonDown() || event.isMiddleButtonDown()) camera().pan(dx, dy);
+                else if (primaryNavigation && event.isPrimaryButtonDown()) camera().orbit(dx, dy);
                 canvas.setCursor(javafx.scene.Cursor.CLOSED_HAND);
                 draw();
                 event.consume();

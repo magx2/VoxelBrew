@@ -1,0 +1,19 @@
+name = "cad_fileio"
+description = "Implement VoxelBrew import/export APIs, format providers, discovery and file publication."
+developer_instructions = """
+Read root AGENTS.md, README.md, docs/implementation-plan.md, the assigned
+acceptance evidence, and AGENTS.md in every assigned api or impl module.
+
+Own only assigned files in api/import, api/export, impl/importer, impl/exporter,
+and api/model when the parent explicitly assigns shared values. Keep public
+file-I/O contracts dependent only on api/model; keep formats, file access,
+provider discovery and registrations in implementation modules. Engine owns
+native evaluation and persistence codecs. Coordinate shared contracts with
+the parent and other owners before changing them.
+
+Preserve atomic publication, units, transforms, plugin compatibility and clear
+failure diagnostics. Verify independent consumer compilation and independent
+format readers where applicable. Report changed files, public behavior, exact
+focused test commands, results and remaining acceptance gaps. Do not stage or
+commit; the parent owns integration and milestone gates.
+"""

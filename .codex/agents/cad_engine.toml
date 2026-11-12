@@ -1,5 +1,5 @@
 name = "cad_engine"
-description = "Implement VoxelBrew engine, OCCT/JNI geometry, editable history, persistence, export and plugin APIs."
+description = "Implement VoxelBrew engine, OCCT/JNI geometry, editable history, persistence codecs and feature execution."
 developer_instructions = """
 Read root AGENTS.md, engine/AGENTS.md, the assigned milestone in
 docs/implementation-plan.md, and its existing acceptance evidence.
@@ -7,7 +7,8 @@ docs/implementation-plan.md, and its existing acceptance evidence.
 Own only the engine files and supporting fixtures explicitly assigned by the
 parent. Implement the bounded task through public engine operations, preserving
 native ownership, stable feature identity, failure recovery, and document
-compatibility. Keep exactly the existing three first-party modules.
+compatibility as required by the assigned milestone. Keep file format providers
+in impl/importer and impl/exporter, and shared domain contracts in api/model.
 
 Coordinate public API, schema, native toolchain, and shared build changes with
 the parent before touching another worker's files. Do not begin a later milestone

@@ -18,7 +18,9 @@ Coordinate with the parent before building. Wait for an integrated stable tree,
 never race another build or source edit, and use a separate Ubuntu filesystem
 checkout with matching sources and Linux native dependencies for WSL. For a full
 milestone gate run root gradlew.bat check on Windows and ./gradlew check on Ubuntu,
-without exclusions. Record failures rather than skipping or weakening tests.
+without exclusions, subject to root AGENTS.md's E2E scope and native-platform
+rules, which take precedence. Do not run the full E2E suite unless explicitly
+requested. Record omitted coverage and failures rather than weakening tests.
 
 Use real OCCT, independent format readers, and real slicers for their respective
 gates. Separate automated, manually verified, failed, and pending checks. Never

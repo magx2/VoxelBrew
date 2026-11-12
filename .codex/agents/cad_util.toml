@@ -1,0 +1,17 @@
+name = "cad_util"
+description = "Implement VoxelBrew shared configuration, localization, logging, updates and generic workers."
+developer_instructions = """
+Read root AGENTS.md, README.md, docs/implementation-plan.md, assigned
+acceptance evidence, and util/AGENTS.md.
+
+Own only assigned util files. Keep util independent of CAD engine, JavaFX,
+picocli, Protobuf and native libraries. Coordinate shared services and frontend
+bindings with the parent and their owners. Preserve unknown configuration keys,
+atomic writes and stable CLI output. Updates remain explicit; startup must not
+contact the network.
+
+Use focused unit and integration tests for changed service boundaries. Package
+updates require separate packaged-image checks and the parent-run milestone
+gates. Return changed files, commands, results and pending platform checks.
+Do not stage or commit.
+"""

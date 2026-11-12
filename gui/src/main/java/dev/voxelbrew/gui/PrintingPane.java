@@ -22,6 +22,9 @@ import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
 import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
+import javafx.scene.paint.CycleMethod;
+import javafx.scene.paint.LinearGradient;
+import javafx.scene.paint.Stop;
 import javafx.util.StringConverter;
 
 /** Build placement and actual toolpath preview, sharing all validation and slicing with CLI. */
@@ -1383,10 +1386,30 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
         viewOx = ox;
         viewOy = oy;
         var hardware = PrintProfile.resolve(setup()).printer();
+        if (threeDimensional) {
+            graphics.setFill(dark ? Color.web("#101b21") : Color.web("#8b9ba3"));
+            for (int i = 0; i < hardware.bed().size(); i++) {
+                var a = hardware.bed().get(i);
+                var b = hardware.bed().get((i + 1) % hardware.bed().size());
+                double ax = ox + projectX(a.x(), a.y()) * scale;
+                double ay = oy - projectY(a.x(), a.y(), 0) * scale;
+                double bx = ox + projectX(b.x(), b.y()) * scale;
+                double by = oy - projectY(b.x(), b.y(), 0) * scale;
+                graphics.fillPolygon(new double[] {ax, bx, bx, ax}, new double[] {ay, by, by + 7, ay + 7}, 4);
+            }
+        }
         bedPath(hardware.bed(), ox, oy, scale);
-        graphics.setFill(dark ? Color.web("#303b42") : Color.web("#dce5e8"));
+        graphics.setFill(new LinearGradient(
+                0,
+                0,
+                1,
+                1,
+                true,
+                CycleMethod.NO_CYCLE,
+                new Stop(0, dark ? Color.web("#394b53") : Color.web("#e5eef0")),
+                new Stop(1, dark ? Color.web("#25343c") : Color.web("#c6d6dc"))));
         graphics.fill();
-        graphics.setStroke(dark ? Color.web("#52616a") : Color.web("#b4c3ca"));
+        graphics.setStroke(dark ? Color.web("#536c75") : Color.web("#a9bec5"));
         graphics.setLineWidth(1);
         graphics.save();
         bedPath(hardware.bed(), ox, oy, scale);
@@ -1398,9 +1421,24 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
             line(ox, oy, scale, plateMinX, n, 0, plateMinX + plateWidth, n, 0);
         graphics.restore();
         bedPath(hardware.bed(), ox, oy, scale);
-        graphics.setStroke(dark ? Color.web("#91a7ad") : Color.web("#748f99"));
-        graphics.setLineWidth(2.5);
+        graphics.setStroke(dark ? Color.web("#9eb8bd") : Color.web("#718e98"));
+        graphics.setLineWidth(3);
         graphics.stroke();
+        graphics.setFill(dark ? Color.web("#18262c") : Color.web("#849ba4"));
+        for (var corner : hardware.bed()) {
+            double x = ox
+                    + projectX(
+                                    corner.x() + Math.copySign(5, plateMinX + plateWidth / 2 - corner.x()),
+                                    corner.y() + Math.copySign(5, plateMinY + plateDepth / 2 - corner.y()))
+                            * scale;
+            double y = oy
+                    - projectY(
+                                    corner.x() + Math.copySign(5, plateMinX + plateWidth / 2 - corner.x()),
+                                    corner.y() + Math.copySign(5, plateMinY + plateDepth / 2 - corner.y()),
+                                    0)
+                            * scale;
+            graphics.fillOval(x - 3, y - 3, 6, 6);
+        }
         for (var zone : hardware.excludedZones()) {
             bedPath(zone, ox, oy, scale);
             graphics.setFill(Color.color(0.85, 0.25, 0.15, 0.3));

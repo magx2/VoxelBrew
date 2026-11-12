@@ -19,6 +19,13 @@ printer by name; an internal UUID preserves its identity across renames and is n
 shown in selectors or command output. A renamed printer remains the target of jobs
 sliced for it.
 
+In the Slicer workspace, choose any saved printer device first. Its assigned
+printer profile supplies the bed, nozzle and output settings; profile, nozzle and
+bed-size editing are locked while that device is selected. Choose **No device —
+G-code only** to edit a standalone printer profile and save the sliced job without
+a hardware target. **Configure printers…** in the Slicer panel opens device setup
+and refreshes the device list when it closes.
+
 The connection and its profile ID are remembered in user-local `devices/{id}.properties`
 beside
 `config.properties`, with owner-only permissions. They are not encrypted at rest;

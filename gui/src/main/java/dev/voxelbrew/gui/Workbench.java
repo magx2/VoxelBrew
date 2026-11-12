@@ -411,6 +411,7 @@ public final class Workbench extends BorderPane implements AutoCloseable {
         this.printing = printing;
         printing.onExport3mf(() -> exportDocument("3mf"));
         this.printer = printer;
+        printing.onConfigureDevices(printer::configure);
         this.appearance = appearance;
         this.preferencesWorker = preferencesWorker;
         this.translations = translations;
@@ -615,7 +616,7 @@ public final class Workbench extends BorderPane implements AutoCloseable {
                         translations.text("device.configure"),
                         "printers-configure-devices",
                         false,
-                        printer::configure));
+                        printing::configureDevices));
         printersMenu
                 .getItems()
                 .addAll(

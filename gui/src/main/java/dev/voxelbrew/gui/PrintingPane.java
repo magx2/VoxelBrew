@@ -38,6 +38,15 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
         export3mf = Objects.requireNonNull(action);
     }
 
+    void onConfigureDevices(Runnable action) {
+        configureDevicesAction = Objects.requireNonNull(action);
+    }
+
+    void configureDevices() {
+        configureDevicesAction.run();
+        reloadPrinters();
+    }
+
     QuickMenu quickMenu(javafx.scene.Parent theme, java.util.function.Supplier<List<QuickMenu.Action>> workspaces) {
         return new QuickMenu(
                 canvas,
@@ -80,8 +89,11 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
     private Set<String> hiddenPrinters = Set.of();
     private PrinterProfileCatalog.Result printerCatalog;
     private final Button printerChoice = new Button();
+    private final Label printerProfileLabel = new Label();
     private final ComboBox<String> printTarget = new ComboBox<>();
     private Map<String, String> printTargetNames = Map.of();
+    private Map<String, dev.voxelbrew.printer.api.Printer> printTargetDevices = Map.of();
+    private Runnable configureDevicesAction = () -> {};
     private final dev.voxelbrew.printer.api.PrinterRuntime printerRuntime;
     private final java.nio.file.Path connectionDirectory;
     private final Label printerDetails = new Label();
@@ -457,6 +469,7 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
         printerChoice.setId("print-printer");
         printTarget.setId("print-target");
         printTarget.setMaxWidth(Double.MAX_VALUE);
+        printerProfileLabel.setId("print-printer-profile-label");
         printTarget.setPromptText(translations.text("print.profileOnly"));
         printTarget.setConverter(new javafx.util.StringConverter<>() {
             @Override
@@ -486,7 +499,24 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
             }
         });
         printTarget.valueProperty().addListener((observed, before, selected) -> {
-            if (!updating && !java.util.Objects.equals(before, selected)) commit(setup().withPrintTarget(selected));
+            if (updating || java.util.Objects.equals(before, selected)) return;
+            if (selected == null || selected.isBlank()) {
+                commit(setup().withPrintTarget(null));
+                return;
+            }
+            var device = printTargetDevices.get(selected);
+            var profile = device == null
+                    ? null
+                    : printerCatalog.entries().stream()
+                            .filter(entry -> entry.definition().printer().id().equals(device.profileId()))
+                            .findFirst()
+                            .orElse(null);
+            if (profile == null) {
+                status.setText(translations.text("print.deviceProfileMissing"));
+                updatePrinterDetails();
+                return;
+            }
+            commit(setup().withPrinter(profile.definition()).withPrintTarget(selected));
         });
         UiHelp.install(printerChoice, translations);
         printerChoice.setMaxWidth(Double.MAX_VALUE);
@@ -507,21 +537,21 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
         nozzleRow.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
         var printerPanel = new VBox(
                 6,
-                new Label(translations.text("print.printerSelector")),
+                new Label(translations.text("print.sliceTarget")),
+                printTarget,
+                printerProfileLabel,
                 printerChoice,
                 new HBox(8, printerImage, printerDetails),
                 nozzleRow,
-                new Label(translations.text("print.sliceTarget")),
-                printTarget,
                 equalRow(
+                        button(
+                                translations.text("device.configure"),
+                                "print-configure-devices",
+                                this::configureDevices),
                         button(
                                 translations.text("print.reloadPrinters"),
                                 "print-reload-printers",
-                                this::reloadPrinters),
-                        button(
-                                translations.text("print.openPrinters"),
-                                "print-open-printers",
-                                this::openPrintersFolder)));
+                                this::reloadPrinters)));
         printerPanel.setPadding(new Insets(8));
         printerPanel.setMaxWidth(360);
         var sidebar = new VBox(6, printerPanel, tabs);
@@ -904,6 +934,11 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
 
     private PrintSetup setup() {
         return document.snapshot().document().printSetup();
+    }
+
+    private boolean hasPrintDevice() {
+        var id = setup().workspaceSettings().get(PrintTarget.PRINTER_ID);
+        return id != null && !id.isBlank();
     }
 
     private BodyInstance selected() {
@@ -1871,6 +1906,7 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
     }
 
     private void applyNozzle() {
+        if (hasPrintDevice()) return;
         var next = setup().withNozzle(nozzle.value());
         if (!next.equals(setup())) commit(next);
     }
@@ -2259,14 +2295,15 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
         if (printerCatalog == null) return;
         try {
             var selectedTarget = setup().workspaceSettings().get(PrintTarget.PRINTER_ID);
-            var targets = printerRuntime.devices(connectionDirectory).stream()
-                    .filter(device -> device.profileId().equals(setup().printerId()))
-                    .toList();
+            var targets = printerRuntime.devices(connectionDirectory);
             boolean oldUpdating = updating;
             updating = true;
             printTargetNames = targets.stream()
                     .collect(java.util.stream.Collectors.toMap(
                             dev.voxelbrew.printer.api.Printer::id, dev.voxelbrew.printer.api.Printer::name));
+            printTargetDevices = targets.stream()
+                    .collect(java.util.stream.Collectors.toMap(
+                            dev.voxelbrew.printer.api.Printer::id, java.util.function.Function.identity()));
             printTarget.getItems().setAll("");
             printTarget
                     .getItems()
@@ -2281,6 +2318,12 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
         }
         var saved = setup().printerSnapshot();
         var p = PrintProfile.resolve(setup()).printer();
+        boolean deviceSelected = hasPrintDevice();
+        printerProfileLabel.setText(
+                translations.text(deviceSelected ? "print.deviceProfile" : "print.printerSelector"));
+        printerChoice.setDisable(deviceSelected);
+        nozzle.setDisable(deviceSelected);
+        plateSize.setDisable(deviceSelected);
         if (!nozzle.isFocused()) nozzle.setText(Double.toString(p.nozzleMm()));
         var entry = printerCatalog.entries().stream()
                 .filter(e -> e.definition().printer().id().equals(p.id()))
@@ -2291,17 +2334,13 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
                 : new PrinterProfileCatalog.Entry(saved, entry == null ? null : entry.image(), "project", false);
         printerChoice.setText((selected == null ? p.name() : selected.toString())
                 + (selected != null && selected.bundled() ? " (" + translations.text("print.builtInPrinter") + ")" : "")
-                + "...");
-        printerDetails.setText(p.name()
-                + (selected != null && selected.bundled() ? " (" + translations.text("print.builtInPrinter") + ")" : "")
                 + (saved != null && saved.modified() ? " (" + translations.text("print.modifiedPrinter") + ")" : "")
-                + String.format(
-                        Locale.ROOT,
-                        "\n%.1f x %.1f x %.1f mm / %.2f mm",
-                        plateWidth,
-                        plateDepth,
-                        p.usableHeight(),
-                        p.nozzleMm())
+                + (deviceSelected ? "" : "..."));
+        printerDetails.setText(translations.text(
+                        "print.buildVolume",
+                        String.format(Locale.ROOT, "%.1f", plateWidth),
+                        String.format(Locale.ROOT, "%.1f", plateDepth),
+                        String.format(Locale.ROOT, "%.1f", p.usableHeight()))
                 + (saved == null
                         ? ""
                         : translations.text(
@@ -2321,6 +2360,7 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
     }
 
     private void editPlate() {
+        if (hasPrintDevice()) return;
         var dialog = new Dialog<ButtonType>();
         dialog.initOwner(getScene().getWindow());
         dialog.setTitle(translations.text("print.editPlate"));

@@ -196,20 +196,10 @@ class WorkbenchUiTest {
         fx(() -> {
             ((TabPane) node("#workspaces")).getSelectionModel().select(1);
             var target = (ComboBox<?>) node("#print-target");
-            assertEquals("No connection (save G-code)", target.getButtonCell().getText());
+            assertEquals("No device — G-code only", target.getButtonCell().getText());
             return null;
         });
-        Platform.runLater(() -> ((MenuBar) node("#main-menu"))
-                .getMenus().stream()
-                        .filter(menu -> "menu-printers".equals(menu.getId()))
-                        .findFirst()
-                        .orElseThrow()
-                        .getItems()
-                        .stream()
-                        .filter(item -> "printers-configure-devices".equals(item.getId()))
-                        .findFirst()
-                        .orElseThrow()
-                        .fire());
+        Platform.runLater(() -> ((Button) node("#print-configure-devices")).fire());
         fx(() -> {
             var kind = (ComboBox<?>) node("#device-config-kind");
             var dialog = (VBox) node("#device-config-content");
@@ -300,7 +290,7 @@ class WorkbenchUiTest {
                             0, profile.getItems().size())
                     .filter(index -> profile.getItems().get(index)
                                     instanceof dev.voxelbrew.slicer.api.PrinterProfileCatalog.Entry entry
-                            && entry.definition().printer().id().equals(activeProfile))
+                            && !entry.definition().printer().id().equals(activeProfile))
                     .findFirst()
                     .orElseThrow();
             profile.getSelectionModel().select(matchingProfile);
@@ -317,6 +307,7 @@ class WorkbenchUiTest {
             }
             Thread.sleep(25);
         }
+        String deviceProfile;
         try (var files = Files.list(devices)) {
             var saved = files.findFirst().orElseThrow();
             var properties = new Properties();
@@ -324,12 +315,10 @@ class WorkbenchUiTest {
                 properties.load(input);
             }
             assertEquals("Lab Klipper", properties.getProperty("name"));
+            deviceProfile = properties.getProperty("profile_id");
+            assertNotEquals(activeProfile, deviceProfile);
         }
         assertNull(fx(() -> stage.getScene().getRoot().lookup("#device-config-content")));
-        fx(() -> {
-            ((Button) node("#print-reload-printers")).fire();
-            return null;
-        });
         var selectedDevice = fx(() -> {
             var target = (ComboBox<?>) node("#print-target");
             assertEquals(2, target.getItems().size());
@@ -338,11 +327,31 @@ class WorkbenchUiTest {
             return (String) target.getValue();
         });
         ready();
+        assertEquals(deviceProfile, document().printSetup().printerId());
         assertEquals(selectedDevice, document().printSetup().workspaceSettings().get(PrintTarget.PRINTER_ID));
         assertEquals(selectedDevice, fx(() -> ((ComboBox<?>) node("#print-target")).getValue()));
         assertEquals(
                 "Lab Klipper",
                 fx(() -> ((ComboBox<?>) node("#print-target")).getButtonCell().getText()));
+        fx(() -> {
+            assertTrue(((Button) node("#print-printer")).isDisabled());
+            assertTrue(((FormulaField) node("#print-nozzle")).isDisabled());
+            assertTrue(((Label) node("#print-plate-size")).isDisabled());
+            assertEquals("Printer profile (set by device)", ((Label) node("#print-printer-profile-label")).getText());
+            Screenshot.save(
+                    stage.getScene(),
+                    Path.of(System.getProperty("voxelbrew.ui.artifacts"), "slicer-device-profile.png"));
+            ((ComboBox<?>) node("#print-target")).getSelectionModel().selectFirst();
+            return null;
+        });
+        ready();
+        assertNull(document().printSetup().workspaceSettings().get(PrintTarget.PRINTER_ID));
+        fx(() -> {
+            assertFalse(((Button) node("#print-printer")).isDisabled());
+            assertFalse(((FormulaField) node("#print-nozzle")).isDisabled());
+            assertFalse(((Label) node("#print-plate-size")).isDisabled());
+            return null;
+        });
     }
 
     @Test

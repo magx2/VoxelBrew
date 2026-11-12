@@ -211,6 +211,10 @@ class WorkbenchUiTest {
                     .map(Label.class::cast)
                     .noneMatch(label -> label.getText().contains("Nozzle")));
             assertEquals("Moonraker server URL", ((Label) node("#device-config-address-label")).getText());
+            ((TextField) node("#device-config-address")).setText("moonraker.local");
+            assertTrue(((Label) node("#device-config-address-error")).getText().contains("Moonraker"));
+            ((TextField) node("#device-config-address")).setText("http://moonraker.local");
+            assertEquals("", ((Label) dialog.lookup("#device-config-address-error")).getText());
             assertEquals("Slicer preset ID (optional)", ((Label) node("#device-config-model-label")).getText());
             assertEquals("API key (optional)", ((Label) node("#device-config-secret-label")).getText());
             Screenshot.save(
@@ -231,6 +235,9 @@ class WorkbenchUiTest {
             assertEquals("Bambu Lab", selectedText(kind));
             assertNotNull(dialog.lookup("#device-config-serial"));
             assertEquals("Printer IP / host", ((Label) node("#device-config-address-label")).getText());
+            ((TextField) node("#device-config-address")).setText("256.0.0.1");
+            assertTrue(((Label) node("#device-config-address-error")).getText().contains("printer IP"));
+            ((TextField) node("#device-config-address")).clear();
             assertEquals("Printer model", ((Label) node("#device-config-model-label")).getText());
             assertEquals("Access code", ((Label) node("#device-config-secret-label")).getText());
             assertEquals("", ((TextField) node("#device-config-address")).getText());

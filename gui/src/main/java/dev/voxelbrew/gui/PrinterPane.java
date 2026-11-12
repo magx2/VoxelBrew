@@ -609,6 +609,22 @@ final class PrinterPane extends VBox implements AutoCloseable {
         error.getStyleClass().add("device-config-message");
         error.visibleProperty().bind(error.textProperty().isNotEmpty());
         error.managedProperty().bind(error.visibleProperty());
+        var addressError = new Label();
+        addressError.setId("device-config-address-error");
+        addressError.setWrapText(true);
+        addressError.getStyleClass().add("device-config-message");
+        addressError.visibleProperty().bind(addressError.textProperty().isNotEmpty());
+        addressError.managedProperty().bind(addressError.visibleProperty());
+        var validateAddress = (Runnable) () -> {
+            try {
+                new Printer(
+                        "preview", "Preview", kind.getValue(), "preview", address.getText(), "serial", "model", "code");
+                addressError.setText("");
+            } catch (IllegalArgumentException failure) {
+                addressError.setText(failure.getMessage());
+            }
+        };
+        address.textProperty().addListener((o, previous, current) -> validateAddress.run());
         var addressLabel = new Label();
         addressLabel.setId("device-config-address-label");
         var modelLabel = new Label();
@@ -631,7 +647,7 @@ final class PrinterPane extends VBox implements AutoCloseable {
                     .setAll(
                             identity,
                             deviceField(new Label(t("profile")), profile),
-                            deviceField(addressLabel, address),
+                            new VBox(6, deviceField(addressLabel, address), addressError),
                             details,
                             deviceField(secretLabel, secret),
                             error);
@@ -648,6 +664,7 @@ final class PrinterPane extends VBox implements AutoCloseable {
                 secret.setText(draft == null ? "" : draft.secret());
             }
             fields.accept(selected);
+            if (!loading[0]) validateAddress.run();
         });
         fields.accept(kind.getValue());
         var save = new ButtonType(t("save"), ButtonBar.ButtonData.OK_DONE);

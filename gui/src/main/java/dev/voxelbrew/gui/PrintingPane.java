@@ -1379,9 +1379,12 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
         viewScale = scale;
         viewOx = ox;
         viewOy = oy;
-        graphics.setStroke(dark ? Color.web("#3b4651") : Color.web("#bac4cc"));
-        graphics.setLineWidth(1);
         var hardware = PrintProfile.resolve(setup()).printer();
+        bedPath(hardware.bed(), ox, oy, scale);
+        graphics.setFill(dark ? Color.web("#303b42") : Color.web("#dce5e8"));
+        graphics.fill();
+        graphics.setStroke(dark ? Color.web("#52616a") : Color.web("#b4c3ca"));
+        graphics.setLineWidth(1);
         graphics.save();
         bedPath(hardware.bed(), ox, oy, scale);
         graphics.clip();
@@ -1392,6 +1395,8 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
             line(ox, oy, scale, plateMinX, n, 0, plateMinX + plateWidth, n, 0);
         graphics.restore();
         bedPath(hardware.bed(), ox, oy, scale);
+        graphics.setStroke(dark ? Color.web("#91a7ad") : Color.web("#748f99"));
+        graphics.setLineWidth(2.5);
         graphics.stroke();
         for (var zone : hardware.excludedZones()) {
             bedPath(zone, ox, oy, scale);

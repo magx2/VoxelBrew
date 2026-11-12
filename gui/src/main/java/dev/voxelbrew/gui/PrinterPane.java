@@ -13,6 +13,7 @@ import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
+import javafx.stage.FileChooser;
 import javafx.util.Duration;
 
 /** Device workspace. All transport work is serialized away from JavaFX. */
@@ -41,7 +42,7 @@ final class PrinterPane extends VBox implements AutoCloseable {
             remainingValue = new Label();
     private final ProgressBar transfer = new ProgressBar(0);
     private final VBox monitor = new VBox(16);
-    private final Button upload, print, pause, resume, cancel;
+    private final Button upload, print, pause, resume, cancel, exportGcode;
     private final Timeline polling;
     private CadDocument document;
     private PrinterSession session;
@@ -80,6 +81,7 @@ final class PrinterPane extends VBox implements AutoCloseable {
         var configure = button("configure", this::configure);
         configure.getStyleClass().add("printer-configure");
         upload = button("upload", () -> submit(false));
+        exportGcode = button("exportGcode", this::exportGcode);
         print = button("print", () -> submit(true));
         print.getStyleClass().add("printer-primary");
         pause = button("pause", () -> command(PrinterSession.Command.PAUSE));
@@ -107,7 +109,7 @@ final class PrinterPane extends VBox implements AutoCloseable {
         setup.getStyleClass().add("printer-card");
         var sendTitle = new Label(t("sendTitle"));
         sendTitle.getStyleClass().add("printer-section-title");
-        var actions = new HBox(10, upload, print);
+        var actions = new HBox(10, exportGcode, upload, print);
         actions.setAlignment(Pos.CENTER_LEFT);
         var send = new VBox(12, sendTitle, details, actions, transfer, message);
         send.getStyleClass().add("printer-card");
@@ -253,6 +255,7 @@ final class PrinterPane extends VBox implements AutoCloseable {
     }
 
     private void update() {
+        exportGcode.setDisable(busy || plates.getValue() == null);
         boolean selected = plates.getValue() != null && devices.getValue() != null;
         var incompatible = selected && document != null
                 ? PrinterJobs.incompatibility(document, plates.getValue().id(), devices.getValue())
@@ -369,6 +372,30 @@ final class PrinterPane extends VBox implements AutoCloseable {
                 }
             });
         });
+    }
+
+    private void exportGcode() {
+        if (document == null || plates.getValue() == null) return;
+        var lines = document.gcode().getOrDefault(plates.getValue().id(), List.of());
+        if (lines.isEmpty()) return;
+        var chooser = new FileChooser();
+        chooser.setTitle(t("exportGcode"));
+        chooser.setInitialFileName(plates.getValue().name() + ".gcode");
+        chooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("G-code (*.gcode)", "*.gcode"));
+        var chosen = chooser.showSaveDialog(getScene().getWindow());
+        if (chosen == null) return;
+        var path = chosen.toPath();
+        if (Files.exists(path)) {
+            var confirmation = new Alert(
+                    Alert.AlertType.CONFIRMATION, text.text("file.replace", path), ButtonType.YES, ButtonType.NO);
+            if (Dialogs.show(confirmation, getScene().getWindow(), text).orElse(ButtonType.NO) != ButtonType.YES)
+                return;
+        }
+        try {
+            Files.writeString(path, String.join("\n", lines) + "\n");
+        } catch (java.io.IOException failure) {
+            error(failure);
+        }
     }
 
     private void submit(boolean start) {

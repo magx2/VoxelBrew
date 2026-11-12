@@ -29,6 +29,11 @@ import javafx.util.StringConverter;
 final class PrintingPane extends BorderPane implements AutoCloseable {
     private final SlicerWorkspace workspace = new SlicerWorkspace();
     private final Map<String, ButtonBase> quickActions = new LinkedHashMap<>();
+    private Runnable export3mf = () -> {};
+
+    void onExport3mf(Runnable action) {
+        export3mf = Objects.requireNonNull(action);
+    }
 
     QuickMenu quickMenu(javafx.scene.Parent theme, java.util.function.Supplier<List<QuickMenu.Action>> workspaces) {
         return new QuickMenu(
@@ -133,6 +138,7 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
     private final EnumMap<GcodeJob.Role, CheckBox> roles = new EnumMap<>(GcodeJob.Role.class);
     private final Button slice;
     private final Button sliceAll;
+    private Button export3mfButton;
     private final Button cleanSlicing;
     private final Button cancel;
     private final ProgressIndicator progress = new ProgressIndicator();
@@ -656,7 +662,8 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
         slice.setMinWidth(Region.USE_PREF_SIZE);
         cancel.setMinWidth(Region.USE_PREF_SIZE);
         HBox.setHgrow(jobStatus, Priority.ALWAYS);
-        var actions = new HBox(12, progress, jobStatus, cancel, sliceAll, slice);
+        export3mfButton = button(translations.text("print.export3mf"), "print-export-3mf", () -> export3mf.run());
+        var actions = new HBox(12, progress, jobStatus, cancel, export3mfButton, sliceAll, slice);
         actions.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
         actions.getStyleClass().add("slicer-status-bar");
         slice.getStyleClass().add("slicer-primary-action");
@@ -1243,6 +1250,7 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
     }
 
     private void updateJob() {
+        export3mfButton.setDisable(!document.canExport() || jobs.running());
         boolean sliced =
                 jobs.result() != null || !document.snapshot().document().gcode().isEmpty();
         for (int i = 0; i < 3; i++) tabs.getTabs().get(i).setDisable(sliced);

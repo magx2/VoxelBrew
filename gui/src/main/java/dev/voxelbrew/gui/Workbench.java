@@ -409,6 +409,7 @@ public final class Workbench extends BorderPane implements AutoCloseable {
         this.registry = registry;
         this.importers = importers;
         this.printing = printing;
+        printing.onExport3mf(() -> exportDocument("3mf"));
         this.printer = printer;
         this.appearance = appearance;
         this.preferencesWorker = preferencesWorker;

@@ -15,6 +15,56 @@ class PrinterApiTest {
     Path directory;
 
     @Test
+    void deviceAddressesAreValidatedBeforeSaving() {
+        for (var address : List.of(
+                "moonraker.local",
+                "ftp://moonraker.local",
+                "http://user@moonraker.local",
+                "http://moonraker.local:0",
+                "http://moonraker.local:65536",
+                "http://moonraker.local?key=secret",
+                "http://moonraker.local:abc",
+                "http://moonraker.local:7125/ bad")) {
+            assertThrows(
+                    IllegalArgumentException.class,
+                    () -> new Printer("device", "Device", Printer.Kind.MOONRAKER, "profile", address, "", "", ""),
+                    address);
+        }
+        assertEquals(
+                "https://moonraker.local:7125",
+                new Printer(
+                                "device",
+                                "Device",
+                                Printer.Kind.MOONRAKER,
+                                "profile",
+                                " https://moonraker.local:7125 ",
+                                "",
+                                "",
+                                "")
+                        .address());
+        for (var address : List.of(
+                "256.1.1.1",
+                "192.168.1",
+                "printer..local",
+                "-printer.local",
+                "printer.local:8883",
+                "http://printer.local",
+                "printer local")) {
+            assertThrows(
+                    IllegalArgumentException.class,
+                    () -> new Printer(
+                            "device", "Device", Printer.Kind.BAMBU, "profile", address, "serial", "model", "code"),
+                    address);
+        }
+        for (var address : List.of("192.168.1.25", "printer.local", "localhost")) {
+            assertEquals(
+                    address,
+                    new Printer("device", "Device", Printer.Kind.BAMBU, "profile", address, "serial", "model", "code")
+                            .address());
+        }
+    }
+
+    @Test
     void genericGcodeCannotMasqueradeAsBambuPackage() {
         var doc = new CadDocument("test", List.of(), 0).withGcode(Map.of("plate", List.of("G1 X1")));
         var device = new Printer(

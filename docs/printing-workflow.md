@@ -72,8 +72,8 @@ or its letter handle to rotate around that world axis; Shift snaps to 15 degrees
 Rotation preserves the object's clearance above the plate. Release commits one
 undoable placement change; Escape discards the preview.
 
-Camera gestures match Designer: right-drag or Shift + middle-drag pans; middle-drag
-or left-drag on empty space orbits in 3D and pans in 2D; the wheel zooms. The 2D
+Camera gestures match Designer: right-drag or middle-drag pans; left-drag on
+empty space orbits in 3D and pans in 2D; the wheel zooms. The 2D
 view stays top-down. **Fit view** resets pan and zoom. Each view keeps its own
 transient camera state, which never changes placements or creates undo entries.
 New instances start at the center of the bed. Placement validation reports objects

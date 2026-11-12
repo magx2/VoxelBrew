@@ -191,7 +191,8 @@ final class QuickMenu implements AutoCloseable {
     private Button actionButton(Action action) {
         var button = new Button();
         button.setId("quick-" + action.id());
-        button.setGraphic(new Label(action.icon()));
+        if (Set.of("extrude", "cut", "fillet", "chamfer", "shell", "split-body").contains(action.id()))
+            button.setGraphic(OperationIcons.icon(action.id()));
         button.setAccessibleText(action.label());
         button.textProperty()
                 .bind(
@@ -214,31 +215,33 @@ final class QuickMenu implements AutoCloseable {
     private void show(double x, double y) {
         if (surface.getScene() == null || surface.isDisabled()) return;
         var commands = content.get();
-        var root = new VBox(8);
+        var root = new VBox(10);
         root.setId("quick-menu");
         root.getStyleClass().addAll("root", "quick-menu", theme.getStyleClass().contains("dark") ? "dark" : "light");
         root.getStylesheets()
                 .add(Objects.requireNonNull(QuickMenu.class.getResource("workbench.css"))
                         .toExternalForm());
         root.setAlignment(Pos.TOP_CENTER);
-        root.setPadding(new Insets(8));
+        root.setPadding(new Insets(14));
+        var heading = new Label(text.text("quick.actions"));
+        heading.getStyleClass().add("quick-menu-heading");
+        root.getChildren().add(heading);
         var ring = new GridPane();
-        ring.setHgap(8);
-        ring.setVgap(8);
+        ring.getStyleClass().add("quick-menu-ring");
+        ring.setHgap(6);
+        ring.setVgap(6);
         int[][] slots = {{1, 0}, {2, 0}, {2, 1}, {2, 2}, {1, 2}, {0, 2}, {0, 1}, {0, 0}};
         for (int index = 0; index < Math.min(8, commands.radial().size()); index++) {
             var button = actionButton(commands.radial().get(index));
-            button.setPrefWidth(150);
-            button.setMinHeight(38);
+            button.getStyleClass().add("quick-menu-command");
+            button.setPrefWidth(slots[index][0] == 1 ? 152 : 136);
+            button.setMinHeight(36);
             button.setWrapText(true);
             ring.add(button, slots[index][0], slots[index][1]);
         }
-        root.getChildren().add(ring);
-        var list = new VBox(3);
-        list.getStyleClass().add("quick-menu-list");
-        list.setMaxWidth(300);
         var workspaceButton = new MenuButton(text.text("quick.workspace"));
         workspaceButton.setId("quick-workspaces");
+        workspaceButton.getStyleClass().add("quick-menu-workspace");
         workspaceButton.setMaxWidth(Double.MAX_VALUE);
         var workspaceActions = workspaces.get();
         for (var action : workspaceActions) {
@@ -259,16 +262,30 @@ final class QuickMenu implements AutoCloseable {
             workspaceButton.getItems().add(item);
         }
         popup.setOnHiding(e -> workspaceButton.hide());
-        list.getChildren().addAll(workspaceButton, new Separator());
+        ring.add(workspaceButton, 1, 1);
+        root.getChildren().add(ring);
         if (workspaceActions.stream().allMatch(action -> action.disabled().get())) {
             var hint = new Label(text.text("quick.finishSketchFirst"));
             hint.setWrapText(true);
-            list.getChildren().add(hint);
+            hint.getStyleClass().add("quick-menu-hint");
+            root.getChildren().add(hint);
         }
-        for (var action : commands.additional()) list.getChildren().add(actionButton(action));
+        var more = new Label(text.text("quick.more"));
+        more.getStyleClass().add("quick-menu-heading");
+        var extras = new GridPane();
+        extras.getStyleClass().add("quick-menu-extras");
+        extras.setHgap(6);
+        extras.setVgap(3);
+        for (int index = 0; index < commands.additional().size(); index++) {
+            var button = actionButton(commands.additional().get(index));
+            button.getStyleClass().add("quick-menu-extra");
+            button.setPrefWidth(220);
+            extras.add(button, index % 2, index / 2);
+        }
+        var list = new VBox(4, more, extras);
         var scroll = new ScrollPane(list);
         scroll.setFitToWidth(true);
-        scroll.setMaxWidth(310);
+        scroll.setMaxWidth(460);
         scroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
         scroll.getStyleClass().add("quick-menu-scroll");
         root.getChildren().add(scroll);
@@ -279,12 +296,14 @@ final class QuickMenu implements AutoCloseable {
         popup.getContent().setAll(root);
         root.applyCss();
         root.autosize();
-        scroll.setPrefViewportHeight(
-                Math.min(list.prefHeight(300), Math.max(80, bounds.getHeight() - ring.prefHeight(-1) - 48)));
+        scroll.setPrefViewportHeight(Math.min(
+                list.prefHeight(460) + 4,
+                Math.max(80, bounds.getHeight() - ring.prefHeight(-1) - heading.prefHeight(-1) - 58)));
         root.autosize();
         double width = root.prefWidth(-1), height = root.prefHeight(width);
         double left = Math.max(bounds.getMinX(), Math.min(x - width / 2, bounds.getMaxX() - width));
-        double top = Math.max(bounds.getMinY(), Math.min(y - ring.prefHeight(-1) / 2, bounds.getMaxY() - height));
+        double centerOffset = 14 + heading.prefHeight(-1) + 10 + ring.prefHeight(-1) / 2;
+        double top = Math.max(bounds.getMinY(), Math.min(y - centerOffset, bounds.getMaxY() - height));
         popup.show(surface.getScene().getWindow(), left, top);
         root.addEventFilter(KeyEvent.KEY_PRESSED, event -> {
             if (event.getCode() == KeyCode.ESCAPE) {

@@ -6,22 +6,71 @@
   -fx-faint-focus-color: transparent;
 }
 .quick-menu {
-  -fx-font-family: "Segoe UI", "DejaVu Sans", sans-serif;
-  -fx-font-size: 12px;
-  -fx-background-color: transparent;
-}
-.quick-menu .button,
-.quick-menu .menu-button {
+  -fx-background-radius: 12;
+  -fx-border-radius: 12;
+  -fx-effect: dropshadow(gaussian, rgba(12, 18, 32, 0.22), 22, 0.13, 0, 8);
   -fx-alignment: center-left;
-  -fx-padding: 7 10;
-  -fx-background-radius: 5;
-  -fx-border-radius: 5;
-  -fx-border-color: derive(-fx-base, -20%);
 }
-.quick-menu-list {
-  -fx-padding: 8;
-  -fx-background-color: -fx-background;
-  -fx-background-radius: 6;
+.light.quick-menu {
+  -fx-background-color: #ffffff;
+  -fx-border-color: #dfe3eb;
+}
+.dark.quick-menu {
+  -fx-background-color: #2b2d30;
+  -fx-border-color: #50545e;
+}
+.quick-menu-heading {
+  -fx-font-size: 10px;
+  -fx-font-weight: bold;
+}
+.light .quick-menu-heading,
+.light .quick-menu-hint {
+  -fx-text-fill: #697488;
+}
+.dark .quick-menu-heading,
+.dark .quick-menu-hint {
+  -fx-text-fill: #aeb7c7;
+}
+.quick-menu .quick-menu-command,
+.quick-menu .quick-menu-extra,
+.quick-menu .quick-menu-workspace {
+  -fx-background-color: transparent;
+  -fx-border-color: transparent;
+  -fx-background-radius: 7;
+  -fx-border-radius: 7;
+  -fx-alignment: center-left;
+  -fx-padding: 6 9;
+  -fx-min-height: 34;
+  -fx-font-size: 12px;
+}
+.quick-menu .quick-menu-command:hover,
+.quick-menu .quick-menu-extra:hover,
+.quick-menu .quick-menu-workspace:hover,
+.quick-menu .quick-menu-workspace:showing {
+  -fx-background-color: -fx-selection-bar;
+}
+.quick-menu .quick-menu-command:disabled,
+.quick-menu .quick-menu-extra:disabled {
+  -fx-opacity: 0.42;
+}
+.quick-menu .quick-menu-workspace {
+  -fx-background-color: #6555ce;
+  -fx-text-fill: white;
+  -fx-font-weight: bold;
+}
+.quick-menu .quick-menu-workspace > .label {
+  -fx-text-fill: white;
+}
+.quick-menu .quick-menu-workspace > .arrow-button > .arrow {
+  -fx-background-color: white;
+}
+.quick-menu .quick-menu-workspace:hover,
+.quick-menu .quick-menu-workspace:showing {
+  -fx-background-color: #7866de;
+}
+.quick-menu-extras {
+  -fx-border-color: derive(-fx-base, -20%) transparent transparent transparent;
+  -fx-padding: 6 0 0 0;
 }
 .quick-menu-scroll,
 .quick-menu-scroll > .viewport {

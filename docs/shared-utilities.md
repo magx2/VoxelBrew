@@ -57,7 +57,11 @@ file. Tests use temporary/isolated locations. Explicit `--plugin-dir` still wins
 
 UTF-8 catalogs `messages_en.properties` and `messages_pl.properties` are in
 `util/src/main/resources/dev/voxelbrew/util/i18n/`. The GUI's **Settings → Language… / Ustawienia → Język…**
-dialog selects System, English or Polski and saves through `UserConfiguration`.
+dialog lists System and the available catalog languages, and saves through `UserConfiguration`.
+Additional UTF-8 catalogs can be placed in `~/.voxelbrew/i18n/` as
+`messages_<tag>.properties` (for example, `messages_de-DE.properties`). Each
+catalog must define `language.name` for its menu label and `language.i18n` with
+the matching language tag. Missing message keys use the bundled English text.
 Restart the application to apply the choice; an open window keeps its language
 and unsaved edits. This preference never enters a `.vxb` file.
 

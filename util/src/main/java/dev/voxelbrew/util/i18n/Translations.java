@@ -1,7 +1,10 @@
 package dev.voxelbrew.util.i18n;
 
+import dev.voxelbrew.util.config.ApplicationPaths;
 import dev.voxelbrew.util.config.UserConfiguration;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.*;
 import java.text.MessageFormat;
 import java.util.*;
 import lombok.Getter;
@@ -17,13 +20,66 @@ public final class Translations {
     private final Locale locale;
 
     private final ResourceBundle messages;
+    private final Map<String, String> languages;
 
     public Translations(@NonNull Locale locale) {
+        this(locale, ApplicationPaths.home().resolve("i18n"));
+    }
 
-        this.locale = locale.getLanguage().equals("pl") ? Locale.forLanguageTag("pl") : Locale.ENGLISH;
+    Translations(@NonNull Locale locale, Path directory) {
         var control = ResourceBundle.Control.getNoFallbackControl(ResourceBundle.Control.FORMAT_PROPERTIES);
         var english = ResourceBundle.getBundle("dev.voxelbrew.util.i18n.messages", Locale.ENGLISH, control);
-        var selected = ResourceBundle.getBundle("dev.voxelbrew.util.i18n.messages", this.locale, control);
+        var catalogs = new TreeMap<String, Properties>();
+        try (var files = Files.list(directory)) {
+            files.filter(path -> path.getFileName()
+                            .toString()
+                            .matches("messages_[A-Za-z]{2,8}(-[A-Za-z0-9]{1,8})*\\.properties"))
+                    .forEach(path -> {
+                        try (var reader = Files.newBufferedReader(path, StandardCharsets.UTF_8)) {
+                            var properties = new Properties();
+                            properties.load(reader);
+                            String tag =
+                                    properties.getProperty("language.i18n", "").strip();
+                            String name =
+                                    properties.getProperty("language.name", "").strip();
+                            String fileTag = path.getFileName()
+                                    .toString()
+                                    .substring(9, path.getFileName().toString().length() - 11);
+                            if (!name.isEmpty()
+                                    && tag.equalsIgnoreCase(fileTag)
+                                    && !Locale.forLanguageTag(tag).getLanguage().isEmpty())
+                                catalogs.put(tag.toLowerCase(Locale.ROOT), properties);
+                            else log.warn("Ignoring translation catalog with invalid language metadata: {}", path);
+                        } catch (IOException failure) {
+                            log.warn("Cannot load translation catalog {}", path, failure);
+                        }
+                    });
+        } catch (NoSuchFileException ignored) {
+            // The user translation directory is optional.
+        } catch (IOException failure) {
+            log.warn("Cannot list translation catalogs in {}", directory, failure);
+        }
+        var names = new TreeMap<String, String>();
+        names.put("en-EN", english.getString("language.name"));
+        var polish = ResourceBundle.getBundle("dev.voxelbrew.util.i18n.messages", Locale.forLanguageTag("pl"), control);
+        names.put("pl-PL", polish.getString("language.name"));
+        catalogs.forEach((tag, properties) ->
+                names.put(properties.getProperty("language.i18n"), properties.getProperty("language.name")));
+        languages = Collections.unmodifiableMap(names);
+        String requested = locale.toLanguageTag().toLowerCase(Locale.ROOT);
+        Properties external = catalogs.get(requested);
+        if (external == null && !requested.contains("-"))
+            external = catalogs.entrySet().stream()
+                    .filter(entry -> entry.getKey().startsWith(requested + "-"))
+                    .map(Map.Entry::getValue)
+                    .findFirst()
+                    .orElse(null);
+        this.locale = external != null
+                ? Locale.forLanguageTag(external.getProperty("language.i18n"))
+                : locale.getLanguage().equals("pl") ? Locale.forLanguageTag("pl") : Locale.ENGLISH;
+        var selected = external != null
+                ? external
+                : ResourceBundle.getBundle("dev.voxelbrew.util.i18n.messages", this.locale, control);
         messages = new ResourceBundle() {
             @Override
             public Locale getLocale() {
@@ -32,13 +88,18 @@ public final class Translations {
 
             @Override
             protected Object handleGetObject(String key) {
-                return selected.containsKey(key) ? selected.getObject(key) : english.getObject(key);
+                return selected instanceof Properties properties && properties.containsKey(key)
+                        ? properties.getProperty(key)
+                        : selected instanceof ResourceBundle bundle && bundle.containsKey(key)
+                                ? bundle.getObject(key)
+                                : english.getObject(key);
             }
 
             @Override
             public Enumeration<String> getKeys() {
                 var keys = new HashSet<>(english.keySet());
-                keys.addAll(selected.keySet());
+                if (selected instanceof Properties properties) keys.addAll(properties.stringPropertyNames());
+                if (selected instanceof ResourceBundle bundle) keys.addAll(bundle.keySet());
                 return Collections.enumeration(keys);
             }
         };
@@ -46,6 +107,10 @@ public final class Translations {
 
     public ResourceBundle bundle() {
         return messages;
+    }
+
+    public Map<String, String> languages() {
+        return languages;
     }
 
     public String text(String key, Object... arguments) {

@@ -19,19 +19,29 @@ final class LanguageDialog {
         dialog.setTitle(translations.text("language.title"));
         var choice = new ComboBox<String>();
         choice.setId("language-choice");
-        choice.getItems().setAll("system", "en", "pl");
-        UiText.choices(choice, value -> translations.text("language." + value));
+        choice.getItems().add("system");
+        choice.getItems().addAll(translations.languages().keySet());
+        UiText.choices(
+                choice,
+                value -> value.equals("system")
+                        ? translations.text("language.system")
+                        : translations.languages().get(value));
         var message = new Label(translations.text("language.restart"));
         message.setWrapText(true);
         message.setId("language-status");
         try {
             String saved = configuration.get("language", "system").strip();
-            choice.setValue(
-                    saved.isEmpty() || saved.equalsIgnoreCase("system")
-                            ? "system"
-                            : Locale.forLanguageTag(saved).getLanguage().equals("pl") ? "pl" : "en");
+            String selected = translations.languages().keySet().stream()
+                    .filter(tag -> tag.equalsIgnoreCase(saved)
+                            || Locale.forLanguageTag(tag)
+                                    .getLanguage()
+                                    .equalsIgnoreCase(
+                                            Locale.forLanguageTag(saved).getLanguage()))
+                    .findFirst()
+                    .orElse("system");
+            choice.setValue(saved.isEmpty() || saved.equalsIgnoreCase("system") ? "system" : selected);
         } catch (IOException failure) {
-            choice.setValue("en");
+            choice.setValue("system");
             message.setText(translations.text("language.readFailed", failure.getMessage()));
         }
         var save = new Button(translations.text("action.save"));

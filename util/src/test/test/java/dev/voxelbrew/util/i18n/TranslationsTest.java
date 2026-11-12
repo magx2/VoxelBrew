@@ -13,6 +13,20 @@ class TranslationsTest {
     @TempDir
     Path directory;
 
+    @Test
+    void loadsUserCatalogAndFallsBackToEnglishForMissingKeys() throws Exception {
+        var catalogs = Files.createDirectory(directory.resolve("i18n"));
+        Files.writeString(
+                catalogs.resolve("messages_de-DE.properties"),
+                "language.name=Deutsch\nlanguage.i18n=de-DE\naction.save=Speichern\n");
+        var german = new Translations(Locale.forLanguageTag("de-DE"), catalogs);
+        assertEquals("Speichern", german.text("action.save"));
+        assertEquals("Application language", german.text("language.title"));
+        assertEquals("Deutsch", german.languages().get("de-DE"));
+        assertEquals("English", german.languages().get("en-EN"));
+        assertEquals("Polski", german.languages().get("pl-PL"));
+    }
+
     private Locale previousDefault, previousDisplay, previousFormat;
 
     @BeforeEach

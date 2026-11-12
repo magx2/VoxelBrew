@@ -131,6 +131,21 @@ jobs:
         if: inputs.archive
         shell: bash
         run: ./gradlew ${{ inputs.release-candidate && runner.os == 'macOS' && ':cli:packageZip' || ':cli:packageZip :gui:packageZip' }} ${{ runner.os == 'Windows' && '''-PvsGenerator=Visual Studio 17 2022''' || '' }}
+      - name: Install Inno Setup 6
+        if: inputs.release-candidate && runner.os == 'Windows'
+        shell: pwsh
+        run: choco install innosetup --no-progress -y
+      - name: Build GUI installer
+        if: inputs.release-candidate && runner.os != 'Linux'
+        shell: bash
+        run: ./gradlew :gui:packageInstaller ${{ runner.os == 'Windows' && '''-PvsGenerator=Visual Studio 17 2022''' || '' }}
+      - name: Verify installed Windows GUI and uninstall
+        if: inputs.release-candidate && runner.os == 'Windows'
+        shell: pwsh
+        run: ./scripts/check-windows-installer.ps1 (Get-Item gui/build/distributions/VoxelBrew-*-windows-x64-Setup.exe).FullName
+      - name: Verify installed macOS GUI
+        if: inputs.release-candidate && runner.os == 'macOS'
+        run: bash scripts/check-macos-installer.sh gui/build/distributions/VoxelBrew-*-macos-x64.dmg
       - name: Collect qualified release archives and provenance
         if: inputs.release-candidate
         run: node .github/scripts/release.cjs collect .tools/release-plan .tools/release-assets
@@ -171,3 +186,5 @@ jobs:
           path: |
             cli/build/distributions/VoxelBrewCLI-*.zip
             gui/build/distributions/VoxelBrew-*.zip
+            gui/build/distributions/VoxelBrew-*.exe
+            gui/build/distributions/VoxelBrew-*.dmg

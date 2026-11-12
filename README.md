@@ -86,6 +86,28 @@ Visual Studio or the system SDK. The first kernel build takes several minutes.
 Native compilation defaults to four workers; use `-PnativeJobs=8` if appropriate.
 Gradle and Maven dependency downloads require network access on the first run.
 
+## Desktop installers
+
+Build the native GUI launcher, bundled Java 21 runtime and installer in one command
+on the target host. Run the native bootstrap above first. Windows also requires
+[Inno Setup 6](https://jrsoftware.org/isinfo.php) (`ISCC.exe` in its default location,
+or set `INNO_SETUP_ISCC` to its full path); macOS requires `hdiutil`.
+
+```powershell
+.\gradlew.bat :gui:packageInstaller
+```
+
+```bash
+./gradlew :gui:packageInstaller
+```
+
+Windows writes `gui/build/distributions/VoxelBrew-<version>-windows-x64-Setup.exe`.
+macOS Intel writes `gui/build/distributions/VoxelBrew-<version>-macos-x64.dmg`.
+The installers retain the existing jpackage launcher and its bundled JVM, so users
+need no Java installation. Local installers are unsigned and the macOS DMG is not
+notarized. macOS GUI release publication requires installation and rendering on a
+graphics-capable Mac runner; see [packaging](docs/packaging.md).
+
 ## Formatting
 
 [Spotless](https://github.com/diffplug/spotless/tree/main/plugin-gradle) runs from

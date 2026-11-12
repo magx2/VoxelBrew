@@ -72,7 +72,9 @@ For version `A.B.C`, the release contains:
 - `VoxelBrew-A.B.C-windows-x64.zip` and `VoxelBrewCLI-A.B.C-windows-x64.zip`.
 - `VoxelBrew-A.B.C-linux-x64.zip` and `VoxelBrewCLI-A.B.C-linux-x64.zip`
   (Ubuntu 24.04 baseline).
-- `VoxelBrewCLI-A.B.C-macos-x64.zip` (macOS 15 Intel; CLI only).
+- `VoxelBrew-A.B.C-windows-x64-Setup.exe` (per-user GUI installer).
+- `VoxelBrewCLI-A.B.C-macos-x64.zip` and `VoxelBrew-A.B.C-macos-x64.dmg`
+  (macOS Intel; the DMG contains the installed GUI app).
 - `release.json`, three `platform-*.json` provenance/checksum records and
   `SHA256SUMS` covering all archives and metadata.
 
@@ -83,6 +85,9 @@ a path containing spaces and tested with no Java installation on the child
 process's PATH. Linux/Mac launcher executable bits are verified. CLI checks
 exercise real OCCT editing, independent STL/3MF inspection and external plugins;
 Windows/Linux GUI checks render and pick geometry with the bundled runtime.
+The macOS DMG release requires a `voxelbrew-macos-intel-gui` runner with accelerated
+graphics to install and launch the app and pass its render-and-pick smoke test.
+Local Windows and macOS installers are unsigned; the DMG is not notarized.
 
 The candidate job creates release and next-patch commits locally and transfers
 them as a Git bundle. Workers verify their parent chain and that only the

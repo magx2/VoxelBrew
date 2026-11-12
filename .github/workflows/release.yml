@@ -45,7 +45,7 @@ jobs:
             suite: check
           - os: ubuntu-24.04
             suite: check
-          - os: macos-15-intel
+          - os: voxelbrew-macos-intel-gui
             suite: headlessPlatformCheck
     uses: ./.github/workflows/native-check.yml
     with:

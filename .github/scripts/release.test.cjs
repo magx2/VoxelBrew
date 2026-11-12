@@ -78,7 +78,7 @@ function assets(directory, m) {
   for (const platform of ["windows-x64", "linux-x64", "macos-x64"]) {
     const archives = Object.fromEntries(
       assetNames(m.version)
-        .filter((name) => name.endsWith(`-${platform}.zip`))
+        .filter((name) => name.includes(`-${platform}.`) || name.includes(`-${platform}-Setup.`))
         .map((name) => [name, digest(path.join(directory, name))]),
     );
     fs.writeFileSync(
@@ -252,14 +252,14 @@ test("candidate metadata tampering is rejected", (t) => {
   fs.writeFileSync(path.join(f.plan, "release.json"), JSON.stringify({ ...m, release: m.next }));
   assert.throws(() => clone(f, "worker").load(f.plan, f.base, "master"), /refs differ/);
 });
-test("manifest requires all five qualified archives with matching revision and hashes", (t) => {
+test("manifest requires every qualified download with matching revision and hashes", (t) => {
   const f = fixture(t),
     m = { version: "1.2.3", release: "a".repeat(40) };
   assets(f.assets, m);
-  assert.equal(manifest(f.assets, m).length, 10);
+  assert.equal(manifest(f.assets, m).length, 12);
   assert.equal(
     fs.readFileSync(path.join(f.assets, "SHA256SUMS"), "utf8").trim().split("\n").length,
-    9,
+    11,
   );
   const file = path.join(f.assets, assetNames(m.version)[0]);
   fs.appendFileSync(file, "changed");

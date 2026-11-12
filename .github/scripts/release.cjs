@@ -68,14 +68,21 @@ function assetNames(v) {
     .flatMap((platform) =>
       ["VoxelBrew", "VoxelBrewCLI"].map((app) => `${app}-${v}-${platform}.zip`),
     )
-    .concat(`VoxelBrewCLI-${v}-macos-x64.zip`)
+    .concat(
+      `VoxelBrewCLI-${v}-macos-x64.zip`,
+      `VoxelBrew-${v}-windows-x64-Setup.exe`,
+      `VoxelBrew-${v}-macos-x64.dmg`,
+    )
     .sort();
+}
+function platformAsset(name, platform) {
+  return name.includes(`-${platform}.`) || name.includes(`-${platform}-Setup.`);
 }
 function manifest(directory, m) {
   const expected = assetNames(m.version);
   const actual = fs
     .readdirSync(directory)
-    .filter((name) => name.endsWith(".zip"))
+    .filter((name) => /\.(zip|exe|dmg)$/.test(name))
     .sort();
   check(
     JSON.stringify(actual) === JSON.stringify(expected),
@@ -87,7 +94,7 @@ function manifest(directory, m) {
   for (const name of reports) {
     const report = JSON.parse(fs.readFileSync(path.join(directory, name)));
     const platform = name.slice("platform-".length, -".json".length);
-    const names = expected.filter((asset) => asset.endsWith(`-${platform}.zip`));
+    const names = expected.filter((asset) => platformAsset(asset, platform));
     check(
       report.release === m.release &&
         report.platform === platform &&
@@ -119,7 +126,7 @@ function collect(release, plan, directory) {
   check(platform, "Unqualified release platform.");
   const archives = {};
   fs.mkdirSync(directory, { recursive: true });
-  for (const name of assetNames(m.version).filter((name) => name.endsWith(`-${platform}.zip`))) {
+  for (const name of assetNames(m.version).filter((name) => platformAsset(name, platform))) {
     const module = name.startsWith("VoxelBrewCLI-") ? "cli" : "gui";
     fs.copyFileSync(
       path.join(release.cwd, module, "build/distributions", name),

@@ -22,15 +22,35 @@ Unix executable permissions are retained. Archives are in each frontend's
 
 The tested-platform status is in [M5 evidence](acceptance/M5.md). macOS arm64
 dependency selection exists but is not qualified. Other Linux distributions,
-Unix variants and architectures require separate qualification. These are app
-images, without installer integration or signing/notarization.
+Unix variants and architectures require separate qualification. These app images
+also feed the GUI installers below. Local packaging is unsigned and not notarized.
+
+## GUI installers
+
+After the native bootstrap, run `.\gradlew.bat :gui:packageInstaller` on Windows
+or `./gradlew :gui:packageInstaller` on macOS. The task builds its own app-image
+prerequisite. Windows needs Inno Setup 6 (`ISCC.exe` at its normal installation
+path or `INNO_SETUP_ISCC` set to the executable). macOS needs `hdiutil`.
+
+Windows produces `gui/build/distributions/VoxelBrew-<version>-windows-x64-Setup.exe`.
+It installs per user, adds a Start menu entry and an uninstaller. macOS Intel
+produces `gui/build/distributions/VoxelBrew-<version>-macos-x64.dmg` with the
+existing `.app` and an Applications shortcut. Both preserve the complete bundled
+runtime and native libraries. Users need no installed Java. The filename uses
+the project version; Windows Setup version metadata drops `-SNAPSHOT`
+(for example `0.1.0-SNAPSHOT` maps to `0.1.0`).
+
+Local installers are unsigned; the DMG is not notarized. macOS GUI release
+publication requires an accelerated Intel Mac runner to install the DMG, launch
+the installed app through Launch Services, and pass the JavaFX render-and-pick
+smoke test. That runner must carry the `voxelbrew-macos-intel-gui` label.
 JDK 21's Mac bundler requires a positive first version component, so macOS app
 metadata uses `(major + 1).minor.patch` (for example product `0.1.0` uses
 bundle number `1.1.0`). Product versions, CLI output and archive names use
 `projectVersion` unchanged. Snapshot suffixes are omitted from native metadata.
 Archives use stable `windows-x64`, `linux-x64` and `macos-x64` platform names.
-The [release procedure](releases.md) publishes qualified GUI/CLI downloads with
-checksums; it publishes only the CLI on macOS.
+The [release procedure](releases.md) publishes qualified GUI/CLI downloads and
+installers with checksums. macOS GUI publication waits for its installed-app gate.
 
 Examples after extracting the appropriate archive:
 

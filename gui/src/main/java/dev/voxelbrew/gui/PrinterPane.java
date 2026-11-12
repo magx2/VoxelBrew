@@ -453,6 +453,17 @@ final class PrinterPane extends VBox implements AutoCloseable {
         model.setId("device-config-model");
         secret.setId("device-config-secret");
         kind.getItems().setAll(PrinterDevice.Kind.values());
+        kind.setConverter(new javafx.util.StringConverter<>() {
+            @Override
+            public String toString(PrinterDevice.Kind value) {
+                return value == null ? "" : t(value == PrinterDevice.Kind.BAMBU ? "kind.bambu" : "kind.moonraker");
+            }
+
+            @Override
+            public PrinterDevice.Kind fromString(String value) {
+                return kind.getValue();
+            }
+        });
         kind.setValue(PrinterDevice.Kind.MOONRAKER);
         var drafts = new EnumMap<PrinterDevice.Kind, ConnectionDraft>(PrinterDevice.Kind.class);
         var loading = new boolean[1];

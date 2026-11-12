@@ -56,6 +56,7 @@ class WorkbenchUiTest {
             var kind = (ComboBox<?>) node("#device-config-kind");
             var dialog = (VBox) node("#device-config-content");
             assertEquals(PrinterDevice.Kind.MOONRAKER, kind.getValue());
+            assertEquals("Klipper / Moonraker", selectedText(kind));
             assertNull(dialog.lookup("#device-config-serial"));
             assertTrue(dialog.lookupAll(".label").stream()
                     .filter(Label.class::isInstance)
@@ -79,6 +80,7 @@ class WorkbenchUiTest {
         fx(() -> {
             var kind = (ComboBox<?>) node("#device-config-kind");
             var dialog = (VBox) node("#device-config-content");
+            assertEquals("Bambu Lab", selectedText(kind));
             assertNotNull(dialog.lookup("#device-config-serial"));
             assertEquals("Printer IP / host", ((Label) node("#device-config-address-label")).getText());
             assertEquals("Printer model", ((Label) node("#device-config-model-label")).getText());
@@ -135,6 +137,12 @@ class WorkbenchUiTest {
         var devices = directory.resolve("devices");
         while (System.nanoTime() < deadline && !Files.isDirectory(devices)) Thread.sleep(25);
         assertTrue(Files.isDirectory(devices), "Saving should create the device directory");
+        while (System.nanoTime() < deadline) {
+            try (var files = Files.list(devices)) {
+                if (files.findAny().isPresent()) break;
+            }
+            Thread.sleep(25);
+        }
         try (var files = Files.list(devices)) {
             var saved = files.findFirst().orElseThrow();
             var properties = new Properties();
@@ -3662,6 +3670,10 @@ class WorkbenchUiTest {
             }
             return null;
         });
+    }
+
+    private static <T> String selectedText(ComboBox<T> choice) {
+        return choice.getConverter().toString(choice.getValue());
     }
 
     private Node node(String selector) {

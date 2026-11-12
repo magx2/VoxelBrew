@@ -94,6 +94,7 @@ final class PrinterPane extends VBox implements AutoCloseable {
         message.getStyleClass().add("printer-message");
         details.getStyleClass().add("printer-guidance");
         var heading = new Label(t("workspaceTitle"));
+        heading.setId("printer-heading");
         heading.getStyleClass().add("printer-title");
         var subtitle = new Label(t("workspaceSubtitle"));
         subtitle.getStyleClass().add("printer-subtitle");
@@ -153,6 +154,33 @@ final class PrinterPane extends VBox implements AutoCloseable {
         polling.play();
         reload();
         update();
+    }
+
+    QuickMenu quickMenu(
+            javafx.scene.Parent theme, java.util.function.Supplier<java.util.List<QuickMenu.Action>> workspaces) {
+        return new QuickMenu(
+                this,
+                theme,
+                text,
+                () -> new QuickMenu.Content(
+                        QuickMenu.controls(
+                                this,
+                                "printer-configure",
+                                "printer-upload",
+                                "printer-print",
+                                "printer-pause",
+                                "printer-resume"),
+                        QuickMenu.controls(this, "printer-cancel")),
+                workspaces,
+                (dx, dy) -> {},
+                target -> {
+                    for (var node = target; node != null && node != this; node = node.getParent()) {
+                        if (node instanceof javafx.scene.control.Control
+                                && !(node instanceof Label)
+                                && !(node instanceof ScrollPane)) return false;
+                    }
+                    return true;
+                });
     }
 
     private String t(String key) {

@@ -39,6 +39,154 @@ import org.junit.jupiter.api.io.TempDir;
 @ExtendWith(UiTestShard.class)
 class WorkbenchUiTest {
     @Test
+    void middleClickMenuUsesWorkspaceAndSketchCommands() throws Exception {
+        ready();
+        openPrepared("plate-5mm.vxb");
+        var initial = document();
+        var orientation = fx(() -> workbench.viewport().orientationProperty().get());
+        var projection = fx(() -> workbench.viewport().modelToScreen(new Point3D(30, 20, 5)));
+        openQuickMenu("viewport-scene");
+        assertEquals(
+                orientation, fx(() -> workbench.viewport().orientationProperty().get()));
+        assertEquals(projection, fx(() -> workbench.viewport().modelToScreen(new Point3D(30, 20, 5))));
+        assertNotNull(fx(() -> node("#quick-extrude")));
+        assertTrue(fx(() -> node("#quick-undo").isDisabled()));
+        fx(() -> {
+            var popup = node("#quick-menu").getScene().getWindow();
+            var screen = Screen.getScreensForRectangle(popup.getX(), popup.getY(), 1, 1)
+                    .getFirst()
+                    .getVisualBounds();
+            assertTrue(popup.getX() >= screen.getMinX());
+            assertTrue(popup.getY() >= screen.getMinY());
+            assertTrue(popup.getX() + popup.getWidth() <= screen.getMaxX() + 1);
+            assertTrue(popup.getY() + popup.getHeight() <= screen.getMaxY() + 1);
+            Screenshot.save(
+                    popup.getScene(), Path.of(System.getProperty("voxelbrew.ui.artifacts"), "quick-menu-designer.png"));
+            return null;
+        });
+        click("quick-workspaces");
+        assertTrue(quickWorkspaceDisabled("workspace-printer"));
+        click("quick-workspace-print");
+        ready();
+        assertEquals("workspace-print", selectedWorkspace());
+        openQuickMenu("print-canvas");
+        assertNotNull(fx(() -> node("#quick-print-slice")));
+        click("quick-print-view-3d");
+        assertTrue(fx(() -> ((RadioButton) node("#print-view-3d")).isSelected()));
+        assertEquals(initial, document());
+        openQuickMenu("print-canvas");
+        click("quick-workspaces");
+        click("quick-workspace-design");
+        click("constrained-sketch");
+        click("choose-plane-xy");
+        sketchReady();
+        openQuickMenu("sketch-canvas");
+        assertNotNull(fx(() -> node("#quick-sketch-tool-line")));
+        click("quick-workspaces");
+        assertTrue(quickWorkspaceDisabled("workspace-print"));
+        key(KeyCode.ESCAPE);
+        key(KeyCode.ESCAPE);
+        openQuickMenu("sketch-canvas");
+        click("quick-constraint-cancel");
+        assertEquals(initial, document());
+        fx(() -> {
+            var plate =
+                    workbench.controller().snapshot().document().printSetup().activePlateId();
+            workbench.controller().gcode(Map.of(plate, List.of("G28", "G1 X10")));
+            return null;
+        });
+        openQuickMenu("viewport-scene");
+        click("quick-workspaces");
+        click("quick-workspace-printer");
+        assertEquals("workspace-printer", selectedWorkspace());
+        openQuickMenu("printer-heading");
+        assertNotNull(fx(() -> node("#quick-printer-configure")));
+        assertEquals(
+                fx(() -> node("#printer-print").isDisabled()),
+                fx(() -> node("#quick-printer-print").isDisabled()));
+        key(KeyCode.ESCAPE);
+        assertFalse(fx(() -> Window.getWindows().stream()
+                .anyMatch(w ->
+                        w.isShowing() && w.getScene() != null && w.getScene().lookup("#quick-menu") != null)));
+    }
+
+    private boolean quickWorkspaceDisabled(String id) throws Exception {
+        return fx(() -> ((MenuButton) node("#quick-workspaces"))
+                .getItems().stream()
+                        .filter(item -> item.getId().equals("quick-" + id))
+                        .findFirst()
+                        .orElseThrow()
+                        .isDisable());
+    }
+
+    @Test
+    void polishMiddleClickMenuKeepsPanningAndFitsBothThemes() throws Exception {
+        ready();
+        openPrepared("plate-5mm.vxb");
+        var initial = document();
+        var orientation = fx(() -> workbench.viewport().orientationProperty().get());
+        var before = fx(() -> workbench.viewport().modelToScreen(new Point3D(30, 20, 5)));
+        navigate(false);
+        assertEquals(
+                orientation, fx(() -> workbench.viewport().orientationProperty().get()));
+        assertTrue(before.distance(fx(() -> workbench.viewport().modelToScreen(new Point3D(30, 20, 5)))) > 2);
+        assertFalse(quickMenuShowing());
+        for (int appearance : List.of(1, 2)) {
+            choice("appearance", appearance);
+            fx(() -> {
+                var bounds = node("#viewport-scene")
+                        .localToScreen(node("#viewport-scene").getBoundsInLocal());
+                robot.mouseMove(bounds.getMinX() + 8, bounds.getMaxY() - 8);
+                robot.mouseClick(MouseButton.MIDDLE);
+                return null;
+            });
+            Thread.sleep(200);
+            fx(() -> {
+                var root = node("#quick-menu");
+                assertTrue(root.getStyleClass().contains(appearance == 1 ? "light" : "dark"));
+                assertEquals("Obszar roboczy", ((MenuButton) node("#quick-workspaces")).getText());
+                var popup = root.getScene().getWindow();
+                var screen = Screen.getScreensForRectangle(popup.getX(), popup.getY(), 1, 1)
+                        .getFirst()
+                        .getVisualBounds();
+                assertTrue(popup.getY() + popup.getHeight() <= screen.getMaxY() + 1);
+                Screenshot.save(
+                        root.getScene(),
+                        Path.of(
+                                System.getProperty("voxelbrew.ui.artifacts"),
+                                "quick-menu-polish-" + appearance + ".png"));
+                return null;
+            });
+            key(KeyCode.ENTER);
+            assertNotNull(fx(() -> node("#quick-workspace-design")));
+            key(KeyCode.ESCAPE);
+            key(KeyCode.ESCAPE);
+            assertFalse(quickMenuShowing());
+        }
+        openQuickMenu("viewport-scene");
+        click("workspace-design");
+        assertFalse(quickMenuShowing());
+        assertEquals(initial, document());
+    }
+
+    private boolean quickMenuShowing() throws Exception {
+        return fx(() -> Window.getWindows().stream()
+                .anyMatch(w ->
+                        w.isShowing() && w.getScene() != null && w.getScene().lookup("#quick-menu") != null));
+    }
+
+    private void openQuickMenu(String surface) throws Exception {
+        var center = centerOf(surface);
+        fx(() -> {
+            robot.mouseMove(center);
+            robot.mouseClick(MouseButton.MIDDLE);
+            return null;
+        });
+        Thread.sleep(200);
+        assertNotNull(fx(() -> node("#quick-menu")));
+    }
+
+    @Test
     void printerDeviceFieldsFollowConnectionType() throws Exception {
         ready();
         Platform.runLater(() -> ((MenuBar) node("#main-menu"))

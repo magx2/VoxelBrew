@@ -337,6 +337,7 @@ public final class Workbench extends BorderPane implements AutoCloseable {
     private ModelSession.Snapshot planeSnapshot;
     private Feature.Sketch planeRepair;
     private Button finish;
+    private final List<QuickMenu> quickMenus = new ArrayList<>();
     private final UpdateDialog.Factory updates;
     private final javax.inject.Provider<AboutDialog> about;
 
@@ -773,6 +774,7 @@ public final class Workbench extends BorderPane implements AutoCloseable {
         }
         workspaces.setId("workspaces");
         workspaces.getSelectionModel().selectedItemProperty().addListener((o, a, b) -> {
+            quickMenus.forEach(QuickMenu::hide);
             if (b == printTab && printTab.isDisable()) {
                 workspaces.getSelectionModel().select(designTab);
                 return;
@@ -793,6 +795,9 @@ public final class Workbench extends BorderPane implements AutoCloseable {
             printing.documentChanged();
         });
         setCenter(workspaces);
+        quickMenus.add(viewport.quickMenu(this, this::designQuickMenu, this::quickWorkspaces));
+        quickMenus.add(printing.quickMenu(this, this::quickWorkspaces));
+        quickMenus.add(printer.quickMenu(this, this::quickWorkspaces));
         timeline = new FeatureTimeline(
                 translations,
                 position -> attempt(() -> controller.cursor(position)),
@@ -988,6 +993,42 @@ public final class Workbench extends BorderPane implements AutoCloseable {
         var item = menuItem(button.getText(), "menu-" + button.getId(), shortcut, button::fire);
         item.disableProperty().bind(disabledProperty().or(button.disabledProperty()));
         return item;
+    }
+
+    private List<QuickMenu.Action> quickWorkspaces() {
+        return workspaces.getTabs().stream()
+                .map(tab -> new QuickMenu.Action(
+                        tab.getId(),
+                        tab.getText(),
+                        "▣",
+                        tab.disableProperty(),
+                        workspaces.getSelectionModel().selectedItemProperty().isEqualTo(tab),
+                        () -> {
+                            if (!tab.isDisable()) workspaces.getSelectionModel().select(tab);
+                        }))
+                .toList();
+    }
+
+    private QuickMenu.Content designQuickMenu() {
+        var radial = new ArrayList<>(List.of(
+                QuickMenu.Action.button(constrainedSketch, "✎"),
+                QuickMenu.Action.button(extrude, "⇧"),
+                QuickMenu.Action.button(cut, "⊖"),
+                QuickMenu.Action.button(fillet, "◜"),
+                QuickMenu.Action.button(chamfer, "◩")));
+        radial.add(new QuickMenu.Action(
+                "fit", translations.text("action.fit"), "⛶", disabledProperty(), null, () -> viewport.fit(meshes())));
+        radial.add(QuickMenu.Action.button(undo, "↶"));
+        radial.add(QuickMenu.Action.button(redo, "↷"));
+        var additional = new ArrayList<>(List.of(
+                QuickMenu.Action.button(parameters, "ƒ"),
+                QuickMenu.Action.button(shell, "□"),
+                QuickMenu.Action.button(splitBody, "◫"),
+                QuickMenu.Action.menu(export, "⇥")));
+        for (var node : toolActions.getChildren()) {
+            if (node instanceof ButtonBase button) additional.add(QuickMenu.Action.button(button, "✓"));
+        }
+        return new QuickMenu.Content(radial, additional);
     }
 
     private void newDocument() {
@@ -2377,6 +2418,7 @@ public final class Workbench extends BorderPane implements AutoCloseable {
     public void close() {
         if (closed) return;
         closed = true;
+        quickMenus.forEach(QuickMenu::close);
         if (constructionEditor != null) constructionEditor.close();
         timeline.close();
         window.close();

@@ -98,6 +98,7 @@ evaluated revision; sketches continue to use stable XY-parallel plane references
 | Left click                      | Select a sketch profile, body or rendered face         |
 | Left drag on empty grid space   | Orbit the model                                        |
 | Middle drag                     | Pan the whole design view                              |
+| Middle click                    | Open context actions and workspace switching           |
 | Shift + middle drag             | Pan                                                    |
 | Right drag                      | Pan the whole design view                              |
 | Mouse wheel                     | Zoom                                                   |
@@ -156,6 +157,18 @@ scene in the direction of the pointer. Left drags
 starting on a body or sketch keep selection behavior; drawing tools and extrusion
 handles retain their own input. Release ends grid rotation, including when the
 pointer has moved over a body. Middle-drag pans the view, like right-drag.
+
+Middle-click opens a radial command menu with additional actions below it.
+The Workspace submenu switches between Designer, Slicer, and Printer using the
+same availability and save rules as the tabs. Designer offers sketch and solid
+tools; Slicer offers slicing, arrangement, orientation, and preview controls;
+Printer offers configuration, upload, and device controls. Unavailable commands
+are disabled. Commands use the current selection without selecting under the pointer.
+While editing a sketch, the menu offers drawing tools, Undo/Redo, Finish, and
+Cancel; finish or cancel before switching workspaces. Dragging more than five
+logical pixels pans instead of opening the menu. Escape or clicking outside closes
+the menu; Tab and Enter navigate and activate commands. Middle-dragging numeric
+fields keeps its existing value-editing behavior.
 
 ## Appearance and exporters
 

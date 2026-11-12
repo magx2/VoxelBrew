@@ -133,7 +133,7 @@ public final class Viewport extends StackPane {
         setDark(false);
         grid();
         scene.addEventFilter(MouseEvent.MOUSE_PRESSED, e -> {
-            if (e.getButton() != MouseButton.SECONDARY && e.getButton() != MouseButton.MIDDLE) return;
+            if (e.getButton() != MouseButton.SECONDARY) return;
             lastX = e.getSceneX();
             lastY = e.getSceneY();
             primaryOrbit = false;
@@ -143,7 +143,7 @@ public final class Viewport extends StackPane {
             e.consume();
         });
         scene.addEventFilter(MouseEvent.MOUSE_DRAGGED, e -> {
-            if (!e.isSecondaryButtonDown() && !e.isMiddleButtonDown()) return;
+            if (!e.isSecondaryButtonDown()) return;
             pan.setX(pan.getX() + (e.getSceneX() - lastX) * distance / 700);
             pan.setY(pan.getY() + (e.getSceneY() - lastY) * distance / 700);
             lastX = e.getSceneX();
@@ -151,7 +151,7 @@ public final class Viewport extends StackPane {
             e.consume();
         });
         scene.addEventFilter(MouseEvent.MOUSE_RELEASED, e -> {
-            if (e.getButton() != MouseButton.SECONDARY && e.getButton() != MouseButton.MIDDLE) return;
+            if (e.getButton() != MouseButton.SECONDARY) return;
             scene.setCursor(Cursor.DEFAULT);
             e.consume();
         });
@@ -198,6 +198,25 @@ public final class Viewport extends StackPane {
                 e.consume();
             }
         });
+    }
+
+    QuickMenu quickMenu(
+            Parent theme,
+            java.util.function.Supplier<QuickMenu.Content> content,
+            java.util.function.Supplier<List<QuickMenu.Action>> workspaces) {
+        return new QuickMenu(
+                scene,
+                theme,
+                translations,
+                content,
+                workspaces,
+                (dx, dy) -> {
+                    primaryOrbit = false;
+                    pressedSketch = null;
+                    pan.setX(pan.getX() + dx * distance / 700);
+                    pan.setY(pan.getY() + dy * distance / 700);
+                },
+                target -> true);
     }
 
     public static Point3D toView(double x, double y, double z) {

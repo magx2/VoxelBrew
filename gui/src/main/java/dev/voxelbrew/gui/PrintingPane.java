@@ -28,6 +28,45 @@ import javafx.util.StringConverter;
 @javax.inject.Singleton
 final class PrintingPane extends BorderPane implements AutoCloseable {
     private final SlicerWorkspace workspace = new SlicerWorkspace();
+    private final Map<String, ButtonBase> quickActions = new LinkedHashMap<>();
+
+    QuickMenu quickMenu(javafx.scene.Parent theme, java.util.function.Supplier<List<QuickMenu.Action>> workspaces) {
+        return new QuickMenu(
+                canvas,
+                theme,
+                translations,
+                () -> {
+                    var radial = QuickMenu.controls(
+                            quickActions::get,
+                            "print-slice",
+                            "print-slice-all",
+                            "print-auto-arrange",
+                            "print-auto-orient",
+                            "print-fit-view",
+                            "print-view-2d",
+                            "print-view-3d",
+                            "print-preview");
+                    var additional = QuickMenu.controls(quickActions::get, "print-add", "print-lay-face");
+                    var remove = QuickMenu.Action.button(quickActions.get("print-remove"), "×");
+                    additional.add(new QuickMenu.Action(
+                            remove.id(),
+                            translations.text("quick.removeObject"),
+                            remove.icon(),
+                            remove.disabled(),
+                            remove.selected(),
+                            remove.invoke()));
+                    additional.addAll(QuickMenu.controls(quickActions::get, "print-cancel"));
+                    return new QuickMenu.Content(radial, additional);
+                },
+                workspaces,
+                (dx, dy) -> {
+                    cancelDrag();
+                    camera().pan(dx, dy);
+                    draw();
+                },
+                target -> true);
+    }
+
     private final PrinterCatalog printers;
     private final PrinterVisibility printerVisibility;
     private Set<String> hiddenPrinters = Set.of();
@@ -472,6 +511,8 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
         var solidView = new RadioButton("3D");
         topView.setId("print-view-2d");
         solidView.setId("print-view-3d");
+        quickActions.put(topView.getId(), topView);
+        quickActions.put(solidView.getId(), solidView);
         UiHelp.install(topView, translations);
         UiHelp.install(solidView, translations);
         topView.setToggleGroup(viewMode);
@@ -529,6 +570,7 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
         var preview = new BorderPane(center);
         toolpathPreview.setText(translations.text("print.preview"));
         toolpathPreview.setId("print-preview");
+        quickActions.put(toolpathPreview.getId(), toolpathPreview);
         UiHelp.describe(toolpathPreview, translations.text("print.previewHelp"));
         toolpathPreview.setOnAction(event -> {
             updatePreviewControls();
@@ -544,6 +586,7 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
                 toolpathPreview);
         var fitView = new Button(translations.text("print.fitView"));
         fitView.setId("print-fit-view");
+        quickActions.put(fitView.getId(), fitView);
         UiHelp.describe(fitView, translations.text("print.cameraHelp"));
         fitView.setOnAction(event -> {
             cancelDrag();
@@ -774,6 +817,7 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
     private Button button(String title, String id, Runnable action) {
         var button = new Button(title);
         button.setId(id);
+        if (!id.startsWith("print-remove-plate-")) quickActions.put(id, button);
         button.setMaxWidth(Double.MAX_VALUE);
         UiHelp.install(button, translations);
         button.setOnAction(e -> {

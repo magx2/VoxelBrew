@@ -5,6 +5,29 @@
   -fx-focus-color: #3574f0;
   -fx-faint-focus-color: transparent;
 }
+.quick-menu {
+  -fx-font-family: "Segoe UI", "DejaVu Sans", sans-serif;
+  -fx-font-size: 12px;
+  -fx-background-color: transparent;
+}
+.quick-menu .button,
+.quick-menu .menu-button {
+  -fx-alignment: center-left;
+  -fx-padding: 7 10;
+  -fx-background-radius: 5;
+  -fx-border-radius: 5;
+  -fx-border-color: derive(-fx-base, -20%);
+}
+.quick-menu-list {
+  -fx-padding: 8;
+  -fx-background-color: -fx-background;
+  -fx-background-radius: 6;
+}
+.quick-menu-scroll,
+.quick-menu-scroll > .viewport {
+  -fx-background-color: transparent;
+  -fx-padding: 0;
+}
 .light {
   -fx-base: #f0f1f3;
   -fx-background: #f7f8fa;

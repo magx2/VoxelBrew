@@ -76,6 +76,7 @@ Camera gestures match Designer: right-drag or middle-drag pans; left-drag on
 empty space orbits in 3D and pans in 2D; the wheel zooms. The 2D
 view stays top-down. **Fit view** resets pan and zoom. Each view keeps its own
 transient camera state, which never changes placements or creates undo entries.
+Middle-click opens Slicer actions and a Workspace submenu; middle-drag still pans.
 New instances start at the center of the bed. Placement validation reports objects
 outside the bed or overlapping other objects on the selected plate.
 

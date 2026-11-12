@@ -107,6 +107,7 @@ final class SketchEditor extends BorderPane implements AutoCloseable {
     private Vec cursor = new Vec(0, 0);
     private double centerX = 30, centerY = 20, scale = 4, lastX, lastY, pressX, pressY;
     private boolean moving, panning, refreshing, closed;
+    private final QuickMenu quickMenu;
     private final boolean dark;
     private int nextId = 1;
     private final Feature.Plane selectedPlane;
@@ -373,6 +374,35 @@ final class SketchEditor extends BorderPane implements AutoCloseable {
         });
         tool(Draw.SELECT);
         refresh();
+        quickMenu = new QuickMenu(
+                canvas,
+                this,
+                translations,
+                () -> new QuickMenu.Content(
+                        QuickMenu.controls(
+                                shortcutActions::get,
+                                "sketch-tool-line",
+                                "sketch-tool-rectangle",
+                                "sketch-tool-circle",
+                                "sketch-tool-arc",
+                                "sketch-tool-select",
+                                "constraint-finish",
+                                "sketch-undo",
+                                "sketch-redo"),
+                        QuickMenu.controls(
+                                shortcutActions::get,
+                                "sketch-tool-point",
+                                "sketch-tool-spline",
+                                "sketch-tool-polygon",
+                                "sketch-create-type",
+                                "constraint-cancel")),
+                () -> QuickMenu.sketchWorkspaces(translations),
+                (dx, dy) -> {
+                    centerX -= dx / scale;
+                    centerY += dy / scale;
+                    draw();
+                },
+                target -> true);
     }
 
     private void chooseSketchType() {
@@ -1939,6 +1969,7 @@ final class SketchEditor extends BorderPane implements AutoCloseable {
     public void close() {
         if (!closed) {
             closed = true;
+            quickMenu.close();
             controller.close();
         }
     }

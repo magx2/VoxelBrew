@@ -30,6 +30,7 @@ final class PrinterPane extends VBox implements AutoCloseable {
 
     private final PrinterRuntime runtime;
     private final dev.voxelbrew.slicer.api.PrinterProfileCatalog profiles;
+    private final PrinterVisibility printerVisibility;
     private final Translations text;
     private final Path directory;
     private final ExecutorService worker;
@@ -58,11 +59,13 @@ final class PrinterPane extends VBox implements AutoCloseable {
     PrinterPane(
             PrinterRuntime runtime,
             dev.voxelbrew.slicer.api.PrinterProfileCatalog profiles,
+            PrinterVisibility printerVisibility,
             UserConfiguration configuration,
             Translations text,
             @javax.inject.Named("printer") ExecutorService worker) {
         this.runtime = runtime;
         this.profiles = profiles;
+        this.printerVisibility = printerVisibility;
         this.text = text;
         this.worker = worker;
         directory = configuration.path().resolveSibling("devices");
@@ -523,7 +526,17 @@ final class PrinterPane extends VBox implements AutoCloseable {
         var model = new TextField();
         var profile = new ComboBox<dev.voxelbrew.slicer.api.PrinterProfileCatalog.Entry>();
         profile.setId("device-config-profile");
-        profile.getItems().setAll(profiles.load().entries());
+        try {
+            var hidden = printerVisibility.hidden();
+            profile.getItems()
+                    .setAll(profiles.load().entries().stream()
+                            .filter(entry -> !entry.bundled()
+                                    || !hidden.contains(
+                                            entry.definition().printer().id()))
+                            .toList());
+        } catch (java.io.IOException ex) {
+            throw new IllegalStateException(ex);
+        }
         profile.setMaxWidth(Double.MAX_VALUE);
         var secret = new PasswordField();
         var kind = new ComboBox<Printer.Kind>();

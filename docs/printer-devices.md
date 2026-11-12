@@ -1,21 +1,21 @@
 # Physical printer devices
 
 The **Printer** workspace becomes available when at least one plate has stored G-code.
-Choose a sliced plate and a physical device. **Upload only** transfers the job;
+Choose a sliced plate and its target printer. **Upload only** transfers the job;
 **Print** uploads and requests a start. Live status includes progress and temperatures
 when reported. Pause, resume and cancel apply to the selected device. Closing a window
 or editing a project does not stop an already running physical print.
 
 Use **Printers > Configure devices…** to add, edit, remove and test connections.
-These are physical devices, separate from the slicer's hardware presets:
+Each saved printer references one printer profile from the Slicer catalog:
 
-- Klipper / Moonraker uses an HTTP(S) URL and optional API key. The optional model
-  field can constrain the device to a slicer preset ID.
+- Klipper / Moonraker uses an HTTP(S) URL and optional API key.
 - Bambu LAN uses a host, serial number, model and access code. Enter the model
   such as `Bambu Lab A1`. LAN Only and Developer
   Mode may be required by the device firmware. Cloud accounts are not supported.
 
-Credentials are remembered in user-local `devices/{id}.properties` beside
+The connection and its profile ID are remembered in user-local `devices/{id}.properties`
+beside
 `config.properties`, with owner-only permissions. They are not encrypted at rest;
 they are excluded from documents and diagnostic messages. Configuration paths honor
 `voxelbrew.home` and `voxelbrew.config`.

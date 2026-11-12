@@ -2,7 +2,7 @@ package dev.voxelbrew.gui;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-import dev.voxelbrew.slicer.api.PrinterCatalog;
+import dev.voxelbrew.slicer.api.PrinterProfileCatalog;
 import dev.voxelbrew.slicer.api.SlicerRuntime;
 import dev.voxelbrew.util.config.UserConfiguration;
 import java.nio.file.Path;
@@ -25,7 +25,7 @@ class PrinterVisibilityTest {
         var entries = catalog.load().entries();
         assertTrue(visibility.hidden().isEmpty());
         var visible = entries.stream()
-                .filter(PrinterCatalog.Entry::bundled)
+                .filter(PrinterProfileCatalog.Entry::bundled)
                 .map(e -> e.definition().printer().id())
                 .collect(Collectors.toSet());
         visible.remove("bambu-lab-a1-mini");

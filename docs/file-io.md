@@ -3,7 +3,7 @@
 Sliced jobs belong to `CadDocument.gcode()`, keyed by plate ID, with one UTF-8
 source line per list element. The Protobuf `Gcode.lines` field and JSON document
 export preserve comments, empty lines and all commands. `GcodeJob.lines()` also
-retains the input of the standalone G-code importer; `GcodeSource.readLines`
+retains the sliced job input; `GcodeSource.readLines`
 parses an embedded job for preview without needing its original file.
 The built-in `gcode` exporter writes the active plate's stored job atomically and
 rejects a missing job. It does not run a slicer or regenerate toolpaths.
@@ -283,7 +283,7 @@ cli export plate.vxb --format document-probe --plugin-dir "path with spaces/plug
 ```
 
 Document imports require a separate `--output`; existing destinations require `--overwrite`.
-G-code import prints toolpath counts and rejects `--output`, because it is not editable CAD.
+G-code file import has been removed; `inspect-job` still parses generated jobs.
 GUI **File > Import** (`Ctrl+I`) lists document providers, then opens the selected
 importer's source dialog. VXB and JSON are built in; file options come from that dialog. Reads run on the file worker; success opens an unsaved design, and failure
 keeps the current document. Save/Discard/Cancel protects unsaved work before importing. Toolpath
@@ -425,7 +425,7 @@ explicit executable unless they implement `executable()`.
 Cura command syntax follows the upstream
 [command-line implementation](https://github.com/Ultimaker/CuraEngine/blob/5.0/src/Application.cpp).
 
-Printer catalogs are exposed by `dev.voxelbrew.slicer.api.PrinterCatalog` through
+Printer profile catalogs are exposed by `dev.voxelbrew.slicer.api.PrinterProfileCatalog` through
 `SlicerRuntime.printers(Path)`. The implementation, bundled presets, images and
 custom-resource loading live in `impl/slicer`; frontends use the existing
 `SlicerRuntime` ServiceLoader provider. The former engine `PrinterCatalog` and

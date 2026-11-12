@@ -83,16 +83,4 @@ public class ProbeImporter implements ImporterProvider {
             throw new IOException("Deliberate importer failure");
         }
     }
-
-    public static final class WrongKind extends Failing {
-        @Override
-        public ImporterDescriptor descriptor() {
-            return new ImporterDescriptor("wrong-kind", "Wrong result", API_VERSION, ImportResult.Kind.GCODE);
-        }
-
-        @Override
-        public ImportResult read(InputStream input, Map<String, String> options) {
-            return new ImportResult.Document(CadDocument.empty());
-        }
-    }
 }

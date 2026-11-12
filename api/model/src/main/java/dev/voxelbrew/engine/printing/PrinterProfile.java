@@ -5,14 +5,14 @@ import java.util.List;
 import lombok.NonNull;
 
 /** Portable hardware snapshot, independent of catalog files and display assets. */
-public record PrinterDefinition(
+public record PrinterProfile(
         @NonNull PrintProfile.Printer printer,
         @NonNull String manufacturer,
         double filamentDiameter,
         int toolCount,
         boolean genericGcode,
         boolean modified) {
-    public PrinterDefinition {
+    public PrinterProfile {
         CadDocument.identifier(printer.id(), "printer ID");
         if (printer.name().isBlank()
                 || manufacturer.isBlank()
@@ -24,7 +24,7 @@ public record PrinterDefinition(
                 || toolCount < 1
                 || toolCount > 64) throw new IllegalArgumentException("Invalid printer hardware");
         validatePolygon(printer.bed());
-        printer.excludedZones().forEach(PrinterDefinition::validatePolygon);
+        printer.excludedZones().forEach(PrinterProfile::validatePolygon);
         if (printer.usableHeight() > 10000 || printer.nozzleMm() > 10)
             throw new IllegalArgumentException("Printer dimensions exceed supported limits");
         if (genericGcode
@@ -46,9 +46,9 @@ public record PrinterDefinition(
         if (Math.abs(area) < 1e-6) throw new IllegalArgumentException("Degenerate bed polygon");
     }
 
-    public PrinterDefinition rectangular(double width, double depth, double height) {
+    public PrinterProfile rectangular(double width, double depth, double height) {
         PrintProfile.rectangularPrinterId(width, depth, height);
-        return new PrinterDefinition(
+        return new PrinterProfile(
                 new PrintProfile.Printer(
                         printer.id(),
                         printer.name(),
@@ -67,11 +67,11 @@ public record PrinterDefinition(
                 true);
     }
 
-    public PrinterDefinition withNozzle(double diameterMm) {
+    public PrinterProfile withNozzle(double diameterMm) {
         if (!Double.isFinite(diameterMm) || diameterMm <= 0 || diameterMm > 5)
             throw new IllegalArgumentException("Nozzle diameter must be greater than 0 and at most 5 mm");
         if (Double.compare(printer.nozzleMm(), diameterMm) == 0) return this;
-        return new PrinterDefinition(
+        return new PrinterProfile(
                 new PrintProfile.Printer(
                         printer.id(),
                         printer.name(),

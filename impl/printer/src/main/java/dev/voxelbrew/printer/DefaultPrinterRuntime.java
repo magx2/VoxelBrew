@@ -8,9 +8,9 @@ import java.util.*;
 
 public final class DefaultPrinterRuntime implements PrinterRuntime {
     @Override
-    public List<PrinterDevice> devices(Path directory) throws IOException {
+    public List<Printer> devices(Path directory) throws IOException {
         if (!Files.exists(directory)) return List.of();
-        var devices = new ArrayList<PrinterDevice>();
+        var devices = new ArrayList<Printer>();
         try (var paths = Files.list(directory)) {
             for (var file : paths.filter(p -> p.toString().endsWith(".properties"))
                     .sorted()
@@ -20,10 +20,11 @@ public final class DefaultPrinterRuntime implements PrinterRuntime {
                     p.load(reader);
                 }
                 try {
-                    devices.add(new PrinterDevice(
+                    devices.add(new Printer(
                             p.getProperty("id"),
                             p.getProperty("name"),
-                            PrinterDevice.Kind.valueOf(p.getProperty("kind")),
+                            Printer.Kind.valueOf(p.getProperty("kind")),
+                            p.getProperty("profile_id"),
                             p.getProperty("address"),
                             p.getProperty("serial"),
                             p.getProperty("model"),
@@ -37,7 +38,7 @@ public final class DefaultPrinterRuntime implements PrinterRuntime {
     }
 
     @Override
-    public void save(Path directory, PrinterDevice device) throws IOException {
+    public void save(Path directory, Printer device) throws IOException {
         Files.createDirectories(directory);
         restrict(directory, true);
         var temporary = Files.createTempFile(directory, ".device-", ".tmp");
@@ -47,6 +48,7 @@ public final class DefaultPrinterRuntime implements PrinterRuntime {
             p.setProperty("id", device.id());
             p.setProperty("name", device.name());
             p.setProperty("kind", device.kind().name());
+            p.setProperty("profile_id", device.profileId());
             p.setProperty("address", device.address());
             p.setProperty("serial", device.serial());
             p.setProperty("model", device.model());
@@ -90,7 +92,7 @@ public final class DefaultPrinterRuntime implements PrinterRuntime {
     }
 
     @Override
-    public PrinterSession connect(PrinterDevice device) throws IOException {
-        return device.kind() == PrinterDevice.Kind.MOONRAKER ? new MoonrakerSession(device) : new BambuSession(device);
+    public PrinterSession connect(Printer device) throws IOException {
+        return device.kind() == Printer.Kind.MOONRAKER ? new MoonrakerSession(device) : new BambuSession(device);
     }
 }

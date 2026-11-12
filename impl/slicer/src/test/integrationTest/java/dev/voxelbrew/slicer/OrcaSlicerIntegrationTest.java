@@ -32,7 +32,7 @@ class OrcaSlicerIntegrationTest {
                         "filament",
                         fixtures.resolve("filament.json").toString()));
         var session = PrintingTest.reference();
-        var catalog = new DefaultPrinterCatalog(new PrinterResources(directory.resolve("printers"))).load();
+        var catalog = new DefaultPrinterProfileCatalog(new PrinterResources(directory.resolve("printers"))).load();
         var setup = session.document().printSetup().withPrinter(catalog.require("bambu-lab-a1"));
         session.setPrintSetup(setup.withProfile("orca", setup.printerId(), setup.materialId(), setup.process()));
         var model = ManufacturingModels.evaluate(session.document(), MeshOptions.DEFAULT);

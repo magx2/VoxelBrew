@@ -8,10 +8,16 @@ import java.util.*;
 public final class PrinterJobs {
     private PrinterJobs() {}
 
-    public static Optional<String> incompatibility(CadDocument document, String plate, PrinterDevice device) {
+    public static Optional<String> incompatibility(CadDocument document, String plate, Printer device) {
         if (document.gcode().getOrDefault(plate, List.of()).isEmpty()) return Optional.of("Slice this plate first");
         PrintArtifact artifact = document.printArtifacts().get(plate);
-        if (device.kind() == PrinterDevice.Kind.BAMBU) {
+        if (artifact == null || !"printer".equals(artifact.metadata().get("target_kind")))
+            return Optional.of("This plate was sliced for a printer profile; save its G-code instead");
+        if (!device.id().equals(artifact.metadata().get("target_id")))
+            return Optional.of("This job was sliced for another printer");
+        if (!device.profileId().equals(artifact.metadata().get("target_profile")))
+            return Optional.of("Printer profile changed since slicing");
+        if (device.kind() == Printer.Kind.BAMBU) {
             if (artifact == null
                     || !artifact.format().equals("gcode.3mf")
                     || !"orca".equals(artifact.metadata().get("backend")))
@@ -27,11 +33,8 @@ public final class PrinterJobs {
                 return Optional.of("Package nozzle differs from the sliced printer profile");
         } else if (artifact != null && artifact.format().equals("gcode.3mf"))
             return Optional.of("A Bambu job cannot be sent to Moonraker");
-        if (device.kind() == PrinterDevice.Kind.MOONRAKER
-                && !device.model().isBlank()
-                && !normalize(device.model())
-                        .equals(normalize(document.printSetup().printerId())))
-            return Optional.of("Slicer printer preset differs from the configured device model");
+        if (!device.profileId().equals(document.printSetup().printerId()))
+            return Optional.of("Current printer profile differs from the sliced job");
         return Optional.empty();
     }
 

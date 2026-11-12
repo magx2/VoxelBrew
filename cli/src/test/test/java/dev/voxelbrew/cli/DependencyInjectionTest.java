@@ -29,18 +29,21 @@ class DependencyInjectionTest {
         });
         var listing = new StringWriter();
         var command = quiet(graph.commandLine()).setOut(new PrintWriter(listing));
-        assertEquals(0, command.execute("printers"));
+        assertEquals(0, command.execute("printer-profiles"));
         assertTrue(listing.toString().contains("bambu-lab-a1-mini"));
         assertEquals(
                 0,
-                quiet(graph.commandLine()).execute("print-settings", "virtual.vxb", "--printer", "bambu-lab-a1-mini"));
+                quiet(graph.commandLine())
+                        .execute("print-settings", "virtual.vxb", "--printer-profile", "bambu-lab-a1-mini"));
         var saved = document.get().printSetup();
         assertEquals(4, saved.version());
         assertEquals(180, saved.printerSnapshot().printer().usableHeight());
         assertEquals(0, quiet(graph.commandLine()).execute("print-settings", "virtual.vxb", "--material", "PETG"));
         assertEquals(saved.printerSnapshot(), document.get().printSetup().printerSnapshot());
         assertEquals(
-                1, quiet(graph.commandLine()).execute("print-settings", "virtual.vxb", "--printer", "missing-printer"));
+                1,
+                quiet(graph.commandLine())
+                        .execute("print-settings", "virtual.vxb", "--printer-profile", "missing-printer"));
         assertEquals(saved.printerSnapshot(), document.get().printSetup().printerSnapshot());
     }
 

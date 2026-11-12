@@ -1,6 +1,6 @@
 package dev.voxelbrew.gui;
 
-import dev.voxelbrew.slicer.api.PrinterCatalog;
+import dev.voxelbrew.slicer.api.PrinterProfileCatalog;
 import dev.voxelbrew.util.i18n.Translations;
 import java.util.*;
 import javafx.scene.control.*;
@@ -10,12 +10,12 @@ import javafx.stage.Window;
 final class PrinterExportDialog {
     private PrinterExportDialog() {}
 
-    static Set<String> choose(Window owner, Translations translations, List<PrinterCatalog.Entry> entries) {
+    static Set<String> choose(Window owner, Translations translations, List<PrinterProfileCatalog.Entry> entries) {
         return choose(owner, translations, entries, Set.of(), false).orElse(Set.of());
     }
 
     static Optional<Set<String>> manageVisible(
-            Window owner, Translations translations, List<PrinterCatalog.Entry> entries, Set<String> hidden) {
+            Window owner, Translations translations, List<PrinterProfileCatalog.Entry> entries, Set<String> hidden) {
         var visible = new HashSet<String>();
         for (var entry : entries)
             if (entry.bundled() && !hidden.contains(entry.definition().printer().id()))
@@ -26,7 +26,7 @@ final class PrinterExportDialog {
     private static Optional<Set<String>> choose(
             Window owner,
             Translations translations,
-            List<PrinterCatalog.Entry> entries,
+            List<PrinterProfileCatalog.Entry> entries,
             Set<String> initial,
             boolean visibility) {
         var dialog = new Dialog<Set<String>>();
@@ -46,7 +46,8 @@ final class PrinterExportDialog {
         exportButton.getStyleClass().add("printer-dialog-primary");
         dialog.getDialogPane().lookupButton(ButtonType.CANCEL).setId("printer-dialog-cancel");
         Set<String> selected = new LinkedHashSet<>(initial);
-        long total = entries.stream().filter(PrinterCatalog.Entry::bundled).count();
+        long total =
+                entries.stream().filter(PrinterProfileCatalog.Entry::bundled).count();
         var count = new Label(translations.text("print.printerSelectionCount", selected.size(), total));
         count.getStyleClass().add("printer-selection-count");
         var list = new VBox(2);

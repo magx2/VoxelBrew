@@ -1,14 +1,12 @@
 package dev.voxelbrew.importer.api;
 
 import dev.voxelbrew.engine.model.CadDocument;
-import dev.voxelbrew.engine.printing.GcodeJob;
 import lombok.NonNull;
 
 /** Detached, frontend-neutral import results. Meshes are not misrepresented as editable history. */
 public sealed interface ImportResult {
     enum Kind {
-        DOCUMENT,
-        GCODE
+        DOCUMENT
     }
 
     Kind kind();
@@ -19,15 +17,6 @@ public sealed interface ImportResult {
         @Override
         public Kind kind() {
             return Kind.DOCUMENT;
-        }
-    }
-
-    record Gcode(@NonNull GcodeJob job) implements ImportResult {
-        public Gcode {}
-
-        @Override
-        public Kind kind() {
-            return Kind.GCODE;
         }
     }
 }

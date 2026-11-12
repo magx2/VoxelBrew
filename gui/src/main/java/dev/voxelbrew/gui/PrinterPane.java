@@ -29,11 +29,12 @@ final class PrinterPane extends VBox implements AutoCloseable {
     private record ConnectionDraft(String address, String serial, String model, String secret) {}
 
     private final PrinterRuntime runtime;
+    private final dev.voxelbrew.slicer.api.PrinterProfileCatalog profiles;
     private final Translations text;
     private final Path directory;
     private final ExecutorService worker;
     private final ComboBox<Plate> plates = new ComboBox<>();
-    private final ComboBox<PrinterDevice> devices = new ComboBox<>();
+    private final ComboBox<Printer> devices = new ComboBox<>();
     private final Label status = new Label(), details = new Label(), message = new Label();
     private final Label connectionDetail = new Label();
     private final Label progressValue = new Label(),
@@ -56,10 +57,12 @@ final class PrinterPane extends VBox implements AutoCloseable {
     @javax.inject.Inject
     PrinterPane(
             PrinterRuntime runtime,
+            dev.voxelbrew.slicer.api.PrinterProfileCatalog profiles,
             UserConfiguration configuration,
             Translations text,
             @javax.inject.Named("printer") ExecutorService worker) {
         this.runtime = runtime;
+        this.profiles = profiles;
         this.text = text;
         this.worker = worker;
         directory = configuration.path().resolveSibling("devices");
@@ -247,6 +250,16 @@ final class PrinterPane extends VBox implements AutoCloseable {
                 .orElse(choices.isEmpty() ? null : choices.getFirst());
         if (!Objects.equals(plates.getSelectionModel().getSelectedItem(), choice))
             plates.getSelectionModel().select(choice);
+        if (choice != null) {
+            var artifact = value.printArtifacts().get(choice.id());
+            if (artifact != null && "printer".equals(artifact.metadata().get("target_kind"))) {
+                var target = artifact.metadata().get("target_id");
+                devices.getItems().stream()
+                        .filter(d -> d.id().equals(target))
+                        .findFirst()
+                        .ifPresent(devices::setValue);
+            }
+        }
         update();
     }
 
@@ -295,9 +308,17 @@ final class PrinterPane extends VBox implements AutoCloseable {
                     if (closed) return;
                     String selected =
                             devices.getValue() == null ? "" : devices.getValue().id();
+                    if (document != null && plates.getValue() != null) {
+                        var artifact =
+                                document.printArtifacts().get(plates.getValue().id());
+                        if (artifact != null
+                                && "printer".equals(artifact.metadata().get("target_kind")))
+                            selected = artifact.metadata().getOrDefault("target_id", "");
+                    }
                     devices.getItems().setAll(loaded);
+                    String target = selected;
                     devices.setValue(loaded.stream()
-                            .filter(d -> d.id().equals(selected))
+                            .filter(d -> d.id().equals(target))
                             .findFirst()
                             .orElse(loaded.isEmpty() ? null : loaded.getFirst()));
                 });
@@ -492,7 +513,7 @@ final class PrinterPane extends VBox implements AutoCloseable {
         var dialog = new Dialog<ButtonType>();
         dialog.setTitle(t("configure"));
         if (getScene() != null) dialog.initOwner(getScene().getWindow());
-        var list = new ComboBox<PrinterDevice>();
+        var list = new ComboBox<Printer>();
         list.getItems().setAll(devices.getItems());
         list.setPromptText(t("new"));
         var name = new TextField();
@@ -500,27 +521,31 @@ final class PrinterPane extends VBox implements AutoCloseable {
         var address = new TextField();
         var serial = new TextField();
         var model = new TextField();
+        var profile = new ComboBox<dev.voxelbrew.slicer.api.PrinterProfileCatalog.Entry>();
+        profile.setId("device-config-profile");
+        profile.getItems().setAll(profiles.load().entries());
+        profile.setMaxWidth(Double.MAX_VALUE);
         var secret = new PasswordField();
-        var kind = new ComboBox<PrinterDevice.Kind>();
+        var kind = new ComboBox<Printer.Kind>();
         kind.setId("device-config-kind");
         address.setId("device-config-address");
         serial.setId("device-config-serial");
         model.setId("device-config-model");
         secret.setId("device-config-secret");
-        kind.getItems().setAll(PrinterDevice.Kind.values());
+        kind.getItems().setAll(Printer.Kind.values());
         kind.setConverter(new javafx.util.StringConverter<>() {
             @Override
-            public String toString(PrinterDevice.Kind value) {
-                return value == null ? "" : t(value == PrinterDevice.Kind.BAMBU ? "kind.bambu" : "kind.moonraker");
+            public String toString(Printer.Kind value) {
+                return value == null ? "" : t(value == Printer.Kind.BAMBU ? "kind.bambu" : "kind.moonraker");
             }
 
             @Override
-            public PrinterDevice.Kind fromString(String value) {
+            public Printer.Kind fromString(String value) {
                 return kind.getValue();
             }
         });
-        kind.setValue(PrinterDevice.Kind.MOONRAKER);
-        var drafts = new EnumMap<PrinterDevice.Kind, ConnectionDraft>(PrinterDevice.Kind.class);
+        kind.setValue(Printer.Kind.MOONRAKER);
+        var drafts = new EnumMap<Printer.Kind, ConnectionDraft>(Printer.Kind.class);
         var loading = new boolean[1];
         list.valueProperty().addListener((o, a, d) -> {
             if (d != null) {
@@ -532,6 +557,10 @@ final class PrinterPane extends VBox implements AutoCloseable {
                     address.setText(d.address());
                     serial.setText(d.serial());
                     model.setText(d.model());
+                    profile.getItems().stream()
+                            .filter(p -> p.definition().printer().id().equals(d.profileId()))
+                            .findFirst()
+                            .ifPresent(profile::setValue);
                     secret.setText(d.secret());
                 } finally {
                     loading[0] = false;
@@ -544,11 +573,12 @@ final class PrinterPane extends VBox implements AutoCloseable {
             try {
                 list.setValue(null);
                 drafts.clear();
-                kind.setValue(PrinterDevice.Kind.MOONRAKER);
+                kind.setValue(Printer.Kind.MOONRAKER);
                 name.clear();
                 address.clear();
                 serial.clear();
                 model.clear();
+                profile.setValue(null);
                 secret.clear();
             } finally {
                 loading[0] = false;
@@ -572,8 +602,8 @@ final class PrinterPane extends VBox implements AutoCloseable {
         modelLabel.setId("device-config-model-label");
         var secretLabel = new Label();
         secretLabel.setId("device-config-secret-label");
-        var fields = (java.util.function.Consumer<PrinterDevice.Kind>) selected -> {
-            boolean bambu = selected == PrinterDevice.Kind.BAMBU;
+        var fields = (java.util.function.Consumer<Printer.Kind>) selected -> {
+            boolean bambu = selected == Printer.Kind.BAMBU;
             addressLabel.setText(t(bambu ? "bambuAddress" : "moonrakerAddress"));
             modelLabel.setText(t(bambu ? "bambuModel" : "moonrakerModel"));
             secretLabel.setText(t(bambu ? "bambuSecret" : "moonrakerSecret"));
@@ -587,6 +617,7 @@ final class PrinterPane extends VBox implements AutoCloseable {
             form.getChildren()
                     .setAll(
                             identity,
+                            deviceField(new Label(t("profile")), profile),
                             deviceField(addressLabel, address),
                             details,
                             deviceField(secretLabel, secret),
@@ -632,14 +663,18 @@ final class PrinterPane extends VBox implements AutoCloseable {
                     if (action == remove && list.getValue() == null) return;
                     var value = action == remove
                             ? list.getValue()
-                            : new PrinterDevice(
+                            : new Printer(
                                     list.getValue() == null
                                             ? UUID.randomUUID().toString()
                                             : list.getValue().id(),
                                     name.getText(),
                                     kind.getValue(),
+                                    java.util.Objects.requireNonNull(profile.getValue(), "Choose a printer profile")
+                                            .definition()
+                                            .printer()
+                                            .id(),
                                     address.getText(),
-                                    kind.getValue() == PrinterDevice.Kind.BAMBU ? serial.getText() : "",
+                                    kind.getValue() == Printer.Kind.BAMBU ? serial.getText() : "",
                                     model.getText(),
                                     secret.getText());
                     content.setDisable(true);

@@ -27,9 +27,7 @@ public final class ImporterRegistry implements dev.voxelbrew.importer.api.Import
     }
 
     public ImporterRegistry(Path directory) throws IOException {
-        this(
-                directory,
-                List.of(new VoxelBrewImporterProvider(), new JsonImporterProvider(), new GcodeImporterProvider()));
+        this(directory, List.of(new VoxelBrewImporterProvider(), new JsonImporterProvider()));
     }
 
     public ImporterRegistry(Path directory, java.util.Collection<ImporterProvider> builtins) throws IOException {

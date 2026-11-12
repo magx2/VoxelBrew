@@ -1,6 +1,6 @@
 package dev.voxelbrew.gui;
 
-import dev.voxelbrew.slicer.api.PrinterCatalog;
+import dev.voxelbrew.slicer.api.PrinterProfileCatalog;
 import dev.voxelbrew.util.config.UserConfiguration;
 import java.io.IOException;
 import java.util.*;
@@ -21,7 +21,7 @@ final class PrinterVisibility {
         return Set.copyOf(ids);
     }
 
-    void saveVisible(List<PrinterCatalog.Entry> entries, Set<String> visible) throws IOException {
+    void saveVisible(List<PrinterProfileCatalog.Entry> entries, Set<String> visible) throws IOException {
         var hidden = new TreeSet<>(hidden());
         for (var entry : entries) {
             if (!entry.bundled()) continue;

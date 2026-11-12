@@ -682,13 +682,6 @@ public final class DocumentController implements AutoCloseable {
                         ioBusy = false;
                         if (imported instanceof dev.voxelbrew.importer.api.ImportResult.Document loaded) {
                             replace(loaded.document(), null);
-                        } else if (imported instanceof dev.voxelbrew.importer.api.ImportResult.Gcode loaded) {
-                            var jobs =
-                                    new java.util.HashMap<>(session.document().gcode());
-                            jobs.put(
-                                    session.document().printSetup().activePlateId(),
-                                    loaded.job().lines());
-                            session.setGcode(jobs);
                         }
                         unsavedImport = true;
                         onChanged.run();

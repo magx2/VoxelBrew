@@ -346,8 +346,12 @@ public final class PrintController implements AutoCloseable {
                         unlink.run();
                     }
                     lastResult = completed;
-                    if (completed.artifact() != null)
-                        artifacts.put(request.document().printSetup().activePlateId(), completed.artifact());
+                    artifacts.put(
+                            request.document().printSetup().activePlateId(),
+                            PrintTarget.attach(
+                                    completed.artifact(),
+                                    completed.job().lines(),
+                                    request.document().printSetup()));
                     jobs.put(
                             request.document().printSetup().activePlateId(),
                             completed.job().lines());

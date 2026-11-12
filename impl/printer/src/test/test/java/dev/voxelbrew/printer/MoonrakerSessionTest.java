@@ -45,10 +45,11 @@ class MoonrakerSessionTest {
             }
         });
         server.start();
-        try (var session = new MoonrakerSession(new PrinterDevice(
+        try (var session = new MoonrakerSession(new Printer(
                 "local",
                 "Local",
-                PrinterDevice.Kind.MOONRAKER,
+                Printer.Kind.MOONRAKER,
+                "generic-marlin-200-0.4",
                 "http://127.0.0.1:" + server.getAddress().getPort(),
                 "",
                 "",

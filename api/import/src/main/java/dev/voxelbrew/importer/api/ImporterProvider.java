@@ -6,7 +6,7 @@ import java.util.concurrent.Executor;
  * The host owns the executor; providers must not shut it down. Futures cover the entire read.
  */
 public interface ImporterProvider {
-    int API_VERSION = 2;
+    int API_VERSION = 3;
 
     ImporterDescriptor descriptor();
 

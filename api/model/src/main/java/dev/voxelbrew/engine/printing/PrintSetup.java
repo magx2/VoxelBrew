@@ -16,7 +16,7 @@ public record PrintSetup(
         @NonNull ProcessSettings process,
         List<PrintPlate> plates,
         String activePlateId,
-        PrinterDefinition printerSnapshot,
+        PrinterProfile printerSnapshot,
         java.util.Map<String, String> workspaceSettings,
         boolean supportsDisabled) {
     public PrintSetup(
@@ -28,7 +28,7 @@ public record PrintSetup(
             ProcessSettings process,
             List<PrintPlate> plates,
             String activePlateId,
-            PrinterDefinition printerSnapshot,
+            PrinterProfile printerSnapshot,
             java.util.Map<String, String> workspaceSettings) {
         this(
                 id,
@@ -67,6 +67,13 @@ public record PrintSetup(
     }
 
     /** UI drafts and job/view preferences; applied manufacturing values remain strongly typed. */
+    public PrintSetup withPrintTarget(String printerId) {
+        var settings = new java.util.HashMap<>(workspaceSettings);
+        if (printerId == null || printerId.isBlank()) settings.remove(PrintTarget.PRINTER_ID);
+        else settings.put(PrintTarget.PRINTER_ID, printerId);
+        return withWorkspaceSettings(settings);
+    }
+
     public PrintSetup withWorkspaceSettings(java.util.Map<String, String> settings) {
         return new PrintSetup(
                 id,
@@ -91,7 +98,7 @@ public record PrintSetup(
             ProcessSettings process,
             List<PrintPlate> plates,
             String activePlateId,
-            PrinterDefinition printerSnapshot) {
+            PrinterProfile printerSnapshot) {
         this(
                 id,
                 version,
@@ -117,7 +124,7 @@ public record PrintSetup(
         this(id, version, backendId, printerId, materialId, process, plates, activePlateId, null);
     }
 
-    public PrintSetup withPrinter(PrinterDefinition printer) {
+    public PrintSetup withPrinter(PrinterProfile printer) {
         return new PrintSetup(
                 id,
                 4,
@@ -140,7 +147,7 @@ public record PrintSetup(
         if (definition == null) {
             var resolved = PrintProfile.resolve(this);
             var legacy = resolved.printer();
-            definition = new PrinterDefinition(
+            definition = new PrinterProfile(
                     new PrintProfile.Printer(
                             legacy.id(),
                             legacy.name().replace("Generic Marlin", "Marlin").replace(" / 0.4 mm", ""),

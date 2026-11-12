@@ -2,14 +2,14 @@ package dev.voxelbrew.slicer;
 
 import com.google.gson.*;
 import dev.voxelbrew.engine.printing.*;
-import dev.voxelbrew.slicer.api.PrinterCatalog;
+import dev.voxelbrew.slicer.api.PrinterProfileCatalog;
 import java.util.*;
 
 /** Validated, reloadable catalog. Saved documents never depend on this service. */
-public final class DefaultPrinterCatalog implements PrinterCatalog {
+public final class DefaultPrinterProfileCatalog implements PrinterProfileCatalog {
     private final PrinterResources resources;
 
-    public DefaultPrinterCatalog(PrinterResources resources) {
+    public DefaultPrinterProfileCatalog(PrinterResources resources) {
         this.resources = resources;
     }
 
@@ -123,10 +123,10 @@ public final class DefaultPrinterCatalog implements PrinterCatalog {
                 errors);
     }
 
-    private static PrinterDefinition parse(JsonObject p) {
+    private static PrinterProfile parse(JsonObject p) {
         var zones = new ArrayList<List<PrintProfile.Point>>();
         for (var zone : p.getAsJsonArray("excludedZones")) zones.add(polygon(zone.getAsJsonArray()));
-        return new PrinterDefinition(
+        return new PrinterProfile(
                 new PrintProfile.Printer(
                         p.get("id").getAsString(),
                         p.get("name").getAsString(),

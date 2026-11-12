@@ -19,8 +19,8 @@ public final class DefaultSlicerRuntime implements SlicerRuntime {
     }
 
     @Override
-    public PrinterCatalog printers(Path directory) {
-        return new DefaultPrinterCatalog(new PrinterResources(directory));
+    public PrinterProfileCatalog printers(Path directory) {
+        return new DefaultPrinterProfileCatalog(new PrinterResources(directory));
     }
 
     @Override

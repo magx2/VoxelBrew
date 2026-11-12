@@ -4,18 +4,27 @@ import java.net.URI;
 import java.util.Objects;
 
 /** A physical device, independent of a slicer preset. Secrets are intentionally redacted. */
-public record PrinterDevice(
-        String id, String name, Kind kind, String address, String serial, String model, String secret) {
+public record Printer(
+        String id,
+        String name,
+        Kind kind,
+        String profileId,
+        String address,
+        String serial,
+        String model,
+        String secret) {
 
     public enum Kind {
         MOONRAKER,
         BAMBU
     }
 
-    public PrinterDevice {
+    public Printer {
         if (id == null || !id.matches("[a-zA-Z0-9-]{1,64}")) throw new IllegalArgumentException("Invalid device ID");
         if (name == null || name.isBlank()) throw new IllegalArgumentException("Device name is required");
         Objects.requireNonNull(kind);
+        if (profileId == null || !profileId.matches("[a-zA-Z0-9.-]{1,128}"))
+            throw new IllegalArgumentException("Printer profile ID is required");
         if (address == null || address.isBlank()) throw new IllegalArgumentException("Device address is required");
         serial = Objects.requireNonNullElse(serial, "").trim();
         model = Objects.requireNonNullElse(model, "").trim();

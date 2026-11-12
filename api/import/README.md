@@ -6,8 +6,8 @@ Shared domain classes retain their `dev.voxelbrew.engine.*` package names, but
 using them does not require the native engine implementation.
 
 This guide explains how to build, package and install your own importer. Built-in
-VXB and JSON importers restore editable documents; the G-code importer returns a
-toolpath preview. See [file I/O](../../docs/file-io.md) for implementation boundaries
+VXB and JSON importers restore editable documents. G-code parsing remains available
+for sliced-job inspection and preview. See [file I/O](../../docs/file-io.md) for implementation boundaries
 and the [export API guide](../export/README.md) for the corresponding export workflow.
 
 ## Build an external plugin
@@ -54,9 +54,9 @@ Importer<? extends ImportResult> create(Executor worker);
 ```
 
 The importer implements `CompletableFuture<R> importFrom(ImportWindow parent)`.
-For a discoverable provider, return `ImportResult.Document` or `ImportResult.Gcode`
+For a discoverable provider, return `ImportResult.Document`
 and advertise the matching `ImportResult.Kind`. The host rejects mismatched results.
-Use `ImporterProvider.API_VERSION` (currently 2), a unique stable ID matching
+Use `ImporterProvider.API_VERSION` (currently 3), a unique stable ID matching
 `[a-z0-9][a-z0-9.-]*`, and a nonblank display name. File extensions and options
 belong to the importer-owned dialog, not the descriptor.
 
@@ -193,8 +193,7 @@ cli import "plate dimensions.plate" --format example-plate --option scale=2 --ou
 
 Document imports require a separate `--output`; add `--overwrite` to replace an
 existing output intentionally. The CLI rejects an output that is the source file.
-G-code imports return a preview, reject `--output`, and are available through the
-CLI/API rather than the desktop document-import menu. Desktop document imports open
+Desktop document imports open
 an unsaved design requiring Save As; cancellation or failure leaves the current
 design intact. `cli importers` lists discovery metadata, not dialog-specific options.
 

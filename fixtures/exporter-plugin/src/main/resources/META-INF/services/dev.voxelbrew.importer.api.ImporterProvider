@@ -3,4 +3,3 @@ consumer.ProbeImporter
 consumer.ProbeImporter$Duplicate
 consumer.ProbeImporter$Incompatible
 consumer.ProbeImporter$Failing
-consumer.ProbeImporter$WrongKind

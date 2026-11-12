@@ -83,10 +83,10 @@ class GcodePersistenceTest {
                         .export(loaded, FileExportDialog.destination(output, false))
                         .get();
                 assertEquals(LINES, Files.readAllLines(output));
-                var imported = (ImportResult.Gcode) ImportService.read(imports, "gcode", output, Map.of());
-                assertEquals(LINES, imported.job().lines());
-                assertEquals(List.of(0.2), imported.job().modelLayers());
-                assertEquals(imported.job(), new DefaultImportRuntime().gcode().readLines(LINES));
+                var inspected = new DefaultImportRuntime().gcode().read(output);
+                assertEquals(LINES, inspected.lines());
+                assertEquals(List.of(0.2), inspected.modelLayers());
+                assertEquals(inspected, new DefaultImportRuntime().gcode().readLines(LINES));
             }
         }
     }

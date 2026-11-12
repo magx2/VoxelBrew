@@ -2,8 +2,7 @@
 
 Slicing stores each plate's complete G-code in the document. Save/export as
 VoxelBrew (`.vxb`) or JSON to retain it; opening or importing either format also
-restores its toolpath preview. File > Import can attach a standalone G-code job
-to the active plate. Use **File > Export > G-code** to write that plate's stored
+restores its toolpath preview. Use **File > Export > G-code** to write that plate's stored
 job; this choice is available when the plate has G-code. The Slicer Job tab has
 no destination or overwrite controls and does not export files.
 
@@ -254,7 +253,7 @@ process with their bed, height, nozzle and filament dimensions. Vendor firmware
 uses generic Marlin 2 text G-code; this is not a manufacturer-specific machine
 profile. Backend process and output-format restrictions still apply.
 
-CLI: `printers` lists IDs; `print-settings part.vxb --printer bambu-lab-a1-mini`
+CLI: `printer-profiles` lists IDs; `print-settings part.vxb --printer-profile bambu-lab-a1-mini`
 saves that preset into the project. `print-setup part.vxb` reports its identity.
 
 ### Creating a custom printer
@@ -335,5 +334,9 @@ Custom presets remain first, built-ins are marked, and hidden defaults are omitt
 
 # Device handoff
 
-The **Printer** workspace sends a stored plate job to a physical printer.
+The Slicer selects either a **printer profile** (machine dimensions and process requirements)
+or a saved **printer** (a physical connection referencing one profile). Profile-only
+jobs can be saved as G-code. Jobs sliced for a printer can be sent only to that
+same printer from the **Printer** workspace. G-code file import is unavailable;
+the G-code reader remains available for generated-job inspection and preview.
 See [device configuration, Bambu packages and verification limits](printer-devices.md).

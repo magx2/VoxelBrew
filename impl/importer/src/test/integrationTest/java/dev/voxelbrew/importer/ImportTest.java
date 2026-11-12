@@ -29,7 +29,7 @@ class ImportTest {
         Files.writeString(source, "60,40,4");
         try (var registry = new ImporterRegistry(plugins)) {
             assertEquals(
-                    List.of("failing", "gcode", "json", "plate", "vxb", "wrong-kind"),
+                    List.of("failing", "json", "plate", "vxb"),
                     registry.descriptors().stream().map(ImporterDescriptor::id).toList());
             String diagnostics = String.join("\n", registry.diagnostics());
             assertTrue(diagnostics.contains("Duplicate importer ID: plate"), diagnostics);
@@ -52,11 +52,6 @@ class ImportTest {
             assertTrue(assertThrows(IOException.class, () -> ImportService.read(registry, "failing", source, Map.of()))
                     .getMessage()
                     .contains("Deliberate importer failure"));
-            assertTrue(assertThrows(
-                            IllegalArgumentException.class,
-                            () -> ImportService.read(registry, "wrong-kind", source, Map.of()))
-                    .getMessage()
-                    .contains("different result kind"));
         }
         assertEquals("60,40,4", Files.readString(source));
         // Windows also verifies the registry released its provider JAR.
@@ -72,11 +67,7 @@ class ImportTest {
             assertEquals(
                     document,
                     ((ImportResult.Document) ImportService.read(registry, "vxb", source, Map.of())).document());
-            Path gcode = directory.resolve("part.gcode");
-            Files.writeString(gcode, "G21\nG90\nM82\nG1 Z0.2\nG1 X10 Y10 E1 F1200\n");
-            assertEquals(
-                    ImportResult.Kind.GCODE,
-                    ImportService.read(registry, "gcode", gcode, Map.of()).kind());
+            assertThrows(IllegalArgumentException.class, () -> registry.require("gcode"));
             try (var oversized = new RandomAccessFile(source.toFile(), "rw")) {
                 oversized.setLength(ImportService.MAX_INPUT_BYTES + 1);
             }

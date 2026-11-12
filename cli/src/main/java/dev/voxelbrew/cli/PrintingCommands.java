@@ -5,7 +5,7 @@ import dev.voxelbrew.engine.model.*;
 import dev.voxelbrew.engine.printing.*;
 import dev.voxelbrew.exporter.DocumentOutput;
 import dev.voxelbrew.importer.api.DocumentSource;
-import dev.voxelbrew.slicer.api.PrinterCatalog;
+import dev.voxelbrew.slicer.api.PrinterProfileCatalog;
 import dev.voxelbrew.slicer.api.SlicerCatalog;
 import dev.voxelbrew.slicer.api.Slicing;
 import java.nio.file.Path;
@@ -31,7 +31,7 @@ final class PrintingCommands {
         cli.addSubcommand("print-setup", Setup.class);
         cli.addSubcommand("validate", Validate.class);
         cli.addSubcommand("slicers", Slicers.class);
-        cli.addSubcommand("printers", Printers.class);
+        cli.addSubcommand("printer-profiles", Printers.class);
         cli.addSubcommand("slice", Slice.class);
         cli.addSubcommand("inspect-job", InspectJob.class);
     }
@@ -217,17 +217,17 @@ final class PrintingCommands {
     static final class Settings extends VoxelBrew.FileCommand {
 
         @javax.inject.Inject
-        Settings(DocumentSource documents, DocumentOutput documentWriter, PrinterCatalog printers) {
+        Settings(DocumentSource documents, DocumentOutput documentWriter, PrinterProfileCatalog printers) {
             super(documents, documentWriter);
             this.printers = printers;
         }
 
-        private final PrinterCatalog printers;
+        private final PrinterProfileCatalog printers;
 
         @Option(names = "--backend")
         String backend;
 
-        @Option(names = "--printer")
+        @Option(names = "--printer-profile")
         String printer;
 
         @Option(names = "--material", description = "PLA or PETG")
@@ -446,12 +446,12 @@ final class PrintingCommands {
     }
 
     @Command(
-            name = "printers",
+            name = "printer-profiles",
             mixinStandardHelpOptions = true,
             description = "List bundled and custom printer hardware presets.")
     @RequiredArgsConstructor(access = AccessLevel.PACKAGE, onConstructor_ = @javax.inject.Inject)
     static final class Printers implements Callable<Integer> {
-        private final PrinterCatalog printers;
+        private final PrinterProfileCatalog printers;
 
         @Spec
         CommandLine.Model.CommandSpec spec;
@@ -534,6 +534,9 @@ final class PrintingCommands {
         @Option(names = "--slicer-option", description = "Backend configuration key=value (repeatable)")
         Map<String, String> slicerOptions = new java.util.LinkedHashMap<>();
 
+        @Option(names = "--printer", description = "Saved printer ID; omit for profile-only G-code")
+        String printerConnection;
+
         private final Slicing slicing;
 
         @Option(names = "--overwrite")
@@ -557,6 +560,18 @@ final class PrintingCommands {
             try (var registry = slicers.open(pluginDirectory);
                     var exportRegistry = exporters.open(pluginDirectory)) {
                 var document = session().document();
+                if (printerConnection != null) {
+                    var connections = dev.voxelbrew.printer.api.PrinterRuntime.load()
+                            .devices(dev.voxelbrew.util.config.ApplicationPaths.configuration()
+                                    .resolveSibling("devices"));
+                    var connection = connections.stream()
+                            .filter(p -> p.id().equals(printerConnection))
+                            .findFirst()
+                            .orElseThrow(() ->
+                                    new IllegalArgumentException("Unknown printer connection: " + printerConnection));
+                    if (!connection.profileId().equals(document.printSetup().printerId()))
+                        throw new IllegalArgumentException("Printer connection references a different profile");
+                }
                 var model = dev.voxelbrew.engine.printing.ManufacturingModels.evaluate(
                         document, MeshOptions.DEFAULT, pluginDirectory);
                 registry.diagnostics().forEach(spec.commandLine().getErr()::println);
@@ -576,8 +591,14 @@ final class PrintingCommands {
                 jobs.put(document.printSetup().activePlateId(), result.job().lines());
                 var artifacts = new java.util.HashMap<>(document.printArtifacts());
                 artifacts.remove(document.printSetup().activePlateId());
-                if (result.artifact() != null)
-                    artifacts.put(document.printSetup().activePlateId(), result.artifact());
+                var targetSettings =
+                        new java.util.HashMap<>(document.printSetup().workspaceSettings());
+                if (printerConnection == null) targetSettings.remove(PrintTarget.PRINTER_ID);
+                else targetSettings.put(PrintTarget.PRINTER_ID, printerConnection);
+                var targetSetup = document.printSetup().withWorkspaceSettings(targetSettings);
+                artifacts.put(
+                        document.printSetup().activePlateId(),
+                        PrintTarget.attach(result.artifact(), result.job().lines(), targetSetup));
                 documentWriter.save(document.withGcode(jobs).withPrintArtifacts(artifacts), file, true);
                 spec.commandLine().getOut().println("Job: " + result.output());
                 return 0;

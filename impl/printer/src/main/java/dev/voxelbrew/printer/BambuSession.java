@@ -14,14 +14,14 @@ import pl.grzeslowski.jbambuapi.mqtt.*;
 
 /** LAN device commands use JBambuAPI; file transfer is a separate FTPS operation. */
 final class BambuSession implements PrinterSession {
-    private final PrinterDevice device;
+    private final Printer device;
     private final PrinterClient client;
     private final PrinterClientConfig config;
     private final JsonObject report = new JsonObject();
     private volatile long lastReport;
     private volatile String commandFailure = "";
 
-    BambuSession(PrinterDevice device) throws IOException {
+    BambuSession(Printer device) throws IOException {
         this.device = device;
         config = PrinterClientConfig.buildDefault(
                 device.address(), device.serial(), device.secret().toCharArray());

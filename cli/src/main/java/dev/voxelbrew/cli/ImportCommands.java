@@ -78,12 +78,7 @@ final class ImportCommands {
         public Integer call() throws Exception {
             try (var registry = importers.open(plugins)) {
                 registry.diagnostics().forEach(spec.commandLine().getErr()::println);
-                var kind = registry.require(format).descriptor().resultKind();
-                if (kind == ImportResult.Kind.DOCUMENT && output == null)
-                    throw new IllegalArgumentException("Document import requires --output");
-                if (kind == ImportResult.Kind.GCODE && output != null)
-                    throw new IllegalArgumentException(
-                            "Toolpath import produces a preview, not an editable .vxb document; omit --output");
+                if (output == null) throw new IllegalArgumentException("Document import requires --output");
                 if (output != null
                         && (source.toAbsolutePath()
                                         .normalize()
@@ -97,15 +92,6 @@ final class ImportCommands {
                     spec.commandLine()
                             .getOut()
                             .println("Imported " + document.document().id() + " to " + output);
-                } else if (result instanceof ImportResult.Gcode gcode) {
-                    spec.commandLine()
-                            .getOut()
-                            .println("model_layers="
-                                    + gcode.job().modelLayers().size()
-                                    + " deposition_moves="
-                                    + gcode.job().segments().stream()
-                                            .filter(dev.voxelbrew.engine.printing.GcodeJob.Segment::deposits)
-                                            .count());
                 }
             }
             return 0;

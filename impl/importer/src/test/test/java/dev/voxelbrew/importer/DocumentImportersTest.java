@@ -43,8 +43,7 @@ class DocumentImportersTest {
 
     @Test
     void cancellationDoesNotScheduleReadsAndRejectedWorkersCompleteExceptionally() {
-        for (var provider :
-                List.of(new VoxelBrewImporterProvider(), new JsonImporterProvider(), new GcodeImporterProvider())) {
+        for (var provider : List.of(new VoxelBrewImporterProvider(), new JsonImporterProvider())) {
             var tasks = new AtomicInteger();
             var importer = provider.create(task -> tasks.incrementAndGet());
             var host = new ImportDialogs().register(FileImportDialog.class, request -> Optional.empty());

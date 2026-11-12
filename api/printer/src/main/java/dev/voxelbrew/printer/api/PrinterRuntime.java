@@ -7,13 +7,13 @@ import java.util.ServiceLoader;
 
 /** Application runtime entry point; implementations remain off frontend compile classpaths. */
 public interface PrinterRuntime {
-    List<PrinterDevice> devices(Path directory) throws IOException;
+    List<Printer> devices(Path directory) throws IOException;
 
-    void save(Path directory, PrinterDevice device) throws IOException;
+    void save(Path directory, Printer device) throws IOException;
 
     void remove(Path directory, String id) throws IOException;
 
-    PrinterSession connect(PrinterDevice device) throws IOException;
+    PrinterSession connect(Printer device) throws IOException;
 
     static PrinterRuntime load() {
         return ServiceLoader.load(PrinterRuntime.class)

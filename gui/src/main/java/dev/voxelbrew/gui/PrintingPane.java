@@ -7,7 +7,7 @@ import dev.voxelbrew.engine.parameters.*;
 import dev.voxelbrew.engine.persistence.DocumentCodec;
 import dev.voxelbrew.engine.printing.*;
 import dev.voxelbrew.exporter.api.ExporterCatalog;
-import dev.voxelbrew.slicer.api.PrinterCatalog;
+import dev.voxelbrew.slicer.api.PrinterProfileCatalog;
 import dev.voxelbrew.slicer.api.SlicerBackend;
 import dev.voxelbrew.slicer.api.SlicerCatalog;
 import dev.voxelbrew.slicer.api.Slicing;
@@ -72,11 +72,14 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
                 target -> true);
     }
 
-    private final PrinterCatalog printers;
+    private final PrinterProfileCatalog printers;
     private final PrinterVisibility printerVisibility;
     private Set<String> hiddenPrinters = Set.of();
-    private PrinterCatalog.Result printerCatalog;
+    private PrinterProfileCatalog.Result printerCatalog;
     private final Button printerChoice = new Button();
+    private final ComboBox<String> printTarget = new ComboBox<>();
+    private final dev.voxelbrew.printer.api.PrinterRuntime printerRuntime;
+    private final java.nio.file.Path connectionDirectory;
     private final Label printerDetails = new Label();
     private final FormulaField nozzle;
     private final javafx.scene.image.ImageView printerImage = new javafx.scene.image.ImageView();
@@ -158,7 +161,8 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
 
     @javax.inject.Inject
     PrintingPane(
-            PrinterCatalog printers,
+            PrinterProfileCatalog printers,
+            dev.voxelbrew.printer.api.PrinterRuntime printerRuntime,
             PrinterVisibility printerVisibility,
             DocumentController document,
             PrintController jobs,
@@ -173,6 +177,8 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
             @javax.inject.Named("slicerExecutable") java.nio.file.Path defaultExecutable) {
         this.translations = translations;
         this.printers = printers;
+        this.printerRuntime = printerRuntime;
+        this.connectionDirectory = configuration.path().resolveSibling("devices");
         this.printerVisibility = printerVisibility;
         autoSupports.setText(translations.text("gui.automatic_supports"));
         bedOnly.setText(translations.text("gui.build_plate_only"));
@@ -445,6 +451,22 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
         tabs.setPrefWidth(360);
         tabs.setMinWidth(320);
         printerChoice.setId("print-printer");
+        printTarget.setId("print-target");
+        printTarget.setMaxWidth(Double.MAX_VALUE);
+        printTarget.setConverter(new javafx.util.StringConverter<>() {
+            @Override
+            public String toString(String value) {
+                return value == null || value.isBlank() ? translations.text("print.profileOnly") : value;
+            }
+
+            @Override
+            public String fromString(String value) {
+                return value;
+            }
+        });
+        printTarget.valueProperty().addListener((observed, before, selected) -> {
+            if (!updating && !java.util.Objects.equals(before, selected)) commit(setup().withPrintTarget(selected));
+        });
         UiHelp.install(printerChoice, translations);
         printerChoice.setMaxWidth(Double.MAX_VALUE);
         printerChoice.setOnAction(event -> PrinterPickerDialog.choose(
@@ -466,6 +488,8 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
                 6,
                 new Label(translations.text("print.printerSelector")),
                 printerChoice,
+                new Label(translations.text("print.sliceTarget")),
+                printTarget,
                 new HBox(8, printerImage, printerDetails),
                 nozzleRow,
                 equalRow(
@@ -1064,6 +1088,9 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
     }
 
     private void slice(boolean allPlates) {
+        var target = setup().workspaceSettings().get(PrintTarget.PRINTER_ID);
+        if (target != null && !printTarget.getItems().contains(target))
+            throw new IllegalStateException("Selected printer connection is unavailable or references another profile");
         if (!availability.working(setup().backendId()))
             throw new IllegalStateException(availability.text(setup().backendId()));
         if (!document.canExport())
@@ -2137,7 +2164,7 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
         }
     }
 
-    private boolean printerVisible(PrinterCatalog.Entry entry) {
+    private boolean printerVisible(PrinterProfileCatalog.Entry entry) {
         return !entry.bundled()
                 || !hiddenPrinters.contains(entry.definition().printer().id());
     }
@@ -2169,6 +2196,21 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
 
     private void updatePrinterDetails() {
         if (printerCatalog == null) return;
+        try {
+            var selectedTarget = setup().workspaceSettings().get(PrintTarget.PRINTER_ID);
+            var targets = printerRuntime.devices(connectionDirectory).stream()
+                    .filter(device -> device.profileId().equals(setup().printerId()))
+                    .map(dev.voxelbrew.printer.api.Printer::id)
+                    .toList();
+            boolean oldUpdating = updating;
+            updating = true;
+            printTarget.getItems().setAll("");
+            printTarget.getItems().addAll(targets);
+            printTarget.setValue(selectedTarget == null ? "" : selectedTarget);
+            updating = oldUpdating;
+        } catch (java.io.IOException failure) {
+            diagnostics.setText(failure.getMessage());
+        }
         var saved = setup().printerSnapshot();
         var p = PrintProfile.resolve(setup()).printer();
         if (!nozzle.isFocused()) nozzle.setText(Double.toString(p.nozzleMm()));
@@ -2178,7 +2220,7 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
                 .orElse(null);
         var selected = saved == null || (entry != null && entry.definition().equals(saved))
                 ? entry
-                : new PrinterCatalog.Entry(saved, entry == null ? null : entry.image(), "project", false);
+                : new PrinterProfileCatalog.Entry(saved, entry == null ? null : entry.image(), "project", false);
         printerChoice.setText((selected == null ? p.name() : selected.toString())
                 + (selected != null && selected.bundled() ? " (" + translations.text("print.builtInPrinter") + ")" : "")
                 + "...");

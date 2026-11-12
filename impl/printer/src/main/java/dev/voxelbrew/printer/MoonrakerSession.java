@@ -12,7 +12,7 @@ import java.util.*;
 import java.util.function.DoubleConsumer;
 
 final class MoonrakerSession implements PrinterSession {
-    private final PrinterDevice device;
+    private final Printer device;
     private final HttpClient client =
             HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).build();
     private final String base;
@@ -21,7 +21,7 @@ final class MoonrakerSession implements PrinterSession {
     private volatile long observedAt;
     private boolean subscribing;
 
-    MoonrakerSession(PrinterDevice device) {
+    MoonrakerSession(Printer device) {
         this.device = device;
         base = device.address().replaceAll("/+$", "");
     }

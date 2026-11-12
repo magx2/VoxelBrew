@@ -5,18 +5,18 @@ import static org.junit.jupiter.api.Assertions.*;
 import dev.voxelbrew.engine.model.*;
 import dev.voxelbrew.engine.persistence.DocumentCodec;
 import dev.voxelbrew.engine.printing.*;
-import dev.voxelbrew.slicer.api.PrinterCatalog;
+import dev.voxelbrew.slicer.api.PrinterProfileCatalog;
 import dev.voxelbrew.slicer.api.SlicerRuntime;
 import java.nio.file.*;
 import java.util.*;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
-class PrinterCatalogTest {
+class PrinterProfileCatalogTest {
     @TempDir
     Path directory;
 
-    private PrinterCatalog catalog() {
+    private PrinterProfileCatalog catalog() {
         return SlicerRuntime.load().printers(directory);
     }
 

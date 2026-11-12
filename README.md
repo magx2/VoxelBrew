@@ -20,7 +20,7 @@ projects publish provider contracts so external JARs can add formats without dep
 on implementation projects. Both file-I/O APIs depend only on the MIT `api/model` module; engine also depends
 on that model API. The `:api:slicer` project publishes slicing contracts and depends only on the model and export APIs. The `:api:printer` and `:impl:printer` projects provide physical-device connections. There are thirteen first-party projects. See
 [file import/export boundaries and API migration](docs/file-io.md).
-Printer catalogs are exposed by `dev.voxelbrew.slicer.api.PrinterCatalog` through
+Printer profile catalogs are exposed by `dev.voxelbrew.slicer.api.PrinterProfileCatalog` through
 `SlicerRuntime.printers(Path)`. The implementation, bundled presets, images and
 custom-resource loading live in `impl/slicer`; frontends use the existing
 `SlicerRuntime` ServiceLoader provider. The former engine `PrinterCatalog` and

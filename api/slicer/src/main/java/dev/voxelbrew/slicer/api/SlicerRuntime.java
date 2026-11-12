@@ -8,7 +8,7 @@ public interface SlicerRuntime {
 
     Slicing slicing();
 
-    PrinterCatalog printers(Path directory);
+    PrinterProfileCatalog printers(Path directory);
 
     Path defaultSlicerExecutable();
 

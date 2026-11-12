@@ -12,7 +12,7 @@ import dev.voxelbrew.engine.sketch.Sketches;
 import dev.voxelbrew.exporter.DocumentWriter;
 import dev.voxelbrew.importer.DocumentReader;
 import dev.voxelbrew.importer.GcodeReader;
-import dev.voxelbrew.printer.api.PrinterDevice;
+import dev.voxelbrew.printer.api.Printer;
 import dev.voxelbrew.slicer.prusa.PrusaSlicerBackend;
 import dev.voxelbrew.util.Version;
 import java.nio.ByteBuffer;
@@ -203,7 +203,7 @@ class WorkbenchUiTest {
         fx(() -> {
             var kind = (ComboBox<?>) node("#device-config-kind");
             var dialog = (VBox) node("#device-config-content");
-            assertEquals(PrinterDevice.Kind.MOONRAKER, kind.getValue());
+            assertEquals(Printer.Kind.MOONRAKER, kind.getValue());
             assertEquals("Klipper / Moonraker", selectedText(kind));
             assertNull(dialog.lookup("#device-config-serial"));
             assertTrue(dialog.lookupAll(".label").stream()
@@ -222,7 +222,7 @@ class WorkbenchUiTest {
         });
         fx(() -> {
             var kind = (ComboBox<?>) node("#device-config-kind");
-            kind.getSelectionModel().select(kind.getItems().indexOf(PrinterDevice.Kind.BAMBU));
+            kind.getSelectionModel().select(kind.getItems().indexOf(Printer.Kind.BAMBU));
             return null;
         });
         fx(() -> {
@@ -245,7 +245,7 @@ class WorkbenchUiTest {
         });
         fx(() -> {
             var kind = (ComboBox<?>) node("#device-config-kind");
-            kind.getSelectionModel().select(kind.getItems().indexOf(PrinterDevice.Kind.MOONRAKER));
+            kind.getSelectionModel().select(kind.getItems().indexOf(Printer.Kind.MOONRAKER));
             return null;
         });
         fx(() -> {
@@ -256,7 +256,7 @@ class WorkbenchUiTest {
             assertEquals("http://moonraker.local", ((TextField) node("#device-config-address")).getText());
             assertEquals("klipper-preset", ((TextField) node("#device-config-model")).getText());
             assertEquals("moon-key", ((TextField) node("#device-config-secret")).getText());
-            kind.getSelectionModel().select(kind.getItems().indexOf(PrinterDevice.Kind.BAMBU));
+            kind.getSelectionModel().select(kind.getItems().indexOf(Printer.Kind.BAMBU));
             assertEquals("192.0.2.2", ((TextField) node("#device-config-address")).getText());
             assertEquals("BAMBU123", ((TextField) node("#device-config-serial")).getText());
             assertEquals("Bambu Lab A1", ((TextField) node("#device-config-model")).getText());
@@ -278,6 +278,7 @@ class WorkbenchUiTest {
         fx(() -> {
             ((TextField) node("#device-config-name")).setText("Lab Klipper");
             ((TextField) node("#device-config-address")).setText("http://moonraker.local");
+            ((ComboBox<?>) node("#device-config-profile")).getSelectionModel().selectFirst();
             ((Button) node("#device-config-save")).fire();
             return null;
         });

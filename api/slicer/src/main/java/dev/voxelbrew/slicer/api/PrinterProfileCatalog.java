@@ -1,13 +1,13 @@
 package dev.voxelbrew.slicer.api;
 
-import dev.voxelbrew.engine.printing.PrinterDefinition;
+import dev.voxelbrew.engine.printing.PrinterProfile;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.*;
 
 /** Reloadable printer presets supplied by the slicer runtime. */
-public interface PrinterCatalog {
-    public record Entry(PrinterDefinition definition, String image, String source, boolean bundled) {
+public interface PrinterProfileCatalog {
+    public record Entry(PrinterProfile definition, String image, String source, boolean bundled) {
         @Override
         public String toString() {
             return definition.manufacturer() + " " + definition.printer().name();
@@ -20,7 +20,7 @@ public interface PrinterCatalog {
             diagnostics = List.copyOf(diagnostics);
         }
 
-        public PrinterDefinition require(String id) {
+        public PrinterProfile require(String id) {
             return entries.stream()
                     .filter(e -> e.definition().printer().id().equals(id))
                     .findFirst()

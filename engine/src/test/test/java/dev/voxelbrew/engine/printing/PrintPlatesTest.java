@@ -9,6 +9,23 @@ import org.junit.jupiter.api.Test;
 
 class PrintPlatesTest {
     @Test
+    void perPlateSliceTargetsSurviveBinaryAndJsonRoundTrips() throws Exception {
+        var setup = PrintSetup.empty().withPrintTarget("workshop").addPlate("second");
+        var first = setup.plates().getFirst().id();
+        var second = setup.plates().get(1).id();
+        var lines = List.of("G21", "G1 X1 E1");
+        var connected = PrintTarget.attach(null, lines, setup);
+        var profileOnly = PrintTarget.attach(null, lines, setup.withPrintTarget(null));
+        var document = new CadDocument("doc", List.of(), 0, setup)
+                .withGcode(java.util.Map.of(first, lines, second, lines))
+                .withPrintArtifacts(java.util.Map.of(first, connected, second, profileOnly));
+        assertEquals(document, DocumentCodec.decode(DocumentCodec.encode(document)));
+        assertEquals(document, DocumentCodec.decodeJson(DocumentCodec.encodeJson(document)));
+        assertEquals("printer", connected.metadata().get("target_kind"));
+        assertEquals("profile", profileOnly.metadata().get("target_kind"));
+    }
+
+    @Test
     void disablingSupportsPersistsAndPreservesDefinitionsAcrossPlateEdits() throws Exception {
         var process = new ProcessSettings(0.2, 2, 20, true, true, 45, 0.2, 3, 0, 2);
         var enabled = PrintSetup.empty()

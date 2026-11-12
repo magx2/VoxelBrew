@@ -1434,7 +1434,7 @@ public final class Workbench extends BorderPane implements AutoCloseable {
                 for (var parameter : features.descriptor(custom).parameters()) {
                     var input = field(
                             "dimension-" + parameter.key(),
-                            parameter.label() + " (" + parameter.unit() + ")",
+                            parameter.label(),
                             values.get(parameter.key()),
                             FormulaField.unit(parameter.unit()));
                     var apply = button(
@@ -1520,7 +1520,7 @@ public final class Workbench extends BorderPane implements AutoCloseable {
     }
 
     private void dimension(Feature feature, String name, double value) {
-        var field = field("dimension-" + name, translations.textOrDefault("dimension." + name, name) + " (mm)", value);
+        var field = field("dimension-" + name, translations.textOrDefault("dimension." + name, name), value);
         String expression = controller
                 .snapshot()
                 .document()

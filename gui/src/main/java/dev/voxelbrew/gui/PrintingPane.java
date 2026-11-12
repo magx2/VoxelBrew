@@ -708,8 +708,7 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
         var coordinates = new HBox(8);
         for (String axis : List.of("x", "y", "z")) {
             String id = "print-" + (rotation ? "rotate-" : "") + axis;
-            String caption =
-                    rotation ? translations.text("print.rotation", axis.toUpperCase(Locale.ROOT)) : axis + " (mm)";
+            String caption = rotation ? translations.text("print.rotation", axis.toUpperCase(Locale.ROOT)) : axis;
             var column = row(id, caption, "0", false);
             column.setMinWidth(0);
             column.setPrefWidth(0);

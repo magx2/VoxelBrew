@@ -52,7 +52,7 @@ final class FeatureDialog {
                                 .localized(translations);
                         input.setId("custom-" + p.key());
                         fields.put(p.key(), input);
-                        form.getChildren().addAll(new Label(p.label() + " (" + p.unit() + ")"), input);
+                        form.getChildren().addAll(new Label(p.label()), input);
                     }
             });
             type.getSelectionModel().selectFirst();

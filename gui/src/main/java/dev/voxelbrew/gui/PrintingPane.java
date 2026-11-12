@@ -291,7 +291,6 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
                 row("print-layer-height", translations.text("gui.layer_height_mm"), "0.2"),
                 row("print-walls", translations.text("gui.perimeter_walls"), "2"),
                 row("print-infill", translations.text("gui.infill"), "20"),
-                bedOnly,
                 row("print-threshold", translations.text("gui.support_threshold_degrees_from_horizontal"), "45"),
                 row("print-gap", translations.text("gui.support_contact_gap_mm"), "0.2"),
                 row("print-interfaces", translations.text("gui.interface_layers"), "3"),
@@ -368,7 +367,7 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
         }
         var supportsHelp = new Label(translations.text("print.supportsEnabledHelp"));
         supportsHelp.setWrapText(true);
-        var supportsTab = new VBox(7, supportsEnabled, supportsHelp, new Separator(), autoSupports, supports);
+        var supportsTab = new VBox(7, supportsEnabled, supportsHelp, new Separator(), autoSupports, bedOnly, supports);
 
         supportIds.setOnAction(e -> {
             if (!updating) loadSupport();

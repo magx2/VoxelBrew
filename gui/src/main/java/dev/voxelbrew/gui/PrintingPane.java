@@ -78,6 +78,7 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
     private PrinterProfileCatalog.Result printerCatalog;
     private final Button printerChoice = new Button();
     private final ComboBox<String> printTarget = new ComboBox<>();
+    private Map<String, String> printTargetNames = Map.of();
     private final dev.voxelbrew.printer.api.PrinterRuntime printerRuntime;
     private final java.nio.file.Path connectionDirectory;
     private final Label printerDetails = new Label();
@@ -456,7 +457,9 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
         printTarget.setConverter(new javafx.util.StringConverter<>() {
             @Override
             public String toString(String value) {
-                return value == null || value.isBlank() ? translations.text("print.profileOnly") : value;
+                return value == null || value.isBlank()
+                        ? translations.text("print.profileOnly")
+                        : printTargetNames.getOrDefault(value, translations.text("print.unavailablePrinter"));
             }
 
             @Override
@@ -2205,12 +2208,18 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
             var selectedTarget = setup().workspaceSettings().get(PrintTarget.PRINTER_ID);
             var targets = printerRuntime.devices(connectionDirectory).stream()
                     .filter(device -> device.profileId().equals(setup().printerId()))
-                    .map(dev.voxelbrew.printer.api.Printer::id)
                     .toList();
             boolean oldUpdating = updating;
             updating = true;
+            printTargetNames = targets.stream()
+                    .collect(java.util.stream.Collectors.toMap(
+                            dev.voxelbrew.printer.api.Printer::id, dev.voxelbrew.printer.api.Printer::name));
             printTarget.getItems().setAll("");
-            printTarget.getItems().addAll(targets);
+            printTarget
+                    .getItems()
+                    .addAll(targets.stream()
+                            .map(dev.voxelbrew.printer.api.Printer::id)
+                            .toList());
             printTarget.setValue(selectedTarget == null ? "" : selectedTarget);
             updating = oldUpdating;
         } catch (java.io.IOException failure) {

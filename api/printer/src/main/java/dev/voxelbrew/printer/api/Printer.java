@@ -22,7 +22,11 @@ public record Printer(
 
     public Printer {
         if (id == null || !id.matches("[a-zA-Z0-9-]{1,64}")) throw new IllegalArgumentException("Invalid device ID");
-        if (name == null || name.isBlank()) throw new IllegalArgumentException("Device name is required");
+        if (name == null || name.isBlank() || name.strip().length() > 128)
+            throw new IllegalArgumentException("Printer name must contain 1–128 characters");
+        name = name.strip();
+        if (name.chars().anyMatch(Character::isISOControl))
+            throw new IllegalArgumentException("Printer name cannot contain control characters");
         Objects.requireNonNull(kind);
         if (profileId == null || !profileId.matches("[a-zA-Z0-9.-]{1,128}"))
             throw new IllegalArgumentException("Printer profile ID is required");

@@ -20,7 +20,7 @@ public final class DefaultPrinterRuntime implements PrinterRuntime {
                     p.load(reader);
                 }
                 try {
-                    devices.add(new Printer(
+                    var printer = new Printer(
                             p.getProperty("id"),
                             p.getProperty("name"),
                             Printer.Kind.valueOf(p.getProperty("kind")),
@@ -28,7 +28,10 @@ public final class DefaultPrinterRuntime implements PrinterRuntime {
                             p.getProperty("address"),
                             p.getProperty("serial"),
                             p.getProperty("model"),
-                            p.getProperty("secret")));
+                            p.getProperty("secret"));
+                    if (devices.stream().anyMatch(existing -> existing.name().equalsIgnoreCase(printer.name())))
+                        throw new IllegalArgumentException("Duplicate printer name (ignoring case)");
+                    devices.add(printer);
                 } catch (RuntimeException failure) {
                     throw new IOException("Invalid device configuration: " + file.getFileName());
                 }
@@ -41,6 +44,10 @@ public final class DefaultPrinterRuntime implements PrinterRuntime {
     public void save(Path directory, Printer device) throws IOException {
         Files.createDirectories(directory);
         restrict(directory, true);
+        for (var existing : devices(directory)) {
+            if (!existing.id().equals(device.id()) && existing.name().equalsIgnoreCase(device.name()))
+                throw new IOException("A printer with this name already exists (ignoring case)");
+        }
         var temporary = Files.createTempFile(directory, ".device-", ".tmp");
         try {
             restrict(temporary, false);

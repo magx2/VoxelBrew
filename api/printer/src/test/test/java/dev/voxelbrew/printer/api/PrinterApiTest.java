@@ -15,6 +15,22 @@ class PrinterApiTest {
     Path directory;
 
     @Test
+    void printerNameIsTheOnlyUserFacingIdentity() {
+        var printer = new Printer(
+                "internal-uuid",
+                "  Lab Klipper  ",
+                Printer.Kind.MOONRAKER,
+                "generic-marlin-200-0.4",
+                "http://localhost:7125",
+                "",
+                "",
+                "");
+        assertEquals("Lab Klipper", printer.name());
+        assertEquals("Lab Klipper", printer.toString());
+        assertEquals("internal-uuid", printer.id());
+    }
+
+    @Test
     void deviceAddressesAreValidatedBeforeSaving() {
         for (var address : List.of(
                 "moonraker.local",

@@ -14,6 +14,11 @@ Each saved printer references one printer profile from the Slicer catalog:
   such as `Bambu Lab A1`. LAN Only and Developer
   Mode may be required by the device firmware. Cloud accounts are not supported.
 
+Printer names must be unique without regard to case. The Slicer and CLI select a
+printer by name; an internal UUID preserves its identity across renames and is not
+shown in selectors or command output. A renamed printer remains the target of jobs
+sliced for it.
+
 The connection and its profile ID are remembered in user-local `devices/{id}.properties`
 beside
 `config.properties`, with owner-only permissions. They are not encrypted at rest;

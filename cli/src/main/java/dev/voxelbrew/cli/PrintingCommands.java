@@ -534,7 +534,7 @@ final class PrintingCommands {
         @Option(names = "--slicer-option", description = "Backend configuration key=value (repeatable)")
         Map<String, String> slicerOptions = new java.util.LinkedHashMap<>();
 
-        @Option(names = "--printer", description = "Saved printer ID; omit for profile-only G-code")
+        @Option(names = "--printer", description = "Saved printer name; omit for profile-only G-code")
         String printerConnection;
 
         private final Slicing slicing;
@@ -560,17 +560,18 @@ final class PrintingCommands {
             try (var registry = slicers.open(pluginDirectory);
                     var exportRegistry = exporters.open(pluginDirectory)) {
                 var document = session().document();
+                String selectedPrinterId = null;
                 if (printerConnection != null) {
                     var connections = dev.voxelbrew.printer.api.PrinterRuntime.load()
                             .devices(dev.voxelbrew.util.config.ApplicationPaths.configuration()
                                     .resolveSibling("devices"));
                     var connection = connections.stream()
-                            .filter(p -> p.id().equals(printerConnection))
+                            .filter(p -> p.name().equalsIgnoreCase(printerConnection.strip()))
                             .findFirst()
-                            .orElseThrow(() ->
-                                    new IllegalArgumentException("Unknown printer connection: " + printerConnection));
+                            .orElseThrow(() -> new IllegalArgumentException("Unknown printer: " + printerConnection));
                     if (!connection.profileId().equals(document.printSetup().printerId()))
                         throw new IllegalArgumentException("Printer connection references a different profile");
+                    selectedPrinterId = connection.id();
                 }
                 var model = dev.voxelbrew.engine.printing.ManufacturingModels.evaluate(
                         document, MeshOptions.DEFAULT, pluginDirectory);
@@ -593,8 +594,8 @@ final class PrintingCommands {
                 artifacts.remove(document.printSetup().activePlateId());
                 var targetSettings =
                         new java.util.HashMap<>(document.printSetup().workspaceSettings());
-                if (printerConnection == null) targetSettings.remove(PrintTarget.PRINTER_ID);
-                else targetSettings.put(PrintTarget.PRINTER_ID, printerConnection);
+                if (selectedPrinterId == null) targetSettings.remove(PrintTarget.PRINTER_ID);
+                else targetSettings.put(PrintTarget.PRINTER_ID, selectedPrinterId);
                 var targetSetup = document.printSetup().withWorkspaceSettings(targetSettings);
                 artifacts.put(
                         document.printSetup().activePlateId(),

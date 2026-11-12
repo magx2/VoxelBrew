@@ -348,8 +348,11 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
         moveRow.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
         placement.getChildren().addAll(new Separator(), new Label(translations.text("print.moveToPlate")), moveRow);
 
+        var nozzleRow = new HBox(8, new Label(translations.text("print.nozzleDiameter")), nozzle);
+        nozzleRow.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
         var process = new VBox(
                 7,
+                nozzleRow,
                 new Label(translations.text("gui.slicer_backend")),
                 backends,
                 backendStatus,
@@ -533,8 +536,6 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
         printerImage.setFitWidth(96);
         printerImage.setFitHeight(72);
         printerImage.setPreserveRatio(true);
-        var nozzleRow = new HBox(8, new Label(translations.text("print.nozzleDiameter")), nozzle);
-        nozzleRow.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
         var printerPanel = new VBox(
                 6,
                 new Label(translations.text("print.sliceTarget")),
@@ -542,7 +543,6 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
                 printerProfileLabel,
                 printerChoice,
                 new HBox(8, printerImage, printerDetails),
-                nozzleRow,
                 equalRow(
                         button(
                                 translations.text("device.configure"),
@@ -1906,7 +1906,6 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
     }
 
     private void applyNozzle() {
-        if (hasPrintDevice()) return;
         var next = setup().withNozzle(nozzle.value());
         if (!next.equals(setup())) commit(next);
     }
@@ -2322,7 +2321,6 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
         printerProfileLabel.setText(
                 translations.text(deviceSelected ? "print.deviceProfile" : "print.printerSelector"));
         printerChoice.setDisable(deviceSelected);
-        nozzle.setDisable(deviceSelected);
         plateSize.setDisable(deviceSelected);
         if (!nozzle.isFocused()) nozzle.setText(Double.toString(p.nozzleMm()));
         var entry = printerCatalog.entries().stream()

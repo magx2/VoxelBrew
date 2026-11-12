@@ -335,12 +335,27 @@ class WorkbenchUiTest {
                 fx(() -> ((ComboBox<?>) node("#print-target")).getButtonCell().getText()));
         fx(() -> {
             assertTrue(((Button) node("#print-printer")).isDisabled());
-            assertTrue(((FormulaField) node("#print-nozzle")).isDisabled());
+            ((TabPane) node("#print-controls")).getSelectionModel().select(1);
+            var nozzle = (FormulaField) node("#print-nozzle");
+            assertFalse(nozzle.isDisabled());
+            assertNotNull(((ScrollPane)
+                            ((TabPane) node("#print-controls")).getTabs().get(1).getContent())
+                    .getContent()
+                    .lookup("#print-nozzle"));
             assertTrue(((Label) node("#print-plate-size")).isDisabled());
             assertEquals("Printer profile (set by device)", ((Label) node("#print-printer-profile-label")).getText());
             Screenshot.save(
                     stage.getScene(),
                     Path.of(System.getProperty("voxelbrew.ui.artifacts"), "slicer-device-profile.png"));
+            nozzle.setText("0.6");
+            nozzle.fireEvent(new javafx.event.ActionEvent());
+            return null;
+        });
+        ready();
+        assertEquals(deviceProfile, document().printSetup().printerId());
+        assertEquals(selectedDevice, document().printSetup().workspaceSettings().get(PrintTarget.PRINTER_ID));
+        assertEquals(0.6, document().printSetup().printerSnapshot().printer().nozzleMm(), 0.0001);
+        fx(() -> {
             ((ComboBox<?>) node("#print-target")).getSelectionModel().selectFirst();
             return null;
         });
@@ -357,9 +372,12 @@ class WorkbenchUiTest {
     @Test
     void slicerNozzleIsSavedWithThePrintProfile() throws Exception {
         ready();
-        openPrepared("plate-5mm.vxb");
+        var prepared = PreparedDocuments.copy("plate-5mm.vxb", directory);
+        fx(() -> workbench.controller().open(prepared)).get(20, TimeUnit.SECONDS);
+        ready();
         fx(() -> {
             ((TabPane) node("#workspaces")).getSelectionModel().select(1);
+            ((TabPane) node("#print-controls")).getSelectionModel().select(1);
             var nozzle = (FormulaField) node("#print-nozzle");
             assertEquals("0.4", nozzle.getText());
             var plate =
@@ -384,6 +402,7 @@ class WorkbenchUiTest {
         assertEquals(0.6, document().printSetup().printerSnapshot().printer().nozzleMm(), 0.0001);
         fx(() -> {
             ((TabPane) node("#workspaces")).getSelectionModel().select(1);
+            ((TabPane) node("#print-controls")).getSelectionModel().select(1);
             return null;
         });
         assertEquals("0.6", fx(() -> ((FormulaField) node("#print-nozzle")).getText()));

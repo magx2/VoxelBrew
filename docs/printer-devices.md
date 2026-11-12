@@ -20,8 +20,9 @@ shown in selectors or command output. A renamed printer remains the target of jo
 sliced for it.
 
 In the Slicer workspace, choose any saved printer device first. Its assigned
-printer profile supplies the bed, nozzle and output settings; profile, nozzle and
-bed-size editing are locked while that device is selected. Choose **No device —
+printer profile supplies the bed and output settings; profile and bed-size editing
+are locked while that device is selected. Set the installed nozzle diameter in the
+**Process** tab for either a device or a standalone printer profile. Choose **No device —
 G-code only** to edit a standalone printer profile and save the sliced job without
 a hardware target. **Configure printers…** in the Slicer panel opens device setup
 and refreshes the device list when it closes.
@@ -43,7 +44,7 @@ and tool 0; AMS mapping and multi-material assignments are not implemented.
 The adapter preserves Orca's sliced `.gcode.3mf` package and extracts plate 1 G-code
 for preview. It does not wrap generic Marlin output in a ZIP. Explicit support volumes
 are rejected; automatic supports, brim and raft are passed to Orca.
-Set the installed nozzle diameter in the **Slicer** workspace's printer panel
+Set the installed nozzle diameter in the **Slicer** workspace's **Process** tab
 before slicing. The diameter is stored with the document's slicer printer snapshot
 and used to generate the job; it is not part of the physical device connection.
 For OrcaSlicer, the selected diameter must match the machine preset's nozzle.

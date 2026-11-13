@@ -96,23 +96,23 @@ options, text source/outlines and path identity; schemas 1–4 remain readable.
 The installed `cli` (`cli.bat` on Windows) uses the same constructors and solver:
 
 ```sh
-cli new curves.vxb
-cli sketch new curves.vxb --id outline
-cli sketch draw curves.vxb --sketch outline --id oval --tool ELLIPSE --points 0,0,20,0,0,10
-cli sketch constrain curves.vxb --sketch outline --id radius --type MAJOR_RADIUS --refs oval --value 20
-cli extrude curves.vxb --id thickness --sketch outline --distance 5
-cli edit curves.vxb --feature outline --field constraint:radius --value 25
-cli inspect curves.vxb
+cli document new curves.vxb
+cli designer sketch new curves.vxb --id outline
+cli designer sketch draw curves.vxb --sketch outline --id oval --tool ELLIPSE --points 0,0,20,0,0,10
+cli designer sketch constrain curves.vxb --sketch outline --id radius --type MAJOR_RADIUS --refs oval --value 20
+cli designer solid extrude curves.vxb --id thickness --sketch outline --distance 5
+cli designer feature set curves.vxb --feature outline --field constraint:radius --value 25
+cli designer inspect curves.vxb
 ```
 
-`cli sketch draw --help` lists every tool and option. `--points` is an ordered
+`cli designer sketch draw --help` lists every tool and option. `--points` is an ordered
 list of x,y pairs; `--refs` selects tangent lines/endpoints or a text path.
 `--closed`, `--degree`, `--sides`, `--rho`, `--radius`, `--text`, `--font`,
 `--style`, `--height`, `--angle` (degrees) and `--spacing` configure the tools.
 Raw `sketch entity` supports ELLIPSE, CONIC, FIT_SPLINE and CONTROL_SPLINE in
 addition to existing kinds. Raw ellipse angle and arc parameters use radians.
 
-Edit text with `cli sketch text-edit file.vxb --sketch label --id text --text NEW`.
+Edit text with `cli designer sketch text-edit file.vxb --sketch label --id text --text NEW`.
 An optional `--font` changes its font and `--path` repairs/replaces a path (an
 empty value detaches it). Save failures and rejected invalid constructors leave
 the prior file unchanged. See [M8 acceptance](acceptance/M8.md) for checks.

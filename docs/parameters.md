@@ -155,17 +155,17 @@ that `bin` directory on PATH. For an existing reference
 document whose feature IDs are `plate` and `thickness`:
 
 ```sh
-cli parameters set part.vxb --name width --unit mm --expression 60
-cli parameters set part.vxb --name thickness --unit mm --expression 5
-cli parameters bind part.vxb --feature plate --field width --expression width
-cli edit part.vxb --feature thickness --field distance --expression thickness
-cli configurations add part.vxb --name Large
-cli configurations set part.vxb --name Large --parameter width --expression 80
-cli configurations set part.vxb --name Large --parameter thickness --expression 8
-cli configurations activate part.vxb --name Large
-cli parameters list part.vxb
-cli configurations list part.vxb
-cli inspect part.vxb
+cli designer parameter set part.vxb --name width --unit mm --expression 60
+cli designer parameter set part.vxb --name thickness --unit mm --expression 5
+cli designer parameter bind part.vxb --feature plate --field width --expression width
+cli designer feature set part.vxb --feature thickness --field distance --expression thickness
+cli designer configuration add part.vxb --name Large
+cli designer configuration set part.vxb --name Large --parameter width --expression 80
+cli designer configuration set part.vxb --name Large --parameter thickness --expression 8
+cli designer configuration activate part.vxb --name Large
+cli designer parameter list part.vxb
+cli designer configuration list part.vxb
+cli designer inspect part.vxb
 ```
 
 For constrained sketches, bind `--field constraint:<dimension-id>`; for example

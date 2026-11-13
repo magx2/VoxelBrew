@@ -21,10 +21,10 @@ snapshots and undo/redo carry the assignments with the CAD document. Broken
 feature references remain editable; style inheritance handles cycles safely.
 
 ```bash
-cli body-style part.vxb
-cli body-style part.vxb --body thickness.body --material PETG --color '#FF0000'
-cli body-style part.vxb --body split.positive --material PLA --color '#0000FF'
-cli body-style part.vxb --body split.positive --reset
+cli designer body style set part.vxb
+cli designer body style set part.vxb --body thickness.body --material PETG --color '#FF0000'
+cli designer body style set part.vxb --body split.positive --material PLA --color '#0000FF'
+cli designer body style set part.vxb --body split.positive --reset
 ```
 
 Listing prints body ID, material and uppercase RGB hex separated by tabs.

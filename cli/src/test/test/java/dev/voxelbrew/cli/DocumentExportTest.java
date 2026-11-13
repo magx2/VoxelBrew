@@ -28,13 +28,18 @@ class DocumentExportTest {
             Files.copy(Path.of(System.getProperty("voxelbrew.test.plugin")), plugins.resolve("provider.jar"));
             Files.writeString(plugins.resolve("README.txt"), "Ignored non-JAR file");
             for (var listing : java.util.Map.of(
-                            "exporters", "document-probe", "importers", "plate", "feature-types", "example.spacer")
+                            "document exporters",
+                            "document-probe",
+                            "document importers",
+                            "plate",
+                            "designer feature types",
+                            "example.spacer")
                     .entrySet()) {
                 var cli = VoxelBrew.commandLine();
                 var output = new StringWriter();
                 cli.setOut(new PrintWriter(output));
                 cli.setErr(new PrintWriter(new StringWriter()));
-                assertEquals(0, cli.execute(listing.getKey()));
+                assertEquals(0, cli.execute(listing.getKey().split(" ")));
                 assertTrue(output.toString().contains(listing.getValue()), output::toString);
             }
             var document = CadDocument.empty();
@@ -45,6 +50,7 @@ class DocumentExportTest {
                     0,
                     VoxelBrew.commandLine()
                             .execute(
+                                    "document",
                                     "export",
                                     source.toString(),
                                     "--format",
@@ -70,12 +76,13 @@ class DocumentExportTest {
         var output = new StringWriter();
         cli.setOut(new PrintWriter(output));
         cli.setErr(new PrintWriter(new StringWriter()));
-        assertEquals(0, cli.execute("exporters", "--plugin-dir", plugins.toString()));
+        assertEquals(0, cli.execute("document", "exporters", "--plugin-dir", plugins.toString()));
         assertTrue(output.toString().contains("document-probe"));
         Path target = directory.resolve("report.txt");
         assertEquals(
                 0,
                 cli.execute(
+                        "document",
                         "export",
                         source.toString(),
                         "--format",
@@ -97,7 +104,8 @@ class DocumentExportTest {
             var cli = VoxelBrew.commandLine();
             cli.setOut(new PrintWriter(new StringWriter()));
             cli.setErr(new PrintWriter(new StringWriter()));
-            String[] args = {"export", source.toString(), "--format", format, "--output", target.toString()};
+            String[] args = {"document", "export", source.toString(), "--format", format, "--output", target.toString()
+            };
             assertEquals(0, cli.execute(args));
             byte[] original = Files.readAllBytes(target);
             assertNotEquals(0, cli.execute(args));
@@ -105,6 +113,7 @@ class DocumentExportTest {
             assertEquals(
                     0,
                     cli.execute(
+                            "document",
                             "export",
                             source.toString(),
                             "--format",

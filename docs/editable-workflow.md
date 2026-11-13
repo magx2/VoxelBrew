@@ -10,18 +10,18 @@ double precision. No export command exists before M2.
 ## Public commands
 
 ```bash
-cli new plate.vxb
-cli rectangle plate.vxb --id plate --width 60 --height 40
-cli extrude plate.vxb --id thickness --sketch plate --distance 5
-cli circle plate.vxb --id hole --center-x 10 --center-y 10 --diameter 4
-cli cut plate.vxb --id cut --sketch hole --body-feature thickness
-cli inspect plate.vxb --point 10,10,2.5
-cli edit plate.vxb --feature thickness --field distance --value 8
-cli inspect plate.vxb --point 10,10,4
-cli cursor plate.vxb --position 3
-cli inspect plate.vxb
-cli cursor plate.vxb --position 4
-cli history plate.vxb
+cli document new plate.vxb
+cli designer sketch rectangle plate.vxb --id plate --width 60 --height 40
+cli designer solid extrude plate.vxb --id thickness --sketch plate --distance 5
+cli designer sketch circle plate.vxb --id hole --center-x 10 --center-y 10 --diameter 4
+cli designer solid cut plate.vxb --id cut --sketch hole --body-feature thickness
+cli designer inspect plate.vxb --point 10,10,2.5
+cli designer feature set plate.vxb --feature thickness --field distance --value 8
+cli designer inspect plate.vxb --point 10,10,4
+cli designer history cursor plate.vxb --position 3
+cli designer inspect plate.vxb
+cli designer history cursor plate.vxb --position 4
+cli designer history list plate.vxb
 ```
 
 The scripts in `scripts/reference-part.ps1` and `scripts/reference-part.sh` run
@@ -86,10 +86,10 @@ their native results; borrowed body solids are valid only for that evaluation.
 Repair a broken reference without duplicating features:
 
 ```bash
-cli history broken.vxb
-cli repair broken.vxb --feature thickness --sketch plate
-cli repair broken.vxb --feature cut --body-feature thickness
-cli inspect broken.vxb
+cli designer history list broken.vxb
+cli designer feature repair broken.vxb --feature thickness --sketch plate
+cli designer feature repair broken.vxb --feature cut --body-feature thickness
+cli designer inspect broken.vxb
 ```
 
 ## .vxb schema and safe writes

@@ -5223,7 +5223,7 @@ class WorkbenchUiTest {
         ready();
         assertEquals(saved, document());
         Files.copy(file, artifacts.resolve("formula-fields.vxb"), StandardCopyOption.REPLACE_EXISTING);
-        Files.writeString(artifacts.resolve("formula-cli-inspection.txt"), cli("inspect", file.toString()));
+        Files.writeString(artifacts.resolve("formula-cli-inspection.txt"), cli("designer", "inspect", file.toString()));
     }
 
     @Test
@@ -5328,7 +5328,7 @@ class WorkbenchUiTest {
         assertEquals(25600, volume(), .02);
         click("save");
         ready();
-        String inspection = cli("inspect", file.toString());
+        String inspection = cli("designer", "inspect", file.toString());
         var measured = java.util.regex.Pattern.compile("volume=([0-9.eE+\\-]+)").matcher(inspection);
         assertTrue(measured.find(), inspection);
         assertEquals(25600, Double.parseDouble(measured.group(1)), .02, inspection);
@@ -5549,7 +5549,7 @@ class WorkbenchUiTest {
         assertEquals(saved, document());
         Files.writeString(
                 artifacts.resolve("sketch-types-cli-inspection.txt"),
-                cli("inspect", file.toString(), "--point", "5,5,2"));
+                cli("designer", "inspect", file.toString(), "--point", "5,5,2"));
     }
 
     @Test
@@ -5709,9 +5709,10 @@ class WorkbenchUiTest {
         click("file-confirm");
         ready();
         assertEquals(saved, document());
-        String inspection = cli("inspect", file.toString(), "--point", "10,10,4");
+        String inspection = cli("designer", "inspect", file.toString(), "--point", "10,10,4");
         assertTrue(inspection.contains("contains=false"));
-        assertTrue(cli("inspect", file.toString(), "--point", "30,20,4").contains("contains=true"));
+        assertTrue(cli("designer", "inspect", file.toString(), "--point", "30,20,4")
+                .contains("contains=true"));
         choice("appearance", 2);
         click("history-0");
         click("edit-sketch-constraints");
@@ -6314,7 +6315,9 @@ class WorkbenchUiTest {
         ready();
         assertTrue(Files.readString(external).startsWith("document="));
         cli(
-                "edit",
+                "designer",
+                "feature",
+                "set",
                 cliFile.toString(),
                 "--feature",
                 before.features().get(1).id(),
@@ -6323,12 +6326,13 @@ class WorkbenchUiTest {
                 "--value",
                 "8");
         assertEquals(DocumentReader.load(cliFile), DocumentReader.load(file));
-        String inspection = cli("inspect", file.toString(), "--point", "10,10,4");
+        String inspection = cli("designer", "inspect", file.toString(), "--point", "10,10,4");
         assertTrue(inspection.contains("volume=19099.469035085127"));
         assertTrue(inspection.contains("contains=false"));
         assertTrue(inspection.contains(
                 "bounds=0.000000000,0.000000000,0.000000000,60.000000000,40.000000000,8.000000000"));
-        assertTrue(cli("inspect", file.toString(), "--point", "30,20,4").contains("contains=true"));
+        assertTrue(cli("designer", "inspect", file.toString(), "--point", "30,20,4")
+                .contains("contains=true"));
         standardView(0);
         modelClick(30, 20, 8);
         assertTrue(fx(
@@ -6455,7 +6459,7 @@ class WorkbenchUiTest {
         click("export-confirm");
         ready();
         assertTrue(Files.size(exported) > 500);
-        assertTrue(cli("inspect", file.toString(), "--point", "0,0,4", "--plugin-dir", plugins.toString())
+        assertTrue(cli("designer", "inspect", file.toString(), "--point", "0,0,4", "--plugin-dir", plugins.toString())
                 .contains("contains=false"));
         fx(() -> {
             Screenshot.save(
@@ -7111,8 +7115,10 @@ class WorkbenchUiTest {
             return null;
         });
         Path cliJob = directory.resolve("CLI printer job.gcode");
-        assertTrue(cli("validate", file.toString()).contains("VALID"));
+        assertTrue(cli("slicer", "validate", file.toString()).contains("VALID"));
         cli(
+                "slicer",
+                "job",
                 "slice",
                 file.toString(),
                 "--output",

@@ -46,12 +46,12 @@ for isolation tests; their listing diagnostics are expected.
 .\gradlew.bat :engine:buildExporterFixture :cli:installDist :gui:installDist
 $plugins = 'fixtures/exporter-plugin/build/libs'
 $cli = '.\cli\build\install\cli\bin\cli.bat'
-& $cli feature-types --plugin-dir $plugins
-& $cli new spacer.vxb
-& $cli custom spacer.vxb --id spacer --provider example.spacer --type spacer --parameter height=5 --plugin-dir $plugins
-& $cli edit spacer.vxb --feature spacer --field height --value 8 --plugin-dir $plugins
-& $cli inspect spacer.vxb --point 0,0,4 --plugin-dir $plugins
-& $cli export spacer.vxb --format 3mf --output spacer.3mf --plugin-dir $plugins
+& $cli designer feature types --plugin-dir $plugins
+& $cli document new spacer.vxb
+& $cli designer feature add spacer.vxb --id spacer --provider example.spacer --type spacer --parameter height=5 --plugin-dir $plugins
+& $cli designer feature set spacer.vxb --feature spacer --field height --value 8 --plugin-dir $plugins
+& $cli designer inspect spacer.vxb --point 0,0,4 --plugin-dir $plugins
+& $cli document export spacer.vxb --format 3mf --output spacer.3mf --plugin-dir $plugins
 .\gui\build\install\gui\bin\gui.bat --open spacer.vxb --plugin-dir $plugins
 ```
 

@@ -138,14 +138,14 @@ Use the installed `cli` launcher (`cli.bat` on Windows). Every command reopens
 the document; both frontends use the same engine solver and persistence.
 
 ```sh
-cli new constrained.vxb
-cli rectangle constrained.vxb --id plate --width 60 --height 40
-cli sketch convert constrained.vxb --sketch plate
-cli sketch entity constrained.vxb --sketch plate --id hole --kind CIRCLE --values 10,10,2
-cli sketch constrain constrained.vxb --sketch plate --id fix-hole --type FIX --refs hole
-cli sketch list constrained.vxb --sketch plate
-cli extrude constrained.vxb --id thickness --sketch plate --distance 8
-cli inspect constrained.vxb --point 10,10,4
+cli document new constrained.vxb
+cli designer sketch rectangle constrained.vxb --id plate --width 60 --height 40
+cli designer sketch convert constrained.vxb --sketch plate
+cli designer sketch entity constrained.vxb --sketch plate --id hole --kind CIRCLE --values 10,10,2
+cli designer sketch constrain constrained.vxb --sketch plate --id fix-hole --type FIX --refs hole
+cli designer sketch list constrained.vxb --sketch plate
+cli designer solid extrude constrained.vxb --id thickness --sketch plate --distance 8
+cli designer inspect constrained.vxb --point 10,10,4
 ```
 
 This produces the reference plate with volume `19099.469035085127 mm³` and an
@@ -154,8 +154,8 @@ empty hole at the queried point. `sketch new`, `entity`, `polygon`, `constrain`,
 editing. Entity references are names such as `edge.start`, `edge.end`,
 `circle.center`, `spline.control1` or `origin.point`; a bare ID selects an entity.
 Arc entity parameters use radians, while driving angle dimensions use degrees.
-Run `cli sketch <command> --help` for parameter order and options. Edit a saved
-driving dimension with `cli edit file.vxb --feature sketch-id --field
+Run `cli designer sketch <command> --help` for parameter order and options. Edit a saved
+driving dimension with `cli designer feature set file.vxb --feature sketch-id --field
 constraint:dimension-id --value 80`. Invalid constraints and impossible point
 moves leave the prior document byte-for-byte unchanged.
 

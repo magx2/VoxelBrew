@@ -141,7 +141,7 @@ From PowerShell at the repository root:
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts\bootstrap-native.ps1
 .\gradlew.bat :engine:nativeIntegrationTest
 .\gradlew.bat check
-.\gradlew.bat :cli:run --args="native-demo"
+.\gradlew.bat :cli:run --args="designer native-demo"
 ```
 
 ## Ubuntu / Ubuntu WSL: build, integration test, demo
@@ -154,7 +154,7 @@ binaries and Gradle intermediate files are platform specific.
 bash scripts/bootstrap-native.sh
 ./gradlew :engine:nativeIntegrationTest
 ./gradlew check
-./gradlew :cli:run --args='native-demo'
+./gradlew :cli:run --args='designer native-demo'
 ```
 
 From Windows, an existing Ubuntu checkout can be tested with:
@@ -176,6 +176,14 @@ workflows. CI runs unit/integration suites once on Ubuntu and `platformCheck`
 qualification is deferred. The final CI gate requires every configured suite
 and platform. See [test commands and layout](docs/testing.md).
 
+## Workspace CLI
+
+CLI commands follow the desktop workspaces: `designer`, `slicer`, and `printer`.
+Shared file actions use `document`; user preferences and updates use `settings`.
+The former flat command syntax has been removed. See the
+[command map and current parity coverage](docs/cli-gui-parity.md) for commands,
+options, editing sessions, and remaining parity work.
+
 ## Reference part and numerical contract
 
 To create, save, reopen, edit and roll back the reference part through public CLI
@@ -185,13 +193,13 @@ path each time; the script deliberately refuses to overwrite an existing file):
 ```powershell
 .\gradlew.bat :cli:installDist
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts\reference-part.ps1 -Destination build\demo\my-part.vxb
-.\cli\build\install\cli\bin\cli.bat inspect build\demo\my-part.vxb --point 10,10,4
+.\cli\build\install\cli\bin\cli.bat designer inspect build\demo\my-part.vxb --point 10,10,4
 ```
 
 ```bash
 ./gradlew :cli:installDist
 bash scripts/reference-part.sh build/demo/my-part.vxb
-cli/build/install/cli/bin/cli inspect build/demo/my-part.vxb --point 10,10,4
+cli/build/install/cli/bin/cli designer inspect build/demo/my-part.vxb --point 10,10,4
 ```
 
 This development distribution includes the matching native libraries and requires
@@ -308,8 +316,8 @@ Use `--plugin-dir` to select a different directory, or `-Dvoxelbrew.home=...`
 to relocate all user data, including the `plugins` subdirectory. Plugins must
 register their providers through the corresponding `META-INF/services` entries.
 
-After `:cli:installDist`, run `cli exporters` and
-`cli export fixtures/reference-8mm.vxb --format 3mf --output plate.3mf`
+After `:cli:installDist`, run `cli document exporters` and
+`cli document export fixtures/reference-8mm.vxb --format 3mf --output plate.3mf`
 using the installed launcher above. See [the export API and commands](docs/export-workflow.md)
 and [M2 acceptance evidence](docs/acceptance/M2.md). Exporters require a complete,
 successfully rebuilt document; the output is published only after success.

@@ -80,7 +80,7 @@ numeric point input and tool-specific settings. See [sketch types](sketch-types.
    mm³. Return to 4. Undo restores 5 mm thickness; Redo restores 8 mm.
 6. Save and choose **File → Export**. Select 3MF, choose a destination and export.
    A default export uses chordal tolerance 0.02 mm and angular tolerance 5°.
-7. In the installed CLI, run `cli inspect design.vxb --point 10,10,4`.
+7. In the installed CLI, run `cli designer inspect design.vxb --point 10,10,4`.
    Expected bounds are (0,0,0)–(60,40,8), volume 19099.469035085127 mm³,
    and `contains=false`. Exact tolerances remain 0.001 mm and 0.01 mm³.
 

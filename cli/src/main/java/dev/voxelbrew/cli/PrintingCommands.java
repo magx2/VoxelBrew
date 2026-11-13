@@ -268,6 +268,9 @@ final class PrintingCommands {
             var session = session();
             var setup = session.document().printSetup();
             var p = setup.process();
+            if (printer != null && setup.workspaceSettings().containsKey(PrintTarget.PRINTER_ID))
+                throw new IllegalArgumentException(
+                        "Clear the physical device target before changing its printer profile");
             var next = new ProcessSettings(
                     or(height, p.layerHeight()),
                     or(walls, p.walls()),
@@ -525,7 +528,7 @@ final class PrintingCommands {
             this.slicing = slicing;
         }
 
-        @Option(names = "--output", required = true)
+        @Option(names = "--output", description = "Optional output file; directory with --all")
         Path output;
 
         @Option(names = "--slicer", description = "Path to the pinned slicer executable")
@@ -537,6 +540,15 @@ final class PrintingCommands {
         @Option(names = "--printer", description = "Saved printer name; omit for profile-only G-code")
         String printerConnection;
 
+        @Option(names = "--plate", description = "Plate ID; defaults to active plate")
+        String plate;
+
+        @Option(names = "--all", description = "Slice every nonempty plate")
+        boolean all;
+
+        @Option(names = "--background", description = "Run in the background inside an editing session")
+        boolean background;
+
         private final Slicing slicing;
 
         @Option(names = "--overwrite")
@@ -544,6 +556,55 @@ final class PrintingCommands {
 
         @Override
         public Integer call() throws Exception {
+            if (background) throw new IllegalArgumentException("--background requires an editing session");
+            if (all && plate != null) throw new IllegalArgumentException("Choose --plate or --all");
+            var original = session().document();
+            var ids = all
+                    ? original.printSetup().plates().stream()
+                            .filter(p -> !p.instances().isEmpty())
+                            .map(PrintPlate::id)
+                            .toList()
+                    : List.of(plate == null ? original.printSetup().activePlateId() : plate);
+            if (ids.isEmpty()) throw new IllegalArgumentException("No nonempty plates to slice");
+            Path destination = output;
+            Path temporary = null;
+            if (destination == null) temporary = java.nio.file.Files.createTempDirectory("voxelbrew-slice-");
+            if (all && destination != null) java.nio.file.Files.createDirectories(destination);
+            try {
+                for (String id : ids) {
+                    var current = session().document();
+                    // Plate selection is a view of the same revision, not a manufacturing edit.
+                    var setup = current.printSetup().selectPlate(id);
+                    var document = new CadDocument(
+                            current.id(),
+                            current.features(),
+                            current.cursor(),
+                            setup,
+                            current.parameters(),
+                            current.bodyStyles(),
+                            current.bodyNames(),
+                            current.featureNames(),
+                            current.gcode(),
+                            current.printArtifacts());
+                    output = temporary != null
+                            ? temporary.resolve(id + ".gcode")
+                            : all ? destination.resolve(id + ".gcode") : destination;
+                    int result = sliceOne(document, original.printSetup().activePlateId());
+                    if (result != 0) return result;
+                }
+                return 0;
+            } finally {
+                output = destination;
+                if (temporary != null) {
+                    try (var files = java.nio.file.Files.list(temporary)) {
+                        for (var path : files.toList()) java.nio.file.Files.deleteIfExists(path);
+                    }
+                    java.nio.file.Files.deleteIfExists(temporary);
+                }
+            }
+        }
+
+        private Integer sliceOne(CadDocument document, String activePlateId) throws Exception {
             var cancellation = new Cancellation();
             var finished = new CountDownLatch(1);
             var shutdown = new Thread(
@@ -559,8 +620,8 @@ final class PrintingCommands {
             Runtime.getRuntime().addShutdownHook(shutdown);
             try (var registry = slicers.open(pluginDirectory);
                     var exportRegistry = exporters.open(pluginDirectory)) {
-                var document = session().document();
-                String selectedPrinterId = null;
+                String selectedPrinterId =
+                        document.printSetup().workspaceSettings().get(PrintTarget.PRINTER_ID);
                 if (printerConnection != null) {
                     var connections = dev.voxelbrew.printer.api.PrinterRuntime.load()
                             .devices(dev.voxelbrew.util.config.ApplicationPaths.configuration()
@@ -600,7 +661,11 @@ final class PrintingCommands {
                 artifacts.put(
                         document.printSetup().activePlateId(),
                         PrintTarget.attach(result.artifact(), result.job().lines(), targetSetup));
-                documentWriter.save(document.withGcode(jobs).withPrintArtifacts(artifacts), file, true);
+                documentWriter.save(
+                        WorkspaceCommands.selectPlate(
+                                document.withGcode(jobs).withPrintArtifacts(artifacts), activePlateId),
+                        file,
+                        true);
                 spec.commandLine().getOut().println("Job: " + result.output());
                 return 0;
             } finally {
@@ -621,16 +686,62 @@ final class PrintingCommands {
     @RequiredArgsConstructor(access = AccessLevel.PACKAGE, onConstructor_ = @javax.inject.Inject)
     static final class InspectJob implements Callable<Integer> {
         private final dev.voxelbrew.importer.api.GcodeSource gcode;
+        private final DocumentSource documents;
 
-        @Parameters(index = "0")
+        @Parameters(index = "0", arity = "0..1", description = "G-code file; omit when using --document")
         Path file;
+
+        @Option(names = "--plate")
+        String plate;
+
+        @Option(names = "--from-layer", defaultValue = "1")
+        int firstLayer;
+
+        @Option(names = "--to-layer")
+        Integer lastLayer;
+
+        @Option(names = "--role", description = "Repeat to filter toolpath roles")
+        GcodeJob.Role[] roles;
+
+        @Option(names = "--paths", description = "Print filtered path segments")
+        boolean paths;
 
         @Spec
         CommandLine.Model.CommandSpec spec;
 
         @Override
         public Integer call() throws Exception {
-            describe(gcode.read(file), spec.commandLine().getOut());
+            Path documentPath = spec.root().findOption("--document").getValue();
+            GcodeJob job;
+            if (documentPath != null) {
+                if (file != null) throw new IllegalArgumentException("Choose --document or a G-code file");
+                var document = documents.load(documentPath);
+                var lines = document.gcode()
+                        .getOrDefault(plate == null ? document.printSetup().activePlateId() : plate, List.of());
+                if (lines.isEmpty()) throw new IllegalArgumentException("No stored job for this plate");
+                job = gcode.readLines(lines);
+            } else {
+                if (file == null) throw new IllegalArgumentException("Specify --document or a G-code file");
+                job = gcode.read(file);
+            }
+            describe(job, spec.commandLine().getOut());
+            if (paths || roles != null || lastLayer != null || firstLayer != 1) {
+                int end = lastLayer == null ? job.modelLayers().size() : lastLayer;
+                if (firstLayer < 1
+                        || end < firstLayer
+                        || end > job.modelLayers().size()) throw new IllegalArgumentException("Invalid layer range");
+                double low = job.modelLayers().get(firstLayer - 1),
+                        high = job.modelLayers().get(end - 1);
+                var selectedRoles =
+                        roles == null ? EnumSet.allOf(GcodeJob.Role.class) : new HashSet<>(Arrays.asList(roles));
+                var segments = job.segments().stream()
+                        .filter(segment -> segment.z1() >= low - 1e-6
+                                && segment.z1() <= high + 1e-6
+                                && selectedRoles.contains(segment.role()))
+                        .toList();
+                spec.commandLine().getOut().println("filtered_segments=" + segments.size());
+                if (paths) segments.forEach(spec.commandLine().getOut()::println);
+            }
             return 0;
         }
     }

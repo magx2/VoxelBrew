@@ -106,6 +106,7 @@ public final class VoxelBrew implements Runnable {
             log.info("Executing CLI command {}", command);
             return new CommandLine.RunLast().execute(parsed);
         });
+        WorkspaceCommands.install(cliCommand);
         return cliCommand;
     }
 
@@ -141,7 +142,7 @@ public final class VoxelBrew implements Runnable {
         private final DocumentSource documents;
         private final dev.voxelbrew.exporter.api.ExporterCatalog.Factory exporters;
 
-        @Parameters(index = "0")
+        @Parameters(index = "0", arity = "0..1")
         Path file;
 
         @Option(names = "--format", required = true)
@@ -155,6 +156,9 @@ public final class VoxelBrew implements Runnable {
 
         @Option(names = "--instance", description = "Selected build instance ID; requires BUILD_PLATE space")
         String instance;
+
+        @Option(names = "--plate", description = "Select a slicer plate for build-space or stored-job export")
+        String plate;
 
         @Option(
                 names = "--space",
@@ -189,6 +193,8 @@ public final class VoxelBrew implements Runnable {
         @Override
         public Integer call() throws Exception {
             var document = documents.load(file);
+            if (plate != null) document = WorkspaceCommands.selectPlate(document, plate);
+            final var selectedDocument = document;
             try (var registry = exporters.open(pluginDirectory)) {
                 registry.diagnostics().forEach(spec.commandLine().getErr()::println);
                 var parent = new dev.voxelbrew.exporter.api.ExportDialogs()
@@ -217,7 +223,7 @@ public final class VoxelBrew implements Runnable {
                 registry.require(format)
                         .provider()
                         .create(Runnable::run, pluginDirectory)
-                        .export(document, parent)
+                        .export(selectedDocument, parent)
                         .get();
                 spec.commandLine()
                         .getOut()
@@ -253,8 +259,11 @@ public final class VoxelBrew implements Runnable {
         final DocumentSource documents;
         final DocumentOutput documentWriter;
 
-        @Parameters(index = "0", description = "Editable .vxb file")
+        @Parameters(index = "0", arity = "0..1", description = "Editable .vxb file (or --document)")
         Path file;
+
+        @Option(names = "--revision", description = "Expected document fingerprint from designer inspect")
+        String expectedRevision;
 
         @Option(names = "--plugin-dir", description = "Trusted feature and service JAR directory")
         Path pluginDirectory = dev.voxelbrew.util.config.ApplicationPaths.plugins();
@@ -263,7 +272,11 @@ public final class VoxelBrew implements Runnable {
         CommandSpec spec;
 
         ModelSession session() throws java.io.IOException {
-            return new ModelSession(documents.load(file));
+            var document = documents.load(file);
+            if (expectedRevision != null
+                    && !expectedRevision.equals(dev.voxelbrew.engine.persistence.DocumentCodec.fingerprint(document)))
+                throw new IllegalArgumentException("Document changed; inspect and select topology again");
+            return new ModelSession(document);
         }
 
         int save(ModelSession session) throws java.io.IOException {
@@ -311,6 +324,18 @@ public final class VoxelBrew implements Runnable {
 
     abstract static class AddSketch extends AddFeature {
 
+        @Option(names = "--plane", defaultValue = "XY", description = "Origin plane: XY, XZ or YZ")
+        String orientation;
+
+        @Option(names = "--face-body", description = "Body ID supporting the sketch plane")
+        String faceBody;
+
+        @Option(names = "--face", description = "Planar face index from topology inspection")
+        Integer face;
+
+        @Option(names = "--construction-plane", description = "Earlier construction plane feature ID")
+        String constructionPlane;
+
         AddSketch(DocumentSource documents, DocumentOutput documentWriter) {
             super(documents, documentWriter);
         }
@@ -328,11 +353,35 @@ public final class VoxelBrew implements Runnable {
 
         int sketch(Feature.Profile profile) throws java.io.IOException {
             var session = session();
-            session.add(new Feature.Sketch(
-                    id,
-                    profileId == null ? id + ".profile" : profileId,
-                    new Feature.Plane(planeId == null ? (z == 0 ? "origin-xy" : id + ".plane") : planeId, z),
-                    profile));
+            var plane = new Feature.Plane(
+                    planeId == null
+                            ? (z == 0 ? "origin-" + orientation.toLowerCase(Locale.ROOT) : id + ".plane")
+                            : planeId,
+                    z,
+                    Feature.Plane.origin(orientation.toUpperCase(Locale.ROOT)).frame(),
+                    null);
+            if (constructionPlane != null) {
+                if (faceBody != null || face != null)
+                    throw new IllegalArgumentException("Choose a face or a construction plane");
+                plane = new Feature.Plane(id + ".plane", z, Transform.IDENTITY, null, constructionPlane);
+            }
+            if (faceBody != null || face != null) {
+                if (faceBody == null || face == null || expectedRevision == null)
+                    throw new IllegalArgumentException("Face attachment requires --face-body, --face and --revision");
+                try (var evaluation = session.evaluate(pluginDirectory)) {
+                    var body = evaluation.requireCompleteDocument().stream()
+                            .filter(b -> b.id().equals(faceBody))
+                            .findFirst()
+                            .orElseThrow(() -> new IllegalArgumentException("Unknown body " + faceBody));
+                    plane = FaceSupport.attach(
+                                    body.output(),
+                                    body.solid().planarFaces(),
+                                    face,
+                                    session.document().uuidGenerator())
+                            .withOffset(z);
+                }
+            }
+            session.add(new Feature.Sketch(id, profileId == null ? id + ".profile" : profileId, plane, profile));
             return save(session);
         }
     }
@@ -422,12 +471,20 @@ public final class VoxelBrew implements Runnable {
         String sketch;
 
         @Option(names = "--distance", required = true)
-        double distance;
+        String distance;
+
+        @Option(names = "--region", description = "Stable region profile ID (default: whole sketch)")
+        String region;
 
         @Override
         public Integer call() throws Exception {
             var session = session();
-            session.add(new Feature.Extrude(id, profileRef(session, sketch), distance));
+            var profile = profileRef(session, sketch);
+            session.add(new Feature.Extrude(
+                    id,
+                    region == null ? profile : new Feature.ProfileRef(sketch, region),
+                    session.document().parameters().value(distance, dev.voxelbrew.engine.parameters.ParameterUnit.MM)));
+            session.bindExpression(id, "distance", distance);
             return save(session);
         }
     }
@@ -638,6 +695,10 @@ public final class VoxelBrew implements Runnable {
             }
             var session = session();
             try (var evaluation = session.evaluate(pluginDirectory)) {
+                spec.commandLine()
+                        .getOut()
+                        .println("revision="
+                                + dev.voxelbrew.engine.persistence.DocumentCodec.fingerprint(session.document()));
                 spec.commandLine()
                         .getOut()
                         .printf(

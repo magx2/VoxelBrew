@@ -12,6 +12,31 @@ import dev.voxelbrew.engine.feature.FeatureRegistry;
 abstract class CommandBindings {
     @Binds
     @IntoMap
+    @ClassKey(PreferenceCommands.class)
+    abstract Object preferenceCommands(PreferenceCommands command);
+
+    @Provides
+    static dev.voxelbrew.printer.api.PrinterRuntime printerRuntime() {
+        return dev.voxelbrew.printer.api.PrinterRuntime.load();
+    }
+
+    @Binds
+    @IntoMap
+    @ClassKey(DeviceCommands.class)
+    abstract Object deviceCommands(DeviceCommands command);
+
+    @Binds
+    @IntoMap
+    @ClassKey(SessionCommand.class)
+    abstract Object sessionCommand(SessionCommand command);
+
+    @Binds
+    @IntoMap
+    @ClassKey(WorkspaceEdits.class)
+    abstract Object workspaceEdits(WorkspaceEdits command);
+
+    @Binds
+    @IntoMap
     @ClassKey(PrintingCommands.Printers.class)
     abstract Object printersCommand(PrintingCommands.Printers command);
 

@@ -8,10 +8,10 @@ See [file-I/O APIs and boundaries](file-io.md).
 The installed `cli`/`cli.bat` supports:
 
 ```text
-cli exporters --plugin-dir "path with spaces/plugins"
-cli export part.vxb --format stl --body thickness.body --output part.stl
-cli export part.vxb --format 3mf --output part.3mf --chord-tolerance 0.02 --angular-tolerance 5
-cli export part.vxb --format probe --plugin-dir "path with spaces/plugins" --option label=custom --output report.txt
+cli document exporters --plugin-dir "path with spaces/plugins"
+cli document export part.vxb --format stl --body thickness.body --output part.stl
+cli document export part.vxb --format 3mf --output part.3mf --chord-tolerance 0.02 --angular-tolerance 5
+cli document export part.vxb --format probe --plugin-dir "path with spaces/plugins" --option label=custom --output report.txt
 ```
 
 `--body` is optional for a single body. STL requires one instance; 3MF preserves

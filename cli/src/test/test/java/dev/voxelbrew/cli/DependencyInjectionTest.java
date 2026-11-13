@@ -29,21 +29,22 @@ class DependencyInjectionTest {
         });
         var listing = new StringWriter();
         var command = quiet(graph.commandLine()).setOut(new PrintWriter(listing));
-        assertEquals(0, command.execute("printer-profiles"));
+        assertEquals(0, command.execute("slicer", "profile", "list"));
         assertTrue(listing.toString().contains("bambu-lab-a1-mini"));
         assertEquals(
                 0,
                 quiet(graph.commandLine())
-                        .execute("print-settings", "virtual.vxb", "--printer-profile", "bambu-lab-a1-mini"));
+                        .execute("slicer", "process", "set", "virtual.vxb", "--printer-profile", "bambu-lab-a1-mini"));
         var saved = document.get().printSetup();
         assertEquals(4, saved.version());
         assertEquals(180, saved.printerSnapshot().printer().usableHeight());
-        assertEquals(0, quiet(graph.commandLine()).execute("print-settings", "virtual.vxb", "--material", "PETG"));
+        assertEquals(
+                0, quiet(graph.commandLine()).execute("slicer", "process", "set", "virtual.vxb", "--material", "PETG"));
         assertEquals(saved.printerSnapshot(), document.get().printSetup().printerSnapshot());
         assertEquals(
                 1,
                 quiet(graph.commandLine())
-                        .execute("print-settings", "virtual.vxb", "--printer-profile", "missing-printer"));
+                        .execute("slicer", "process", "set", "virtual.vxb", "--printer-profile", "missing-printer"));
         assertEquals(saved.printerSnapshot(), document.get().printSetup().printerSnapshot());
     }
 
@@ -69,21 +70,31 @@ class DependencyInjectionTest {
         });
         var first = quiet(graph.commandLine());
         Path destination = directory.resolve("virtual design.vxb");
-        assertEquals(0, first.execute("new", destination.toString(), "--overwrite"));
+        assertEquals(0, first.execute("document", "new", destination.toString(), "--overwrite"));
         var second = quiet(graph.commandLine());
-        assertEquals(0, second.execute("new", destination.toString()));
+        assertEquals(0, second.execute("document", "new", destination.toString()));
         assertEquals(List.of(true, false), overwrites);
         assertFalse(Files.exists(destination), "Injected sink must replace filesystem I/O");
         assertNotSame(
-                first.getSubcommands().get("new").getCommand(),
-                second.getSubcommands().get("new").getCommand());
-        assertEquals(0, quiet(graph.commandLine()).execute("parameters", "list", destination.toString()));
+                first.getSubcommands()
+                        .get("document")
+                        .getSubcommands()
+                        .get("new")
+                        .getCommand(),
+                second.getSubcommands()
+                        .get("document")
+                        .getSubcommands()
+                        .get("new")
+                        .getCommand());
+        assertEquals(0, quiet(graph.commandLine()).execute("designer", "parameter", "list", destination.toString()));
         assertEquals(1, reads.get());
-        assertEquals(1, quiet(graph.commandLine()).execute("inspect-job", "injected.gcode"));
+        assertEquals(1, quiet(graph.commandLine()).execute("slicer", "job", "inspect", "injected.gcode"));
         assertSame(graph.commands(), first.getFactory());
         assertSame(
                 first.getFactory(),
                 first.getSubcommands()
+                        .get("designer")
+                        .getSubcommands()
                         .get("sketch")
                         .getSubcommands()
                         .get("draw")
@@ -104,9 +115,9 @@ class DependencyInjectionTest {
         assertEquals("en", english.translations().locale().getLanguage());
         assertSame(polish.translations(), polish.translations());
         assertNotSame(polish.translations(), english.translations());
-        assertEquals(0, quiet(polish.commandLine()).execute("update", "--help"));
+        assertEquals(0, quiet(polish.commandLine()).execute("settings", "update", "--help"));
         assertEquals(0, updates.get(), "Help and graph construction must not create the updater");
-        assertEquals(1, quiet(polish.commandLine()).execute("update", "check"));
+        assertEquals(1, quiet(polish.commandLine()).execute("settings", "update", "check"));
         assertEquals(1, updates.get());
         assertEquals(0, quiet(english.commandLine()).execute("--help"));
     }

@@ -118,7 +118,7 @@ Dagger or application-module dependencies. Duplicate IDs preserve the first prov
 with built-ins registered first; broken providers produce
 diagnostics without hiding healthy providers. File → Save remains the native VXB path.
 
-The same providers are listed by `cli exporters` and invoked by `cli export --format ID`.
+The same providers are listed by `cli document exporters` and invoked by `cli document export --format ID`.
 `--output` is required only for providers that request a file destination (and mesh exports).
 Providers using custom dialog requests still need frontend handlers as described above;
 discovery alone does not render an unknown dialog type.
@@ -135,7 +135,7 @@ it, and verify that the Dagger-created CLI graph lists and invokes it without lo
 
 ### Geometry formats
 
-File Export and `cli export --format ID --output PATH` offer these geometry formats:
+File Export and `cli document export --format ID --output PATH` offer these geometry formats:
 
 | ID     | Output        | Geometry                                                       |
 | ------ | ------------- | -------------------------------------------------------------- |
@@ -275,11 +275,11 @@ with a `scale` option) and `consumer.DocumentProbeProvider` (a document report u
 The API artifacts also publish source JARs. Copy the consumer JAR into a trusted plugin directory.
 
 ```text
-cli importers --plugin-dir "path with spaces/plugins"
-cli import plate.vbplate --format plate --option scale=2 --plugin-dir "path with spaces/plugins" --output plate.vxb
-cli import part.gcode --format gcode
-cli exporters --plugin-dir "path with spaces/plugins"
-cli export plate.vxb --format document-probe --plugin-dir "path with spaces/plugins" --output report.txt
+cli document importers --plugin-dir "path with spaces/plugins"
+cli document import plate.vbplate --format plate --option scale=2 --plugin-dir "path with spaces/plugins" --output plate.vxb
+cli document import part.gcode --format gcode
+cli document exporters --plugin-dir "path with spaces/plugins"
+cli document export plate.vxb --format document-probe --plugin-dir "path with spaces/plugins" --output report.txt
 ```
 
 Document imports require a separate `--output`; existing destinations require `--overwrite`.

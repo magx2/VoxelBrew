@@ -140,7 +140,7 @@ With `-Dvoxelbrew.config=...`, the `slicers` directory lives beside that configu
 **Split body** in the Design view creates one editable operation. Select an
 axis-aligned plane and signed offset; the two outputs are `negative` and
 `positive`. The inspector edits the offset and repairs the input feature/output.
-CLI: `cli split part.vxb --id halves --body-feature cut --axis X --offset 30`.
+CLI: `cli designer solid split part.vxb --id halves --body-feature cut --axis X --offset 30`.
 Each half exports separately with `--body halves.negative` or `halves.positive`.
 
 The **Slicer** workspace has Placement, Process, Supports and Job tabs. Entering

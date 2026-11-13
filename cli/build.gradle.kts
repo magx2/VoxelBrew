@@ -26,6 +26,7 @@ dependencies {
     implementation(project(":util"))
     implementation(project(":engine"))
     implementation("info.picocli:picocli:4.7.7")
+    implementation("com.google.code.gson:gson:2.15.0")
     testImplementation("com.google.protobuf:protobuf-java:4.30.2")
 }
 

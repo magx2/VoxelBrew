@@ -9,7 +9,9 @@ import org.junit.jupiter.api.Test;
 class UpdateCommandsTest {
     @Test
     void updateAndCheckHelpDoNotAttemptNetworkAccess() {
-        for (String[] args : new String[][] {{"update", "--help"}, {"update", "check", "--help"}, {"update", "-h"}}) {
+        for (String[] args : new String[][] {
+            {"settings", "update", "--help"}, {"settings", "update", "check", "--help"}, {"settings", "update", "-h"}
+        }) {
             var output = new StringWriter();
             var command = VoxelBrew.commandLine().setOut(new PrintWriter(output));
             assertEquals(0, command.execute(args));
@@ -22,7 +24,8 @@ class UpdateCommandsTest {
     @Test
     void releaseVersionIsAnArgumentRatherThanTheStandardVersionHelpFlag() {
         var root = VoxelBrew.commandLine();
-        var parsed = root.parseArgs("update", "check", "--version", "1.2.3", "--force")
+        var parsed = root.parseArgs("settings", "update", "check", "--version", "1.2.3", "--force")
+                .subcommand()
                 .subcommand()
                 .subcommand();
         assertFalse(parsed.isVersionHelpRequested());

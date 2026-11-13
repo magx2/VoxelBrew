@@ -27,7 +27,8 @@ class DocumentImportTest {
             var cli = VoxelBrew.commandLine();
             cli.setOut(new PrintWriter(new StringWriter()));
             cli.setErr(new PrintWriter(new StringWriter()));
-            String[] args = {"import", source.toString(), "--format", format, "--output", target.toString()};
+            String[] args = {"document", "import", source.toString(), "--format", format, "--output", target.toString()
+            };
             assertEquals(0, cli.execute(args));
             assertEquals(expected.id(), DocumentReader.load(target).id());
             byte[] output = Files.readAllBytes(target);
@@ -36,6 +37,7 @@ class DocumentImportTest {
             assertNotEquals(
                     0,
                     cli.execute(
+                            "document",
                             "import",
                             source.toString(),
                             "--format",

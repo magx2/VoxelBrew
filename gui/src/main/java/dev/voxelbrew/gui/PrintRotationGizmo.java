@@ -3,7 +3,6 @@ package dev.voxelbrew.gui;
 import dev.voxelbrew.engine.mesh.MeshData;
 import dev.voxelbrew.engine.model.BodyInstance;
 import dev.voxelbrew.engine.model.Transform;
-import dev.voxelbrew.engine.printing.MeshGeometry;
 import javafx.geometry.Point2D;
 import javafx.geometry.Point3D;
 
@@ -164,23 +163,7 @@ final class PrintRotationGizmo {
     }
 
     static BodyInstance rotate(BodyInstance source, MeshData mesh, Axis axis, double degrees, Space space) {
-        if (Math.abs(degrees) < 1e-9) return source;
-        var before = MeshGeometry.bounds(MeshGeometry.transform(mesh, source.transform()));
-        double x = (before.minX() + before.maxX()) / 2,
-                y = (before.minY() + before.maxY()) / 2,
-                z = (before.minZ() + before.maxZ()) / 2;
-        var rotation = Transform.rotation(
-                axis == Axis.X ? degrees : 0, axis == Axis.Y ? degrees : 0, axis == Axis.Z ? degrees : 0);
-        var frame = frame(source.transform(), space);
-        rotation = frame.compose(rotation).compose(frame.inverse());
-        var placed = Transform.translation(x, y, z)
-                .compose(rotation)
-                .compose(Transform.translation(-x, -y, -z))
-                .compose(source.transform());
-        var after = MeshGeometry.bounds(MeshGeometry.transform(mesh, placed));
-        return new BodyInstance(
-                source.id(),
-                source.bodyId(),
-                Transform.translation(0, 0, before.minZ() - after.minZ()).compose(placed));
+        return dev.voxelbrew.engine.printing.PrintOrientation.rotate(
+                source, mesh, axis.ordinal(), degrees, space == Space.LOCAL);
     }
 }

@@ -43,42 +43,8 @@ final class PrintPlacement {
                 setup.supportsDisabled());
     }
 
-    /** Rank feasible planar bed faces by unsupported area, bed contact, then height. */
     static Transform autoOrient(dev.voxelbrew.engine.mesh.MeshData mesh, Transform current) {
-        Transform best = null;
-        double bestOverhang = Double.POSITIVE_INFINITY, bestContact = -1, bestHeight = Double.POSITIVE_INFINITY;
-        for (int face :
-                java.util.Arrays.stream(mesh.faceIndices()).distinct().sorted().toArray()) {
-            Transform candidate;
-            try {
-                candidate = dev.voxelbrew.engine.printing.MeshGeometry.layOnFace(mesh, face, current);
-            } catch (IllegalArgumentException unsuitable) {
-                continue;
-            }
-            var placed = dev.voxelbrew.engine.printing.MeshGeometry.transform(mesh, candidate);
-            double overhang = 0, contact = 0;
-            for (int t = 0; t < placed.triangleCount(); t++) {
-                double[] n = dev.voxelbrew.engine.mesh.MeshValidation.normal(placed, t);
-                double area = Math.sqrt(n[0] * n[0] + n[1] * n[1] + n[2] * n[2]) / 2;
-                boolean onBed = true;
-                for (int c = 0; c < 3; c++) onBed &= Math.abs(placed.coordinate(placed.vertexIndex(t, c), 2)) < 0.001;
-                if (onBed) contact += area;
-                else if (n[2] < -2 * area * Math.cos(Math.PI / 4)) overhang += area;
-            }
-            double height =
-                    dev.voxelbrew.engine.printing.MeshGeometry.bounds(placed).maxZ();
-            if (overhang < bestOverhang - 1e-6
-                    || Math.abs(overhang - bestOverhang) < 1e-6
-                            && (contact > bestContact + 1e-6
-                                    || Math.abs(contact - bestContact) < 1e-6 && height < bestHeight)) {
-                best = candidate;
-                bestOverhang = overhang;
-                bestContact = contact;
-                bestHeight = height;
-            }
-        }
-        if (best == null) throw new IllegalArgumentException("No planar face can support this object on the bed");
-        return best;
+        return dev.voxelbrew.engine.printing.PrintOrientation.autoOrient(mesh, current);
     }
 
     static boolean contains(double px, double py, double[] x, double[] y) {

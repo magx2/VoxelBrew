@@ -197,6 +197,22 @@ class WorkbenchUiTest {
             ((TabPane) node("#workspaces")).getSelectionModel().select(1);
             var target = (ComboBox<?>) node("#print-target");
             assertEquals("No device — G-code only", target.getButtonCell().getText());
+            var configure = (Button) node("#print-configure-devices");
+            assertEquals("Configure devices…", configure.getText());
+            assertSame(target.getParent(), configure.getParent());
+            assertNull(stage.getScene().lookup("#print-reload-printers"));
+            var printersMenu = ((MenuBar) node("#main-menu"))
+                    .getMenus().stream()
+                            .filter(menu -> "menu-printers".equals(menu.getId()))
+                            .findFirst()
+                            .orElseThrow();
+            assertEquals(
+                    "Reload printers profiles",
+                    printersMenu.getItems().stream()
+                            .filter(item -> "printers-reload".equals(item.getId()))
+                            .findFirst()
+                            .orElseThrow()
+                            .getText());
             return null;
         });
         Platform.runLater(() -> ((Button) node("#print-configure-devices")).fire());
@@ -1073,11 +1089,12 @@ class WorkbenchUiTest {
                             "printers-reload",
                             "printers-visibility"),
                     menu.getItems().stream().map(MenuItem::getId).toList());
-            menu.getItems().stream()
+            var reload = menu.getItems().stream()
                     .filter(item -> "printers-reload".equals(item.getId()))
                     .findFirst()
-                    .orElseThrow()
-                    .fire();
+                    .orElseThrow();
+            assertEquals("Reload printers profiles", reload.getText());
+            reload.fire();
             return null;
         });
         Platform.runLater(() -> ((MenuBar) node("#main-menu"))
@@ -1176,7 +1193,20 @@ class WorkbenchUiTest {
         assertFalse(fx(() -> node("#print-slice").isDisabled()), "Selected printer permits slicing");
         shortcut(KeyCode.Z, false);
         ready();
-        click("print-reload-printers");
+        fx(() -> {
+            ((MenuBar) node("#main-menu"))
+                    .getMenus().stream()
+                            .filter(menu -> "menu-printers".equals(menu.getId()))
+                            .findFirst()
+                            .orElseThrow()
+                            .getItems()
+                            .stream()
+                            .filter(item -> "printers-reload".equals(item.getId()))
+                            .findFirst()
+                            .orElseThrow()
+                            .fire();
+            return null;
+        });
         ready();
         var selected = document().printSetup();
         assertEquals("bambu-lab-a1-mini", selected.printerId());
@@ -3622,7 +3652,7 @@ class WorkbenchUiTest {
         }));
         key(KeyCode.ESCAPE);
         click("workspace-print");
-        click("print-tab-process");
+        click("print-tab-supports");
         assertEquals("Podpory automatyczne", fx(() -> ((CheckBox) node("#print-auto-supports")).getText()));
         click("workspace-design");
         for (int palette : new int[] {1, 2}) {
@@ -7092,6 +7122,7 @@ class WorkbenchUiTest {
         assertEquals(actual.segments(), GcodeReader.read(cliJob).segments());
         Files.copy(file, evidence.resolve("GUI print setup.vxb"), StandardCopyOption.REPLACE_EXISTING);
         Files.copy(job, evidence.resolve("GUI printer job.gcode"), StandardCopyOption.REPLACE_EXISTING);
+        click("print-tab-job");
         click("print-clean-slicing");
         click("print-tab-process");
         text("print-layer-height", "0.3");

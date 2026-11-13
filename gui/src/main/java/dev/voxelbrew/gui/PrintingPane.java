@@ -536,22 +536,18 @@ final class PrintingPane extends BorderPane implements AutoCloseable {
         printerImage.setFitWidth(96);
         printerImage.setFitHeight(72);
         printerImage.setPreserveRatio(true);
+        var configureDevices =
+                button(translations.text("device.configure"), "print-configure-devices", this::configureDevices);
+        configureDevices.setMinWidth(Region.USE_PREF_SIZE);
+        var deviceRow = new HBox(6, printTarget, configureDevices);
+        HBox.setHgrow(printTarget, Priority.ALWAYS);
         var printerPanel = new VBox(
                 6,
                 new Label(translations.text("print.sliceTarget")),
-                printTarget,
+                deviceRow,
                 printerProfileLabel,
                 printerChoice,
-                new HBox(8, printerImage, printerDetails),
-                equalRow(
-                        button(
-                                translations.text("device.configure"),
-                                "print-configure-devices",
-                                this::configureDevices),
-                        button(
-                                translations.text("print.reloadPrinters"),
-                                "print-reload-printers",
-                                this::reloadPrinters)));
+                new HBox(8, printerImage, printerDetails));
         printerPanel.setPadding(new Insets(8));
         printerPanel.setMaxWidth(360);
         var sidebar = new VBox(6, printerPanel, tabs);

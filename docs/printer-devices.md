@@ -24,7 +24,7 @@ printer profile supplies the bed and output settings; profile and bed-size editi
 are locked while that device is selected. Set the installed nozzle diameter in the
 **Process** tab for either a device or a standalone printer profile. Choose **No device —
 G-code only** to edit a standalone printer profile and save the sliced job without
-a hardware target. **Configure printers…** in the Slicer panel opens device setup
+a hardware target. **Configure devices…** beside the device selector opens device setup
 and refreshes the device list when it closes.
 
 The connection and its profile ID are remembered in user-local `devices/{id}.properties`

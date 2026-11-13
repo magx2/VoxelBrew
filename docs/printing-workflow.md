@@ -240,7 +240,7 @@ one undoable edit. Existing objects are not moved. The project stores a complete
 hardware snapshot (print-setup version 4), so another computer does not need the
 same preset installed. Existing version 1?3 setups still load normally.
 
-**Reload printers** discovers local changes without changing the saved selection.
+**Reload printers profiles** discovers local changes without changing the saved selection.
 Select the preset again to adopt updated values. Editing dimensions creates a
 project-local **Modified** snapshot; it does not edit the JSON source. Bed polygons
 and red excluded areas are rendered in both views.
@@ -260,7 +260,7 @@ saves that preset into the project. `print-setup part.vxb` reports its identity.
 
 Create a UTF-8 `.json` file directly in `~/.voxelbrew/printers/` (Windows:
 `%USERPROFILE%\.voxelbrew\printers`). `-Dvoxelbrew.home=...` relocates that folder.
-Use **Open folder** to create/open it, then **Reload printers** after saving.
+Use **Open printer profiles folder** to create/open it, then **Reload printers profiles** after saving.
 All dimensions are in millimeters. IDs must be unique; a custom file cannot
 replace a bundled ID. Conflicting custom IDs are both excluded. Invalid files
 produce individual diagnostics while the remaining catalog stays available.
@@ -307,8 +307,8 @@ JavaFX 21 image loader.
 WebP printer thumbnails use the first frame and preserve transparency. WebP images
 above 16 million pixels use the fallback illustration.
 
-The top-level **Printers** menu provides **Export default printers...**, **Open
-printers folder** and **Reload printers**. Export opens a searchable checklist
+The top-level **Printers** menu provides **Export default printer profiles...**,
+**Open printer profiles folder** and **Reload printers profiles**. Export opens a searchable checklist
 with nothing selected. Choose one or more bundled printers and click **Export
 selected** to write editable copies into `~/.voxelbrew/printers/` (or the
 configured application home). Cancel closes the dialog without writing files.
@@ -317,7 +317,7 @@ at the top of the list. Each image matches its JSON filename. Existing files are
 never overwritten; the completion dialog reports the number of new presets.
 Photo attribution and licenses are exported alongside the presets.
 
-**Printers > Show/hide default printers...** saves which built-in presets appear
+**Printers > Show/hide default printer profiles...** saves which built-in presets appear
 in the selector. Uncheck unused models and save; reopen the dialog to restore
 them. Custom printers remain visible. Hidden presets remain available for export,
 and saved projects retain their hardware settings. The currently selected project

@@ -11,6 +11,9 @@ val javafxPlatform =
     else "linux"
 
 dependencies {
+    implementation("io.modelcontextprotocol.sdk:mcp:1.1.5")
+    implementation("org.eclipse.jetty.ee10:jetty-ee10-servlet:12.0.16")
+    implementation("com.google.code.gson:gson:2.15.0")
     implementation(project(":api:import"))
     implementation(project(":api:export"))
     implementation(project(":api:slicer"))

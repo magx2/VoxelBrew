@@ -243,6 +243,10 @@ public final class DocumentController implements AutoCloseable {
         return session.snapshot();
     }
 
+    long generation() {
+        return documentGeneration;
+    }
+
     public List<Feature> effectiveFeatures() {
         return !rebuilding
                         && build.features().size()

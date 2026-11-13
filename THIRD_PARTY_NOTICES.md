@@ -114,6 +114,12 @@ platforms. No third-party Java binding has been accepted or bundled.
 
 # Printer transport dependencies
 
+The GUI MCP listener bundles the official **MCP Java SDK 1.1.5** (MIT),
+https://github.com/modelcontextprotocol/java-sdk, and **Eclipse Jetty 12.0.16**
+(EPL-2.0 / Apache-2.0), https://github.com/jetty/jetty.project.
+Their separately shipped JARs and transitive Reactor, Reactive Streams, Jackson
+and Jakarta Servlet dependencies retain their upstream license metadata.
+
 Physical Bambu connections use [JBambuAPI 1.7.0](https://github.com/magx2/JBambuAPI)
 under LGPL-2.1, as an unmodified separate JAR. Its source and license are available
 from the linked project. It uses Eclipse Paho MQTT 1.2.5 (EPL-1.0 / EDL-1.0)

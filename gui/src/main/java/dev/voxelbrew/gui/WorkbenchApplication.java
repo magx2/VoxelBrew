@@ -37,6 +37,7 @@ public final class WorkbenchApplication extends Application {
         if (open != null && args.contains("--smoke-test"))
             throw new IllegalArgumentException("--smoke-test creates an unsaved fixture; omit --open");
         workbench = openWindow(stage, plugins, open);
+        workbench.startMcpIfConfigured();
         checkForUpdates(stage, workbench);
         if (args.contains("--smoke-test")) {
             var controller = workbench.controller();

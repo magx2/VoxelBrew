@@ -317,6 +317,7 @@ public final class Workbench extends BorderPane implements AutoCloseable {
     private long appearanceRequest;
     private boolean closed, refreshing;
     private Tool tool = Tool.NONE;
+    private final McpServerHost mcpServer;
     private String modification;
     private String modificationBody;
     private final java.util.Set<Integer> modificationFaces = new java.util.TreeSet<>();
@@ -386,6 +387,7 @@ public final class Workbench extends BorderPane implements AutoCloseable {
             Stage stage,
             @javax.inject.Named("plugins") Path pluginDirectory,
             DocumentController controller,
+            McpServerHost mcpServer,
             ExporterCatalog registry,
             dev.voxelbrew.importer.api.ImporterCatalog.Factory importers,
             PrintingPane printing,
@@ -406,6 +408,8 @@ public final class Workbench extends BorderPane implements AutoCloseable {
         ApplicationIcon.install(stage);
         this.pluginDirectory = pluginDirectory;
         this.controller = controller;
+        this.mcpServer = mcpServer;
+        mcpServer.busy(() -> closed || tool != Tool.NONE || isDisabled());
         this.registry = registry;
         this.importers = importers;
         this.printing = printing;
@@ -577,6 +581,21 @@ public final class Workbench extends BorderPane implements AutoCloseable {
         }
         viewMenu.getItems().add(renderingMenu);
         var settingsMenu = menu("menu-settings");
+        {
+            try {
+                mcpServer.credentials(
+                        dev.voxelbrew.util.config.ApplicationPaths.home().resolve("mcp-token"));
+            } catch (java.io.IOException failure) {
+                log.warn("Could not load persistent MCP credentials; using a window-only token", failure);
+            }
+        }
+        settingsMenu
+                .getItems()
+                .add(menuItem(
+                        translations.text("mcp.title"),
+                        "mcp-server",
+                        false,
+                        () -> McpDialog.show(stage, mcpServer, configurationStore, translations)));
         settingsMenu
                 .getItems()
                 .addAll(
@@ -2421,6 +2440,7 @@ public final class Workbench extends BorderPane implements AutoCloseable {
         if (closed) return;
         closed = true;
         quickMenus.forEach(QuickMenu::close);
+        if (mcpServer != null) mcpServer.close();
         if (constructionEditor != null) constructionEditor.close();
         timeline.close();
         window.close();
@@ -2430,5 +2450,15 @@ public final class Workbench extends BorderPane implements AutoCloseable {
         controller.close();
         preferencesWorker.shutdown();
         resources.close();
+    }
+
+    void startMcpIfConfigured() {
+        try {
+            var settings = McpSettings.load(configurationStore);
+            if (settings.autoStart()) mcpServer.start(settings);
+        } catch (Exception failure) {
+            log.warn("MCP listener was not started", failure);
+            error.setText("MCP: " + failure.getMessage());
+        }
     }
 }

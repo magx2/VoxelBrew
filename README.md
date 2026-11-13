@@ -259,6 +259,9 @@ qualification is tracked in [M6 evidence](docs/acceptance/M6.md). Packaged platf
 
 ## Desktop CAD workbench
 
+The experimental [GUI MCP server](docs/mcp.md) exposes the live document to local
+AI clients. Configure its port and connection settings under **Settings → MCP Server**.
+
 The **Construct / Konstrukcja** menu creates editable reference planes, axes,
 points and local coordinate systems. See [construction geometry](docs/construction.md).
 Text-only documents use `.vxb` schema 10; documents containing sliced printer packages use schema 11.

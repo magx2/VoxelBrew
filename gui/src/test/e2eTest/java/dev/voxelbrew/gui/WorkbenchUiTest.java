@@ -319,13 +319,15 @@ class WorkbenchUiTest {
         assertTrue(Files.isDirectory(devices), "Saving should create the device directory");
         while (System.nanoTime() < deadline) {
             try (var files = Files.list(devices)) {
-                if (files.findAny().isPresent()) break;
+                if (files.anyMatch(path -> path.toString().endsWith(".properties"))) break;
             }
             Thread.sleep(25);
         }
         String deviceProfile;
         try (var files = Files.list(devices)) {
-            var saved = files.findFirst().orElseThrow();
+            var saved = files.filter(path -> path.toString().endsWith(".properties"))
+                    .findFirst()
+                    .orElseThrow();
             var properties = new Properties();
             try (var input = Files.newInputStream(saved)) {
                 properties.load(input);

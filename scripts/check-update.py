@@ -170,17 +170,17 @@ older_document_bytes = older_document.read_bytes()
 
 if kind == "cli":
     cli = install / launcher_relative
-    assert "Update available" in run([cli, "update", "check"])
+    assert "Update available" in run([cli, "settings", "update", "check"])
     assert not list(install.parent.glob(".VoxelBrew-update-*"))
     # Check-only must never download; explicit versions go to the tag endpoint.
-    run([cli, "update", "check", "--version", new_version])
+    run([cli, "settings", "update", "check", "--version", new_version])
     logged = [json.loads(line) for line in request_log.read_text(encoding="utf-8").splitlines()]
     assert all(request["path"].startswith("/repos/") for request in logged)
     (workspace / "deny-access").touch()
-    run([cli, "update", "check"], expected=1)
+    run([cli, "settings", "update", "check"], expected=1)
     (workspace / "deny-access").unlink()
     (release_dir / "SHA256SUMS").write_text("0" * 64 + "  " + asset + "\n", encoding="utf-8")
-    run([cli, "update"], expected=1)
+    run([cli, "settings", "update"], expected=1)
     assert old_version in run([cli, "--version"])
     assert not list(install.parent.glob(".VoxelBrew-update-*"))
     (release_dir / "SHA256SUMS").write_text(checksum + "  " + asset + "\n", encoding="utf-8")
@@ -190,7 +190,7 @@ assert "version=" + old_version in (install / app_relative / "voxelbrew-install.
 holder = subprocess.Popen(probe + ["hold", str(workspace / "holder-ready"), str(workspace / "release-holder")], cwd=workspace, env=env, stdout=subprocess.DEVNULL, stderr=(workspace / "holder.log").open("w"))
 try:
     wait_for(lambda: (workspace / "holder-ready").exists())
-    output = run([install / launcher_relative, "update"] if kind == "cli" else probe + ["update"])
+    output = run([install / launcher_relative, "settings", "update"] if kind == "cli" else probe + ["update"])
     status_path = Path(next(line.removeprefix("Status: ") for line in output.splitlines() if line.startswith("Status: ")))
     assert "state=READY" in status_path.read_text()
     assert "version=" + old_version in (install / app_relative / "voxelbrew-install.properties").read_text()
@@ -207,9 +207,9 @@ try:
     assert "version=" + new_version in (install / app_relative / "voxelbrew-install.properties").read_text()
     if kind == "cli":
         assert new_version in run([install / launcher_relative, "--version"])
-        assert "19099.469" in run([install / launcher_relative, "inspect", root / "fixtures/reference-8mm.vxb"])
-        assert "Already current" in run([install / launcher_relative, "update", "check"])
-        assert "Update available" in run([install / launcher_relative, "update", "check", "--force"])
+        assert "19099.469" in run([install / launcher_relative, "designer", "inspect", root / "fixtures/reference-8mm.vxb"])
+        assert "Already current" in run([install / launcher_relative, "settings", "update", "check"])
+        assert "Update available" in run([install / launcher_relative, "settings", "update", "check", "--force"])
     else:
         assert new_version in run([java, "-cp", str(install / app_relative / "*"), "dev.voxelbrew.gui.Launcher", "--version"])
     assert "DOCUMENT_READ_PASS" in run(probe + ["read-document", older_document])

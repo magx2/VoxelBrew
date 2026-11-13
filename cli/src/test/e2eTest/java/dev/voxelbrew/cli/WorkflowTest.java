@@ -62,7 +62,6 @@ class WorkflowTest {
                 "--y",
                 "30");
         String executable = dev.voxelbrew.slicer.prusa.PrusaSlicerBackend.defaultExecutable()
-                .toAbsolutePath()
                 .toString();
         Files.writeString(
                 script,

@@ -160,16 +160,16 @@ else:
     assert run("--version").strip() == f"VoxelBrew {version} / vxb schema 10"
     document = workspace / "reference.vxb"
     shutil.copy2(root / "fixtures/reference-8mm.vxb", document)
-    history = run("history", document)
-    run("body-style", document, "--body", "thickness.body", "--material", "PETG", "--color", "#FF0000")
-    run("edit", document, "--feature", "thickness", "--field", "distance", "--value", 5)
-    run("edit", document, "--feature", "thickness", "--field", "distance", "--value", 8)
-    assert "thickness.body\tPETG\t#FF0000" in run("body-style", document)
-    inspection = run("inspect", document, "--point", "10,10,4")
+    history = run("designer", "history", "list", document)
+    run("designer", "body", "style", "set", document, "--body", "thickness.body", "--material", "PETG", "--color", "#FF0000")
+    run("designer", "feature", "set", document, "--feature", "thickness", "--field", "distance", "--value", 5)
+    run("designer", "feature", "set", document, "--feature", "thickness", "--field", "distance", "--value", 8)
+    assert "thickness.body\tPETG\t#FF0000" in run("designer", "body", "style", "set", document)
+    inspection = run("designer", "inspect", document, "--point", "10,10,4")
     assert "19099.469" in inspection and "false" in inspection, inspection
-    assert "thickness" in run("history", document) and "thickness" in history
+    assert "thickness" in run("designer", "history", "list", document) and "thickness" in history
     for format_id in ("stl", "3mf"):
-        run("export", document, "--format", format_id, "--output", workspace / ("plate." + format_id))
+        run("document", "export", document, "--format", format_id, "--output", workspace / ("plate." + format_id))
     data = (workspace / "plate.stl").read_bytes()
     count = struct.unpack_from("<I", data, 80)[0]
     assert len(data) == 84 + 50 * count
@@ -182,21 +182,21 @@ else:
         model = ET.fromstring(archive.read("3D/3dmodel.model"))
         assert model.attrib["unit"] == "millimeter"
         assert len(model.findall(".//{*}build/{*}item")) == 1
-    assert "document-probe\t" in run("exporters", "--plugin-dir", plugins)
+    assert "document-probe\t" in run("document", "exporters", "--plugin-dir", plugins)
     report = workspace / "external.txt"
-    run("export", document, "--format", "document-probe", "--plugin-dir", plugins,
+    run("document", "export", document, "--format", "document-probe", "--plugin-dir", plugins,
         "--output", report)
     assert history.startswith("document="), history
     assert report.read_text() == history.split()[0]
-    assert "example.spacer/spacer" in run("feature-types", "--plugin-dir", plugins)
+    assert "example.spacer/spacer" in run("designer", "feature", "types", "--plugin-dir", plugins)
     spacer = workspace / "custom spacer.vxb"
-    run("new", spacer)
-    run("custom", spacer, "--id", "spacer", "--provider", "example.spacer", "--type", "spacer",
+    run("document", "new", spacer)
+    run("designer", "feature", "add", spacer, "--id", "spacer", "--provider", "example.spacer", "--type", "spacer",
         "--parameter", "height=5", "--plugin-dir", plugins)
-    run("edit", spacer, "--feature", "spacer", "--field", "height", "--value", 8, "--plugin-dir", plugins)
-    inspection = run("inspect", spacer, "--point", "0,0,4", "--plugin-dir", plugins)
+    run("designer", "feature", "set", spacer, "--feature", "spacer", "--field", "height", "--value", 8, "--plugin-dir", plugins)
+    inspection = run("designer", "inspect", spacer, "--point", "0,0,4", "--plugin-dir", plugins)
     assert "volume=2412.743" in inspection and "contains=false" in inspection, inspection
-    run("export", spacer, "--format", "3mf", "--output", workspace / "spacer.3mf", "--plugin-dir", plugins)
+    run("document", "export", spacer, "--format", "3mf", "--output", workspace / "spacer.3mf", "--plugin-dir", plugins)
     with zipfile.ZipFile(workspace / "spacer.3mf") as archive:
         model = ET.fromstring(archive.read("3D/3dmodel.model"))
         assert model.find(".//{*}object").attrib["name"] == "spacer.body"

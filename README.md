@@ -1,3 +1,12 @@
+> **This repository has moved.** Active application development is at
+> [Voxel-Brew/VoxelBrew](https://github.com/Voxel-Brew/VoxelBrew).
+> The MIT APIs now live in [api-model](https://github.com/Voxel-Brew/api-model),
+> [api-import](https://github.com/Voxel-Brew/api-import),
+> [api-export](https://github.com/Voxel-Brew/api-export),
+> [api-printer](https://github.com/Voxel-Brew/api-printer), and
+> [api-slicer](https://github.com/Voxel-Brew/api-slicer).
+> This archive retains historical code, issues, and releases.
+
 # VoxelBrew CAD
 
 Desktop parametric CAD for mechanical parts and FDM preparation. Project domain:

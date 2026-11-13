@@ -1026,6 +1026,21 @@
   -fx-pref-height: 40;
   -fx-background-radius: 6;
 }
+.printer-device-name {
+  -fx-min-height: 40;
+  -fx-padding: 8 12;
+  -fx-background-radius: 6;
+  -fx-border-radius: 6;
+  -fx-border-width: 1;
+}
+.light .printer-device-name {
+  -fx-background-color: #f6f7fb;
+  -fx-border-color: #e2e4eb;
+}
+.dark .printer-device-name {
+  -fx-background-color: #303139;
+  -fx-border-color: #41444d;
+}
 .printer-configure {
   -fx-background-color: transparent;
   -fx-text-fill: #5c4bc5;

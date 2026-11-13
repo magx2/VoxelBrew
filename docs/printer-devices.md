@@ -1,7 +1,10 @@
 # Physical printer devices
 
 The **Printer** workspace becomes available when at least one plate has stored G-code.
-Choose a sliced plate and its target printer. **Upload only** transfers the job;
+Choose a sliced plate; its printer device is fixed by the job created in Slicer.
+The device name is read-only in the Printer workspace. A profile-only job can only
+be saved as G-code, and a job for a missing device cannot be sent until that device
+is restored or the plate is sliced again. **Upload only** transfers the job;
 **Print** uploads and requests a start. Live status includes progress and temperatures
 when reported. Pause, resume and cancel apply to the selected device. Closing a window
 or editing a project does not stop an already running physical print.

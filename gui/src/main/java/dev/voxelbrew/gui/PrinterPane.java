@@ -1,6 +1,7 @@
 package dev.voxelbrew.gui;
 
 import dev.voxelbrew.engine.model.CadDocument;
+import dev.voxelbrew.engine.printing.PrintArtifact;
 import dev.voxelbrew.printer.api.*;
 import dev.voxelbrew.util.config.UserConfiguration;
 import dev.voxelbrew.util.i18n.Translations;
@@ -35,7 +36,9 @@ final class PrinterPane extends VBox implements AutoCloseable {
     private final Path directory;
     private final ExecutorService worker;
     private final ComboBox<Plate> plates = new ComboBox<>();
-    private final ComboBox<Printer> devices = new ComboBox<>();
+    private final Label deviceName = new Label();
+    private List<Printer> availableDevices = List.of();
+    private Printer selectedDevice;
     private final Label status = new Label(), details = new Label(), message = new Label();
     private final Label connectionDetail = new Label();
     private final Label progressValue = new Label(),
@@ -72,11 +75,14 @@ final class PrinterPane extends VBox implements AutoCloseable {
         setId("printer-workspace");
         getStyleClass().add("printer-workspace");
         plates.setId("printer-plate");
-        devices.setId("printer-device");
+        deviceName.setId("printer-device");
         plates.setMaxWidth(Double.MAX_VALUE);
-        devices.setMaxWidth(Double.MAX_VALUE);
+        deviceName.setMaxWidth(Double.MAX_VALUE);
+        deviceName.setWrapText(true);
+        deviceName.setAlignment(Pos.CENTER_LEFT);
+        deviceName.getStyleClass().add("printer-device-name");
+        deviceName.setText(t("noDevice"));
         plates.setPromptText(t("platePrompt"));
-        devices.setPromptText(t("devicePrompt"));
         plates.setButtonCell(new ListCell<>() {
             @Override
             protected void updateItem(Plate item, boolean empty) {
@@ -108,7 +114,7 @@ final class PrinterPane extends VBox implements AutoCloseable {
         subtitle.getStyleClass().add("printer-subtitle");
         var introduction = new VBox(5, heading, subtitle);
         var plateStep = step("01", t("plate"), t("plateHint"), plates);
-        var deviceStep = step("02", t("device"), t("deviceHint"), devices);
+        var deviceStep = step("02", t("device"), t("deviceHint"), deviceName);
         var configureRow = new HBox(configure);
         configureRow.setAlignment(Pos.CENTER_RIGHT);
         var setup = new VBox(22, plateStep, deviceStep, configureRow);
@@ -155,8 +161,7 @@ final class PrinterPane extends VBox implements AutoCloseable {
         message.setVisible(false);
         message.managedProperty().bind(message.visibleProperty());
         message.textProperty().addListener((o, old, value) -> message.setVisible(value != null && !value.isBlank()));
-        plates.valueProperty().addListener((o, a, b) -> update());
-        devices.valueProperty().addListener((o, a, b) -> connect());
+        plates.valueProperty().addListener((o, a, b) -> syncDevice(false));
         polling = new Timeline(new KeyFrame(Duration.seconds(2), event -> poll()));
         polling.setCycleCount(Animation.INDEFINITE);
         polling.play();
@@ -204,7 +209,7 @@ final class PrinterPane extends VBox implements AutoCloseable {
         return button;
     }
 
-    private VBox step(String number, String title, String hint, ComboBox<?> selector) {
+    private VBox step(String number, String title, String hint, javafx.scene.Node selector) {
         var index = new Label(number);
         index.getStyleClass().add("printer-step-number");
         var label = new Label(title);
@@ -253,28 +258,43 @@ final class PrinterPane extends VBox implements AutoCloseable {
                 .orElse(choices.isEmpty() ? null : choices.getFirst());
         if (!Objects.equals(plates.getSelectionModel().getSelectedItem(), choice))
             plates.getSelectionModel().select(choice);
-        if (choice != null) {
-            var artifact = value.printArtifacts().get(choice.id());
-            if (artifact != null && "printer".equals(artifact.metadata().get("target_kind"))) {
-                var target = artifact.metadata().get("target_id");
-                devices.getItems().stream()
-                        .filter(d -> d.id().equals(target))
-                        .findFirst()
-                        .ifPresent(devices::setValue);
-            }
-        }
-        update();
+        syncDevice(false);
     }
 
     boolean hasJobs() {
         return !plates.getItems().isEmpty();
     }
 
+    private void syncDevice(boolean reconnect) {
+        PrintArtifact artifact = document == null || plates.getValue() == null
+                ? null
+                : document.printArtifacts().get(plates.getValue().id());
+        String target = artifact != null && "printer".equals(artifact.metadata().get("target_kind"))
+                ? artifact.metadata().getOrDefault("target_id", "")
+                : null;
+        var resolved = deviceForJob(artifact, availableDevices);
+        deviceName.setText(
+                target == null ? t("noDevice") : resolved == null ? t("unavailableDevice") : resolved.name());
+        if (reconnect || !Objects.equals(selectedDevice, resolved)) {
+            selectedDevice = resolved;
+            connect();
+        } else update();
+    }
+
+    static Printer deviceForJob(PrintArtifact artifact, List<Printer> available) {
+        if (artifact == null || !"printer".equals(artifact.metadata().get("target_kind"))) return null;
+        String target = artifact.metadata().get("target_id");
+        return available.stream()
+                .filter(device -> device.id().equals(target))
+                .findFirst()
+                .orElse(null);
+    }
+
     private void update() {
         exportGcode.setDisable(busy || plates.getValue() == null);
-        boolean selected = plates.getValue() != null && devices.getValue() != null;
+        boolean selected = plates.getValue() != null && selectedDevice != null;
         var incompatible = selected && document != null
-                ? PrinterJobs.incompatibility(document, plates.getValue().id(), devices.getValue())
+                ? PrinterJobs.incompatibility(document, plates.getValue().id(), selectedDevice)
                 : Optional.<String>empty();
         boolean compatible = selected && incompatible.isEmpty();
         upload.setDisable(busy || !compatible || session == null);
@@ -285,9 +305,15 @@ final class PrinterPane extends VBox implements AutoCloseable {
                 || session == null
                 || (current.state() != PrinterStatus.State.PRINTING && current.state() != PrinterStatus.State.PAUSED));
         plates.setDisable(busy);
-        devices.setDisable(busy);
-        details.setText(!selected ? t("choose") : compatible ? t("ready") : incompatible.orElse(t("bambuPackage")));
-        monitor.setVisible(devices.getValue() != null);
+        if (plates.getValue() == null) details.setText(t("choose"));
+        else if (selectedDevice == null) {
+            var artifact = document.printArtifacts().get(plates.getValue().id());
+            details.setText(
+                    artifact != null && "printer".equals(artifact.metadata().get("target_kind"))
+                            ? t("missingDevice")
+                            : t("profileOnly"));
+        } else details.setText(compatible ? t("ready") : incompatible.orElse(t("bambuPackage")));
+        monitor.setVisible(selectedDevice != null);
         monitor.setManaged(monitor.isVisible());
         status.setText(t("state." + current.state().name().toLowerCase(Locale.ROOT)));
         connectionDetail.setText(!current.filename().isBlank() ? current.filename() : current.detail());
@@ -309,21 +335,8 @@ final class PrinterPane extends VBox implements AutoCloseable {
                 var loaded = runtime.devices(directory);
                 Platform.runLater(() -> {
                     if (closed) return;
-                    String selected =
-                            devices.getValue() == null ? "" : devices.getValue().id();
-                    if (document != null && plates.getValue() != null) {
-                        var artifact =
-                                document.printArtifacts().get(plates.getValue().id());
-                        if (artifact != null
-                                && "printer".equals(artifact.metadata().get("target_kind")))
-                            selected = artifact.metadata().getOrDefault("target_id", "");
-                    }
-                    devices.getItems().setAll(loaded);
-                    String target = selected;
-                    devices.setValue(loaded.stream()
-                            .filter(d -> d.id().equals(target))
-                            .findFirst()
-                            .orElse(loaded.isEmpty() ? null : loaded.getFirst()));
+                    availableDevices = List.copyOf(loaded);
+                    syncDevice(true);
                 });
             } catch (Exception failure) {
                 error(failure);
@@ -335,7 +348,7 @@ final class PrinterPane extends VBox implements AutoCloseable {
         busy = false;
         startPending = false;
         long token = ++generation;
-        var device = devices.getValue();
+        var device = selectedDevice;
         var previous = session;
         session = null;
         current = PrinterStatus.unknown(t("connecting"));
@@ -427,8 +440,8 @@ final class PrinterPane extends VBox implements AutoCloseable {
         if (start && (startPending || !current.canStart())) return;
         var lines = document.gcode().getOrDefault(plates.getValue().id(), List.of());
         if (lines.isEmpty()) return;
-        if (devices.getValue() == null
-                || PrinterJobs.incompatibility(document, plates.getValue().id(), devices.getValue())
+        if (selectedDevice == null
+                || PrinterJobs.incompatibility(document, plates.getValue().id(), selectedDevice)
                         .isPresent()) return;
         var artifact = document.printArtifacts().get(plates.getValue().id());
         long revision = jobGeneration;
@@ -517,7 +530,7 @@ final class PrinterPane extends VBox implements AutoCloseable {
         dialog.setTitle(t("configure"));
         if (getScene() != null) dialog.initOwner(getScene().getWindow());
         var list = new ComboBox<Printer>();
-        list.getItems().setAll(devices.getItems());
+        list.getItems().setAll(availableDevices);
         list.setPromptText(t("new"));
         var name = new TextField();
         name.setId("device-config-name");

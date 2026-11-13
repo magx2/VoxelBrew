@@ -44,10 +44,7 @@ final class ImportCommands {
         }
     }
 
-    @Command(
-            name = "import",
-            mixinStandardHelpOptions = true,
-            description = "Import a document to .vxb or inspect an imported toolpath")
+    @Command(name = "import", mixinStandardHelpOptions = true, description = "Import a document to .vxb")
     @RequiredArgsConstructor(access = AccessLevel.PACKAGE, onConstructor_ = @javax.inject.Inject)
     static final class ImportFile implements Callable<Integer> {
         private final ImporterCatalog.Factory importers;

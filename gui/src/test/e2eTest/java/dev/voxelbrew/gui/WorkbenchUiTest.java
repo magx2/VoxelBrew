@@ -3674,7 +3674,7 @@ class WorkbenchUiTest {
             assertTrue(System.nanoTime() < deadline, "Language preference saved");
             Thread.sleep(30);
         }
-        assertEquals("en", configuration.get("language", ""));
+        assertEquals("en-EN", configuration.get("language", ""));
         assertEquals("preserve me", configuration.get("external.setting", ""));
         click("language-close");
         assertEquals(part, document());

@@ -104,9 +104,8 @@ class WorkflowTest {
                 "--overwrite");
         assertTrue(error.contains("must differ from its source"), error);
         assertEquals("60,40,4", Files.readString(source));
-        Path gcode = directory.resolve("source.gcode");
-        Files.writeString(gcode, "G21\nG90\nM82\nG1 Z0.2\nG1 X10 Y10 E1 F1200\n");
-        assertTrue(run(0, "import", gcode.toString(), "--format", "gcode").contains("deposition_moves=1"));
+        assertTrue(run(1, "import", source.toString(), "--format", "plate", "--plugin-dir", plugins.toString())
+                .contains("requires --output"));
     }
 
     @Test

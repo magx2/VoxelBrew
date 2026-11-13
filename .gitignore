@@ -5,4 +5,5 @@
 .idea/
 *.iml
 sleep
+sleep-*
 __pycache__/
